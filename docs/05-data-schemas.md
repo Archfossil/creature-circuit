@@ -1,1 +1,1 @@
-
+Provide empty JSON schema templates for Creature objects and Move objects so the engineering AI team can build the database loaders and UI components now, leaving the fields ready to populate when you write the creature and move lists later.
