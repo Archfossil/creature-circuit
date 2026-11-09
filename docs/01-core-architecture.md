@@ -6,9 +6,11 @@ Some actions cost more Energy. Some trainer abilities may influence energy costs
 # Map Traversal
 
 MOVEMENT
+
 1 Energy to move to an adjacent map node. Each time you enter a new map node you automatically "explore" it. More on that below.
 
 CITIES
+
 There are 8 cities in the map, each inspired by a different American national park and representing a different type in our type chart which the City Arbiter uses as their main creature type for challengers. 
 
 In a City players can rest at a stable. Each stable provides a Chanko Nabe (Hot Pot) to recover Creatures and provide unique buffs based on the city / stable. Using a stable completely recovers any team KO's, injuries or conditions.
@@ -22,6 +24,7 @@ Cities are also where you'll find Markets for buying various items. Energy boost
 Each city has an Arbiter. The Arbiter of a city uses creatures of a certain type. Defeating an Arbiter earns you an accolade (each arbiter may issue different types of prizes for beating them including stamps, badges, merits, tokens, etc.) Every 2 accolades increases your Trainer Tier. When you challenge an Arbiter, the difficulty of the challenge they present to you is set by your trainer tier. The higher your tier, the harder an Arbiter is expected to push you. At 0 Accolades you are Tier 1. At 8, you are Tier 5. Only Tier 5 trainers are invited to participate in the Creature Circuit at the end of turn 100.
 
 TOWNS
+
 Like cities, towns are smaller and don't have Arbiters or Chanko Nabe, but they are safe from the events in the wilderness regardless. Usually a town will have some key item required to progress through the rest of the map or unlock a shortcut. Some of them have unique game mechanics like special markets for unique items, create trade posts, or so on.
 
 # Energy System
