@@ -1,15 +1,15 @@
 # Action Economy
-Players get 5 Energy per turn to spend on movement, exploring map nodes, or performing city actions.
+Players get 5 Initiative per turn to spend on movement, exploring map nodes, or performing city actions.
 
-Some actions cost more Energy. Some trainer abilities may influence energy costs. Trainers who prefer nature may not spend an energy to re-explore a space, but city actions cost an additional Energy, while trainers who prefer urban environments may have this interaction inverted.
+Some actions cost more Initiative. Some trainer abilities may influence initiative costs. Trainers who prefer nature may not spend an initiative to re-explore a space, but city actions cost an additional initiative, while trainers who prefer urban environments may have this interaction inverted.
 
 # Map Traversal
 
-MOVEMENT
+## MOVEMENT
 
-1 Energy to move to an adjacent map node. Each time you enter a new map node you automatically "explore" it. More on that below.
+1 Initiative to move to an adjacent map node. Each time you enter a new map node you automatically "explore" it. More on that below.
 
-CITIES
+## CITIES
 
 There are 8 cities in the map, each inspired by a different American national park and representing a different type in our type chart which the City Arbiter uses as their main creature type for challengers. 
 
@@ -23,9 +23,36 @@ Cities are also where you'll find Markets for buying various items. Energy boost
 
 Each city has an Arbiter. The Arbiter of a city uses creatures of a certain type. Defeating an Arbiter earns you an accolade (each arbiter may issue different types of prizes for beating them including stamps, badges, merits, tokens, etc.) Every 2 accolades increases your Trainer Tier. When you challenge an Arbiter, the difficulty of the challenge they present to you is set by your trainer tier. The higher your tier, the harder an Arbiter is expected to push you. At 0 Accolades you are Tier 1. At 8, you are Tier 5. Only Tier 5 trainers are invited to participate in the Creature Circuit at the end of turn 100.
 
-TOWNS
+## TOWNS
 
 Like cities, towns are smaller and don't have Arbiters or Chanko Nabe, but they are safe from the events in the wilderness regardless. Usually a town will have some key item required to progress through the rest of the map or unlock a shortcut. Some of them have unique game mechanics like special markets for unique items, create trade posts, or so on.
+
+# Exploration
+
+Map nodes are defined by their biome. Mountains, Lakes, Forests, Roads, Swamps, etc. These inform some other elements of exploration like what Offering Materials can be found, or which wild Creatures will be encountered.
+
+When you enter a new node you "explore" it. This is a dice roll with the following possible results:
+
+1-2: Nothing.
+3-4: Wild Creature encounter.
+5-6: Discovered item.
+
+## Nothing
+
+When "nothing" is rolled the player may immediately move to a new node or explore their current area again by spending another initiative.
+
+## Wild Creature
+
+When a Wild Creature is encountered the following occurs:
+
+1: A base "rarity" is calculated, set by the node the trainer is in. Some nodes have "rarer" creatures than others.
+2: Rarity dice are rolled based on various factors like items, passives, trainer abilities, etc. The default is two dice rolled.
+3: These dice have results showing a Star. Either a blank result (1-2), half star (3-4), or full star (5-6) are possible results.
+4: Each full star adds to the rarity. Then the rarity and type are considered and a creature is generated from the appropriate pool of possibilities. Such as a "Common Water type" creature or an "Apex Astral type" creature based on the location and rarity rolls.
+
+## Discovered Items
+
+When an item is found another dice is rolled. Berries, Offering Materials, pre=carved Totems, and items which can normally be bought from the Market are all possible options. The Berry or Offering Material found is determined by the biome of the node being explored.
 
 # Energy System
 
