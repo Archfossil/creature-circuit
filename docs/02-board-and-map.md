@@ -22,8 +22,6 @@ Based on the Badlands National Park in South Dakota, Thunder Spike is a rolling 
 
 The Arbiter of Thunder Spike is **Watson**. His arena sits directly underneath the eponymous thunder spike and throughout battle will unleash charged volts upon the creatures fighting within.
 
-In the badlands around Thunder Spike 
-
 ## 4. Kilauea Forge
 
 Based on the Hawai'i Volcanoes National Park in Hawaii. Kilauea Forge is an island forming the southern-most point of Margos and accessible by sailing from Mangrove Port. The island is a tropical paradise where the Fire type creatures enjoy the heat of  the nearby steam vents and lava tunnels.
