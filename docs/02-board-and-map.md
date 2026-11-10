@@ -1,21 +1,3 @@
-The 8 National Park Regions:
-
-    Astral (A): Denali National Park (Hub: Aurora Peak | Arbiter Borealis)
-
-    Charm (C): Great Smoky Mountains (Hub: Hollow Crest | Arbiter Fable)
-
-    Electric (E): Yellowstone National Park (Hub: Geyser City | Arbiter Volt)
-
-    Fire (F): Hawai'i Volcanoes National Park (Hub: Kilauea Forge | Arbiter Cinder)
-
-    Grass (G): Redwood National and State Parks (Hub: Canopy Town | Arbiter Root)
-
-    Rock (R): Grand Canyon National Park (Hub: Stratum Basin | Arbiter Mesa)
-
-    Steel (S): Cuyahoga Valley National Park (Hub: Rivet City | Arbiter Anvil)
-
-    Water (W): Everglades National Park (Hub: Mangrove Port | Arbiter Tide)
-
 # The 8 Cities of Margos
 
 ## 1. Aurora Peak
@@ -24,11 +6,15 @@ Based on Denali National Park in Alaska, Aurora Peak is a cold climate in the no
 
 The Arbiter of Aurora Peak is **Salem**. Their arena is only open under the light of the aurora borealis and takes place on floating ice floes which run the risk of having unprepared creatures tip and sink into the frigid arctic water below.
 
+The heights of Aurora Peak provide landing spaces for creatures who have learned to fly.
+
 ## 2. Hollow Crest
 
 Based on Olympic National Park in Washington, Hollow Crest is a city nestled inside a temperate forest which gets seasonally cold and represents our Charm type. The moss covered woodland presents a picturesque fairy-forest type environment. The "city" itself is mostly made of cozy log cabins.
 
 The Arbiter of Hollow Crest is **Fabian**. Their arena is made mostly of illusory terrain obfuscated by fog and glamorous lighting tricks. Fabian himself hides among the population of Hollow Crest in disguise, choosing to prank prospective challenging trainers to see their reaction before allowing them to challenge him to battle.
+
+Navigation in the fog can be difficult in Hollow Crest. Creatures with special sight or wayfinding abilities can make it through perfectly.
 
 ## 3. Thunder Spike
 
@@ -36,11 +22,13 @@ Based on the Badlands National Park in South Dakota, Thunder Spike is a rolling 
 
 The Arbiter of Thunder Spike is **Watson**. His arena sits directly underneath the eponymous thunder spike and throughout battle will unleash charged volts upon the creatures fighting within.
 
+In the badlands around Thunder Spike 
+
 ## 4. Kilauea Forge
 
-Based on the Hawai'i Volcanoes National Park in Hawaii.
+Based on the Hawai'i Volcanoes National Park in Hawaii. Kilauea Forge is an island forming the southern-most point of Margos and accessible by sailing from Mangrove Port. The island is a tropical paradise where the Fire type creatures enjoy the heat of  the nearby steam vents and lava tunnels.
 
-The Arbiter of Kilauea Forge is **Amber**.
+The Arbiter of Kilauea Forge is **Amber**. Amber's arena rests in a pit of fire and flames, where steam vents and 
 
 ## 5. Gloomshade
 
@@ -56,12 +44,12 @@ The Arbiter of Houndmouth Canyon is **Cliff**. His arena is built out of a tall 
 
 ## 7 Iron Coast
 
-More loosely based on Acadia National Park in Maine than the others, Iron Coast is a series of pebble beaches with foggy Atlantic coast vibes. Colorful houses, lighthouses, a lot of seafaring paraphernalia around the city.
+More loosely based on Acadia National Park in Maine than the others, Iron Coast is a series of pebble beaches with foggy Atlantic coast vibes. Colorful houses, lighthouses, a lot of seafaring paraphernalia around the city. The Steel type creatures here seem to share an origin with the mysterious ore which sweeps into the shore from some distant unknown ocean.
 
-The Arbiter is **Stella**.
+The Arbiter is **Stella**. Her arena is a floating fortress which docks only once a trainer has proven themselves worth of Stella's attention. Otherwise, it rests beneath the waves where she hones her skills.
 
 ## 8. Mangrove Port
 
-Based on the Everglades National Park in Florida.
+Based on the Everglades National Park in Florida. The city is built on stilts overlooking marshy waters and mangrove trees with roots which shift every few hours, making traversal here through the water nearly impossible for all but the native water creatures. Boardwalks and suspended bridges dominate the area.
 
-The Arbiter is **Katy**. 
+The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and can will them open or closed. She uses this to help her city, but also to deny unworthy trainers from ever finding her to issue their challenges.
