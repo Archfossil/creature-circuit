@@ -17,4 +17,6 @@ Each creature has the following attributes with sub-attributes in parenthesis.
 
 The creature's Vigor informs the Health and Vitality of the creature. (A creature with 3 Vigor has 3 Health and 3 Vitality by default.) Incoming damage is dealt to Health first. When Health hits zero, a point of Vitality is removed and Health is reset.
 
+
+
 (tbd)
