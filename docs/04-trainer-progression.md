@@ -1,9 +1,3 @@
-100-Turn Seasonal System: Four 25-turn seasons (Spring, Summer, Autumn, Winter) governed by a 1–6 Weather Die that alters movement costs and type effectiveness.
-
-Arbiter Progression: Defeating regional Arbiters grants Accolades/Badges required to enter the endgame.
-
-Endgame Gauntlet (Turns 101–110): Round-robin matches against Circuit Captains every other turn, concluding with championship tie-breakers.
-
 # Gameplay Timer
 
 Each game lasts 100 rounds representing a full year. Every 25 rounds the seasons change. Turn 1 at the start of the game is in Spring. Turn 26 moves to Summer. Turn 51 starts Autumn, and turn 76 is the start of Winter.
