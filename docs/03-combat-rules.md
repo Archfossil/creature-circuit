@@ -146,6 +146,10 @@ Passive abilities provide constant, automatic board or combat effects that activ
 
 There are 8 types. Each is strong against two others and weak to two others. Neutral to anything else.
 
+When a type is "Strong" against another it deals double (2x) damage. When a type is resisted by another, it takes only half (0.5) damage.
+
+Because creatures can have two types, but attacks can only be one certain type, it is possible to get super effectiveness or immunity. If the attack is effective against both types of a creature, it deals 4x damage. If the attack is resisted by both of the creatures types, that creature takes no damage at all.
+
 | Type | Initial | Strong Against (Deals 2x) | Weak Against (Takes 2x) |
 | :---: | :---: | :---: | :---: |
 | Astral | A | Electric <br> Fire | Charm <br> Steel |
