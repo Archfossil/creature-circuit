@@ -51,3 +51,9 @@ The Arbiter is **Stella**. Her arena is a floating fortress which docks only onc
 Based on the Everglades National Park in Florida. The city is built on stilts overlooking marshy waters and mangrove trees with roots which shift every few hours, making traversal here through the water nearly impossible for all but the native water creatures. Boardwalks and suspended bridges dominate the area.
 
 The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and can will them open or closed. She uses this to help her city, but also to deny unworthy trainers from ever finding her to issue their challenges.
+
+# Map Design
+
+The map is a series of nodes between towns and cities. Each node represents a biome, each creature can be caught in a specific type of biome. Between Iron Coast and Gloomshade might be mostly coasts, roads, or forests for example.
+
+Legendary Nodes are specific slots on the map where legendary creatures roam. These often require some other steps to be done first before they can be unlocked.
