@@ -10,6 +10,7 @@ Each creature has the following attributes with sub-attributes in parenthesis.
 * Vigor (Health and Vitality)
 * Power & Armor
 * Focus & Ward
+* Evasion
 * Speed
 * Stamina (Fatigue)
 * Energy
