@@ -115,5 +115,6 @@ Attack resolution is done as follows:
 
 * Declared attacks adjust the creatures Speed. Then the creature with higher speed is the first attacker.
 * If the attack is elemental, the type chart is consulted to find effectiveness or resistances. The Attack Type is compared against the Creature Type.
-* If the attack has an "Accuracy" rating, it must roll the associated dice to determine a hit or not. (Usually this is a d6 and hits on a 4 or higher, but it can be other dice or other values determined by the attack.) Not every attack will require this step as some are guaranteed to hit.
-* The attack will have either a die value, a flat value, or both, to indicate damage.
+* Most attacks are not guaranteed to hit. To determine if an attack hits, roll it's accuracy dice (usually a d6) and compare it against the target creature's Evasion. If your roll equals or exceeds the Evasion of the target creature, the attack hits and deals damage. If it is a physical attack and you roll the maximum value on your attack roll, you deal a Critical Hit and damage is doubled.
+* The attack will have either a die value, a flat value, or both, to indicate damage. Power / Focus is also added to this value for Physical / Elemental attacks respectively. If an elemental attack deals it's minimum damage, it also inflicts a status condition. (Some attacks, effects, or abilities can change the amount of damage rolled to inflict the status effect.)
+* Damage reduces a creatures Health. When their health hits 0, a point of Vitality is reduced. Damage carries over between Vitality points unless the creature has an ability or effect which says otherwise.
