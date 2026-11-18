@@ -119,3 +119,25 @@ Attack resolution is done as follows:
 * Most attacks are not guaranteed to hit. To determine if an attack hits, roll it's accuracy dice (usually a d6) and compare it against the target creature's Evasion. If your roll equals or exceeds the Evasion of the target creature, the attack hits and deals damage. If it is a physical attack and you roll the maximum value on your attack roll, you deal a Critical Hit and damage is doubled.
 * The attack will have either a die value, a flat value, or both, to indicate damage. Power / Focus is also added to this value for Physical / Elemental attacks respectively. If an elemental attack deals it's minimum damage, it also inflicts a status condition. (Some attacks, effects, or abilities can change the amount of damage rolled to inflict the status effect.)
 * Damage reduces a creatures Health. When their health hits 0, a point of Vitality is reduced. Damage carries over between Vitality points unless the creature has an ability or effect which says otherwise.
+
+# Example Natures
+
+Natures define a creature's innate behavioral bias, creating stat exchanges.
+
+* **Adamant** :: +Power, -Focus -- Favors raw physical brawling over elemental channeling.
+* **Timid** :: +Speed, -Power -- Prioritizing lightning-fast positioning at the cost of force.
+* **Fortified** :: +Armor, -Speed -- Builds an immovable defensive wall, sacrificing mobility.
+* **Resonant** :: +Focus, -Armor -- Leans heavily into elemental mastery and status effects, leaving physical defenses soft.
+* **Enduring** :: +Vigor, -Ward -- Piles on massive health pools to soak damage, but leaves them more vulnerable to specialized elemental energy.
+* **Volatile** :: +Stamina, -Evasion -- Empowers creatures to push their limits and use more demanding moves, but makes them cavalier with their own safety.
+
+# Example Abilities
+
+Passive abilities provide constant, automatic board or combat effects that activate without consuming active move energy or spending Stamina:
+
+* Gem Armor: Takes reduced flat damage from physical attacks (ideal for rock/steel frontline variants).
+* Thermal Aura: Radiates ambient heat, dealing minor chip damage to adjacent enemies at the end of a round.
+* Reflective Coat: Grants a percentage chance to deflect a portion of incoming elemental Focus damage back at the attacker.
+* Adrenaline Surge: When Vigor drops into the danger zone (below 25%), Speed is automatically boosted to help secure a desperate last-turn escape or strike.
+* Pace-Keeper: Lowers the cumulative Fatigue gained when expending high amounts of Stamina during aggressive turns.
+* Synchronized Pulse: Boosts the efficiency of attributes fed by a benched partner during an Affinity team-up swap.
