@@ -146,14 +146,14 @@ Passive abilities provide constant, automatic board or combat effects that activ
 
 There are 8 types. Each is strong against two others and weak to two others. Neutral to anything else.
 
-chart_data = {
-    'Astral': {'strong': ['Electric', 'Charm'], 'weak': ['Fire', 'Steel']},
-    'Charm': {'strong': ['Grass', 'Steel'], 'weak': ['Rock', 'Astral']},
-    'Electric': {'strong': ['Water', 'Steel'], 'weak': ['Rock', 'Fire']},
-    'Fire': {'strong': ['Grass', 'Astral'], 'weak': ['Water', 'Steel']},
-    'Grass': {'strong': ['Water', 'Rock'], 'weak': ['Fire', 'Charm']},
-    'Rock': {'strong': ['Charm', 'Electric'], 'weak': ['Water', 'Grass']},
-    'Steel': {'strong': ['Astral', 'Fire'], 'weak': ['Electric', 'Charm']},
-    'Water': {'strong': ['Fire', 'Rock'], 'weak': ['Electric', 'Grass']}
-}
+| Type | Initial | Strong Against (Deals 2x) | Weak Against (Takes 2x) |
+| --- | --- | --- | --- |
+| Astral | A | "Electric, Charm" | "Fire, Steel" |
+| Charm | C | "Grass, Steel" | "Rock, Astral" |
+| Electric | E | "Water, Steel" | "Rock, Fire" |
+| Fire | F | "Grass, Astral" | "Water, Steel" |
+| Grass | G | "Water, Rock" | "Fire, Charm" |
+| Rock | R | "Charm, Electric" | "Water, Grass" |
+| Steel | S | "Astral, Fire" | "Electric, Charm" |
+| Water | W | "Fire, Rock" | "Electric, Grass" |
 
