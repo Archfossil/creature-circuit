@@ -141,3 +141,19 @@ Passive abilities provide constant, automatic board or combat effects that activ
 * Adrenaline Surge: When Vigor drops into the danger zone (below 25%), Speed is automatically boosted to help secure a desperate last-turn escape or strike.
 * Pace-Keeper: Lowers the cumulative Fatigue gained when expending high amounts of Stamina during aggressive turns.
 * Synchronized Pulse: Boosts the efficiency of attributes fed by a benched partner during an Affinity team-up swap.
+
+# Type Chart
+
+There are 8 types. Each is strong against two others and weak to two others. Neutral to anything else.
+
+chart_data = {
+    'Astral': {'strong': ['Electric', 'Charm'], 'weak': ['Fire', 'Steel']},
+    'Charm': {'strong': ['Grass', 'Steel'], 'weak': ['Rock', 'Astral']},
+    'Electric': {'strong': ['Water', 'Steel'], 'weak': ['Rock', 'Fire']},
+    'Fire': {'strong': ['Grass', 'Astral'], 'weak': ['Water', 'Steel']},
+    'Grass': {'strong': ['Water', 'Rock'], 'weak': ['Fire', 'Charm']},
+    'Rock': {'strong': ['Charm', 'Electric'], 'weak': ['Water', 'Grass']},
+    'Steel': {'strong': ['Astral', 'Fire'], 'weak': ['Electric', 'Charm']},
+    'Water': {'strong': ['Fire', 'Rock'], 'weak': ['Electric', 'Grass']}
+}
+
