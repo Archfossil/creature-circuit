@@ -12,6 +12,7 @@ Each creature has the following attributes with sub-attributes in parenthesis.
 * Focus & Ward
 * Speed
 * Stamina (Fatigue)
+* Energy
 
 ## Vigor (Health & Vitality)
 
@@ -19,7 +20,7 @@ The creature's Vigor informs the **Health** and **Vitality** of the creature. (A
 
 When a creature defeats another creature in combat, the winning creature immediately restores all of their Health, but not Vitality. The defeated creature is KO'd and must be revived in a town or city.
 
-Outside of combat, creatures restore all Health, but not Vitality unless you skip turns "Camping" to heal wounded creatures. This will not revive KO'd creatures under normal circumstances, it merely recovers lost Vitality.
+Outside of combat, creatures restore all Health, but not Vitality unless you skip turns "Camping" to heal wounded creatures. This will not revive KO'd creatures under normal circumstances, it merely recovers lost Vitality and removes Fatigue (more on Fatigue below.)
 
 ## Power & Armor
 
@@ -32,3 +33,57 @@ These two attributes work the same as Power and Armor, except they apply to elem
 ## Speed
 
 This attribute determines turn priority in combat and it can fluctuate based on attacks chosen and status effects. Defensive moves often increase your Speed so that they can be deployed before an attack hits you for example. Some attacking moves might inflict speed de-buffs to make fighting the target creature easier for another example.
+
+## Stamina (Fatigue)
+
+Every attack has an "Effort" value which drains Stamina. When Stamina hits 0 the creature gains a point of Fatigue.
+
+During combat if a Creature has Fatigue, before they can roll an attack they must first roll a 10-sided die. If the dice result is equal to or lower than the current Fatigue of the attacking creature, they do not resolve the attack and spend that turn to "Catch their breath" instead.
+
+Fatigue is removed when Vitality is restored. At rest in Cities or by camping.
+
+## Energy
+
+This game has a Master Move List of attacks creatures can learn. To power these attacks, a Creature generates Energy. A creature can have a playbook of up to 4 attacks at a time. To add a move to the playbook, the creature must generate the correct amount and types of energy for the move. For example if "Fire Claw" requires two fire energy and one neutral energy (neutral energy is not a type generated, but rather neutral slots can be filled by any type of energy) then the creature "spends" 2 fire and 1 of any energy to commit Fire Claw to their playbook. This energy is not spent each time the attack is used, it is only slotted to determine what attacks are in the playbook. When this creature learns another move, such as "Meteor" which costs 4 Charm energy and 1 Fire energy, they cannot use the energy committed to "Fire Claw" without first removing that attack from their playbook.
+
+# Meta-Attributes
+
+Aside from their physical attributes, Creatures will have the following social attributes as well. These are **Loyalty,** **Morale,** and **Affinity.**
+
+## Loyalty
+
+Loyalty tracks trust with the trainer and unlocks high-tier behavioral bonuses based on the creature's Nature. Loyalty acts as a currency which can be spent in the Creature's nature to unlock more passive benefits determined by their personality (their Nature.)
+
+## Morale
+
+Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers" often, and receive active praise and care from their trainers will have high morale. Creatures who are on losing streaks in battle, are left in their totems, get neglected or ignored by their trainers, or are passed over when the trainer hands out items and treats will have low morale. Creatures with low morale can reject their trainers and return to the wild. Creatures with high Morale gain bonuses to their earned Loyalty and Experience.
+
+## Affinity
+
+Affinity powers team-up swaps, enabling an incoming "Alpha" creature to leverage attributes fed by a benched partner. When you swap Creatures mid-battle one of the Creatures is designated as the "Alpha" in the arrangement. The Alpha has an affinity ability which is triggered as the two creatures swap, but the exact power of the affinity ability is determined by the other creature. Affinity attacks all work differently, but they might borrow the contributing Creature's stats or type for the specific attack.
+
+Each creature has an Affinity with each other creature in your roster. The more they interact and engage and like each other, the higher their affinity, the more powerful their "team-up" effects become.
+
+# Other Metadata
+
+Other relevant creature information includes their Recruitment Threshold (RT), Level, Experience, and Personality (Nature, Ability, and Affinity Power)
+
+## Recruitment Threshold (RT)
+
+This determines the difficulty of recruiting a defeated Creature. This is compared against the Totem and offerings given to the creature to allure them to your service. If they accept, they inhabit the totem. This number should fluctuate, but not massively.
+
+## Level
+
+Determines how many times the creature has already been upgraded. At each new level a node is unlocked in the creatures progression tree. This tree can include increases to attributes, sub-attributes (such as improving Health or Vitality), adding more energy for use in the playbook, adding "Prism" energy (a rare energy type which counts as any energy), or unlocking signature attacks or movement abilities such as Fly, Sail, Tunnel, or Portal.
+
+## Experience
+
+Points earned by completing battles against other creatures. The exact amount is determined by comparing the two levels of the participating creatures with a bonus for the winner. When a creature earns enough experience, they gain a level, and can buy a new node from their progression track.
+
+## Personality (Nature, Ability, Affinity Power)
+
+Personality is determined by the Nature of a creature. Nature, like the progression track, has nodes to unlock through Loyalty. It may also feature bonuses for high Morale, or possibly "rebound" abilities for creatures with low morale.
+
+An **Ability** is a passive effect which the Creature applies while in the overworld out of combat. These can be something like "Sweet Scent" which attracts wild creatures to the trainer for battle and possible recruitment, or "Baby-Doll Eyes" which can earn the trainer deals at markets. Only the "Following" creature can make use of their passive ability. At the start of each trainers turn, they determine one of their creature roster to "follow" them which improves their Loyalty, Morale, and allows them to use their Ability. This creature is also deployed first in combat if a fight breaks out. Some trainers who are expecting a challenge might not choose to have any creature following, so as to not give an incoming challenger the ability to start the battle with a type advantage!
+
+**Affinity Powers** are the effect which triggers when the creature swaps out with another in your roster mid-fight. Both creatures will have an Affinity Power, one is chosen to be the "Alpha" and have theirs be the one which triggers. The Affinity Power will specify what parts 
