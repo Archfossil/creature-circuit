@@ -8,6 +8,19 @@ import { TYPE_COLOR } from '../data/types';
 import type { Biome, ElementType } from '../data/schema';
 
 const POS: [THREE.Vector3, THREE.Vector3] = [new THREE.Vector3(-2.3, 0, 1.6), new THREE.Vector3(2.4, 0, -1.4)];
+/** How far (0..1) each creature turns from its opponent toward the camera, so faces stay readable. */
+const CAMERA_CHEAT = 0.2;
+
+/** Yaw that points a model's forward (+Z) axis from `from` toward `to` on the ground plane. */
+function yawToward(from: THREE.Vector3, to: THREE.Vector3): number {
+  return Math.atan2(to.x - from.x, to.z - from.z);
+}
+
+/** Blend between two angles along the shortest arc. */
+function lerpAngle(a: number, b: number, t: number): number {
+  const d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  return a + d * t;
+}
 
 interface Burst { pts: THREE.Points; vel: Float32Array; life: number }
 
@@ -115,7 +128,7 @@ export class BattleView implements SceneView {
     if (!speciesId) return Promise.resolve();
     const rig = buildCreature(SPECIES_BY_ID[speciesId]);
     rig.root.position.copy(POS[side]);
-    rig.root.rotation.y = side === 0 ? 0.9 : -2.3;
+    rig.root.rotation.y = this.facingYaw(side);
     const s = rig.root.scale.x * 1.35;
     rig.root.scale.setScalar(pop ? 0.01 : s);
     this.scene.add(rig.root);
@@ -123,6 +136,14 @@ export class BattleView implements SceneView {
     if (!pop) return Promise.resolve();
     this.burst(POS[side].clone().setY(0.8), '#ffffff', 40, 4);
     return this.tween(0.45, (k) => { const e = 1 - Math.pow(1 - k, 3); rig.root.scale.setScalar(s * (e + Math.sin(k * Math.PI) * 0.15)); });
+  }
+
+  /** Face the opponent's pad, nudged slightly toward the camera. */
+  private facingYaw(side: 0 | 1): number {
+    const me = POS[side];
+    const foe = yawToward(me, POS[side === 0 ? 1 : 0]);
+    const cam = yawToward(me, this.camera.position);
+    return lerpAngle(foe, cam, CAMERA_CHEAT);
   }
 
   private tween(dur: number, fn: (k: number) => void): Promise<void> {
