@@ -175,3 +175,39 @@ describe('world & turns', () => {
     expect(ITEMS['ferry-pass'].kind).toBe('key');
   });
 });
+
+describe('encounter scaling by Trainer Tier', () => {
+  const wilds = MAP_NODES.filter((n) => n.kind === 'wild');
+  const easy = wilds.reduce((a, b) => (b.level < a.level ? b : a));
+  const hard = wilds.reduce((a, b) => (b.level > a.level ? b : a));
+  const atTier = (tier: number) => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    s.merits = Object.keys(CITIES).slice(0, (tier - 1) * 2);
+    expect(tierOf(s)).toBe(tier);
+    return s;
+  };
+
+  it('wild levels follow Tier, not the node or the calendar', () => {
+    for (let tier = 1; tier <= 5; tier++) {
+      const s = atTier(tier);
+      for (const n of [easy, hard]) expect(Math.abs(W.baseWildLevel(s, n) - 2 * tier)).toBeLessThanOrEqual(2);
+      s.turn = 90; // late in the year at a low Tier is still a low-Tier band
+      expect(W.baseWildLevel(s, easy)).toBeLessThanOrEqual(2 * tier);
+    }
+  });
+  it('the toughest route at Tier 1 is gentler than Tier 2, and the easiest at Tier 5 beats Tier 4', () => {
+    expect(W.baseWildLevel(atTier(1), hard)).toBeLessThanOrEqual(W.baseWildLevel(atTier(2), easy) + 1);
+    expect(W.baseWildLevel(atTier(5), easy)).toBeGreaterThanOrEqual(W.baseWildLevel(atTier(4), easy));
+  });
+  it('wilds never outlevel the Tier\'s Arbiter ace', () => {
+    for (let tier = 1; tier <= 5; tier++) {
+      const ace = Math.max(...W.arbiterTeam('water', tier).map((c) => c.level));
+      for (const n of wilds) expect(W.wildLevel(atTier(tier), n)).toBeLessThanOrEqual(ace + 1);
+    }
+  });
+  it('rarity opens up with Tier', () => {
+    expect(W.tierRarityCap(1)).toBe('prime');
+    expect(W.tierRarityCap(2)).toBe('apex');
+    expect([1, 2, 3, 4, 5].map(W.tierRarityDice)).toEqual([0, 0, 1, 1, 2]);
+  });
+});

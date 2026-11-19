@@ -115,18 +115,54 @@ function discoverItem(s: GameState, node: MapNode, r: number): Outcome {
   return { t: 'item', roll: r, itemRoll: ir, items, coins };
 }
 
+// ── Encounter scaling by Trainer Tier ───────────────────────────
+// Wild and roaming-trainer creatures sit in a level band set by Tier, just under that Tier's
+// Arbiter (Lv 1 + 2·Tier). A node's own level only nudges within the band, so a "Lv 5" route
+// is a bit tougher than a "Lv 2" one at any Tier, but never a wall at Tier 1 or a pushover at Tier 5.
+
+/** Centre of the wild level band for a Tier: 2, 4, 6, 8, 10. */
+export const tierBandLevel = (tier: number) => 2 * tier;
+
+/** Node difficulty offset within the band: node Lv 1–2 → −1, 3–4 → 0, 5–6 → +1, 7+ → +2. */
+export const nodeLevelOffset = (node: MapNode) => Math.max(-1, Math.min(2, Math.floor((node.level - 3) / 2)));
+
+/** Expected wild level at this node for the trainer's current Tier (no dice). */
+export function baseWildLevel(s: GameState, node: MapNode) {
+  return Math.max(1, tierBandLevel(tierOf(s)) + nodeLevelOffset(node));
+}
+
+/** Wild level with a ±1 roll. */
 export function wildLevel(s: GameState, node: MapNode) {
-  return Math.max(1, node.level + Math.floor((s.turn - 1) / 25) + roll(3) - 2);
+  return Math.max(1, baseWildLevel(s, node) + roll(3) - 2);
+}
+
+/** Extra rarity dice from Tier: +0 at Tier 1–2, +1 at Tier 3–4, +2 at Tier 5. */
+export const tierRarityDice = (tier: number) => Math.floor((tier - 1) / 2);
+
+/** Highest rarity a wild encounter can roll at this Tier: Apex is off the table until Tier 2. */
+export const tierRarityCap = (tier: number): Rarity => (tier <= 1 ? 'prime' : 'apex');
+
+const RARITY_RANK: Record<Rarity, number> = { common: 0, prime: 1, apex: 2, legendary: 3 };
+
+/** Rarity for a roaming trainer's creature: mostly common early, prime/apex later. */
+function trainerRarity(tier: number): Rarity {
+  const r = Math.random();
+  const apex = tier >= 4 ? 0.05 * (tier - 3) : 0;     // T4 5%, T5 10%
+  const prime = 0.1 + 0.1 * tier;                      // T1 20% … T5 60%
+  return r < apex ? 'apex' : r < apex + prime ? 'prime' : 'common';
 }
 
 function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
-  const nDice = 2 + (ability(s) === 'starSeeker' ? 1 : 0) + (s.flags.starCharm ? 1 : 0);
+  const tier = tierOf(s);
+  const nDice = 2 + tierRarityDice(tier) + (ability(s) === 'starSeeker' ? 1 : 0) + (s.flags.starCharm ? 1 : 0);
   s.flags.starCharm = false;
   const stars = Array.from({ length: nDice }, () => starDie());
   const full = stars.filter((x) => x.star === 'full').length;
   const half = stars.filter((x) => x.star === 'half').length;
   const score = node.rarity + full + Math.floor(half / 2);
-  const rarity: Rarity = score >= 3 ? 'apex' : score >= 2 ? 'prime' : 'common';
+  const rolled: Rarity = score >= 3 ? 'apex' : score >= 2 ? 'prime' : 'common';
+  const cap = tierRarityCap(tier);
+  const rarity: Rarity = RARITY_RANK[rolled] > RARITY_RANK[cap] ? cap : rolled;
   const level = wildLevel(s, node);
   const sp = pickSpecies(node, rarity, level, weather(s).encounter);
   const wild = createCreature(sp.id, level);
@@ -153,8 +189,9 @@ const TRAINER_NAMES = ['Hiker Rosa', 'Ranger Theo', 'Birder Juno', 'Camper Malik
 function trainerEncounter(s: GameState, node: MapNode, r: number): Outcome {
   const name = pick(TRAINER_NAMES);
   const lvl = wildLevel(s, node);
-  const n = Math.min(s.roster.filter((c) => !c.ko).length, roll(2));
-  const team = Array.from({ length: Math.max(1, n) }, () => createCreature(pickSpecies(node, Math.random() < 0.2 ? 'prime' : 'common', lvl).id, lvl));
+  const tier = tierOf(s);
+  const n = Math.min(s.roster.filter((c) => !c.ko).length, roll(tier >= 3 ? 3 : 2));
+  const team = Array.from({ length: Math.max(1, n) }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl).id, lvl));
   const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });
   return { t: 'trainer', roll: r, name, battle };
 }

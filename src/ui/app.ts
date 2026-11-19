@@ -177,7 +177,7 @@ export class App {
     if (n.kind === 'town') return 'Town · Safe haven';
     if (n.kind === 'stadium') return 'Circuit Stadium · Be here at the end of Turn 100';
     if (n.kind === 'legendary') return 'Legendary grounds';
-    return `${BIOME_INFO[n.biome].label} · Wild Lv ~${W.wildLevel(this.s, n)}${n.rarity ? ' · ★ rare' : ''}`;
+    return `${BIOME_INFO[n.biome].label} · Wild Lv ~${W.baseWildLevel(this.s, n)}${n.rarity ? ' · ★ rare' : ''}`;
   }
 
   actionButtons(): HTMLElement[] {
