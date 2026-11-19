@@ -301,6 +301,9 @@ export function participationXp(level: number, foeLevel: number): number {
 }
 
 // ── Morale & Loyalty ────────────────────────────────────────────
+/** Extra XP every participant earns from a battle against a trainer, Arbiter or Champion, win or lose. */
+export const TRAINER_BATTLE_XP_BONUS = 3;
+
 /** Morale at or above this earns +1 Loyalty at the end of each turn (and +1 XP per battle). */
 export const MORALE_HIGH = 7;
 /** Morale at or below this puts the creature at risk of leaving (warning first, then a d10 check each turn). */

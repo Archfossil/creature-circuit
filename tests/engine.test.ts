@@ -7,7 +7,7 @@ import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
+import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
@@ -518,6 +518,42 @@ describe('morale and loyalty', () => {
     W.moraleAndLoyalty(s, r);
     expect(s.roster).toContain(c);
     expect(r.checks[0].left).toBe(false);
+  });
+});
+
+describe('trainer battles', () => {
+  it('every participant gets the trainer battle bonus, win or lose; wild battles do not', () => {
+    for (const win of [true, false]) {
+      for (const kind of ['trainer', 'arbiter', 'champion', 'wild'] as const) {
+        const me = createCreature('puddlit', 5), foe = createCreature('sproutle', 5);
+        const bt = createBattle(side('player', [me]), { kind, name: kind, team: [foe], active: 0, mods: {} }, WEATHER.clear);
+        if (win) { foe.health = 1; foe.vitality = 0; me.vitality = 9; } else { me.health = 1; me.vitality = 0; foe.vitality = 9; }
+        const events = [];
+        for (let i = 0; i < 60 && !bt.over; i++) events.push(...resolveRound(bt, { kind: 'move', move: win ? me.playbook.find((m) => MOVE_BY_ID[m].kind !== 'support') ?? me.playbook[0] : CATCH_BREATH.id }));
+        if (bt.over !== (win ? 'win' : 'lose')) continue; // a rare upset; the next kind still checks the rule
+        const xp = events.find((e) => e.t === 'xp' && e.reason === 'battle') as Extract<typeof events[number], { t: 'xp' }>;
+        expect(xp, `${kind} ${win}`).toBeDefined();
+        const bonus = kind === 'wild' ? 0 : TRAINER_BATTLE_XP_BONUS;
+        expect(xp.amount).toBe(participationXp(5, 5) + bonus); // equal levels: 3 participation XP
+        expect(xp.bonus ?? 0).toBe(bonus);
+      }
+    }
+  });
+  it('each city has a Trainer Hall: one battle per city per turn, for a city action', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 3));
+    const before = s.initiative;
+    const r = W.hallBattle(s)!;
+    expect(r.battle.sides[1].kind).toBe('trainer');
+    expect(r.battle.sides[1].team.length).toBe(2);
+    expect(r.battle.sides[1].team[0].level).toBe(W.tierBandLevel(1) + 1);
+    expect(s.initiative).toBe(before - W.cityActionCost(s));
+    expect(W.hallBlock(s)).toMatch(/already/);
+    expect(W.hallBattle(s)).toBeNull();
+    W.endTurn(s);
+    expect(W.hallBlock(s)).toBeNull(); // a new turn
+    s.location = 'mistfall';
+    expect(W.hallBlock(s)).not.toBeNull(); // towns have no hall
   });
 });
 

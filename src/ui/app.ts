@@ -1,7 +1,7 @@
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -15,7 +15,7 @@ import * as E from '../engine/events';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW } from '../engine/creature';
+import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
@@ -509,7 +509,7 @@ export class App {
           }
           case 'xp': {
             const c = b.sides[0].team.find((x) => x.uid === e.uid);
-            if (c) { say(e.reason === 'ko' ? `${nameOf(c)} gained ${e.amount} XP for knocking out ${e.foe ?? 'its foe'}!` : `${nameOf(c)} gained ${e.amount} XP for battling.`, 'good'); if (e.levels) sfx.good(); if (e.levels) toast(`${nameOf(c)} reached Lv ${c.level}! Unlock a node on its chart.`, 'good', 3500); await wait(600); }
+            if (c) { say(e.reason === 'ko' ? `${nameOf(c)} gained ${e.amount} XP for knocking out ${e.foe ?? 'its foe'}!` : `${nameOf(c)} gained ${e.amount} XP for battling${e.bonus ? ` (incl. +${e.bonus} trainer battle bonus)` : ''}.`, 'good'); if (e.levels) sfx.good(); if (e.levels) toast(`${nameOf(c)} reached Lv ${c.level}! Unlock a node on its chart.`, 'good', 3500); await wait(600); }
             break;
           }
           case 'end': break;
@@ -689,10 +689,23 @@ export class App {
         tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : ''}`, costTag, () => this.stable()),
         tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
         tile('🪵', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
+        tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
         c.arenaNode
           ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market, or a creature that can Sail).`, '', () => {}, true)
           : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
     openSheet(c.name, body, { wide: true });
+  }
+
+  /** City Trainer Hall: battle a local trainer (once per city per turn). */
+  async trainerHall() {
+    const s = this.s;
+    const why = W.hallBlock(s);
+    if (why) { toast(why, 'info'); return; }
+    const r = W.hallBattle(s);
+    if (!r) return;
+    closeAllSheets();
+    this.renderHud();
+    await this.runBattle(r.battle, { kind: 'trainer', intro: `${r.name} accepts your challenge in the ${NODE_BY_ID[s.location].name} Trainer Hall!` });
   }
 
   spend(): boolean {
@@ -1010,14 +1023,49 @@ export class App {
     void close;
   }
 
-  pickFollower() {
+  pickFollower() { void this.followerSheet(false); }
+
+  /**
+   * Choose who follows you. Shown at the start of every turn (Settings → "Choose a follower each turn")
+   * and from the HUD's Following chip. Shows the current follower's Ability, Affinity, Morale and
+   * Loyalty, and every other creature that could follow. Closing keeps the current follower.
+   */
+  followerSheet(turnStart: boolean): Promise<void> {
     const s = this.s;
-    const close = openSheet('Who follows you?', h('div', null,
-      h('p', { class: 'small' }, 'Your Following creature gains Loyalty and Morale each turn, applies its overworld Ability, and leads in battle. Going without one hides your type from challengers.'),
-      h('div', { class: 'list' },
-        s.roster.map((c) => h('div', { class: 'swap-row' }, miniCard(c, { selected: c.uid === s.following, onClick: () => { if (c.ko) { toast('KO\'d creatures can\'t follow.', 'bad'); return; } s.following = c.uid; save(s); close(); this.renderHud(); } }),
-          h('small', null, '🌿 ', h('b', null, ABILITIES[speciesOf(c).ability].name), ' — ', ABILITIES[speciesOf(c).ability].text))),
-        h('button', { class: 'btn ghost', onclick: () => { s.following = null; save(s); close(); this.renderHud(); } }, 'Nobody follows'))));
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => { if (done) return; done = true; close(); save(s); this.renderHud(); resolve(); };
+      const cur = follower(s);
+      const social = (c: CreatureInst) => h('span', { class: 'row gap-s' },
+        h('button', { class: `chip social ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= 7 ? 'good' : ''}`, title: 'How Morale works', onclick: () => socialHelp(c) }, c.morale <= MORALE_LOW ? '⚠️ ' : '💖 ', 'Morale ', h('b', null, c.morale), '/10'),
+        h('button', { class: `chip social ${speciesOf(c).rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: 'How Loyalty works', onclick: () => socialHelp(c) }, speciesOf(c).rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), '/10'));
+      const abilityLine = (c: CreatureInst) => {
+        const ab = ABILITIES[speciesOf(c).ability];
+        return h('small', null, '🌿 ', h('b', null, ab.name), ' · ', ab.text);
+      };
+      const current = cur
+        ? h('div', { class: 'follow-current', style: `--tc:${TYPE_COLOR[speciesOf(cur).types[0]]}` },
+          h('img', { src: portrait(cur.species), alt: '' }),
+          h('div', { class: 'follow-info' },
+            h('small', { class: 'muted' }, 'Following you now'),
+            h('h3', null, nameOf(cur), h('small', null, ` · Lv ${cur.level}`)),
+            h('p', { class: 'small' }, '🌿 ', h('b', null, `Ability · ${ABILITIES[speciesOf(cur).ability].name}`), ': ', ABILITIES[speciesOf(cur).ability].text, h('span', { class: 'muted' }, ' (active while it follows)')),
+            h('p', { class: 'small' }, '🔁 ', h('b', null, `Affinity · ${AFFINITY_NAME(speciesOf(cur).affinity)}`), ': ', AFFINITIES[speciesOf(cur).affinity]?.text ?? '', h('span', { class: 'muted' }, ' (when swapped in as Alpha)')),
+            social(cur)))
+        : h('div', { class: 'follow-current none' }, h('p', null, 'Nobody is following you. You’ll choose who leads each battle, and no overworld Ability is active.'));
+      const others = s.roster.filter((c) => c.uid !== cur?.uid);
+      const close = openSheet(turnStart ? `Turn ${s.turn} · Who follows you?` : 'Who follows you?', h('div', { class: 'follow' },
+        current,
+        h('p', { class: 'small muted' }, 'Your Following creature leads every battle, uses its Ability on the map, and gains +1 Morale every other turn (high Morale builds Loyalty).'),
+        others.length ? h('h4', null, 'Or choose another') : null,
+        h('div', { class: 'list' }, others.map((c) => h('div', { class: 'swap-row' },
+          miniCard(c, { onClick: () => { if (c.ko) { toast('KO\'d creatures can\'t follow.', 'bad'); return; } s.following = c.uid; finish(); } }),
+          h('div', { class: 'follow-meta' }, abilityLine(c), social(c))))),
+        h('div', { class: 'row gap end sticky-foot' },
+          h('button', { class: 'btn ghost', onclick: () => { s.following = null; finish(); } }, 'Nobody follows'),
+          h('button', { class: 'btn primary', onclick: () => finish() }, cur ? `Keep ${nameOf(cur)}` : 'Continue'))),
+        { wide: true, onClose: () => finish() });
+    });
   }
 
   bagSheet() {
@@ -1144,6 +1192,8 @@ export class App {
     this.renderHud();
     if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
     if (s.event) await this.eventFlow();
+    // start of the new turn: choose who follows (when there's a choice)
+    if (settings().followerPrompt && s.phase === 'map' && (s.roster.filter((c) => !c.ko).length > 1 || !follower(s))) await this.followerSheet(true);
   }
 
   /**
@@ -1318,7 +1368,7 @@ export class App {
     const body = h('div');
     const render = () => {
       const st = settings();
-      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel' | 'fastBattle', label: string, text: string) =>
+      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel' | 'fastBattle' | 'followerPrompt', label: string, text: string) =>
         h('label', { class: 'toggle' }, h('div', null, h('b', null, label), h('small', null, text)),
           h('input', { type: 'checkbox', role: 'switch', checked: st[k], onchange: (e: Event) => { setSetting(k, (e.target as HTMLInputElement).checked); if (k === 'sound' && st[k] === false) sfx.tap(); render(); } }));
       body.replaceChildren(
@@ -1327,6 +1377,7 @@ export class App {
         toggle('fastBattle', 'Fast battles', 'Pick a move and it resolves at once, with no move readout, no damage dice and short pauses. Off: each move shows what it will roll first, and every roll is explained as it happens.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),
         toggle('doubleTapTravel', 'Double-tap to travel', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button.'),
+        toggle('followerPrompt', 'Choose a follower each turn', 'At the start of every turn, show who is following you (Ability, Morale, Loyalty) and offer to switch.'),
         h('p', { class: 'small muted' }, 'Keyboard: 1–4 pick a move (Enter to confirm its readout, Esc to go back), B catch breath, S swap, R run, T type chart, Esc closes panels.'));
     };
     render();
@@ -1433,6 +1484,8 @@ export class App {
         h('li', null, h('b', null, 'Events: '), 'at the end of each turn something happens on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
         h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets are free.'),
         h('li', null, h('b', null, 'Morale & Loyalty: '), 'happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good. Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty. Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0, so release them at the Research Facility before then for coins. Tap Morale or Loyalty on a card for details.'),
+        h('li', null, h('b', null, 'Following: '), 'at the start of each turn you’re asked who follows you. The follower leads every battle, uses its Ability on the map, and gains Morale every other turn. Tap the Following chip any time to switch, or turn the prompt off in Settings.'),
+        h('li', null, h('b', null, 'Trainer Halls: '), 'every city has one. Battle a local trainer once per turn (a city action). Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.'),
         h('li', null, h('b', null, 'Battle School: '), 'at Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn. You’re told when it’s done; pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).'),
         h('li', null, h('b', null, 'Research Facility: '), 'in Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary). Each Legendary exists once per game, and a released one returns to its grounds on the map.'),
         h('li', null, h('b', null, 'Your trainer: '), 'pick a top, hat, hair style, skin tone, hair colour and pants when you start (or later in Menu → Trainer Look). Your main colour always goes on the top, the hat and any hair tie or streak. That mini is your token on the map and stands behind you in trainer battles.'),

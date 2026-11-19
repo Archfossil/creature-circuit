@@ -751,3 +751,13 @@ div.perk { cursor: default; }
 .school-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; }
 .school-coins { font-family: var(--font-head); font-size: 20px; min-width: 70px; text-align: center; }
 @media (max-width: 560px) { .school-row { grid-template-columns: 1fr; } }
+
+/* Follower prompt */
+.follow { display: grid; gap: 8px; }
+.follow-current { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; padding: 10px; border-radius: 14px; border: 2px solid var(--tc, var(--line)); background: color-mix(in srgb, var(--tc, #fff) 12%, white); }
+.follow-current.none { display: block; border-style: dashed; }
+.follow-current img { width: 110px; height: 110px; }
+.follow-current h3 { margin: 0; }
+.follow-info p { margin: 3px 0; }
+.follow-meta { display: grid; gap: 4px; }
+@media (max-width: 520px) { .follow-current { grid-template-columns: 72px 1fr; } .follow-current img { width: 72px; height: 72px; } }

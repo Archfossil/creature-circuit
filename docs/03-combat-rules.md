@@ -69,6 +69,7 @@ Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers
 >   - **Otherwise:** it stays but loses 1 Loyalty.
 >
 >   At 0 Loyalty any roll leaves, so even a creature with full Loyalty can eventually be lost, but it has to wear its Loyalty down first. A creature never leaves if it's your only one; it only loses Loyalty. If your active team empties, a creature steps out of its totem. Raising Morale above 3 clears the warning.
+> - **Following.** At the start of each turn you're asked who follows you, shown with its Ability, Affinity, Morale and Loyalty. The follower leads every battle and gains +1 Morale every other turn.
 > - **Legendaries never fully settle.** A recruited Legendary arrives with 10 Loyalty and loses 1 every turn, whatever its Morale. It gains no Loyalty from Morale, though treats still add some. At 0 Loyalty it leaves and returns to its grounds on the map for another trainer to find. Releasing it at the Research Facility first pays × 5 its level. Expect to hold a Legendary for about 10 turns unless your plan is built around keeping it.
 
 ## Affinity
@@ -169,3 +170,6 @@ Because creatures can have two types, but attacks can only be one certain type, 
 | Steel | S | Astral <br> Charm | Electric <br> Fire |
 | Water | W | Fire <br> Rock | Electric <br> Grass |
 
+
+
+> **Prototype rule: trainer battle XP.** Every creature that takes part in a battle against a trainer, an Arbiter or a Champion earns +3 XP on top of its participation XP, win or lose. This stacks with the XP for knocking out a foe. Every city has a Trainer Hall where you can battle a local trainer once per turn for a city action.

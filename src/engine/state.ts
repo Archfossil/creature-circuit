@@ -32,6 +32,8 @@ export interface GameState {
     beaten: string[];       // legendary node ids already resolved
     salemNight: boolean;    // waited for aurora this turn
     fabianFound: boolean;
+    /** Cities whose Trainer Hall you've already battled in this turn. */
+    sparred?: string[];
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };

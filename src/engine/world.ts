@@ -241,6 +241,40 @@ function trainerEncounter(s: GameState, node: MapNode, r: number): Outcome {
   return { t: 'trainer', roll: r, name, battle };
 }
 
+// ── City Trainer Halls ──────────────────────────────────────────
+const HALL_TRAINERS = ['Ace Mira', 'Veteran Bo', 'Rival Sky', 'Captain Lio', 'Scout Tamsin', 'Ranger Ode', 'Ace Juniper', 'Veteran Hale'];
+
+/** Why you can't battle in this city's Trainer Hall right now (null = you can). */
+export function hallBlock(s: GameState): string | null {
+  if (NODE_BY_ID[s.location]?.kind !== 'city') return 'Trainer Halls are in cities.';
+  if (s.flags.sparred?.includes(s.location)) return 'You’ve already battled here this turn. Come back next turn.';
+  if (!s.roster.some((c) => !c.ko)) return 'Your team needs rest first.';
+  if (s.initiative < cityActionCost(s)) return 'Not enough Initiative.';
+  return null;
+}
+
+/**
+ * A battle against a local trainer in a city's Trainer Hall: once per city per turn, for a city
+ * action's Initiative. City trainers are a touch above the wild band (+1 level), lean toward the
+ * city's type, and bring 2 creatures (3 from Tier 3) or as many as you have healthy.
+ */
+export function hallBattle(s: GameState): { name: string; battle: Battle } | null {
+  if (hallBlock(s)) return null;
+  s.initiative -= cityActionCost(s);
+  (s.flags.sparred ??= []).push(s.location);
+  const node = here(s);
+  const tier = tierOf(s);
+  const lvl = Math.max(1, tierBandLevel(tier) + 1);
+  const size = Math.max(1, Math.min(s.roster.filter((c) => !c.ko).length, tier >= 3 ? 3 : 2));
+  const cityType = CITIES[node.id]?.type;
+  const team = Array.from({ length: size }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl, cityType ? [cityType] : []).id, lvl));
+  for (const c of team) autoSpend(c, false);
+  const name = pick(HALL_TRAINERS);
+  const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });
+  log(s, `Accepted a challenge from ${name} at the ${node.name} Trainer Hall.`);
+  return { name, battle };
+}
+
 // ── Legendaries: one of each per game ───────────────────────────
 /**
  * Each Legendary exists once per game. It waits at its node until it is beaten (recruited or driven
@@ -753,6 +787,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false): Turn
   s.flags.freeReexploreUsed = false;
   s.flags.firstMoveUsed = false;
   s.flags.salemNight = false;
+  s.flags.sparred = [];
   const season = seasonForTurn(s.turn);
   report.seasonChanged = season !== prevSeason;
   report.weatherRoll = roll(6);

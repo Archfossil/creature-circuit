@@ -4,7 +4,7 @@ import { AFFINITIES } from '../data/content';
 import { effectiveness, TYPE_LABEL } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
-import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin, participationXp } from './creature';
+import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie, pick } from './dice';
 
 export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
@@ -50,7 +50,7 @@ export type BEvent =
   | { t: 'tired'; side: 0 | 1; value: number; fatigue: number; fail: boolean; snap: Snap }
   | { t: 'ko'; side: 0 | 1; uid: string }
   | { t: 'send'; side: 0 | 1; idx: number; snap: Snap }
-  | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string }
+  | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string; bonus?: number }
   | { t: 'arena'; text: string }
   | { t: 'end'; result: NonNullable<Battle['over']> };
 
@@ -526,13 +526,15 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
  * (KO'd ones too), scaled by the toughest opponent. Running away earns nothing. KO bonuses are
  * awarded separately, at the moment of each knockout.
  */
+/** Every participant's XP for taking part, win or lose; trainer battles add TRAINER_BATTLE_XP_BONUS on top. */
 function awardBattleXp(b: Battle, ev: BEvent[]) {
   const foeLevel = Math.max(...b.sides[1].team.map((c) => c.level));
+  const bonus = b.sides[1].kind === 'wild' ? 0 : TRAINER_BATTLE_XP_BONUS;
   for (const uid of b.participants) {
     const c = b.sides[0].team.find((x) => x.uid === uid);
     if (!c) continue;
-    const xp = participationXp(c.level, foeLevel);
-    ev.push({ t: 'xp', uid, amount: xp, levels: gainXp(c, xp), reason: 'battle' });
+    const xp = participationXp(c.level, foeLevel) + bonus;
+    ev.push({ t: 'xp', uid, amount: xp, levels: gainXp(c, xp), reason: 'battle', ...(bonus ? { bonus } : {}) });
   }
 }
 
