@@ -67,6 +67,8 @@ export interface Move {
   /** Support effects */
   effect?: { self?: Partial<Record<StatKey, number>>; foe?: Partial<Record<StatKey, number>>; heal?: number; staminaGain?: number };
   text: string;
+  /** A generated stand-in filling a slot of the attack grid until a real move is designed (see moves.ts). */
+  placeholder?: boolean;
 }
 
 export type Biome =

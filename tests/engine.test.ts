@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES } from '../src/data/roster';
-import { MOVES, MOVE_BY_ID, CATCH_BREATH } from '../src/data/moves';
+import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
-import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, type Side } from '../src/engine/battle';
+import { recommendPlaybook, suggestGoal, expectedDamage, stats, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
+import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -315,6 +315,52 @@ describe('move readout', () => {
   });
 });
 
+describe('starting levels', () => {
+  it('starters begin at Lv 1 with nothing unlocked, and Tier 1 wilds can be Lv 1', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    expect(s.roster[0].level).toBe(1);
+    expect(s.roster[0].unlocked).toEqual([]);
+    expect(s.roster[0].points).toBe(0);
+    const easy = MAP_NODES.filter((n) => n.kind === 'wild').sort((a, b) => a.level - b.level)[0];
+    expect(W.baseWildLevel(s, easy)).toBe(1);
+  });
+});
+
+describe('battle lead', () => {
+  const game = () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 3), createCreature('pebbark', 3));
+    return s;
+  };
+  const wildFoe = () => side('wild', [createCreature('sproutle', 2)]);
+  it('the Following creature leads the battle', () => {
+    const s = game();
+    s.following = s.roster[2].uid;
+    const b = createBattle(W.playerSide(s), wildFoe(), WEATHER.clear);
+    expect(activeOf(b.sides[0]).uid).toBe(s.roster[2].uid);
+    expect(b.participants).toEqual([s.roster[2].uid]);
+    expect(W.needsLeadChoice(s)).toBe(false);
+  });
+  it('a KO’d follower falls back to the first healthy creature', () => {
+    const s = game();
+    s.following = s.roster[0].uid; s.roster[0].ko = true;
+    const b = createBattle(W.playerSide(s), wildFoe(), WEATHER.clear);
+    expect(activeOf(b.sides[0]).uid).toBe(s.roster[1].uid);
+  });
+  it('with nobody Following, the trainer picks the lead', () => {
+    const s = game();
+    s.following = null;
+    expect(W.needsLeadChoice(s)).toBe(true);
+    const b = createBattle(W.playerSide(s), wildFoe(), WEATHER.clear);
+    chooseLead(b, 2);
+    expect(activeOf(b.sides[0]).uid).toBe(s.roster[2].uid);
+    expect(b.participants).toEqual([s.roster[2].uid]);
+    // only one creature able to fight: no need to ask
+    s.roster[1].ko = true; s.roster[2].ko = true;
+    expect(W.needsLeadChoice(s)).toBe(false);
+  });
+});
+
 describe('camping', () => {
   it('tends one creature per Initiative left, most wounded first', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
@@ -348,6 +394,92 @@ describe('camping', () => {
     expect(W.campTargets(s)).toEqual([]);
     W.endTurn(s, true);
     expect(a.vitality).toBe(1);
+  });
+});
+
+describe('recommended playbooks', () => {
+  it('stars the goal that matches the creature’s stats', () => {
+    const c = createCreature('ph-fire-water-apex-3', 10);
+    c.bonus.power = 6; c.bonus.focus = 0;
+    expect(suggestGoal(c).goal.kind).toBe('physical');
+    c.bonus.power = 0; c.bonus.focus = 6;
+    expect(suggestGoal(c).goal.kind).toBe('elemental');
+    c.bonus.focus = stats(c).power - stats(c).focus + (c.bonus.focus ?? 0); // even them out
+    expect(suggestGoal(c).goal.kind).toBe('balanced');
+  });
+  it('every goal returns up to 4 learnable moves that fit the creature’s energy', () => {
+    for (const id of ['puddlit', 'ph-fire-water-apex-3', 'ph-astral-charm-prime-2', 'pebbark']) {
+      const c = createCreature(id, 8);
+      for (const goal of [{ kind: 'physical' }, { kind: 'elemental' }, { kind: 'balanced' }, ...TYPES.map((t) => ({ kind: 'vs', type: t }))] as Parameters<typeof recommendPlaybook>[1][]) {
+        const ids = recommendPlaybook(c, goal);
+        expect(ids.length).toBeGreaterThan(0);
+        expect(ids.length).toBeLessThanOrEqual(4);
+        expect(fits(energy(c), ids)).toBe(true);
+        for (const m of ids) expect(learnable(c)).toContain(m);
+      }
+    }
+  });
+  it('physical and elemental goals lean the right way, and type goals skip resisted attacks', () => {
+    const c = createCreature('ph-fire-water-apex-3', 10);
+    c.bonus.power = 8; c.bonus.focus = 0;
+    const phys = recommendPlaybook(c, { kind: 'physical' }).map((id) => MOVE_BY_ID[id]);
+    expect(phys.filter((m) => m.kind === 'physical').length).toBeGreaterThanOrEqual(2);
+    c.bonus.power = 0; c.bonus.focus = 8;
+    const elem = recommendPlaybook(c, { kind: 'elemental' }).map((id) => MOVE_BY_ID[id]);
+    expect(elem.filter((m) => m.kind === 'elemental').length).toBeGreaterThanOrEqual(2);
+    // Fire is resisted by Water: against Water, a Fire/Water creature should lean on Water attacks
+    const vsWater = recommendPlaybook(c, { kind: 'vs', type: 'water' }).map((id) => MOVE_BY_ID[id]);
+    expect(vsWater.some((m) => m.kind === 'elemental' && m.type === 'fire')).toBe(false);
+    expect(expectedDamage(c, MOVE_BY_ID['ember'], 'grass')).toBeGreaterThan(expectedDamage(c, MOVE_BY_ID['ember'], 'water'));
+  });
+});
+
+describe('attack grid', () => {
+  it('has an elemental attack for every typed cost of 1–5 and every type that could lead it', () => {
+    expect(ATTACK_SLOTS.length).toBe(8 * 5 + 28 * 12);
+    const attacks = MOVES.filter((m) => m.kind === 'elemental' && !m.id.startsWith('sig-'));
+    for (const slot of ATTACK_SLOTS) {
+      const total = Object.values(slot.cost).reduce<number>((a, v) => a + (v ?? 0), 0);
+      expect(total).toBeLessThanOrEqual(5);
+      const hits = attacks.filter((m) => costKey(m.cost) === costKey(slot.cost) && m.type === slot.type);
+      expect(hits.length, slotKey(slot.cost, slot.type)).toBe(1);
+      // the hit type is never the smaller share of the cost
+      for (const [k, v] of Object.entries(slot.cost)) expect(slot.cost[slot.type]!, k).toBeGreaterThanOrEqual(v!);
+    }
+  });
+  it('even splits get one attack per type, so 2 Fire + 2 Grass hits as Fire and as Grass', () => {
+    const twoTwo = MOVES.filter((m) => m.cost.fire === 2 && m.cost.grass === 2);
+    expect(twoTwo.map((m) => m.type).sort()).toEqual(['fire', 'grass']);
+    const oneOne = MOVES.filter((m) => m.cost.water === 1 && m.cost.rock === 1 && Object.keys(m.cost).length === 2);
+    expect(oneOne.map((m) => m.type).sort()).toEqual(['rock', 'water']);
+  });
+  it('every type leads the same number of attacks', () => {
+    const attacks = MOVES.filter((m) => m.kind === 'elemental' && !m.id.startsWith('sig-'));
+    for (const t of TYPES) expect(attacks.filter((m) => m.type === t).length, t).toBe(5 + 6 * 7);
+  });
+  it('move texts spell out every effect number and never say "Placeholder"', () => {
+    const label = (k: string) => k[0].toUpperCase() + k.slice(1);
+    for (const m of MOVES) {
+      expect(m.text, m.id).not.toMatch(/placeholder/i);
+      for (const side of [m.effect?.self, m.effect?.foe]) for (const [k, v] of Object.entries(side ?? {})) {
+        expect(m.text, m.id).toContain(`${v! > 0 ? '+' : '−'}${Math.abs(v!)} ${label(k)}`);
+      }
+      if (m.effect?.heal) expect(m.text, m.id).toContain(`heal ${m.effect.heal} Health`);
+    }
+  });
+  it('dual attacks hit as the type they spend more of, and every move name is unique', () => {
+    const fireWater = MOVES.find((m) => m.placeholder && m.cost.fire === 1 && m.cost.water === 3)!;
+    expect(fireWater.type).toBe('water');
+    expect(fireWater.status).toBe('soak');
+    expect(new Set(MOVES.map((m) => m.name)).size).toBe(MOVES.length);
+  });
+  it('a dual-type creature can learn its pair attacks, and a single-type one cannot', () => {
+    const fw = SPECIES.find((x) => x.placeholder && x.types.join() === 'fire,water' && x.stage === 3 && x.rarity === 'apex')!;
+    const c = createCreature(fw.id, 12);
+    const pairMoves = learnable(c).filter((id) => MOVE_BY_ID[id].cost.fire && MOVE_BY_ID[id].cost.water);
+    expect(pairMoves.length).toBeGreaterThan(0);
+    const mono = createCreature('cindercub', 12);
+    expect(learnable(mono).some((id) => MOVE_BY_ID[id].cost.water && MOVE_BY_ID[id].cost.fire)).toBe(false);
   });
 });
 
@@ -579,6 +711,33 @@ describe('turn events', () => {
     if (same) expect(E.resolveEvent(s, same.id, c.uid)).toBeNull();
     expect(E.resolveEvent(s, choice.id, c.uid)).not.toBeNull();
     expect(c.nature).toBe(choice.id.slice(7));
+  });
+  it('the trader shows its creature, and the before/after preview is exactly what you get', () => {
+    const s = game();
+    E.rollEvent(s, 'trader');
+    const view = E.eventView(s)!;
+    expect(view.showcase?.species).toBe(s.event!.data.species);
+    const give = s.roster[1];
+    const trade = view.choices.find((x) => x.id === 'trade')!;
+    const { after } = trade.preview!(give);
+    E.resolveEvent(s, 'trade', give.uid);
+    const got = s.roster[1];
+    expect(got.uid).not.toBe(after.uid);
+    expect(stats(got)).toEqual(stats(after));
+    expect([got.species, got.level, got.nature, got.points]).toEqual([after.species, after.level, after.nature, after.points]);
+    expect(got.points).toBe(got.level - 1); // chart points left for the player to spend
+  });
+  it('the caretaker preview shows the new Nature’s stats without changing the creature', () => {
+    const s = game();
+    E.rollEvent(s, 'caretaker');
+    const c = s.roster[0];
+    const choice = E.eventView(s)!.choices.find((x) => x.id.startsWith('nature:') && x.id !== `nature:${c.nature}`)!;
+    const was = c.nature;
+    const { after } = choice.preview!(c);
+    expect(c.nature).toBe(was);
+    expect(after.nature).toBe(choice.id.slice(7));
+    E.resolveEvent(s, choice.id, c.uid);
+    expect(stats(c)).toEqual(stats(after));
   });
   it('paid choices are refused when you cannot afford them', () => {
     const s = game();

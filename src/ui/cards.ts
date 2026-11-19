@@ -1,6 +1,6 @@
 import { h, openSheet } from './dom';
 import type { CreatureInst } from '../engine/creature';
-import { speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL } from '../engine/creature';
+import { speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR } from '../data/moves';
 import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
@@ -92,6 +92,38 @@ export function miniCard(c: CreatureInst, opts: { onClick?: () => void; badge?: 
       hpBlock(c, true)),
     opts.badge ? h('span', { class: 'mini-badge' }, opts.badge) : null,
     c.points > 0 ? h('span', { class: 'mini-up', title: 'Unspent level-up' }, '▲') : null);
+}
+
+/**
+ * Side-by-side "before → after" for a creature that's about to change (a trade, a new Nature …):
+ * who it is, then every stat with the difference highlighted.
+ */
+export function statCompare(before: CreatureInst, after: CreatureInst, labels: [string, string] = ['Now', 'After']) {
+  const sb = stats(before), sa = stats(after);
+  const who = (c: CreatureInst, label: string) => {
+    const sp = speciesOf(c);
+    return h('div', { class: 'cmp-who', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+      h('small', null, label),
+      h('img', { src: portrait(sp.id), alt: '' }),
+      h('b', null, nameOf(c)),
+      h('span', { class: 'row gap-s center' }, sp.types.map((t) => typeIconImg(t, 14)), h('small', null, `Lv ${c.level}`)),
+      h('small', { class: 'muted' }, `${NATURE_BY_ID[c.nature]?.name ?? c.nature} · ${sp.rarity}`));
+  };
+  const rows: [string, number, number][] = [
+    ['Health', maxHealth(before), maxHealth(after)],
+    ['Vitality', maxVitality(before), maxVitality(after)],
+    ['Stamina', maxStamina(before), maxStamina(after)],
+    ...STAT_KEYS.filter((k) => k !== 'vigor' && k !== 'stamina').map((k): [string, number, number] => [STAT_LABEL[k], sb[k], sa[k]]),
+    ['Energy', energyTotal(energy(before)), energyTotal(energy(after))],
+  ];
+  return h('div', { class: 'cmp' },
+    h('div', { class: 'cmp-heads' }, who(before, labels[0]), h('span', { class: 'cmp-arrow' }, '→'), who(after, labels[1])),
+    h('table', { class: 'cmp-table' }, h('tbody', null, rows.map(([label, a, b]) => {
+      const d = b - a;
+      return h('tr', { class: d > 0 ? 'up' : d < 0 ? 'down' : '' },
+        h('th', null, label), h('td', null, a), h('td', { class: 'cmp-arrow' }, '→'), h('td', null, h('b', null, b)),
+        h('td', { class: 'cmp-delta' }, d ? `${d > 0 ? '+' : '−'}${Math.abs(d)}` : '='));
+    }))));
 }
 
 function meter(label: string, v: number, max: number, cls = '') {
@@ -188,6 +220,7 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
   // draw connectors once laid out, and again whenever the card resizes
   const draw = () => drawChartLinks(chart, links, tree, c.unlocked);
   requestAnimationFrame(draw);
+  setTimeout(draw, 400); // again once the sheet / flip animation has settled
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(chart);
   return h('article', { class: 'index-card back', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
     h('header', { class: 'ic-head' },
@@ -198,38 +231,71 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
     h('footer', { class: 'ic-foot' }, h('button', { class: 'btn ghost', onclick: flip }, '↺ Flip to front')));
 }
 
-/** Draw a line from each prerequisite node down to the node that needs it. Bought links are solid. */
+/**
+ * Draw a connector from each prerequisite node down to the node that needs it: straight down
+ * within a column, or a right-angled elbow (rounded corners) across columns, turning in the gap
+ * between rows. Positions come from layout offsets, not screen rects, so the lines stay put while
+ * the card is mid-flip or the sheet is still animating in.
+ */
 function drawChartLinks(chart: HTMLElement, svg: SVGSVGElement, tree: ReturnType<typeof progressionTree>, unlocked: string[]) {
-  if (!chart.isConnected) return;
-  const box = chart.getBoundingClientRect();
-  if (!box.width) return;
-  const centre = (id: string, edge: 'top' | 'bottom') => {
-    const el = chart.querySelector<HTMLElement>(`[data-node="${id}"]`);
+  if (!chart.isConnected || !chart.offsetWidth) return;
+  const rect = (id: string) => {
+    let el = chart.querySelector<HTMLElement>(`[data-node="${id}"]`);
     if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2 - box.left, y: (edge === 'top' ? r.top : r.bottom) - box.top };
+    const w = el.offsetWidth, hgt = el.offsetHeight;
+    let x = 0, y = 0;
+    while (el && el !== chart) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent as HTMLElement | null; }
+    return { cx: x + w / 2, top: y, bottom: y + hgt };
   };
   const ns = 'http://www.w3.org/2000/svg';
-  svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
-  svg.replaceChildren(...tree.flatMap((n) => n.requires.map((req) => {
-    const a = centre(req, 'bottom'), b = centre(n.id, 'top');
-    const line = document.createElementNS(ns, 'path');
-    if (!a || !b) return line;
-    const mid = (a.y + b.y) / 2;
-    line.setAttribute('d', `M${a.x},${a.y} C${a.x},${mid} ${b.x},${mid} ${b.x},${b.y}`);
+  svg.setAttribute('viewBox', `0 0 ${chart.offsetWidth} ${chart.offsetHeight}`);
+  const paths: SVGElement[] = [];
+  for (const n of tree) for (const req of n.requires) {
+    const a = rect(req), b = rect(n.id);
+    if (!a || !b) continue;
+    const x1 = a.cx, y1 = a.bottom, x2 = b.cx, y2 = b.top;
+    const midY = Math.round((y1 + y2) / 2);
+    const dx = x2 - x1, r = Math.min(10, Math.abs(dx) / 2, (y2 - y1) / 2);
+    const sx = Math.sign(dx);
+    const d = Math.abs(dx) < 2
+      ? `M${x1},${y1} V${y2}`
+      : `M${x1},${y1} V${midY - r} Q${x1},${midY} ${x1 + sx * r},${midY} H${x2 - sx * r} Q${x2},${midY} ${x2},${midY + r} V${y2}`;
     const state = unlocked.includes(n.id) ? 'have' : unlocked.includes(req) ? 'open' : 'locked';
-    line.setAttribute('class', `link ${state}`);
-    return line;
-  })));
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', `link ${state}`);
+    // bought links first in the DOM so open/locked ones draw on top where elbows share a gap
+    paths.push(path);
+  }
+  const rank = (p: SVGElement) => (p.classList.contains('have') ? 0 : p.classList.contains('open') ? 2 : 1);
+  svg.replaceChildren(...paths.sort((p, q) => rank(p) - rank(q)));
 }
 
 export function editPlaybook(c: CreatureInst, changed: () => void) {
   {
     const e = energy(c);
     let sel = [...c.playbook];
+    // list controls: a type (or Physical / Support) filter, a sort order, and "only what still fits"
+    type Filter = 'all' | 'physical' | 'support' | ElementType;
+    type Sort = 'cost' | 'cost-desc' | 'damage' | 'speed' | 'type' | 'name';
+    let filter: Filter = 'all', sort: Sort = 'cost', fitsOnly = false;
+    const typesOf = (m: Move) => TYPES.filter((t) => (m.cost[t] ?? 0) > 0);
+    const costSum = (m: Move) => Object.values(m.cost).reduce<number>((a, v) => a + (v ?? 0), 0);
+    const avgDmg = (m: Move) => (m.dmgDie ? (m.dmgDie + 1) / 2 : 0) + m.dmgFlat;
+    const matches = (m: Move, f: Filter) =>
+      f === 'all' ? true : f === 'physical' ? m.kind === 'physical' : f === 'support' ? m.kind === 'support' : typesOf(m).includes(f);
+    const typeRank = (m: Move) => { const ts = typesOf(m); return ts.length ? TYPES.indexOf(ts[0]) * 10 + ts.length : m.kind === 'physical' ? -2 : -1; };
+    const SORTS: Record<Sort, [string, (a: Move, b: Move) => number]> = {
+      cost: ['Cost: low → high', (a, b) => costSum(a) - costSum(b)],
+      'cost-desc': ['Cost: high → low', (a, b) => costSum(b) - costSum(a)],
+      damage: ['Damage: high → low', (a, b) => avgDmg(b) - avgDmg(a)],
+      speed: ['Speed: fastest first', (a, b) => b.speed - a.speed],
+      type: ['Type', (a, b) => typeRank(a) - typeRank(b)],
+      name: ['Name: A → Z', () => 0],
+    };
     const body = h('div', { class: 'pb-edit' });
     const render = () => {
-      const opts = learnable(c);
+      const all = learnable(c);
       const spent = allocateEnergy(e, sel);
       const total = energyTotal(e), free = total - energyTotal(spent), slots = 4 - sel.length;
       const usage = h('div', { class: 'pb-usage' },
@@ -237,21 +303,108 @@ export function editPlaybook(c: CreatureInst, changed: () => void) {
           h('span', { class: `pb-count ${free === 0 ? 'empty' : ''}` }, h('b', null, free), h('small', null, `/${total} energy left`)),
           h('span', { class: `pb-count ${slots === 0 ? 'empty' : ''}` }, h('b', null, slots), h('small', null, `/4 move slots left`))),
         energyPips(e, false, spent));
-      const list = h('div', { class: 'moves grid' }, opts.map((id) => {
+      const canAddId = (id: string) => sel.length < 4 && fits(e, [...sel, id]);
+      // your current picks always stay listed (first), whatever the filter, so they can be removed
+      const shown = all.filter((id) => sel.includes(id) || (matches(MOVE_BY_ID[id], filter) && (!fitsOnly || canAddId(id))));
+      const opts = shown.sort((x, y) => {
+        const mx = MOVE_BY_ID[x], my = MOVE_BY_ID[y];
+        return Number(sel.includes(y)) - Number(sel.includes(x)) || SORTS[sort][1](mx, my) || mx.name.localeCompare(my.name);
+      });
+      // filter chips: only the types this creature can actually use
+      const usable = TYPES.filter((t) => all.some((id) => typesOf(MOVE_BY_ID[id]).includes(t)));
+      const count = (f: Filter) => all.filter((id) => matches(MOVE_BY_ID[id], f)).length;
+      const chip = (f: Filter, label: Node | string) => h('button', {
+        class: `pb-filter ${filter === f ? 'on' : ''}`, 'aria-pressed': String(filter === f),
+        style: f !== 'all' && f !== 'physical' && f !== 'support' ? `--tc:${TYPE_COLOR[f]}` : '',
+        onclick: () => { filter = f; render(); },
+      }, label, h('small', null, String(count(f))));
+      const controls = h('div', { class: 'pb-controls' },
+        h('div', { class: 'pb-filters', role: 'group', 'aria-label': 'Filter moves by type' },
+          chip('all', 'All'),
+          ...usable.map((t) => chip(t, h('span', { class: 'row gap-s' }, typeIconImg(t, 16), TYPE_LABEL[t]))),
+          count('physical') ? chip('physical', '👊 Physical') : null,
+          count('support') ? chip('support', '🛡️ Support') : null),
+        h('div', { class: 'pb-sortrow' },
+          h('label', { class: 'pb-sort' }, 'Sort ',
+            h('select', { onchange: (ev: Event) => { sort = (ev.target as HTMLSelectElement).value as Sort; render(); } },
+              (Object.keys(SORTS) as Sort[]).map((k) => h('option', { value: k, selected: sort === k }, SORTS[k][0])))),
+          h('label', { class: 'pb-fits' }, h('input', { type: 'checkbox', checked: fitsOnly, onchange: (ev: Event) => { fitsOnly = (ev.target as HTMLInputElement).checked; render(); } }), ' Only moves that still fit'),
+          h('small', { class: 'muted' }, `Showing ${opts.length} of ${all.length}`)));
+      const list = h('div', { class: 'moves grid' }, opts.length ? opts.map((id) => {
         const on = sel.includes(id);
         const canAdd = !on && sel.length < 4 && fits(e, [...sel, id]);
         return moveCard(MOVE_BY_ID[id], { selected: on, disabled: !on && !canAdd, onClick: () => { sel = on ? sel.filter((x) => x !== id) : [...sel, id]; render(); } });
-      }));
+      }) : [h('p', { class: 'small muted' }, 'No moves match this filter.')]);
       body.replaceChildren(
         h('p', { class: 'small' }, 'Energy is a requirement, not a cost per use. A move fits if your creature generates enough of each type; Neutral slots take any energy and Prisma counts as any type.'),
-        usage, list,
+        usage, controls, list,
         h('div', { class: 'row end gap sticky-foot' },
+          h('button', { class: 'btn ghost', onclick: () => recommendSheet(c, (ids) => { c.playbook = ids; close(); changed(); }) }, '✨ Recommend moves?'),
           h('button', { class: 'btn ghost', onclick: () => { sel = []; render(); } }, 'Clear'),
           h('button', { class: 'btn primary', disabled: sel.length === 0, onclick: () => { c.playbook = sel; close(); changed(); } }, 'Save playbook')));
     };
     const close = openSheet(`${nameOf(c)} · Playbook`, body, { wide: true });
     render();
   }
+}
+
+/**
+ * "Recommend moves?" from the playbook editor: pick a goal (physical, elemental, balanced, or
+ * against a type), see the moves the game would slot for it, and confirm to use them. The goal
+ * that suits the creature's current stats is starred and shown first.
+ */
+function recommendSheet(c: CreatureInst, confirm: (ids: string[]) => void) {
+  const st = stats(c);
+  const e = energy(c);
+  const suggested = suggestGoal(c);
+  const same = (a: PlaybookGoal, b: PlaybookGoal) => a.kind === b.kind && (a.kind !== 'vs' || (b.kind === 'vs' && a.type === b.type));
+  let goal: PlaybookGoal = suggested.goal;
+  const GOALS: { goal: PlaybookGoal; icon: string; label: string; text: string }[] = [
+    { goal: { kind: 'physical' }, icon: '👊', label: 'Optimize physical power', text: `Physical attacks add Power (${st.power}) and can crit. They ignore the type chart.` },
+    { goal: { kind: 'elemental' }, icon: '🔮', label: 'Optimize elemental power', text: `Elemental attacks add Focus (${st.focus}), use the type chart and can inflict statuses.` },
+    { goal: { kind: 'balanced' }, icon: '⚖️', label: 'Optimize balanced spread', text: 'A mix of physical and elemental attacks across types, plus a support move.' },
+  ];
+  const body = h('div', { class: 'rec' });
+  const render = () => {
+    const ids = recommendPlaybook(c, goal);
+    const vs = goal.kind === 'vs' ? goal.type : undefined;
+    const spent = allocateEnergy(e, ids);
+    const goalLabel = goal.kind === 'vs' ? `Optimize against ${TYPE_LABEL[goal.type]}` : GOALS.find((g) => same(g.goal, goal))!.label;
+    const option = (g: (typeof GOALS)[number]) => {
+      const star = same(g.goal, suggested.goal);
+      return h('button', { class: `rec-opt ${same(g.goal, goal) ? 'on' : ''}`, 'aria-pressed': String(same(g.goal, goal)), onclick: () => { goal = g.goal; render(); } },
+        h('span', { class: 'rec-ico' }, g.icon),
+        h('span', { class: 'rec-txt' },
+          h('b', null, g.label, star ? h('span', { class: 'rec-star', title: 'Recommended for this creature' }, ' ★ Recommended') : null),
+          h('small', null, star ? suggested.reason : g.text)));
+    };
+    body.replaceChildren(
+      h('p', { class: 'small' }, `Suggestions for ${nameOf(c)} as it is now: Power ${st.power}, Focus ${st.focus}, and ${energyTotal(e)} energy to spend.`),
+      h('div', { class: 'rec-opts' }, GOALS.map(option)),
+      h('div', { class: 'rec-vs' },
+        h('b', { class: 'small' }, '🎯 Optimize against a type:'),
+        h('div', { class: 'rec-vs-row' }, TYPES.map((t) => h('button', {
+          class: `pb-filter ${goal.kind === 'vs' && goal.type === t ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[t]}`, title: `Best moves against ${TYPE_LABEL[t]} creatures`,
+          onclick: () => { goal = { kind: 'vs', type: t }; render(); },
+        }, typeIconImg(t, 16), TYPE_LABEL[t])))),
+      h('h4', { class: 'rec-head' }, goalLabel),
+      ids.length
+        ? h('div', { class: 'moves grid' }, ids.map((id) => {
+          const m = MOVE_BY_ID[id];
+          const dmg = expectedDamage(c, m, vs);
+          return h('div', { class: 'rec-move' },
+            moveCard(m, { vs: vs ? [vs] : undefined }),
+            h('small', { class: 'rec-why' }, m.kind === 'support' ? 'Utility: no damage' : `≈ ${dmg.toFixed(1)} damage per use${vs ? ` vs ${TYPE_LABEL[vs]}` : ''}`));
+        }))
+        : h('p', { class: 'small muted' }, 'No moves fit this goal yet.'),
+      h('div', { class: 'pb-usage' }, h('small', null, `Uses ${energyTotal(spent)}/${energyTotal(e)} energy`), energyPips(e, true, spent)),
+      h('p', { class: 'small muted' }, 'Damage estimates use this creature’s stats against a foe with average Evasion (3) and no Armor or Ward.'),
+      h('div', { class: 'row gap end sticky-foot' },
+        h('button', { class: 'btn ghost', onclick: () => close() }, '← Back to editor'),
+        h('button', { class: 'btn primary', disabled: !ids.length, onclick: () => { close(); confirm(ids); } }, 'Confirm playbook?')));
+  };
+  const close = openSheet(`${nameOf(c)} · Recommend moves`, body, { wide: true });
+  render();
 }
 
 /** Reference sheet: every status, what inflicts it, and exactly what it does. */

@@ -82,8 +82,8 @@ export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts:
     status: {}, over: null, needSwap: false, participants: [], biome: opts.biome ?? 'meadow', quickStep: !!opts.quickStep, seenFoes: [],
   };
   for (const s of b.sides) {
-    const first = s.team.findIndex((c) => !c.ko);
-    s.active = Math.max(0, first);
+    // keep the chosen lead (e.g. the Following creature) unless it can't fight
+    if (!s.team[s.active] || s.team[s.active].ko) s.active = Math.max(0, s.team.findIndex((c) => !c.ko));
     for (const c of s.team) if (!c.ko) c.stamina = maxStamina(c);
   }
   // Hot pot vigor buff: a little extra Health at the start
@@ -432,7 +432,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     for (const [k, v] of Object.entries(e.foe ?? {})) fx.push(`foe ${k} ${sgn(v!)}`);
     if (e.heal) fx.push(`heal ${e.heal} Health`);
     if (e.staminaGain) fx.push(`+${e.staminaGain} Stamina`);
-    if (fx.length) steps.push({ icon: '✨', title: 'Effects', text: `${m.kind === 'support' ? 'On a hit' : 'After the damage'}: ${fx.join(', ')}. Stat changes last the whole battle, capped at ±3 per stat.`, tone: 'good' });
+    if (fx.length) steps.push({ icon: '✨', title: 'Effects', text: `${m.kind === 'support' ? 'On a hit' : 'After the damage'}: ${fx.join(', ')}. Stat changes last until that creature leaves the field, capped at ±3 per stat.`, tone: 'good' });
   }
   return steps;
 }
@@ -575,6 +575,16 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
   } else {
     b.needSwap = true;
   }
+}
+
+/** Before round 1: the trainer picks which creature leads (used when nobody is Following). */
+export function chooseLead(b: Battle, idx: number) {
+  const s = b.sides[0];
+  if (b.round > 0 || !s.team[idx] || s.team[idx].ko) return;
+  const prev = activeOf(s).uid;
+  s.active = idx;
+  b.participants = b.participants.filter((u) => u !== prev);
+  if (!b.participants.includes(s.team[idx].uid)) b.participants.push(s.team[idx].uid);
 }
 
 /** Player picks a replacement after a KO (no affinity trigger). */

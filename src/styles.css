@@ -250,8 +250,8 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .chart { display: grid; gap: 22px; position: relative; z-index: 1; padding: 6px 0; }
 .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; position: relative; z-index: 1; }
 .chart-links { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; overflow: visible; }
-.chart-links .link { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.6; }
-.chart-links .link.open { stroke: var(--accent); stroke-dasharray: none; opacity: 0.9; }
+.chart-links .link { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
+.chart-links .link.open { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: none; opacity: 0.95; }
 .chart-links .link.have { stroke: var(--ink); stroke-width: 3; stroke-dasharray: none; opacity: 1; }
 .node-req { color: var(--bad) !important; font-weight: 700; }
 .node { font: inherit; border: 2px solid var(--ink); background: var(--paper); border-radius: 12px; padding: 8px 6px; display: grid; justify-items: center; text-align: center; gap: 2px; cursor: pointer; min-height: 86px; transition: transform 0.1s; }
@@ -262,7 +262,13 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .node.have { background: color-mix(in srgb, var(--tc) 25%, white); }
 .node.have .node-ico { background: var(--tc); color: #fff; }
 .node.can { border-color: var(--accent); box-shadow: 0 0 0 3px #ffd6c4; animation: pulse 1.3s infinite; }
-.node.locked { opacity: 0.45; border-style: dashed; }
+.node.locked { opacity: 0.6; border-style: dashed; }
+/* Bought and locked nodes are disabled buttons; keep their text in ink instead of the browser's faint disabled grey */
+.node, .node:disabled { color: var(--ink); }
+.node.have small { color: #4a4656; }
+/* stat nodes share the .stat class with the stat panel; don't inherit its caps labels */
+.node.stat small { display: block; font-size: 10.5px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.node.stat small.node-req { font-weight: 700; }
 .node.avail { border-style: dashed; }
 .node.evolve, .node.capstone { grid-column: 2; }
 .node.evolve .node-ico, .node.capstone .node-ico { background: linear-gradient(135deg, #ffd84a, var(--accent)); color: #fff; }
@@ -655,3 +661,51 @@ body.gl-lost::after { content: 'Graphics were paused by your device. Tap to relo
 .readout-steps b { font-size: 14px; }
 .readout-steps p { margin: 2px 0 0; font-size: 13px; line-height: 1.35; }
 @media (max-width: 600px) { .readout-steps { max-height: 200px; } }
+
+/* Playbook editor: type filters and sorting */
+.pb-controls { display: grid; gap: 8px; margin: 10px 0; }
+.pb-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-filter { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink);
+  padding: 5px 10px; min-height: 34px; border-radius: 999px; border: 2px solid var(--line); background: var(--paper); cursor: pointer; }
+.pb-filter small { font-size: 11px; color: var(--muted); font-weight: 800; }
+.pb-filter.on { border-color: var(--tc, var(--ink)); background: color-mix(in srgb, var(--tc, var(--ink)) 18%, white); box-shadow: 0 2px 0 var(--tc, var(--ink)); }
+.pb-filter.on small { color: var(--ink); }
+.pb-sortrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; font-weight: 700; }
+.pb-sort select { font: inherit; font-weight: 600; padding: 5px 8px; border-radius: 10px; border: 2px solid var(--line); background: var(--paper); color: var(--ink); margin-left: 4px; }
+.pb-fits { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.pb-sortrow small { margin-left: auto; }
+
+/* Recommend moves: goal options (the suggested one starred) and the resulting playbook */
+.rec { display: grid; gap: 10px; }
+.rec-opts { display: grid; gap: 6px; }
+.rec-opt { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; color: var(--ink); padding: 8px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--paper); cursor: pointer; }
+.rec-opt.on { border-color: var(--ink); background: #fff3c4; box-shadow: 0 2px 0 var(--ink); }
+.rec-ico { font-size: 22px; flex: none; }
+.rec-txt { display: grid; gap: 2px; }
+.rec-txt b { font-family: var(--font-head); font-size: 15px; }
+.rec-txt small { font-size: 12px; color: var(--muted); }
+.rec-star { color: #c47f00; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.rec-vs { display: grid; gap: 6px; }
+.rec-vs-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.rec-head { margin: 4px 0 0; font-family: var(--font-head); }
+.rec-move { display: grid; gap: 3px; }
+.rec-move .move-card { cursor: default; }
+.rec-why { font-size: 12px; font-weight: 700; color: var(--muted); padding-left: 4px; }
+
+/* Event previews: the creature on offer, and before → after comparisons */
+.event-offer { display: grid; gap: 4px; margin: 4px 0 10px; }
+.event-offer small { font-size: 12px; color: var(--muted); font-weight: 700; }
+.cmp { display: grid; gap: 10px; }
+.cmp-heads { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.cmp-who { display: grid; justify-items: center; gap: 2px; text-align: center; padding: 8px; border-radius: 12px; border: 2px solid var(--tc); background: color-mix(in srgb, var(--tc) 12%, white); }
+.cmp-who > img { width: 64px; height: 64px; }
+.cmp-who > small:first-child { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.cmp-arrow { font-size: 20px; color: var(--muted); text-align: center; }
+.cmp-table { width: 100%; max-width: 360px; margin: 0 auto; border-collapse: collapse; font-size: 14px; }
+.cmp-table th { text-align: left; font-weight: 700; padding: 3px 6px; }
+.cmp-table td { text-align: center; padding: 3px 6px; }
+.cmp-table td.cmp-arrow { font-size: 13px; }
+.cmp-table tr:nth-child(odd) { background: rgba(0,0,0,.03); }
+.cmp-table tr.up td:not(.cmp-arrow) { color: #0f6b3a; }
+.cmp-table tr.down td:not(.cmp-arrow) { color: #b3261e; }
+.cmp-delta { font-weight: 800; width: 40px; }

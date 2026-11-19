@@ -60,7 +60,7 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
     phase: 'map',
     stats: { battlesWon: 0, recruited: 0, explored: 0 },
   };
-  const c = createCreature(starter, 2);
+  const c = createCreature(starter, 1); // starters begin at Lv 1 with an untouched chart
   c.morale = 7;
   s.roster.push(c);
   s.following = c.uid;

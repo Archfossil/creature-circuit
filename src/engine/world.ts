@@ -120,8 +120,8 @@ function discoverItem(s: GameState, node: MapNode, r: number): Outcome {
 // Arbiter (Lv 1 + 2·Tier). A node's own level only nudges within the band, so a "Lv 5" route
 // is a bit tougher than a "Lv 2" one at any Tier, but never a wall at Tier 1 or a pushover at Tier 5.
 
-/** Centre of the wild level band for a Tier: 2, 4, 6, 8, 10. */
-export const tierBandLevel = (tier: number) => 2 * tier;
+/** Centre of the wild level band for a Tier: 1, 3, 5, 7, 9 (starters begin at Lv 1). */
+export const tierBandLevel = (tier: number) => 2 * tier - 1;
 
 /** Node difficulty offset within the band: node Lv 1–2 → −1, 3–4 → 0, 5–6 → +1, 7+ → +2. */
 export const nodeLevelOffset = (node: MapNode) => Math.max(-1, Math.min(2, Math.floor((node.level - 3) / 2)));
@@ -245,6 +245,12 @@ function legendaryBattle(s: GameState, node: MapNode): Battle {
   const c = createCreature(node.legendary!, node.level + Math.floor(s.turn / 25));
   if (!s.dex.seen.includes(c.species)) s.dex.seen.push(c.species);
   return createBattle(playerSide(s), { kind: 'wild', name: `Legendary ${speciesOf(c).name}`, team: [c], active: 0, mods: {} }, weather(s), { legendary: true, biome: node.biome });
+}
+
+/** True when nobody healthy is Following and there's more than one creature that could lead, so the trainer picks. */
+export function needsLeadChoice(s: GameState): boolean {
+  const followerUp = s.roster.some((c) => c.uid === s.following && !c.ko);
+  return !followerUp && s.roster.filter((c) => !c.ko).length > 1;
 }
 
 export function playerSide(s: GameState): Side {

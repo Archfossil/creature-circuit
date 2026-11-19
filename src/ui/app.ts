@@ -1,7 +1,7 @@
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -11,7 +11,7 @@ import { newGame, save, load, clearSave, tierOf, season, follower, log } from '.
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import type { Battle, BEvent, Snap } from '../engine/battle';
-import { resolveRound, sendIn, activeOf, movePreview, partsText } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina } from '../engine/creature';
 import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors } from '../data/map';
@@ -332,6 +332,18 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Battle
   // ════════════════════════════════════════════════════════════
+  /** Ask which creature leads a battle (no healthy Following creature). Resolves once one is picked. */
+  pickLead(b: Battle, intro: string): Promise<void> {
+    const foe = activeOf(b.sides[1]);
+    return new Promise((resolve) => {
+      const close = openSheet('Who leads?', h('div', null,
+        h('p', null, intro, ' ', h('b', null, `${nameOf(foe)}`), ` (Lv ${foe.level}, `, speciesOf(foe).types.map((t) => typeChip(t, true)), ').'),
+        h('p', { class: 'small muted' }, 'Nobody is Following you, so choose who to send out first. Set a Following creature in Team to lead automatically.'),
+        h('div', { class: 'list' }, b.sides[0].team.map((c, i) => c.ko ? null : miniCard(c, { onClick: () => { chooseLead(b, i); close(); resolve(); } })))),
+        { noClose: true });
+    });
+  }
+
   async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame'; intro: string; city?: string; nodeId?: string }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
@@ -348,6 +360,8 @@ export class App {
           : foeSide.kind === 'trainer' ? roamingLook(foeSide.name) : null;
     bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color) : null, foeLook);
     this.engine.setView(bv);
+    // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
+    if (W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
     const disp: [Snap, Snap] = [snapOf(activeOf(b.sides[0])), snapOf(activeOf(b.sides[1]))];
     const panel = h('div', { class: 'battle-ui' });
     const logLine = h('div', { class: 'battle-log' }, ctx.intro);
@@ -997,15 +1011,31 @@ export class App {
         const all = [...s.roster, ...s.reserve];
         const closePick = openSheet(`${view.title} · choose a creature`, h('div', null,
           h('p', { class: 'small' }, ch.label, ch.detail ? ` · ${ch.detail}` : ''),
+          ch.preview ? h('p', { class: 'small muted' }, 'Tap a creature to compare before and after, then confirm.') : null,
           h('div', { class: 'list' }, all.map((c) => {
             const why = ch.canPick?.(c) ?? null;
-            const card = miniCard(c, { badge: why ? '✕' : undefined, onClick: () => { if (why) { toast(why, 'info'); return; } closePick(); done({ choice: ch.id, uid: c.uid }); } });
+            const commit = () => { closePick(); done({ choice: ch.id, uid: c.uid }); };
+            // with a preview, show the before/after first and only commit on Confirm
+            const compare = () => {
+              const { after, note } = ch.preview!(c);
+              const closeCmp = openSheet(`${view.title} · ${ch.label}`, h('div', null,
+                statCompare(c, after, view.id === 'trader' ? ['You give', 'You get'] : ['Now', 'After']),
+                note ? h('p', { class: 'small' }, note) : null,
+                h('div', { class: 'row gap end' },
+                  h('button', { class: 'btn ghost', onclick: () => closeCmp() }, '← Back'),
+                  h('button', { class: 'btn primary', onclick: () => { closeCmp(); commit(); } }, 'Confirm'))), { wide: true });
+            };
+            const card = miniCard(c, { badge: why ? '✕' : undefined, onClick: () => { if (why) { toast(why, 'info'); return; } if (ch.preview) compare(); else commit(); } });
             if (why) { card.classList.add('unpickable'); card.title = why; }
             return card;
           }))), { wide: true });
       };
       const body = h('div', { class: 'event' },
         h('div', { class: 'event-head' }, h('span', { class: 'event-ico' }, view.icon), h('p', null, view.text)),
+        // a creature on offer: tap to inspect its full card before deciding
+        view.showcase ? h('div', { class: 'event-offer' },
+          h('small', null, 'On offer (shown at this area’s level; it matches the level of whoever you trade)'),
+          miniCard(view.showcase, { onClick: () => openSheet(nameOf(view.showcase!), creatureCard(view.showcase!, { editable: false }), { wide: true }) })) : null,
         h('div', { class: 'event-choices' }, view.choices.map((ch) =>
           h('button', { class: `event-choice ${ch.id === 'decline' ? 'ghost' : ''}`, disabled: !!ch.disabled, onclick: () => choose(ch) },
             h('b', null, ch.label),
@@ -1225,16 +1255,16 @@ export class App {
       h('ol', null,
         h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel, or just double-tap it (you can turn this off in Settings).'),
         h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),
-        h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict a status on a minimum damage roll (see Menu → Status Effects, or tap a status tag in battle). In battle, each Elemental move shows how it lands on the current opponent (2× Super effective, ½ Resisted, No effect…), and 🔺 Types (or T) opens the chart for the matchup. Damage drains the Health bar, then a Vitality heart; out of hearts means KO.'),
+        h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict a status on a minimum damage roll (see Menu → Status Effects, or tap a status tag in battle). In battle, each Elemental move shows how it lands on the current opponent (2× Super effective, ½ Resisted, No effect…), and 🔺 Types (or T) opens the chart for the matchup. Damage drains the Health bar, then a Vitality heart; out of hearts means KO. Your Following creature leads every battle; with nobody following, you choose who goes first.'),
         h('li', null, h('b', null, 'Stamina & Fatigue: '), 'each move costs Effort. At 0 Stamina you gain Fatigue — fatigued creatures roll d10 and may lose their turn.'),
         h('li', null, h('b', null, 'Move readouts: '), 'tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die vs the foe’s Evasion, then the damage die plus Power (physical) or Focus (elemental) minus the foe’s Armor or Ward. Confirm to use it. Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.'),
         h('li', null, h('b', null, 'Camping: '), 'on a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue. Camp early to tend more of your team.'),
-        h('li', null, h('b', null, 'Playbook: '), 'up to 4 moves. Energy is a requirement, not spent per use: the playbook editor crosses out the energy each move takes and counts what is left.'),
+        h('li', null, h('b', null, 'Playbook: '), 'up to 4 moves. Energy is a requirement, not spent per use: the playbook editor crosses out the energy each move takes and counts what is left. Filter moves by type (dual-type attacks show under both) or by Physical/Support, sort them by cost, damage, speed or name, and tick “Only moves that still fit”. ✨ Recommend moves? suggests a set to optimize physical power, elemental power, a balanced spread, or against a type. The ★ goal suits your creature’s stats, and Confirm playbook? sets it in one tap.'),
         h('li', null, h('b', null, 'Recruit: '), 'defeat a wild creature, then offer a totem plus up to 2 offerings. Roll 2d6 + bonuses vs its Recruitment Threshold. Each material appeals to certain types (shown in your Bag).'),
         h('li', null, h('b', null, 'Creature Codex: '), 'every creature you meet in the wild or in a trainer\u2019s team is recorded. Its page lists the nodes to explore for it (or its earlier stages) and its favorite offerings. You can carve an Effigy of any creature in your Codex.'),
         h('li', null, h('b', null, 'Grow: '), 'every creature that fights earns XP when the battle ends, win or lose, and knocking out a foe earns a bonus (running away earns nothing). Every 10 XP is a level and a point to spend on the skill tree on the back of the creature\'s index card. A node opens once every node linked above it is bought. Evolving needs the whole center path; side branches are optional but are left behind when it evolves.'),
         h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit.'),
-        h('li', null, h('b', null, 'Events: '), 'at the end of each turn something happens on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then.'),
+        h('li', null, h('b', null, 'Events: '), 'at the end of each turn something happens on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
         h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets are free.'),
         h('li', null, h('b', null, 'Win: '), 'hold 8 Merits and stand in Circuit Stadium when Turn 100 ends. Then win the 8-trainer bracket.')),
       welcome ? h('p', { class: 'small muted' }, 'Tip: pick a Follower (top-left) — it leads your battles and powers your overworld Ability.') : null));

@@ -61,9 +61,11 @@ tests/       engine tests
 ### Interpretations & additions (open to change)
 The docs leave a few points open. The prototype makes these calls:
 - **Wild-at-heart (nature) trainers** get their *first* re-explore each turn free, so re-exploring can't be repeated endlessly.
-- **Encounter scaling** follows Trainer Tier. Wild and roaming-trainer levels sit around 2 × Tier (just under that Tier's Arbiter), and a node's level shifts them by −1 to +2. Tier 1 can't roll Apex wilds. Tiers 3–4 roll one extra rarity die and Tier 5 rolls two. Roaming trainers bring more Prime/Apex creatures and bigger teams at higher Tiers (`world.ts` → `baseWildLevel`, `tierRarityDice`).
+- **Encounter scaling** follows Trainer Tier. Starters begin at Lv 1 with an untouched chart. Wild and roaming-trainer levels sit around 2 × Tier − 1 (1, 3, 5, 7, 9: under that Tier's Arbiter), and a node's level shifts them by −1 to +2, so Tier 1 wilds are mostly Lv 1–2. Tier 1 can't roll Apex wilds. Tiers 3–4 roll one extra rarity die and Tier 5 rolls two. Roaming trainers bring more Prime/Apex creatures and bigger teams at higher Tiers (`world.ts` → `baseWildLevel`, `tierRarityDice`).
 - **Energy** is generated at 2× the base formula (stage-1 Commons make 6), and energy/Prisma nodes on the progression chart grant +2. This leaves room for real playbook trade-offs against move costs of 1–5 (`species.ts` → `ENERGY_SCALE`, `creature.ts` → `NODE_ENERGY`).
 - **Camping** (on wild nodes) ends the turn and spends all remaining Initiative. Each point tends one creature of your choice: it recovers all Vitality and clears Fatigue. KO'd and fully rested creatures can't be picked. The picker highlights the hearts each creature will get back. With 0 Initiative left, camping does nothing, so it's never free end-of-turn healing (`world.ts` → `campTargets`).
+- **Attack grid** (`moves.ts`): every typed energy cost from 1 to 5 has an elemental attack. Single-type attacks run 1–5 of one type. Dual-type attacks cover any split totalling 5 or less (1 Fire + 1 Water, 2 Fire + 1 Water, …). An uneven split hits as the type it spends more of. Even splits (1+1, 2+2) get one attack per type, so 2 Fire + 2 Grass exists as both a Fire and a Grass attack. That's 376 slots, and every type leads exactly 47 attacks. Hand-made attacks fill 24 and generated placeholders (`atk-…` ids, `placeholder: true`) fill the rest (see docs/05).
+- **Playbook editor**: type filters (dual attacks appear under both types, plus Physical and Support), sorting (cost, damage, speed, type, name) and an "only moves that still fit" toggle. Your current picks stay pinned at the top. **Recommend moves?** offers four goals: optimize physical power, elemental power, a balanced spread, or against a chosen type. The goal that suits the creature's stats gets a ★: a Power or Focus lead of 2+ points one way, otherwise balanced. Each goal shows its best 4-move set, with expected damage per move, and **Confirm playbook?** applies it (`creature.ts` → `recommendPlaybook`, `suggestGoal`, `expectedDamage`).
 - **Type chart** (Menu → Type Chart, or 🔺 Types / T in battle): a stacked list with one coloured pill per type, what it's strong against on the left and what it's weak to on the right. Matchups mirror (a type resists exactly what it's strong against), so each side is a single row. In battle, your move types are highlighted gold and the foe's blue, and the live matchups are ringed (`cards.ts` → `typeChart`).
 - **Move readouts**: in battle, tapping a move first shows what it will do, step by step in resolution order:
   - turn order (your Speed with the move's modifier vs the foe's)
@@ -74,6 +76,7 @@ The docs leave a few points open. The prototype makes these calls:
   - the status chance and other effects
 
   You then confirm (Enter) or go back (Esc). As the round plays out, each roll is captioned: the accuracy roll against Evasion, and the damage die with its full sum. The **Fast battles** setting skips the readout and the damage dice and keeps the old quick pace (`battle.ts` → `movePreview`, `DamageCalc`).
+- **Battle lead**: your Following creature always leads. If nobody healthy is Following and more than one creature can fight, you choose the lead before round 1 (`world.ts` → `needsLeadChoice`, `battle.ts` → `chooseLead`).
 - **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape.
 - **Trainer encounters**: on road and meadow nodes, a 3–4 explore roll may be a wandering trainer instead of a wild creature (prize: d6 coins).
 - **Statuses**, one per type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. A creature holds one status at a time. It lasts 3 rounds, counted only while that creature is in battle, and ends on a KO or when the battle ends. The in-game Menu → Status Effects lists exactly what each does (`moves.ts` → `STATUS_INFO`, `STATUS_FOR`).
@@ -85,8 +88,8 @@ The docs leave a few points open. The prototype makes these calls:
 
   | Event | What it offers |
   | --- | --- |
-  | 🧳 Roaming Trader | Swap one of your creatures for theirs, made at the same level |
-  | 🩺 Creature Caretaker | Change a creature's Nature to one of 3 offered (keeps its unlocked perk count) |
+  | 🧳 Roaming Trader | Swap one of your creatures for theirs (fixed species and Nature, shown on the event so you can inspect its card). It arrives at the level of the one you give, with its chart points unspent. A before/after stat comparison is shown before you confirm. |
+  | 🩺 Creature Caretaker | Change a creature's Nature to one of 3 offered (keeps its unlocked perk count). A before/after stat comparison is shown before you confirm. |
   | 🍲 Wandering Cook | 4 coins: active team restores Vitality and Health and clears Fatigue |
   | 🥺 A Lost Creature | Adopt a common creature (a level under the Tier band), or guide it home for +1 Morale |
   | 🐫 Merchant Caravan | An Elixir, Moonberry, Star Charm or Lure Incense at half price |
@@ -124,5 +127,5 @@ To build out this game, please review the core design documents located in the `
 - **Phase 2:** ✅ Combat engine, energy pool generation, and modular custom move execution.
 - **Phase 3:** ✅ Arbiter challenge system, seasonal weather mechanics, and progression tracking.
 - **Phase 4:** 🟡 Content integration. Example creatures, moves and the map are in place; replace them with the final creature database and Master Move List (see `docs/05-data-schemas.md`).
-- **Phase 5:** 🟡 Systems depth. Done: end-of-turn events, the full 36-slot roster table (placeholders), move readouts with explained rolls, Initiative-based camping, the stacked type chart, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups and trainer minis. Next: balance passes from playtesting (event prices, XP rates, evolution costs).
+- **Phase 5:** 🟡 Systems depth. Done: end-of-turn events, the full 36-slot roster table and the 376-slot attack grid (placeholders), move readouts with explained rolls, Initiative-based camping, the stacked type chart, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups and trainer minis. Next: balance passes from playtesting (event prices, XP rates, evolution costs).
 - **Next:** creature art to replace the procedural models, multiplayer (local pass-and-play or online), dual battles, and a map editor.

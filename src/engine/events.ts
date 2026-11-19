@@ -12,7 +12,7 @@ import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, spe
 import type { Battle } from './battle';
 import { createBattle } from './battle';
 import { baseWildLevel, here, pickSpecies, playerSide, tierBandLevel, weather } from './world';
-import { pick, roll, weightedPick } from './dice';
+import { pick, roll, weightedPick, uid } from './dice';
 
 /** Chance that a turn ends with an event. 1 = every turn (good for playtesting); lower it to taste. */
 export const EVENT_CHANCE = 1;
@@ -31,8 +31,17 @@ export interface EventChoice {
   canPick?: (c: CreatureInst) => string | null;
   /** If set, the choice is shown but disabled, with this reason. */
   disabled?: string;
+  /**
+   * For pick choices: what the picked creature would become (a trade, a new Nature …), so the UI
+   * can show a before/after comparison before the player commits. Must match `resolve` exactly.
+   */
+  preview?: (c: CreatureInst) => { after: CreatureInst; note?: string };
 }
-export interface EventView { id: string; title: string; icon: string; text: string; choices: EventChoice[]; forced?: boolean }
+export interface EventView {
+  id: string; title: string; icon: string; text: string; choices: EventChoice[]; forced?: boolean;
+  /** A creature on offer (e.g. the trader's), shown on the event so the player can inspect it. */
+  showcase?: CreatureInst;
+}
 export interface EventResult { text: string; tone: 'good' | 'bad' | 'info'; battle?: Battle; rolls?: number[] }
 
 interface EventDef {
@@ -62,23 +71,42 @@ function welcome(s: GameState, c: CreatureInst) {
 function wildSpecies(s: GameState, rarity: Rarity, level: number) {
   return pickSpecies(here(s), rarity, level, weather(s).encounter).id;
 }
+/**
+ * The trader's creature at a given level. Fixed by the event (species + Nature) and given with its
+ * chart points unspent, so the preview the player sees is exactly what they get.
+ */
+function tradeOffer(d: EventData, level: number): CreatureInst {
+  const c = createCreature(d.species as string, level, { nature: (d.nature as string) ?? NATURES[0].id, auto: false });
+  c.uid = `offer-${d.species}-${level}`;
+  return c;
+}
+/** A creature as it would be with another Nature (perks kept by count, now from the new Nature). */
+function withNature(c: CreatureInst, natureId: string): CreatureInst {
+  const n = NATURE_BY_ID[natureId];
+  return { ...c, nature: n.id, perks: Math.min(c.perks, n.perks.length) };
+}
 
 // ── The events ──────────────────────────────────────────────────
 const EVENTS: EventDef[] = [
   {
     id: 'trader', weight: 3,
-    create: (s) => ({ species: wildSpecies(s, Math.random() < 0.3 ? 'prime' : 'common', baseWildLevel(s, here(s))) }),
+    create: (s) => {
+      const level = baseWildLevel(s, here(s));
+      return { species: wildSpecies(s, Math.random() < 0.3 ? 'prime' : 'common', level), nature: pick(NATURES).id, level };
+    },
     view: (_s, d) => {
       const sp = SPECIES_BY_ID[d.species as string];
       return {
         title: 'Roaming Trader', icon: '🧳',
-        text: `A trader with a cart of totems offers a ${sp.name} (${sp.types.map((t) => TYPE_LABEL[t]).join('/')}, ${sp.rarity}). They'll swap it for one of your creatures, and theirs will match the level of the one you give.`,
-        choices: [{ id: 'trade', label: `Trade for ${sp.name}`, detail: 'Pick the creature to give away.', pick: true, canPick: (c) => (c.ko ? 'The trader won\'t take a KO\'d creature.' : c.species === sp.id ? 'Already this species.' : null) }, DECLINE],
+        showcase: tradeOffer(d, (d.level as number) ?? 1),
+        text: `A trader with a cart of totems offers a ${sp.name} (${sp.types.map((t) => TYPE_LABEL[t]).join('/')}, ${sp.rarity}, ${NATURE_BY_ID[(d.nature as string) ?? NATURES[0].id].name}). They'll swap it for one of your creatures, and theirs will match the level of the one you give, with its chart points left for you to spend.`,
+        choices: [{ id: 'trade', label: `Trade for ${sp.name}`, detail: 'Pick the creature to give away.', pick: true, preview: (c) => ({ after: tradeOffer(d, c.level), note: c.level > 1 ? `Arrives with ${c.level - 1} chart point${c.level === 2 ? '' : 's'} to spend.` : undefined }), canPick: (c) => (c.ko ? 'The trader won\'t take a KO\'d creature.' : c.species === sp.id ? 'Already this species.' : null) }, DECLINE],
       };
     },
     resolve: (s, d, choice, c) => {
       if (choice !== 'trade' || !c) return { text: 'The trader tips their hat and rolls on.', tone: 'info' };
-      const got = createCreature(d.species as string, c.level);
+      const got = tradeOffer(d, c.level);
+      got.uid = uid(); // a real creature of its own, not the preview
       got.morale = Math.max(5, c.morale);
       for (const list of [s.roster, s.reserve]) {
         const i = list.indexOf(c);
@@ -99,7 +127,11 @@ const EVENTS: EventDef[] = [
       choices: [
         ...(d.natures as string[]).map((id): EventChoice => {
           const n = NATURE_BY_ID[id];
-          return { id: `nature:${id}`, label: `Become ${n.name}`, detail: `+${n.up} / −${n.down}. ${n.text}`, pick: true, canPick: (c) => (c.nature === id ? `Already ${n.name}.` : null) };
+          return {
+            id: `nature:${id}`, label: `Become ${n.name}`, detail: `+${n.up} / −${n.down}. ${n.text}`, pick: true,
+            canPick: (c) => (c.nature === id ? `Already ${n.name}.` : null),
+            preview: (c) => ({ after: withNature(c, id), note: c.perks ? `Keeps ${c.perks} Nature perk${c.perks === 1 ? '' : 's'}, now from ${n.name}.` : undefined }),
+          };
         }),
         DECLINE,
       ],
@@ -108,8 +140,9 @@ const EVENTS: EventDef[] = [
       if (!choice.startsWith('nature:') || !c) return { text: 'The caretaker waves you off with a smile.', tone: 'info' };
       const n = NATURE_BY_ID[choice.slice(7)];
       const was = NATURE_BY_ID[c.nature].name;
-      c.nature = n.id;
-      c.perks = Math.min(c.perks, n.perks.length);
+      const after = withNature(c, n.id);
+      c.nature = after.nature;
+      c.perks = after.perks;
       log(s, `${nameOf(c)}'s Nature changed from ${was} to ${n.name}.`);
       return { text: `${nameOf(c)} is now ${n.name} (was ${was}).`, tone: 'good' };
     },

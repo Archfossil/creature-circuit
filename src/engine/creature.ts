@@ -1,8 +1,8 @@
-import type { EnergyMap, ElementType, Movement, Species, StatKey, Stats, StatusId, EnergyKey } from '../data/schema';
+import type { EnergyMap, ElementType, Movement, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
 import { MOVES, MOVE_BY_ID } from '../data/moves';
 import { NATURES, NATURE_BY_ID } from '../data/content';
-import { TYPES } from '../data/types';
+import { TYPES, effectiveness } from '../data/types';
 import { pick, uid } from './dice';
 
 export interface CreatureInst {
@@ -130,12 +130,24 @@ export function learnable(c: CreatureInst): string[] {
 export function autoPlaybook(c: CreatureInst): string[] {
   const e = energy(c);
   const prim = speciesOf(c).types[0];
-  const opts = learnable(c);
   const val = (id: string) => {
     const m = MOVE_BY_ID[id];
     const typed = Object.keys(m.cost).some((k) => k !== 'neutral');
     return (m.dmgDie + 1) / 2 + m.dmgFlat + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2;
   };
+  // The attack grid makes the learnable list long (dozens for dual types), so search a shortlist:
+  // the strongest moves, the best value per energy, and the best of each kind and of the main type.
+  const all = learnable(c);
+  const costOf = (id: string) => Math.max(1, Object.values(MOVE_BY_ID[id].cost).reduce<number>((a, v) => a + (v ?? 0), 0));
+  const byVal = [...all].sort((x, y) => val(y) - val(x));
+  const byEff = [...all].sort((x, y) => val(y) / costOf(y) - val(x) / costOf(x));
+  const bestWhere = (f: (m: Move) => boolean, n: number) => byVal.filter((id) => f(MOVE_BY_ID[id])).slice(0, n);
+  const opts = [...new Set([
+    ...bestWhere((m) => m.kind === 'elemental' && m.type === prim, 3),
+    ...bestWhere((m) => m.kind === 'physical', 2),
+    ...bestWhere((m) => m.kind === 'support', 2),
+    ...byEff.slice(0, 6), ...byVal.slice(0, 6),
+  ])];
   let best: string[] = [];
   let bestScore = -1;
   const score = (set: string[]) => {
@@ -326,3 +338,75 @@ export function healthFraction(c: CreatureInst): number {
 }
 
 export type BattleStatus = { id: StatusId; turns: number };
+
+// ── Recommended playbooks ───────────────────────────────────────
+// The playbook editor's "Recommend moves" menu. Each goal scores moves by their expected damage
+// with this creature's own stats (assuming a typical foe Evasion of 3), then searches for the
+// best set of up to 4 that fits its energy.
+
+export type PlaybookGoal = { kind: 'physical' } | { kind: 'elemental' } | { kind: 'balanced' } | { kind: 'vs'; type: ElementType };
+
+const TYPICAL_EVASION = 3;
+
+/** Expected damage per use of a move for this creature (0 for support), optionally against a defender type. */
+export function expectedDamage(c: CreatureInst, m: Move, vs?: ElementType): number {
+  if (m.kind === 'support') return 0;
+  const st = stats(c);
+  const base = Math.max(1, (m.dmgDie ? (m.dmgDie + 1) / 2 : 0) + m.dmgFlat + (m.kind === 'physical' ? st.power : st.focus));
+  const hit = m.accuracy === 'sure' ? 1 : Math.max(0, Math.min(1, (m.accuracy - TYPICAL_EVASION + 1) / m.accuracy));
+  const crit = m.kind === 'physical' && m.accuracy !== 'sure' ? 1 + 1 / m.accuracy : 1;
+  const mult = vs && m.kind === 'elemental' && m.type ? effectiveness(m.type, [vs]) : 1;
+  return base * hit * crit * mult;
+}
+
+/** The goal that suits this creature best, and why: a clear Power or Focus lead points one way. */
+export function suggestGoal(c: CreatureInst): { goal: PlaybookGoal; reason: string } {
+  const st = stats(c);
+  const opts = learnable(c).map((id) => MOVE_BY_ID[id]);
+  const hasElem = opts.some((m) => m.kind === 'elemental' && m.dmgDie > 0);
+  if (!hasElem || st.power - st.focus >= 2) return { goal: { kind: 'physical' }, reason: hasElem ? `Power ${st.power} is well above Focus ${st.focus}, so physical attacks hit harder.` : 'It can’t learn any elemental attacks yet.' };
+  if (st.focus - st.power >= 2) return { goal: { kind: 'elemental' }, reason: `Focus ${st.focus} is well above Power ${st.power}, so elemental attacks hit harder.` };
+  return { goal: { kind: 'balanced' }, reason: `Power ${st.power} and Focus ${st.focus} are close, so a mix covers more matchups.` };
+}
+
+/** The best playbook (up to 4 moves that fit the creature's energy) for a goal. */
+export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal): string[] {
+  const e = energy(c);
+  const vs = goal.kind === 'vs' ? goal.type : undefined;
+  const weight = (m: Move) =>
+    m.kind === 'support' ? 0
+      : goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4)
+        : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1;
+  const value = (id: string) => {
+    const m = MOVE_BY_ID[id];
+    return expectedDamage(c, m, vs) * weight(m) - m.effort * 0.3 + Math.max(0, m.speed) * 0.15;
+  };
+  const all = learnable(c);
+  const supports = all.filter((id) => MOVE_BY_ID[id].kind === 'support');
+  const attacks = all.filter((id) => MOVE_BY_ID[id].kind !== 'support').sort((a, b) => value(b) - value(a));
+  // shortlist: the strongest attacks plus a couple of support moves
+  const pool = [...attacks.slice(0, 12), ...supports.slice(0, 3)];
+  const score = (set: string[]) => {
+    const ms = set.map((id) => MOVE_BY_ID[id]);
+    let sc = set.reduce((a, id) => a + value(id), 0) + set.length;
+    if (ms.some((m) => m.kind === 'support')) sc += goal.kind === 'balanced' ? 3.5 : 2.5; // one utility move is worth a slot
+    if (ms.filter((m) => m.kind === 'support').length > 1) sc -= 6;
+    if (goal.kind === 'balanced') {
+      if (ms.some((m) => m.kind === 'physical') && ms.some((m) => m.kind === 'elemental')) sc += 4;
+      sc += new Set(ms.filter((m) => m.kind === 'elemental').map((m) => m.type)).size; // type coverage
+    }
+    return sc;
+  };
+  let best: string[] = [], bestScore = -Infinity;
+  const dfs = (start: number, set: string[]) => {
+    if (set.length) { const sc = score(set); if (sc > bestScore) { bestScore = sc; best = [...set]; } }
+    if (set.length === 4) return;
+    for (let i = start; i < pool.length; i++) {
+      set.push(pool[i]);
+      if (fits(e, set)) dfs(i + 1, set);
+      set.pop();
+    }
+  };
+  dfs(0, []);
+  return best;
+}

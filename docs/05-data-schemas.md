@@ -120,7 +120,31 @@ Each creature the player owns is saved as an instance of a species:
 | `effort` | Stamina drained each time the move is used. At 0 Stamina the creature gains 1 Fatigue. |
 | `speed` | Added to the user's Speed for that round. |
 | `accuracy` | The die rolled against the target's Evasion, or `"sure"` for a move that always hits. |
-| `effect` | `{ "self": {stat: n}, "foe": {stat: n}, "heal": n, "staminaGain": n }` |
+| `effect` | `{ "self": {stat: n}, "foe": {stat: n}, "heal": n, "staminaGain": n }`. Stat changes last until that creature leaves the field, capped at ±3 per stat. Keep `text` to flavour only: `effectText` appends the exact numbers (e.g. "You get +2 Armor and +2 Ward.") when the game loads. |
+| `placeholder` | `true` on generated attacks that hold a grid slot until a real move replaces them. |
+
+### The attack grid (`moves.ts`)
+There is one elemental attack for every **typed energy cost** that totals 1–5, and for every type that could lead it. The grid is listed in `ATTACK_SLOTS`, where each slot is a cost plus the type the attack hits as.
+
+**Single type:** 1 to 5 of one type, which is 8 × 5 = 40 slots.
+
+**Two types:** at least 1 of each, at most 5 in total.
+- **Uneven splits** hit as the type they spend more of. So 2 Fire + 1 Water is a Fire attack, and 1 Fire + 3 Water is a Water attack.
+- **Even splits** (1+1 and 2+2) get one attack for **each** type, so 2 Fire + 2 Grass exists once as a Fire attack and once as a Grass attack.
+- That's 8 uneven + 4 even = 12 slots per pair, × 28 pairs = 336 slots.
+
+**Every type leads exactly 47 attacks:** 5 single-type, plus 6 in each of its 7 pairs. A test checks this. Each attack inflicts its hit type's status.
+
+**Slots and Neutral energy:** a slot is keyed by the typed part of the cost plus the hit type (`slotKey`), so Neutral energy is ignored. Fire Claw (2 Fire + 1 Neutral) fills the "2 Fire, hits as Fire" slot. Signature moves don't fill slots.
+
+**Hand-made and placeholder attacks:** hand-made attacks fill their own slots, and every other slot gets a generated placeholder:
+- **Ids:** `atk-<type><n>[-<type><n>]`. Even splits add the hit type, e.g. `atk-fire2-grass2-grass`.
+- **Names:** built from the types, e.g. Flamethorn Wave (Fire) and Brambleblaze Wave (Grass).
+- **Numbers:** set by total cost: d4 at 1, up to d10 + 1 at 5, with more Effort and a slower Speed as the cost rises. Dual attacks get +1 flat damage for needing two energy types.
+
+Dual attacks are only learnable by creatures that generate both energy types.
+
+**Replacing a placeholder:** add a hand-made attack with the same typed cost and hit type. Its slot is then filled and the placeholder stops being generated.
 
 ## Map node and edge
 
@@ -154,6 +178,10 @@ End-of-turn events live in [`src/engine/events.ts`](../src/engine/events.ts) as 
 ```
 
 Use a single-character emoji for `icon`: joined emoji such as 🧑‍⚕️ split into two glyphs on Windows. A choice with `pick: true` asks the player for a creature; `canPick` can refuse some. Every choice of every event is exercised by the tests.
+
+To let players look before they commit:
+- **`preview(c)`** on a pick choice returns `{ after, note? }`: the creature as it would be after the choice. The UI shows a before → after stat comparison with a Confirm button, as the Roaming Trader and the Caretaker do. Build `after` with the same helper `resolve` uses, so the preview is exactly what happens (the tests check this).
+- **`showcase`** on the view puts a creature on offer in the event window. Tapping it opens its full card.
 
 ## Item
 
