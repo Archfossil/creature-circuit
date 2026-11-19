@@ -1,7 +1,7 @@
 import { h, openSheet } from './dom';
 import type { CreatureInst } from '../engine/creature';
 import { speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL } from '../engine/creature';
-import { MOVE_BY_ID, STATUS_INFO } from '../data/moves';
+import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR } from '../data/moves';
 import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
 import type { ElementType, EnergyKey, Move } from '../data/schema';
@@ -200,6 +200,23 @@ export function editPlaybook(c: CreatureInst, changed: () => void) {
     const close = openSheet(`${nameOf(c)} · Playbook`, body, { wide: true });
     render();
   }
+}
+
+/** Reference sheet: every status, what inflicts it, and exactly what it does. */
+export function statusGuide() {
+  return h('div', { class: 'status-guide' },
+    h('ul', { class: 'small status-rules' },
+      h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die, the target gains that attack type’s status.'),
+      h('li', null, h('b', null, 'One at a time: '), 'a creature that already has a status can’t gain another until it wears off.'),
+      h('li', null, h('b', null, 'Duration: '), '3 rounds, counted only while the creature is in battle (not while swapped out). Ends early on a KO, and always ends with the battle.')),
+    h('div', { class: 'status-list' }, TYPES.map((t) => {
+      const st = STATUS_INFO[STATUS_FOR[t]];
+      return h('div', { class: 'status-row', style: `--tc:${TYPE_COLOR[t]}` },
+        h('span', { class: 'status-ico' }, st.icon),
+        h('div', null,
+          h('div', { class: 'row gap-s' }, h('b', null, st.name), h('span', { class: 'muted small' }, 'from'), typeChip(t, true)),
+          h('p', { class: 'small' }, st.text)));
+    })));
 }
 
 export function typeChart() {

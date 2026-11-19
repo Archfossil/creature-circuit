@@ -1,7 +1,7 @@
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChart } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChart, statusGuide } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -347,7 +347,7 @@ export class App {
           h('b', null, nameOf(c)), h('span', { class: 'lv' }, `Lv ${c.level}`),
           h('span', { class: 'pl-types' }, sp.types.map((t) => typeIconImg(t, 16))),
           recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
-          sn.status ? h('span', { class: 'status-tag', title: STATUS_INFO[sn.status].text }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
+          sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
         // Vitality first: hearts are what actually decide the fight
         h('div', { class: 'pl-vit' },
           h('span', { class: 'hearts', title: `Vitality ${sn.vitality}/${mv}` }, Array.from({ length: mv }, (_, i) => h('span', { class: `heart ${i < sn.vitality ? 'on' : ''}` }, '♥'))),
@@ -924,6 +924,7 @@ export class App {
   menu() {
     const close = openSheet('Menu', h('div', { class: 'tiles' },
       tile('📖', 'Creature Dex', `${this.s.dex.caught.length} caught · ${this.s.dex.seen.length} seen`, '', () => { close(); this.dex(); }),
+      tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); openSheet('Type Chart', h('div', null, typeChart(), h('p', { class: 'small' }, 'Dual types multiply: 4× when both are weak, immune when both resist. Physical attacks ignore the chart.')), { wide: true }); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
       tile('❓', 'How to Play', 'Rules summary.', '', () => { close(); this.howToPlay(); }),

@@ -13,7 +13,8 @@ const S = (id: string, name: string, type: ElementType | undefined, o: Partial<M
   id, name, kind: 'support', type, cost: {}, effort: 1, speed: 2, accuracy: 'sure', dmgDie: 0, dmgFlat: 0, text, ...o,
 });
 
-const STATUS_FOR: Record<ElementType, StatusId> = {
+/** The status each type's elemental attacks inflict. */
+export const STATUS_FOR: Record<ElementType, StatusId> = {
   astral: 'daze', charm: 'beguile', electric: 'shock', fire: 'burn',
   grass: 'snare', rock: 'stagger', steel: 'sunder', water: 'soak',
 };
@@ -103,12 +104,12 @@ export const CATCH_BREATH: Move = {
 };
 
 export const STATUS_INFO: Record<StatusId, { name: string; icon: string; text: string }> = {
-  burn: { name: 'Burn', icon: '🔥', text: 'Takes 1 damage at end of each round.' },
-  soak: { name: 'Soak', icon: '💧', text: '-2 Speed.' },
-  shock: { name: 'Shock', icon: '⚡', text: '1-in-3 chance to lose the attack.' },
-  snare: { name: 'Snare', icon: '🌿', text: '-1 Evasion, -1 Speed.' },
-  stagger: { name: 'Stagger', icon: '🪨', text: '-1 Power and Focus.' },
-  sunder: { name: 'Sunder', icon: '⚙️', text: '-1 Armor and Ward.' },
-  beguile: { name: 'Beguile', icon: '💗', text: 'Rolls 1 lower to hit.' },
-  daze: { name: 'Daze', icon: '✨', text: 'Accuracy die drops one size.' },
+  burn: { name: 'Burn', icon: '🔥', text: 'Takes 1 damage at the end of each round.' },
+  soak: { name: 'Soak', icon: '💧', text: '−2 Speed, so it is more likely to act second.' },
+  shock: { name: 'Shock', icon: '⚡', text: 'Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent).' },
+  snare: { name: 'Snare', icon: '🌿', text: '−1 Speed and −1 Evasion, so it is easier to hit.' },
+  stagger: { name: 'Stagger', icon: '🪨', text: '−1 Power and −1 Focus: its physical and elemental attacks each deal 1 less damage.' },
+  sunder: { name: 'Sunder', icon: '⚙️', text: '−1 Armor and −1 Ward: it takes 1 more damage from physical and elemental attacks.' },
+  beguile: { name: 'Beguile', icon: '💗', text: '−1 to its accuracy rolls (Sure-hit moves are unaffected).' },
+  daze: { name: 'Daze', icon: '✨', text: 'Its accuracy die shrinks one size (d8 → d6, d6 → d4; never below d4). Sure-hit moves are unaffected.' },
 };
