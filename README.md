@@ -30,7 +30,7 @@ The game runs in any modern desktop or mobile browser that supports WebGL. It sa
 ### Code map
 ```
 src/
-  data/      schema.ts (content types) · types.ts (type chart) · species.ts · moves.ts · map.ts · content.ts
+  data/      schema.ts (content types) · types.ts (type chart) · species.ts · roster.ts (type-combo roster table + placeholders) · moves.ts · map.ts · content.ts
   engine/    pure game rules, no DOM
              creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · events.ts (end-of-turn events) · state.ts (save)
   render/    engine.ts (WebGL renderer) · world.ts (3D map) · land.ts (coastline math) · battle.ts (3D arena) · creatureModel.ts (procedural creatures) · trainerModel.ts (trainer minis)
@@ -45,6 +45,8 @@ tests/       engine tests
 | 5 Initiative, move/explore/city costs, trainer styles | `engine/world.ts` → `canMoveTo`, `reexploreCost`, `cityActionCost` |
 | Explore d6 (nothing / creature / item), rarity star dice | `world.ts` → `explore`, `wildEncounter` |
 | Speed order, Clash, accuracy vs Evasion, crits, type chart, status on minimum roll | `engine/battle.ts` → `resolveRound`, `useMove` |
+| Move readout (what a move will roll, in order) and damage breakdowns | `engine/battle.ts` → `movePreview`, `DamageCalc` |
+| Camping (one creature tended per Initiative left) | `engine/world.ts` → `campNeeds`, `campTargets` |
 | Health → Vitality carry-over, victor restores Health | `battle.ts` → `applyDamage`, `handleKO` |
 | Stamina, Effort, Fatigue d10 check | `battle.ts` → `spendStamina`, `fatigueCheck` |
 | Affinity swaps (Alpha borrows from partner) | `battle.ts` → `doSwap` |
@@ -61,11 +63,23 @@ The docs leave a few points open. The prototype makes these calls:
 - **Wild-at-heart (nature) trainers** get their *first* re-explore each turn free, so re-exploring can't be repeated endlessly.
 - **Encounter scaling** follows Trainer Tier. Wild and roaming-trainer levels sit around 2 × Tier (just under that Tier's Arbiter), and a node's level shifts them by −1 to +2. Tier 1 can't roll Apex wilds. Tiers 3–4 roll one extra rarity die and Tier 5 rolls two. Roaming trainers bring more Prime/Apex creatures and bigger teams at higher Tiers (`world.ts` → `baseWildLevel`, `tierRarityDice`).
 - **Energy** is generated at 2× the base formula (stage-1 Commons make 6), and energy/Prisma nodes on the progression chart grant +2. This leaves room for real playbook trade-offs against move costs of 1–5 (`species.ts` → `ENERGY_SCALE`, `creature.ts` → `NODE_ENERGY`).
+- **Camping** (on wild nodes) ends the turn and spends all remaining Initiative. Each point tends one creature of your choice: it recovers all Vitality and clears Fatigue. KO'd and fully rested creatures can't be picked. The picker highlights the hearts each creature will get back. With 0 Initiative left, camping does nothing, so it's never free end-of-turn healing (`world.ts` → `campTargets`).
+- **Type chart** (Menu → Type Chart, or 🔺 Types / T in battle): a stacked list with one coloured pill per type, what it's strong against on the left and what it's weak to on the right. Matchups mirror (a type resists exactly what it's strong against), so each side is a single row. In battle, your move types are highlighted gold and the foe's blue, and the live matchups are ringed (`cards.ts` → `typeChart`).
+- **Move readouts**: in battle, tapping a move first shows what it will do, step by step in resolution order:
+  - turn order (your Speed with the move's modifier vs the foe's)
+  - Fatigue and Shock checks
+  - the Stamina cost
+  - accuracy (die, the Evasion it must beat, hit chance, crit rule)
+  - damage (e.g. `d6 + Power 3 − foe Armor 1`, the type multiplier and the resulting range)
+  - the status chance and other effects
+
+  You then confirm (Enter) or go back (Esc). As the round plays out, each roll is captioned: the accuracy roll against Evasion, and the damage die with its full sum. The **Fast battles** setting skips the readout and the damage dice and keeps the old quick pace (`battle.ts` → `movePreview`, `DamageCalc`).
 - **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape.
 - **Trainer encounters**: on road and meadow nodes, a 3–4 explore roll may be a wandering trainer instead of a wild creature (prize: d6 coins).
 - **Statuses**, one per type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. A creature holds one status at a time. It lasts 3 rounds, counted only while that creature is in battle, and ends on a KO or when the battle ends. The in-game Menu → Status Effects lists exactly what each does (`moves.ts` → `STATUS_INFO`, `STATUS_FOR`).
 - **Creature Codex** (the docs' creature catalogue): a species is "seen" once it takes the field against you, whether wild, trainer, Arbiter or legendary. Bench creatures that never come out stay unseen. Effigies can only be carved for seen species. Each Codex page lists the wild nodes whose biome pool can produce the species or its earlier stages (weather boosts aside), and its best offering materials.
 - **Offerings**: a material's bonus is its highest `allure` value among the creature's types. Berries give +1 (Moonberry +2) to anyone. Up to 2 offerings go with each totem.
+- **Roster table** (`roster.ts`): one slot per type and dual-type combination (36). Each slot has Common, Prime and Apex three-stage families plus a Legendary. The eight starter lines, Solstara and Thalassor fill their slots. The other 334 are generated **placeholders** (`ph-…` ids, `placeholder: true`), to be swapped for real designs one slot at a time (see docs/05). Placeholder Legendaries aren't on the map yet.
 - **Battle plates** lead with Vitality hearts (what actually decides a KO), with the Health bar below. A 🗿 badge marks wild species you've already recruited.
 - **End-of-turn events** (an addition, not in the design docs): after each turn's weather roll, one event is rolled (`EVENT_CHANCE` = 1 for playtesting; never the same one twice in a row). The pending event is saved, so it survives a reload. Closing its window never declines it: a pulsing pill at the bottom of the map reopens it, and the turn can't end until the player picks a choice (including an explicit decline). There are 14 to start:
 
@@ -110,5 +124,5 @@ To build out this game, please review the core design documents located in the `
 - **Phase 2:** ✅ Combat engine, energy pool generation, and modular custom move execution.
 - **Phase 3:** ✅ Arbiter challenge system, seasonal weather mechanics, and progression tracking.
 - **Phase 4:** 🟡 Content integration. Example creatures, moves and the map are in place; replace them with the final creature database and Master Move List (see `docs/05-data-schemas.md`).
-- **Phase 5:** 🟡 Systems depth. Done: end-of-turn events, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups and trainer minis. Next: balance passes from playtesting (event prices, XP rates, evolution costs).
+- **Phase 5:** 🟡 Systems depth. Done: end-of-turn events, the full 36-slot roster table (placeholders), move readouts with explained rolls, Initiative-based camping, the stacked type chart, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups and trainer minis. Next: balance passes from playtesting (event prices, XP rates, evolution costs).
 - **Next:** creature art to replace the procedural models, multiplayer (local pass-and-play or online), dual battles, and a map editor.

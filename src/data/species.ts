@@ -1,4 +1,5 @@
-import type { Species, ElementType, Rarity, StatKey, Stats, BodyShape, CreatureLook, Biome, Movement, EnergyMap } from './schema';
+import type { Species, ElementType, Rarity, StatKey, Stats, Biome, EnergyMap } from './schema';
+import { PLACEHOLDER_DEFS, type Def } from './roster';
 
 // Example creature database (placeholder content until the official list lands).
 // Base stats are generated from rarity + stage, then nudged by a "bias" so each species feels distinct.
@@ -35,12 +36,6 @@ function energyFor(types: ElementType[], rarity: Rarity, stage: number): EnergyM
   return e;
 }
 
-interface Def {
-  id: string; name: string; types: ElementType[]; rarity: Rarity; stage: 1 | 2 | 3; next?: string;
-  bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest'];
-  biomes: Biome[]; ability: string; affinity: string; sig?: string; move?: Movement; dex: string;
-}
-
 function sp(d: Def): Species {
   const rt = { common: 5, prime: 7, apex: 9, legendary: 12 }[d.rarity] + (d.stage - 1);
   return {
@@ -48,6 +43,7 @@ function sp(d: Def): Species {
     evolvesTo: d.next, base: baseStats(d.rarity, d.stage, d.bias, d.weak), energy: energyFor(d.types, d.rarity, d.stage),
     rt, ability: d.ability, affinity: d.affinity, signature: d.sig, movement: d.move, biomes: d.biomes, dex: d.dex,
     look: { shape: d.shape, primary: d.c[0], secondary: d.c[1], crest: d.crest },
+    ...(d.placeholder ? { placeholder: true } : {}),
   };
 }
 
@@ -60,7 +56,7 @@ const ROC: Biome[] = ['canyon', 'mountain', 'badlands'];
 const STE: Biome[] = ['coast', 'road', 'mountain'];
 const WAT: Biome[] = ['lake', 'river', 'swamp', 'coast'];
 
-export const SPECIES: Species[] = [
+const HANDMADE: Species[] = [
   // ── ASTRAL ───────────────────────────────────────────
   sp({ id: 'twinkit', name: 'Twinkit', types: ['astral'], rarity: 'common', stage: 1, next: 'lumenox', bias: ['speed'], shape: 'quad', c: ['#6b4bd6', '#f6e7ff'], crest: 'ears', biomes: AST, ability: 'starSeeker', affinity: 'slipstream', sig: 'sig-borealis', dex: 'A fox kit whose tail tip glows brighter on clear nights. Packs of them chase falling stars across the tundra.' }),
   sp({ id: 'lumenox', name: 'Lumenox', types: ['astral'], rarity: 'common', stage: 2, next: 'polarion', bias: ['speed', 'focus'], shape: 'quad', c: ['#5a35c9', '#d9c6ff'], crest: 'ears', biomes: AST, ability: 'starSeeker', affinity: 'slipstream', sig: 'sig-borealis', dex: 'Its fur stores starlight by day and releases it in slow ripples after dusk.' }),
@@ -133,6 +129,9 @@ export const SPECIES: Species[] = [
   sp({ id: 'solstara', name: 'Solstara', types: ['astral', 'fire'], rarity: 'legendary', stage: 1, bias: ['focus', 'speed'], shape: 'bird', c: ['#ffcf3a', '#9013fe'], crest: 'halo', biomes: ['mountain'], ability: 'starSeeker', affinity: 'tagStrike', move: 'fly', dex: 'The sun and the aurora in one body. Nests on the highest summit of Margos.' }),
   sp({ id: 'thalassor', name: 'Thalassor', types: ['water', 'steel'], rarity: 'legendary', stage: 1, bias: ['vigor', 'armor'], shape: 'serpent', c: ['#0f3d5c', '#c9d3dc'], crest: 'spikes', biomes: ['coast'], ability: 'luckyCharm', affinity: 'shieldPass', move: 'sail', dex: 'The source of the Iron Coast ore. Its scales shed as metal into the tide.' }),
 ];
+
+/** Hand-made creatures first, then the generated placeholders filling the rest of the roster table (roster.ts). */
+export const SPECIES: Species[] = [...HANDMADE, ...PLACEHOLDER_DEFS.map(sp)];
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 

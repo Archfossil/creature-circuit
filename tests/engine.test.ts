@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
-import { MOVES, MOVE_BY_ID } from '../src/data/moves';
+import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES } from '../src/data/roster';
+import { MOVES, MOVE_BY_ID, CATCH_BREATH } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
 import { createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
-import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, type Side } from '../src/engine/battle';
+import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -267,9 +268,125 @@ describe('energy allocation (playbook UI)', () => {
   });
 });
 
+describe('move readout', () => {
+  it('lists the steps in resolution order, and the damage range covers what actually lands', () => {
+    for (const id of ['cindercub', 'puddlit', 'pebbark', 'zapup']) {
+      const me = createCreature(id, 6);
+      autoPlaybook(me);
+      for (const moveId of me.playbook) {
+        const m = MOVE_BY_ID[moveId];
+        const steps = movePreview(createBattle(side('player', [createCreature(id, 6)]), side('wild', [createCreature('sproutle', 6)]), WEATHER.clear), moveId);
+        const titles = steps.map((x) => x.title);
+        expect(titles[0]).toBe('Turn order');
+        const acc = titles.findIndex((t) => t.startsWith('Accuracy')), dmg = titles.findIndex((t) => t.startsWith('Damage'));
+        expect(acc).toBeGreaterThan(0);
+        if (m.kind !== 'support') {
+          expect(dmg).toBeGreaterThan(acc);
+          const dStep = steps[dmg];
+          expect(dStep.title).toContain(m.kind === 'physical' ? 'Power' : 'Focus');
+          if (m.dmgDie) expect(dStep.title).toContain(`d${m.dmgDie}`);
+          for (let i = 0; i < 40; i++) {
+            // creatures roll their own stats, so preview the exact battle that then resolves
+            const bt = createBattle(side('player', [createCreature(id, 6)]), side('wild', [createCreature('sproutle', 6)]), WEATHER.clear);
+            const range = /Deals (\d+)(?:–(\d+))? damage/.exec(movePreview(bt, moveId).find((x) => x.title.startsWith('Damage'))!.text)!;
+            const lo = Number(range[1]), hi = Number(range[2] ?? range[1]);
+            activeOf(bt.sides[1]).health = 999;
+            bt.sides[1].mods.speed = -20; // act first, so the foe's move can't shift stats before we hit
+            const hit = resolveRound(bt, { kind: 'move', move: moveId }).find((e) => e.t === 'damage' && e.side === 1 && e.calc);
+            if (hit && hit.t === 'damage' && hit.calc) {
+              expect(hit.calc.raw).toBe(Math.max(1, hit.calc.roll + hit.calc.parts.reduce((a2, x) => a2 + x.value, 0)));
+              expect(hit.amount).toBe(hit.calc.total);
+              const base = hit.calc.crit ? hit.amount / 2 : hit.amount;
+              expect(base).toBeGreaterThanOrEqual(lo);
+              expect(base).toBeLessThanOrEqual(hi);
+            }
+          }
+        }
+      }
+    }
+  });
+  it('flags Fatigue checks and the Stamina cost before the roll', () => {
+    const me = createCreature('puddlit', 5);
+    autoPlaybook(me);
+    me.fatigue = 2;
+    const bt = createBattle(side('player', [me]), side('wild', [createCreature('zapup', 5)]), WEATHER.clear);
+    const titles = movePreview(bt, me.playbook[0]).map((x) => x.title);
+    expect(titles[1]).toBe('Fatigue check: d10');
+  });
+});
+
+describe('camping', () => {
+  it('tends one creature per Initiative left, most wounded first', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 5), createCreature('pebbark', 5));
+    const [a, b, c] = s.roster;
+    a.vitality = maxVitality(a) - 1; b.vitality = 1; c.vitality = maxVitality(c); c.fatigue = 2;
+    s.initiative = 2;
+    expect(W.campTargets(s)).toEqual([b, a]);
+    W.endTurn(s, true);
+    expect(b.vitality).toBe(maxVitality(b));
+    expect(a.vitality).toBe(maxVitality(a));
+    expect(c.fatigue).toBe(2); // out of Initiative
+  });
+  it('tends the creatures the trainer picks, skipping KO’d and rested ones, up to the Initiative left', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 5), createCreature('pebbark', 5), createCreature('rivetail', 5));
+    const [a, b, c, d] = s.roster;
+    a.vitality = 1; b.vitality = 1; c.ko = true; c.vitality = 0; // d is fully rested
+    s.initiative = 1;
+    expect(W.campTargets(s, [c.uid, d.uid, b.uid, a.uid])).toEqual([b]);
+    W.endTurn(s, [c.uid, d.uid, b.uid, a.uid]);
+    expect(b.vitality).toBe(maxVitality(b));
+    expect(a.vitality).toBe(1);
+    expect(c.vitality).toBe(0);
+    expect(s.initiative).toBe(5); // new turn
+  });
+  it('heals nobody with no Initiative left', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    const a = s.roster[0];
+    a.vitality = 1; s.initiative = 0;
+    expect(W.campTargets(s)).toEqual([]);
+    W.endTurn(s, true);
+    expect(a.vitality).toBe(1);
+  });
+});
+
+describe('roster table', () => {
+  it('has one slot per type and dual-type combination', () => {
+    expect(TYPE_COMBOS.length).toBe(36);
+    expect(new Set(TYPE_COMBOS.map((c) => [...c].sort().join('+'))).size).toBe(36);
+    expect(ROSTER.length).toBe(36);
+    // each type leads 3 or 4 of its dual pairs
+    for (const t of TYPES) expect([3, 4]).toContain(TYPE_COMBOS.filter((c) => c.length === 2 && c[0] === t).length);
+  });
+  it('every slot has Common, Prime and Apex three-stage families and a Legendary of its types', () => {
+    for (const slot of ROSTER) {
+      for (const r of FAMILY_RARITIES) {
+        const fam = slot[r].map((id) => SPECIES_BY_ID[id]);
+        fam.forEach((sp, i) => {
+          expect(sp, slot[r][i]).toBeDefined();
+          expect(sp.stage).toBe(i + 1);
+          expect(sp.evolvesTo).toBe(fam[i + 1]?.id);
+          if (sp.placeholder) { expect(sp.rarity).toBe(r); expect(sp.types).toEqual(slot.types); }
+        });
+        expect([...fam[0].types].sort()).toEqual([...slot.types].sort()); // stage 1 carries the slot's types
+      }
+      const leg = SPECIES_BY_ID[slot.legendary];
+      expect(leg.rarity).toBe('legendary');
+      expect([...leg.types].sort()).toEqual([...slot.types].sort());
+    }
+  });
+  it('placeholders are flagged, uniquely named and turn up in the wild', () => {
+    const ph = SPECIES.filter((x) => x.placeholder);
+    expect(ph.length).toBe(36 * 3 * 3 - 8 * 3 + 36 - 2);
+    expect(new Set(SPECIES.map((x) => x.name.toLowerCase())).size).toBe(SPECIES.length);
+    for (const sp of ph.filter((x) => x.rarity !== 'legendary' && x.stage === 1)) expect(W.encounterSpots(sp.id).length, sp.id).toBeGreaterThan(0);
+  });
+});
+
 describe('Creature Codex', () => {
-  it('every species lists at least one place to find it', () => {
-    for (const sp of SPECIES) expect(W.encounterSpots(sp.id).length, sp.id).toBeGreaterThan(0);
+  it('every species lists at least one place to find it (placeholder Legendaries have no node yet)', () => {
+    for (const sp of SPECIES.filter((x) => !(x.placeholder && x.rarity === 'legendary'))) expect(W.encounterSpots(sp.id).length, sp.id).toBeGreaterThan(0);
   });
   it('listed spots really can produce the species', () => {
     for (const sp of SPECIES.filter((x) => x.rarity !== 'legendary')) {
@@ -569,7 +686,7 @@ describe('battle XP', () => {
   const totalXp = (c: ReturnType<typeof createCreature>) => c.level * 10 + c.xp;
   const play = (bt: ReturnType<typeof createBattle>, pick: () => Parameters<typeof resolveRound>[1]) => {
     const events: ReturnType<typeof resolveRound> = [];
-    for (let r = 0; r < 60 && !bt.over; r++) {
+    for (let r = 0; r < 200 && !bt.over; r++) {
       events.push(...resolveRound(bt, pick()));
       if (bt.needSwap) events.push(...sendIn(bt, bt.sides[0].team.findIndex((c) => !c.ko)));
     }
@@ -583,10 +700,12 @@ describe('battle XP', () => {
   });
   it('creatures earn XP for a lost battle, including the ones that were knocked out', () => {
     const me = createCreature('puddlit', 1), mate = createCreature('sproutle', 1);
-    const bt = createBattle(side('player', [me, mate]), side('trainer', [createCreature('calderex', 12)]), WEATHER.clear);
+    const boss = createCreature('calderex', 12);
+    const bt = createBattle(side('player', [me, mate]), side('trainer', [boss]), WEATHER.clear);
     bt.participants.push(mate.uid); // both fought
+    boss.vitality = 99; // a lucky streak of Lv 1 rolls (or Clash damage) can't topple it, so the loss is certain
     const before = [totalXp(me), totalXp(mate)];
-    const ev = play(bt, () => chooseAI(bt, 0));
+    const ev = play(bt, () => ({ kind: 'move', move: CATCH_BREATH.id }));
     expect(bt.over).toBe('lose');
     expect(me.ko && mate.ko).toBe(true);
     expect(totalXp(me)).toBeGreaterThan(before[0]);

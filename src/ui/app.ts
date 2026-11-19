@@ -11,7 +11,7 @@ import { newGame, save, load, clearSave, tierOf, season, follower, log } from '.
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import type { Battle, BEvent, Snap } from '../engine/battle';
-import { resolveRound, sendIn, activeOf } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, partsText } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina } from '../engine/creature';
 import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors } from '../data/map';
@@ -198,7 +198,7 @@ export class App {
     if (node.kind === 'wild') {
       const c = W.reexploreCost(s);
       out.push(btn('🔍', 'Explore', () => this.doExplore(), { cost: c, disabled: s.initiative < c }));
-      out.push(btn('⛺', 'Camp', () => this.camp()));
+      out.push(btn('⛺', 'Camp', () => this.camp(), { disabled: s.initiative < 1 || !W.campNeeds(s).length }));
     }
     if (node.kind === 'city') out.push(btn('🏙️', 'City', () => this.citySheet(), { cls: 'hl' }));
     if (node.kind === 'arena') out.push(btn('🏟️', 'Arena', () => this.arbiter(), { cls: 'hl' }));
@@ -383,6 +383,10 @@ export class App {
           h('span', { class: 'sta' }, '💨 ', `${sn.stamina}/${maxStamina(c)}`, sn.fatigue ? h('b', { class: 'fat' }, ` · Fatigue ${sn.fatigue}`) : null))] : []));
     };
     const say = (t: string, tone?: string) => { logLine.textContent = t; logLine.className = `battle-log ${tone ?? ''}`; };
+    // Normal battles slow down and explain every roll; Fast battles (Settings) keep the quick pace
+    const slow = () => !settings().fastBattle;
+    const pace = (ms: number) => (slow() ? Math.round(ms * 1.6) : ms);
+    const whoOn = (side: 0 | 1) => nameOf(b.sides[side].team.find((x) => x.uid === disp[side].uid) ?? activeOf(b.sides[side]));
 
     bv.trainerHop(0); bv.trainerHop(1);
     await Promise.all([bv.setCreature(0, activeOf(b.sides[0]).species), bv.setCreature(1, activeOf(b.sides[1]).species)]);
@@ -397,7 +401,7 @@ export class App {
     const playOne = async (e: BEvent) => {
       {
         switch (e.t) {
-          case 'say': say(e.text, e.tone); await wait(650); break;
+          case 'say': say(e.text, e.tone); await wait(pace(650)); break;
           case 'arena': say(e.text, 'bad'); await bv.arenaFlash(arenaType ? TYPE_COLOR[arenaType] : '#ffffff'); break;
           case 'use': {
             const who = nameOf(b.sides[e.side].team.find((x) => x.uid === disp[e.side].uid)!);
@@ -409,17 +413,32 @@ export class App {
             else await bv.support(e.side, e.type);
             break;
           }
-          case 'roll':
-            await rollDice(e.label, [{ sides: e.die, value: e.value, tone: e.hit ? 'good' : 'bad' }], e.die === 20 ? (e.hit ? 'It stays to fight.' : 'It loses interest…') : `Need ${e.need}+ vs Evasion ${e.need}${e.crit ? ' · CRITICAL!' : ''}`, 350);
+          case 'roll': {
+            if (e.die === 20) { await rollDice(e.label, [{ sides: e.die, value: e.value, tone: e.hit ? 'good' : 'bad' }], e.hit ? 'It stays to fight.' : 'It loses interest…', 350); break; }
+            const mods = e.mods?.length ? ` ${partsText(e.mods)} = ${e.value}` : '';
+            const verdict = e.crit ? 'Critical hit!' : e.hit ? 'Hit!' : 'Miss';
+            await rollDice(slow() ? `${whoOn(e.side)} · ${e.label} d${e.die}` : e.label, [{ sides: e.die, value: e.natural ?? e.value, tone: e.hit ? 'good' : 'bad' }],
+              slow() ? `Rolled ${e.natural ?? e.value}${mods}, needs ${e.need}+ to beat Evasion ${e.need}: ${verdict}${e.crit ? ' Double damage.' : ''}`
+                : `Need ${e.need}+ vs Evasion ${e.need}${e.crit ? ' · CRITICAL!' : ''}`, slow() ? 1100 : 350);
             break;
+          }
           case 'clash':
-            await rollDice('Clash! Speeds tied', [{ sides: e.dice[0], value: e.rolls[0], label: 'You', tone: e.loser === 0 ? 'bad' : 'good' }, { sides: e.dice[1], value: e.rolls[1], label: 'Foe', tone: e.loser === 1 ? 'bad' : 'good' }], e.loser === null ? 'Even clash!' : `${e.loser === 0 ? 'You' : 'Foe'} take ${e.dmg} damage and act second.`, 500);
+            await rollDice('Clash! Speeds tied', [{ sides: e.dice[0], value: e.rolls[0], label: 'You', tone: e.loser === 0 ? 'bad' : 'good' }, { sides: e.dice[1], value: e.rolls[1], label: 'Foe', tone: e.loser === 1 ? 'bad' : 'good' }], e.loser === null ? 'Even clash! Turn order is a coin flip.' : `${e.loser === 0 ? 'You' : 'Foe'} rolled lower: ${e.dmg} damage (the difference) and acts second.`, slow() ? 1300 : 500);
             break;
           case 'tired':
-            await rollDice('Fatigue check', [{ sides: 10, value: e.value, tone: e.fail ? 'bad' : 'good' }], e.fail ? `Rolled ≤ ${e.fatigue}: catching breath!` : `Beat Fatigue ${e.fatigue}.`, 300);
+            await rollDice('Fatigue check', [{ sides: 10, value: e.value, tone: e.fail ? 'bad' : 'good' }], e.fail ? `Rolled ≤ ${e.fatigue}: catching breath!` : `Beat Fatigue ${e.fatigue}.`, slow() ? 1000 : 300);
             disp[e.side] = e.snap; renderPlate(e.side);
             break;
           case 'damage': {
+            if (slow() && e.calc) {
+              const k = e.calc;
+              const attacker = whoOn(e.side === 0 ? 1 : 0);
+              const steps = `${k.die ? k.roll : ''} ${partsText(k.parts)}`.trim().replace(/^\+ /, '');
+              const math = `${steps} = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''}`;
+              const caption = `${math} → ${k.total} damage`;
+              if (k.die) await rollDice(`${attacker} · Damage d${k.die}`, [{ sides: k.die, value: k.roll, tone: k.mult > 1 || k.crit ? 'good' : k.mult < 1 ? 'bad' : undefined }], caption, 1300);
+              else { say(`${attacker}: ${caption}`); await wait(900); }
+            }
             disp[e.side] = e.snap;
             const p = bv.screenOf(e.side);
             (e.crit || e.eff >= 2 ? sfx.crit : sfx.hit)();
@@ -466,13 +485,34 @@ export class App {
         const canRun = ctx.kind === 'wild' || ctx.kind === 'legendary';
         const foeTypes = speciesOf(activeOf(b.sides[1])).types;
         controls.replaceChildren(
-          h('div', { class: 'move-grid', role: 'group', 'aria-label': 'Moves (keys 1–4)' }, me.playbook.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: String(i + 1), vs: foeTypes, onClick: () => act({ kind: 'move', move: id }) }))),
+          h('div', { class: 'move-grid', role: 'group', 'aria-label': 'Moves (keys 1–4)' }, me.playbook.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: String(i + 1), vs: foeTypes, onClick: () => choose(id) }))),
           h('div', { class: 'row gap-s sub-actions' },
-            h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
+            h('button', { class: 'btn ghost sm', onclick: () => choose(CATCH_BREATH.id) }, '😮‍💨 Catch Breath'),
             h('button', { class: 'btn ghost sm', disabled: !canSwap, title: canSwap ? '' : 'Swapping is allowed from round 2', onclick: () => swapPicker() }, '🔁 Swap'),
             canRun ? h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'run' }) }, '🏃 Run') : null,
             h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
             h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card')));
+      };
+      // Picking a move: Fast battles act at once; otherwise show the step-by-step readout first
+      let readoutFor: string | null = null;
+      const choose = (id: string) => (slow() ? showReadout(id) : act({ kind: 'move', move: id }));
+      const showReadout = (id: string) => {
+        readoutFor = id;
+        const m = MOVE_BY_ID[id] ?? CATCH_BREATH;
+        const me = activeOf(b.sides[0]);
+        say(`${nameOf(me)} · ${m.name}: here’s what will happen.`);
+        controls.replaceChildren(h('div', { class: 'readout' },
+          h('div', { class: 'readout-head' },
+            m.type ? typeIconImg(m.type, 18) : null, h('b', null, m.name),
+            h('span', { class: 'chip' }, m.kind === 'physical' ? 'Physical · Power vs Armor' : m.kind === 'elemental' ? 'Elemental · Focus vs Ward' : 'Support'),
+            h('small', { class: 'muted' }, m.text)),
+          h('ol', { class: 'readout-steps' }, movePreview(b, id).map((st) => h('li', { class: st.tone ?? '' },
+            h('span', { class: 'ro-ico' }, st.icon), h('div', null, h('b', null, st.title), h('p', null, st.text))))),
+          h('p', { class: 'small muted' }, 'Then the foe acts (its move stays hidden until the round plays out). The faster creature goes first.'),
+          h('div', { class: 'row gap-s end' },
+            h('button', { class: 'btn ghost', onclick: () => { readoutFor = null; showControls(); } }, '← Back (Esc)'),
+            h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name} (Enter)`))));
+        (controls.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
       };
       const showTypes = () => {
         const me = activeOf(b.sides[0]), foe = activeOf(b.sides[1]);
@@ -480,11 +520,17 @@ export class App {
         typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe) });
       };
       const onKey = (ev: KeyboardEvent) => {
-        if (document.querySelector('.sheet-wrap') || !controls.querySelector('.move-grid')) return;
+        if (document.querySelector('.sheet-wrap')) return;
+        if (readoutFor && controls.querySelector('.readout')) {
+          if (ev.key === 'Escape' || ev.key === 'Backspace') { readoutFor = null; showControls(); }
+          else if (ev.key === 'Enter') { ev.preventDefault(); const id = readoutFor; readoutFor = null; act({ kind: 'move', move: id }); }
+          return;
+        }
+        if (!controls.querySelector('.move-grid')) return;
         const me = activeOf(b.sides[0]);
         const n = Number(ev.key);
-        if (n >= 1 && n <= me.playbook.length) act({ kind: 'move', move: me.playbook[n - 1] });
-        else if (ev.key.toLowerCase() === 'b') act({ kind: 'move', move: CATCH_BREATH.id });
+        if (n >= 1 && n <= me.playbook.length) choose(me.playbook[n - 1]);
+        else if (ev.key.toLowerCase() === 'b') choose(CATCH_BREATH.id);
         else if (ev.key.toLowerCase() === 'r' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) act({ kind: 'run' });
         else if (ev.key.toLowerCase() === 't') showTypes();
         else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[0].team.filter((c) => !c.ko).length > 1) swapPicker();
@@ -866,11 +912,49 @@ export class App {
 
   async camp() {
     if (this.eventBlocks()) return;
-    const ok = await confirmSheet('Make camp?', 'Camping ends your turn. Active creatures recover all Vitality and shake off Fatigue (KO\'d creatures still need a stable).', 'Camp & end turn');
-    if (ok) this.endTurn(true, true);
+    const s = this.s;
+    const needs = W.campNeeds(s);
+    if (s.initiative < 1 || !needs.length) { toast(s.initiative < 1 ? 'Camping needs Initiative: each point left tends one creature.' : 'No one needs tending.', 'info', 3000); return; }
+    const limit = s.initiative;
+    // start with the most wounded picked; the trainer can change it
+    const picked = new Set(W.campTargets(s).map((c) => c.uid));
+    const list = h('div', { class: 'camp-list' });
+    const count = h('b');
+    const go = h('button', { class: 'btn primary', onclick: () => { close(); this.endTurn([...picked], true); } }, 'Camp & end turn') as HTMLButtonElement;
+    const render = () => {
+      count.textContent = `${picked.size}/${limit}`;
+      go.disabled = picked.size === 0;
+      list.replaceChildren(...s.roster.map((c) => {
+        const mv = maxVitality(c), canTend = needs.includes(c), on = picked.has(c.uid);
+        const full = picked.size >= limit && !on;
+        const why = c.ko ? 'KO’d: needs a stable' : !canTend ? 'Fully rested' : full ? 'Out of Initiative' : null;
+        // hearts: kept (on), recovered by tending (gain), still missing (off)
+        const hearts = h('span', { class: 'hearts' }, Array.from({ length: mv }, (_, i) =>
+          h('span', { class: `heart ${i < c.vitality ? 'on' : on ? 'gain' : ''}` }, '♥')));
+        return h('button', {
+          class: `camp-mon ${on ? 'on' : ''} ${canTend ? '' : 'na'}`, disabled: !canTend || full, 'aria-pressed': String(on),
+          onclick: () => { if (on) picked.delete(c.uid); else picked.add(c.uid); render(); },
+        },
+          h('span', { class: 'camp-check' }, on ? '✓' : ''),
+          h('img', { src: portrait(c.species), alt: '' }),
+          h('div', { class: 'camp-info' },
+            h('div', { class: 'row gap-s' }, h('b', null, nameOf(c)), h('small', { class: 'muted' }, `Lv ${c.level}`)),
+            h('div', { class: 'row gap-s' }, hearts,
+              h('small', { class: on ? 'gain-txt' : 'muted' }, c.ko ? '' : on ? `+${mv - c.vitality} ♥` : `${c.vitality}/${mv}`),
+              c.fatigue ? h('span', { class: `chip ${on ? 'good' : 'bad'}` }, on ? `😮‍💨 Fatigue ${c.fatigue} → 0` : `😮‍💨 Fatigue ${c.fatigue}`) : null),
+            why ? h('small', { class: 'muted' }, why) : null));
+      }));
+    };
+    render();
+    const close = openSheet('Make camp', h('div', null,
+      h('p', { class: 'small' }, `Camping ends your turn and uses all ${limit} Initiative you have left. Each point tends one creature: it recovers all its Vitality and shakes off Fatigue.`),
+      h('p', { class: 'small muted' }, 'Highlighted hearts are what tending restores. KO’d creatures need a stable.'),
+      h('div', { class: 'row gap-s' }, h('span', null, 'Tending '), count),
+      list,
+      h('div', { class: 'row gap end' }, h('button', { class: 'btn ghost', onclick: () => close() }, 'Cancel'), go)));
   }
 
-  async endTurn(camping = false, skipConfirm = false) {
+  async endTurn(camping: boolean | string[] = false, skipConfirm = false) {
     const s = this.s;
     if (this.busy) return;
     if (this.eventBlocks()) return;
@@ -1038,15 +1122,16 @@ export class App {
     const body = h('div');
     const render = () => {
       const st = settings();
-      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel', label: string, text: string) =>
+      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel' | 'fastBattle', label: string, text: string) =>
         h('label', { class: 'toggle' }, h('div', null, h('b', null, label), h('small', null, text)),
           h('input', { type: 'checkbox', role: 'switch', checked: st[k], onchange: (e: Event) => { setSetting(k, (e.target as HTMLInputElement).checked); if (k === 'sound' && st[k] === false) sfx.tap(); render(); } }));
       body.replaceChildren(
         toggle('sound', 'Sound effects', 'Dice, hits and fanfares (synthesized, no downloads).'),
         toggle('fastDice', 'Fast dice', 'Shorter dice-roll animations for quicker turns.'),
+        toggle('fastBattle', 'Fast battles', 'Pick a move and it resolves at once, with no move readout, no damage dice and short pauses. Off: each move shows what it will roll first, and every roll is explained as it happens.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),
         toggle('doubleTapTravel', 'Double-tap to travel', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button.'),
-        h('p', { class: 'small muted' }, 'Keyboard: 1–4 use moves, B catch breath, S swap, R run, T type chart, Esc closes panels.'));
+        h('p', { class: 'small muted' }, 'Keyboard: 1–4 pick a move (Enter to confirm its readout, Esc to go back), B catch breath, S swap, R run, T type chart, Esc closes panels.'));
     };
     render();
     openSheet('Settings', body);
@@ -1083,7 +1168,7 @@ export class App {
       return h('div', { class: 'codex-where' },
         h('b', null, label, h('span', { class: 'muted small' }, ` · Stage ${member.stage}`)),
         spots.length ? h('div', { class: 'chips' }, spots.map(nodeChip))
-          : h('p', { class: 'small muted' }, member.id === id && line.length > 1 ? 'Not found in the wild at this stage. Evolve it from an earlier stage.' : 'Not known to roam the wild.'));
+          : h('p', { class: 'small muted' }, member.id === id && line.length > 1 ? 'Not found in the wild at this stage. Evolve it from an earlier stage.' : member.placeholder && member.rarity === 'legendary' ? 'Placeholder Legendary: not placed on the map yet.' : 'Not known to roam the wild.'));
     });
     const offers = W.bestOfferings(id);
     const biomesText = (mid: string) => materialBiomes(mid).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ');
@@ -1142,6 +1227,8 @@ export class App {
         h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),
         h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict a status on a minimum damage roll (see Menu → Status Effects, or tap a status tag in battle). In battle, each Elemental move shows how it lands on the current opponent (2× Super effective, ½ Resisted, No effect…), and 🔺 Types (or T) opens the chart for the matchup. Damage drains the Health bar, then a Vitality heart; out of hearts means KO.'),
         h('li', null, h('b', null, 'Stamina & Fatigue: '), 'each move costs Effort. At 0 Stamina you gain Fatigue — fatigued creatures roll d10 and may lose their turn.'),
+        h('li', null, h('b', null, 'Move readouts: '), 'tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die vs the foe’s Evasion, then the damage die plus Power (physical) or Focus (elemental) minus the foe’s Armor or Ward. Confirm to use it. Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.'),
+        h('li', null, h('b', null, 'Camping: '), 'on a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue. Camp early to tend more of your team.'),
         h('li', null, h('b', null, 'Playbook: '), 'up to 4 moves. Energy is a requirement, not spent per use: the playbook editor crosses out the energy each move takes and counts what is left.'),
         h('li', null, h('b', null, 'Recruit: '), 'defeat a wild creature, then offer a totem plus up to 2 offerings. Roll 2d6 + bonuses vs its Recruitment Threshold. Each material appeals to certain types (shown in your Bag).'),
         h('li', null, h('b', null, 'Creature Codex: '), 'every creature you meet in the wild or in a trainer\u2019s team is recorded. Its page lists the nodes to explore for it (or its earlier stages) and its favorite offerings. You can carve an Effigy of any creature in your Codex.'),

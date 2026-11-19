@@ -42,6 +42,8 @@ During combat if a Creature has Fatigue, before they can roll an attack they mus
 
 Fatigue is removed when Vitality is restored. At rest in Cities or by camping.
 
+> **Prototype note: camping.** Camping ends the turn and spends all remaining Initiative. Each point tends one creature the trainer picks: it recovers all Vitality and clears Fatigue. KO'd and fully rested creatures can't be picked, and with 0 Initiative left camping does nothing.
+
 ## Energy
 
 This game has a Master Move List of attacks creatures can learn. To power these attacks, a Creature generates Energy. A creature can have a playbook of up to 4 attacks at a time. To add a move to the playbook, the creature must generate the correct amount and types of energy for the move. For example if "Fire Claw" requires two fire energy and one neutral energy (neutral energy is not a type generated, but rather neutral slots can be filled by any type of energy) then the creature "spends" 2 fire and 1 of any energy to commit Fire Claw to their playbook. This energy is not spent each time the attack is used, it is only slotted to determine what attacks are in the playbook. When this creature learns another move, such as "Meteor" which costs 4 Charm energy and 1 Fire energy, they cannot use the energy committed to "Fire Claw" without first removing that attack from their playbook.

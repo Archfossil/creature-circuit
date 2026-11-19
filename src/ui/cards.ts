@@ -272,23 +272,46 @@ export function statusGuide() {
 }
 
 /** The 8×8 type chart. `attack` rows and `defend` columns are highlighted (e.g. your moves vs the opponent). */
+/** Text colour that stays readable on a type's colour (dark on yellow/pink/teal, light on the rest). */
+function inkOn(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.62 ? '#2b2a33' : '#ffffff';
+}
+
+/**
+ * Stacked type chart: one row per type, its colour pill in the middle. Left: what it is strong
+ * against (and, since matchups mirror, resists). Right: what it is weak to (and is resisted by).
+ * In battle, `attack` (your move types) and `defend` (the foe's types) are highlighted.
+ */
 export function typeChart(hl: { attack?: ElementType[]; defend?: ElementType[] } = {}) {
   const atk = new Set(hl.attack ?? []), def = new Set(hl.defend ?? []);
-  return h('div', { class: 'type-chart' },
-    h('table', null,
-      h('thead', null, h('tr', null, h('th', null, 'ATK ↓ / DEF →'), TYPES.map((t) => h('th', { class: def.has(t) ? 'hl' : '' }, typeIconImg(t, 22))))),
-      h('tbody', null, TYPES.map((a) => h('tr', { class: atk.has(a) ? 'hl' : '' }, h('th', { class: atk.has(a) ? 'hl' : '' }, typeIconImg(a, 22)), TYPES.map((d) => {
-        const m = effectiveness(a, [d]);
-        const focus = atk.has(a) && def.has(d);
-        return h('td', { class: `${m > 1 ? 'x2' : m < 1 ? 'x05' : ''} ${def.has(d) ? 'hl-col' : ''} ${focus ? 'focus' : ''}` }, m > 1 ? '2×' : m < 1 ? '½' : '');
-      }))))));
+  const weakTo = (t: ElementType) => TYPES.filter((x) => effectiveness(x, [t]) > 1);
+  const strongVs = (t: ElementType) => TYPES.filter((x) => effectiveness(t, [x]) > 1);
+  const icon = (t: ElementType, ring: boolean) =>
+    h('span', { class: `tc-ico ${ring ? 'ring' : ''}`, title: TYPE_LABEL[t], style: `--tc:${TYPE_COLOR[t]}` }, typeIconImg(t, 26));
+  return h('div', { class: 'type-stack' },
+    h('div', { class: 'tc-legend' },
+      h('span', { class: 'tc-side left' }, h('b', null, '⚔️ Strong against'), h('small', null, 'deals 2× · and resists them')),
+      h('span'),
+      h('span', { class: 'tc-side right' }, h('b', null, '🛡️ Weak to'), h('small', null, 'takes 2× · and is resisted by'))),
+    TYPES.map((t) => {
+      const row = atk.has(t) ? 'hl-atk' : def.has(t) ? 'hl-def' : '';
+      return h('div', { class: `tc-row ${row}` },
+        // left: when this type attacks, the foe types it hits hard are ringed in battle
+        h('div', { class: 'tc-list left' }, strongVs(t).map((x) => icon(x, atk.has(t) && def.has(x)))),
+        h('div', { class: 'tc-pill', style: `--tc:${TYPE_COLOR[t]};--pill-ink:${inkOn(TYPE_COLOR[t])}` },
+          h('b', null, TYPE_LABEL[t].toUpperCase()), typeIconImg(t, 22),
+          atk.has(t) ? h('small', { class: 'tc-tag' }, 'your move') : def.has(t) ? h('small', { class: 'tc-tag' }, 'foe') : null),
+        h('div', { class: 'tc-list right' }, weakTo(t).map((x) => icon(x, def.has(t) && atk.has(x)))));
+    }));
 }
 
 /** Type chart sheet. In battle, pass your moves' types and the opponent's types to highlight the matchup. */
 export function typeChartSheet(hl: { attack?: ElementType[]; defend?: ElementType[]; foeName?: string } = {}) {
   const inBattle = !!hl.defend?.length;
   return openSheet('Type Chart', h('div', null,
-    inBattle ? h('p', { class: 'small' }, 'Highlighted: your moves\u2019 types (rows) against ', h('b', null, hl.foeName ?? 'the opponent'), ' (', hl.defend!.map((t) => typeChip(t, true)), ').') : null,
+    inBattle ? h('p', { class: 'small' }, 'Gold rows are your moves\u2019 types; blue rows are ', h('b', null, hl.foeName ?? 'the opponent'), '\u2019s types (', hl.defend!.map((t) => typeChip(t, true)), '). Ringed icons are the matchups in this fight.') : null,
     typeChart(hl),
-    h('p', { class: 'small' }, 'Dual types multiply: 4× when both are weak, immune when both resist. Only Elemental attacks use the chart; Physical attacks ignore it.')), { wide: true });
+    h('p', { class: 'small' }, 'Matchups mirror: a type resists (takes ½ from) everything it is strong against. Dual types multiply: 4× when both types are weak, immune when both resist. Only Elemental attacks use the chart; Physical attacks ignore it.')), { wide: true });
 }

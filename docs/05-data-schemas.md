@@ -50,6 +50,29 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `signature` / `movement` | Unlocked through progression-chart nodes. Movement abilities are `fly`, `sail`, `tunnel`, `portal` and `wayfind`. |
 | `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
+### The roster table (`roster.ts`)
+The roster has one **slot** for each type combination: 8 single types plus 28 dual pairs, 36 in all. Each slot holds:
+- a **Common**, a **Prime** and an **Apex** family, each with three stages (stage 1 → 2 → 3), and
+- one **Legendary**.
+
+That makes 324 family creatures and 36 Legendaries. `ROSTER` lists the species ids in every slot. `TYPE_COMBOS` fixes each dual pair's leading type: it decides where the family spawns (`types[0]`), and every type leads 3–4 of its 7 pairs.
+
+Slots already filled by hand-made creatures are mapped in `HANDMADE_SLOTS` (the eight Common starter lines) and `HANDMADE_LEGENDARIES` (Solstara, Thalassor). Every other slot gets a generated **placeholder**:
+- **Ids:** `ph-<type>-<type|mono>-<rarity>-<stage>`, or `ph-…-legendary`.
+- **Flag:** `placeholder: true`.
+- **Names:** stitched from type syllables (e.g. Pyrotideling).
+- **Stats, energy, looks, biomes, ability and affinity:** derived from the types and rarity.
+
+Placeholder families appear in the wild like any other species. Placeholder Legendaries have no map node yet, so the Codex says they aren't placed.
+
+**Replacing a placeholder:**
+1. Add the real species to the hand-made list in `species.ts`.
+2. Add its slot to `HANDMADE_SLOTS` / `HANDMADE_LEGENDARIES`.
+
+The placeholder then stops being generated. The roster tests check that every slot has three chained stages of the right types and rarity.
+
+The older Prime/Apex species and the Emberfish line, which have one or two stages, still exist. They sit outside the table as extras.
+
 ## Creature instance (save data)
 
 Each creature the player owns is saved as an instance of a species:

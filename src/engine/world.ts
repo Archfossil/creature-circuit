@@ -510,11 +510,31 @@ export function endgameBattle(s: GameState): Battle {
 // ── Turn flow ───────────────────────────────────────────────────
 export interface TurnReport { weatherRoll: number; seasonChanged: boolean; left: string[]; ended?: 'endgame' | 'over' }
 
-export function endTurn(s: GameState, camping = false): TurnReport {
+/** Creatures that would benefit from camping, most in need first (missing Vitality, then Fatigue). KO'd ones need a stable. */
+export function campNeeds(s: GameState): CreatureInst[] {
+  return s.roster.filter((c) => !c.ko && (c.vitality < maxVitality(c) || c.fatigue > 0))
+    .sort((a, b) => (maxVitality(b) - b.vitality) - (maxVitality(a) - a.vitality) || b.fatigue - a.fatigue);
+}
+
+/**
+ * Who camping tends: one creature per Initiative left, so it is never free. `chosen` (creature
+ * uids) is the trainer's pick; KO'd and fully rested creatures are skipped, and extras beyond the
+ * Initiative left are dropped. Without a pick, the most wounded are tended first.
+ */
+export function campTargets(s: GameState, chosen?: string[]): CreatureInst[] {
+  const needs = campNeeds(s);
+  const pool = chosen ? chosen.map((uid) => needs.find((c) => c.uid === uid)).filter((c): c is CreatureInst => !!c) : needs;
+  return [...new Set(pool)].slice(0, Math.max(0, s.initiative));
+}
+
+/** End the turn. `camping`: true tends the most wounded, or pass the uids the trainer chose to tend. */
+export function endTurn(s: GameState, camping: boolean | string[] = false): TurnReport {
   const report: TurnReport = { weatherRoll: 0, seasonChanged: false, left: [] };
   if (camping) {
-    for (const c of s.roster) if (!c.ko) { c.vitality = maxVitality(c); c.fatigue = 0; }
-    log(s, 'You made camp. Your team recovered Vitality and shook off Fatigue.');
+    const tended = campTargets(s, Array.isArray(camping) ? camping : undefined);
+    for (const c of tended) { c.vitality = maxVitality(c); c.fatigue = 0; }
+    s.initiative = 0;
+    log(s, tended.length ? `You made camp. ${tended.map(nameOf).join(', ')} recovered Vitality and shook off Fatigue.` : 'You made camp, but no one needed tending.');
   }
   // follower bonds
   const f = follower(s);

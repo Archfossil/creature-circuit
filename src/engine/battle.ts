@@ -42,8 +42,8 @@ export type BEvent =
   | { t: 'say'; text: string; tone?: 'good' | 'bad' | 'info' }
   | { t: 'clash'; dice: [number, number]; rolls: [number, number]; loser: 0 | 1 | null; dmg: number }
   | { t: 'use'; side: 0 | 1; name: string; move: string; type?: ElementType; kind: Move['kind'] | 'affinity' }
-  | { t: 'roll'; side: 0 | 1; die: number; value: number; need: number; hit: boolean; crit: boolean; label: string }
-  | { t: 'damage'; side: 0 | 1; amount: number; eff: number; crit: boolean; snap: Snap }
+  | { t: 'roll'; side: 0 | 1; die: number; value: number; need: number; hit: boolean; crit: boolean; label: string; natural?: number; mods?: Part[] }
+  | { t: 'damage'; side: 0 | 1; amount: number; eff: number; crit: boolean; snap: Snap; calc?: DamageCalc }
   | { t: 'heal'; side: 0 | 1; amount: number; snap: Snap }
   | { t: 'status'; side: 0 | 1; status: StatusId; snap: Snap }
   | { t: 'buff'; side: 0 | 1; text: string }
@@ -53,6 +53,11 @@ export type BEvent =
   | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string }
   | { t: 'arena'; text: string }
   | { t: 'end'; result: NonNullable<Battle['over']> };
+
+/** One labelled number in a roll or damage formula, e.g. { label: 'Power', value: 3 }. */
+export interface Part { label: string; value: number }
+/** How a move's damage was worked out, so the battle UI can show the formula. */
+export interface DamageCalc { die: number; roll: number; parts: Part[]; raw: number; mult: number; crit: boolean; total: number }
 
 export function snap(b: Battle, c: CreatureInst): Snap {
   return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id };
@@ -276,14 +281,13 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   if (m.accuracy !== 'sure') {
     let die = m.accuracy;
     if (b.status[c.uid]?.id === 'daze') die = Math.max(4, die - 2);
-    let v = roll(die);
-    const natural = v;
-    if (b.status[c.uid]?.id === 'beguile') v -= 1;
-    if (si === 0 && b.arena?.trick === 'darkness') v -= b.arena.tier >= 4 ? 2 : 1;
+    const natural = roll(die);
+    const mods = accuracyMods(b, si);
+    const v = natural + mods.reduce((a, p) => a + p.value, 0);
     const need = eff(b, fi, 'evasion');
     hit = v >= need;
     crit = hit && m.kind === 'physical' && natural === die;
-    ev.push({ t: 'roll', side: si, die, value: v, need, hit, crit, label: 'Accuracy' });
+    ev.push({ t: 'roll', side: si, die, value: v, need, hit, crit, label: 'Accuracy', natural, mods });
   }
   if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); return; }
 
@@ -294,19 +298,13 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
 
   // damage
   const dmgRoll = m.dmgDie > 0 ? roll(m.dmgDie) : 0;
-  let raw = dmgRoll + m.dmgFlat;
-  let mult = 1;
-  if (m.kind === 'physical') raw += eff(b, si, 'power') - eff(b, fi, 'armor');
-  else {
-    raw += eff(b, si, 'focus') - eff(b, fi, 'ward') + (m.type ? b.weather.typeBoost?.[m.type] ?? 0 : 0);
-    mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
-  }
-  if (c.capstone) raw += Math.floor(c.loyalty / 5);
-  raw = Math.max(1, raw);
+  const parts = damageParts(b, si, m);
+  const mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
+  const raw = Math.max(1, dmgRoll + parts.reduce((a, p) => a + p.value, 0));
   let dmg = mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult));
   if (crit) dmg *= 2;
   applyDamage(foe, dmg);
-  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe) });
+  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe), calc: { die: m.dmgDie, roll: dmgRoll, parts, raw, mult, crit, total: dmg } });
   if (mult >= 2) ev.push({ t: 'say', text: mult >= 4 ? 'Devastatingly effective!' : 'Super effective!', tone: 'good' });
   else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
   else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
@@ -319,6 +317,124 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   }
   if (m.effect) applyEffects(b, si, m, ev);
   if (foe.ko) handleKO(b, fi, ev);
+}
+
+/** Modifiers to an accuracy roll (Beguile, the Darkness arena). */
+function accuracyMods(b: Battle, si: 0 | 1): Part[] {
+  const c = activeOf(b.sides[si]);
+  const out: Part[] = [];
+  if (b.status[c.uid]?.id === 'beguile') out.push({ label: 'Beguile', value: -1 });
+  if (si === 0 && b.arena?.trick === 'darkness') out.push({ label: 'Darkness', value: b.arena.tier >= 4 ? -2 : -1 });
+  return out;
+}
+
+/** Everything added to a move's damage die: the move's flat bonus, attacker stat, defender stat, weather, capstone. */
+function damageParts(b: Battle, si: 0 | 1, m: Move): Part[] {
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const c = activeOf(b.sides[si]);
+  const parts: Part[] = [];
+  if (m.dmgFlat) parts.push({ label: m.name, value: m.dmgFlat });
+  if (m.kind === 'physical') {
+    parts.push({ label: 'Power', value: eff(b, si, 'power') }, { label: 'foe Armor', value: -eff(b, fi, 'armor') });
+  } else {
+    parts.push({ label: 'Focus', value: eff(b, si, 'focus') }, { label: 'foe Ward', value: -eff(b, fi, 'ward') });
+    const wb = m.type ? b.weather.typeBoost?.[m.type] ?? 0 : 0;
+    if (wb) parts.push({ label: b.weather.name, value: wb });
+  }
+  const cap = c.capstone ? Math.floor(c.loyalty / 5) : 0;
+  if (cap) parts.push({ label: 'Capstone', value: cap });
+  return parts;
+}
+
+/** "+ Power 3 − foe Armor 1" style text for a list of parts. */
+export function partsText(parts: Part[]): string {
+  return parts.map((p) => `${p.value < 0 ? '−' : '+'} ${p.label} ${Math.abs(p.value)}`).join(' ');
+}
+
+export interface PreviewStep { icon: string; title: string; text: string; tone?: 'good' | 'bad' | 'info' }
+
+/**
+ * What using a move this round will do, step by step in resolution order, from side `si`'s view:
+ * turn order, Fatigue/Shock checks, Stamina, accuracy, damage and effects, using the current
+ * stats and the foe on the field. Pure: nothing is rolled or changed.
+ */
+export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewStep[] {
+  const m = MOVE_BY_ID[moveId] ?? CATCH_BREATH;
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const c = activeOf(b.sides[si]), foe = activeOf(b.sides[fi]);
+  const steps: PreviewStep[] = [];
+  const sgn = (n: number) => (n < 0 ? `−${-n}` : `+${n}`);
+  const foeName = nameOf(foe);
+
+  const base = eff(b, si, 'speed');
+  const mySpeed = base + m.speed, foeSpeed = eff(b, fi, 'speed');
+  steps.push({
+    icon: '⚡', title: 'Turn order', tone: mySpeed > foeSpeed ? 'good' : mySpeed < foeSpeed ? 'bad' : 'info',
+    text: `Your Speed ${base}${m.speed ? ` ${sgn(m.speed)} (${m.name})` : ''} = ${mySpeed}, vs ${foeName}’s ${foeSpeed} before its own move’s modifier. ` +
+      (mySpeed > foeSpeed ? 'You likely act first.' : mySpeed < foeSpeed ? 'You likely act second.'
+        : `Likely a tie, which means a Clash: you roll a d${clashDie(c.level)} and the foe a d${clashDie(foe.level)}. The low roller takes the difference as damage and acts second.`),
+  });
+
+  if (m.id === CATCH_BREATH.id) {
+    steps.push({ icon: '😮‍💨', title: 'Catch Breath', text: `No attack and no dice. Stamina refills to ${maxStamina(c)}. Fatigue stays until you camp or rest.`, tone: 'good' });
+    return steps;
+  }
+  if (c.fatigue > 0) steps.push({
+    icon: '🥵', title: 'Fatigue check: d10', tone: 'bad',
+    text: `Fatigue ${c.fatigue}: roll a d10. On ${c.fatigue === 1 ? 'a 1' : `1–${c.fatigue}`} you lose the turn catching your breath (${Math.min(100, c.fatigue * 10)}% chance).`,
+  });
+  if (b.status[c.uid]?.id === 'shock') steps.push({ icon: STATUS_INFO.shock.icon, title: 'Shock check: d6', tone: 'bad', text: 'Roll a d6. On 1–2 you are locked up and lose the turn (33% chance).' });
+
+  const after = c.stamina - m.effort;
+  if (m.effort > 0) steps.push({
+    icon: '💨', title: `Stamina −${m.effort}`, tone: after <= 0 ? 'bad' : undefined,
+    text: `Stamina ${c.stamina} → ${Math.max(0, after)}.${after <= 0 ? ` That empties it: Fatigue rises to ${c.fatigue + 1} and Stamina refills.` : ''}`,
+  });
+
+  if (m.accuracy === 'sure') steps.push({ icon: '🎯', title: 'Accuracy: sure hit', text: 'No roll. This move always lands.', tone: 'good' });
+  else {
+    const die = b.status[c.uid]?.id === 'daze' ? Math.max(4, m.accuracy - 2) : m.accuracy;
+    const mods = accuracyMods(b, si), modSum = mods.reduce((a, p) => a + p.value, 0);
+    const need = eff(b, fi, 'evasion');
+    const hits = Array.from({ length: die }, (_, i) => i + 1).filter((v) => v + modSum >= need).length;
+    const pct = Math.round((hits / die) * 100);
+    steps.push({
+      icon: '🎯', title: `Accuracy: d${die}${mods.length ? ` ${partsText(mods)}` : ''}`, tone: pct >= 67 ? 'good' : pct < 40 ? 'bad' : 'info',
+      text: `${die !== m.accuracy ? `Daze shrinks the die from d${m.accuracy}. ` : ''}Need ${need}+ to beat ${foeName}’s Evasion ${need}: ${pct}% to hit.` +
+        (m.kind === 'physical' ? ` A natural ${die} is a critical hit: double damage.` : ''),
+    });
+  }
+
+  if (m.kind !== 'support' || m.dmgDie > 0) {
+    const parts = damageParts(b, si, m);
+    const add = parts.reduce((a, p) => a + p.value, 0);
+    const mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
+    const dmgFor = (r: number) => (mult === 0 ? 0 : Math.max(1, Math.floor(Math.max(1, r + add) * mult)));
+    const lo = dmgFor(m.dmgDie ? 1 : 0), hi = dmgFor(m.dmgDie);
+    const multText = mult === 1 ? '' : ` × ${mult} (${mult === 0 ? 'immune' : mult > 1 ? 'super effective' : 'resisted'})`;
+    const range = (a: number, z: number) => (a === z ? `${a}` : `${a}–${z}`);
+    const stat = m.kind === 'physical' ? 'add your Power and subtract the foe’s Armor (physical move)' : 'add your Focus and subtract the foe’s Ward (elemental move)';
+    steps.push({
+      icon: '💥', title: `Damage: ${[m.dmgDie ? `d${m.dmgDie}` : '', partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
+      tone: mult > 1 ? 'good' : mult < 1 ? 'bad' : undefined,
+      text: `${m.dmgDie ? `Roll a d${m.dmgDie}, then ` : ''}${stat}${multText ? `, then apply the type chart${multText}` : ''}. ` +
+        `Deals ${range(lo, hi)} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)} on a crit` : ''}. ${foeName} has ${foe.health} Health left in its current heart.`,
+    });
+    if (m.kind === 'elemental' && m.status && m.dmgDie > 0) {
+      const st = STATUS_INFO[m.status];
+      steps.push({ icon: st.icon, title: `Status chance: ${st.name}`, text: `If the damage die shows a 1 (${Math.round(100 / m.dmgDie)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}` });
+    }
+  }
+  const e = m.effect;
+  if (e) {
+    const fx: string[] = [];
+    for (const [k, v] of Object.entries(e.self ?? {})) fx.push(`your ${k} ${sgn(v!)}`);
+    for (const [k, v] of Object.entries(e.foe ?? {})) fx.push(`foe ${k} ${sgn(v!)}`);
+    if (e.heal) fx.push(`heal ${e.heal} Health`);
+    if (e.staminaGain) fx.push(`+${e.staminaGain} Stamina`);
+    if (fx.length) steps.push({ icon: '✨', title: 'Effects', text: `${m.kind === 'support' ? 'On a hit' : 'After the damage'}: ${fx.join(', ')}. Stat changes last the whole battle, capped at ±3 per stat.`, tone: 'good' });
+  }
+  return steps;
 }
 
 function applyEffects(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {

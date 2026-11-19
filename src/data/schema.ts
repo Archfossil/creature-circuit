@@ -44,6 +44,8 @@ export interface Species {
   biomes: Biome[];        // where it can be encountered in the wild
   dex: string;            // flavor text for the index card
   look: CreatureLook;
+  /** A generated stand-in filling a roster slot until the real creature is designed (see roster.ts). */
+  placeholder?: boolean;
 }
 
 export type MoveKind = 'physical' | 'elemental' | 'support';
