@@ -1,6 +1,6 @@
 import { h, openSheet } from './dom';
 import type { CreatureInst } from '../engine/creature';
-import { speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL } from '../engine/creature';
+import { speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO } from '../data/moves';
 import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
@@ -18,13 +18,19 @@ export function rarityBadge(r: string) {
   return h('span', { class: `rarity r-${r}` }, '★'.repeat(stars), ' ', r[0].toUpperCase() + r.slice(1));
 }
 
-export function energyPips(e: Partial<Record<EnergyKey | 'neutral', number>>, small = false) {
+/** Energy pips. Pass `spent` (from `allocateEnergy`) to dull and strike out committed energy. */
+export function energyPips(e: Partial<Record<EnergyKey | 'neutral', number>>, small = false, spent: Partial<Record<EnergyKey, number>> = {}) {
   const out: HTMLElement[] = [];
   for (const [k, v] of Object.entries(e)) {
-    for (let i = 0; i < (v ?? 0); i++) {
-      if (k === 'neutral') out.push(h('span', { class: `pip neutral ${small ? 'sm' : ''}`, title: 'Neutral (any energy)' }));
-      else if (k === 'prisma') out.push(h('span', { class: `pip prisma ${small ? 'sm' : ''}`, title: 'Prisma (counts as any type)' }));
-      else out.push(h('span', { class: `pip ${small ? 'sm' : ''}`, style: `--tc:${TYPE_COLOR[k as ElementType]}`, title: TYPE_LABEL[k as ElementType] }));
+    const n = v ?? 0;
+    const used = Math.min(n, spent[k as EnergyKey] ?? 0);
+    for (let i = 0; i < n; i++) {
+      const isSpent = i >= n - used; // free pips first, committed ones at the end of each group
+      const cls = `pip ${small ? 'sm' : ''} ${isSpent ? 'spent' : ''}`;
+      const tag = isSpent ? ' · committed' : '';
+      if (k === 'neutral') out.push(h('span', { class: `${cls} neutral`, title: 'Neutral (any energy)' }));
+      else if (k === 'prisma') out.push(h('span', { class: `${cls} prisma`, title: `Prisma (counts as any type)${tag}` }));
+      else out.push(h('span', { class: cls, style: `--tc:${TYPE_COLOR[k as ElementType]}`, title: `${TYPE_LABEL[k as ElementType]}${tag}` }));
     }
   }
   return h('span', { class: 'pips' }, out);
@@ -94,7 +100,8 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
   const nat = NATURE_BY_ID[c.nature];
   const ab = ABILITIES[sp.ability];
   const af = AFFINITIES[sp.affinity];
-  const used = c.playbook.reduce((s, id) => s + Object.values(MOVE_BY_ID[id].cost).reduce((a, v) => a + (v ?? 0), 0), 0);
+  const spent = allocateEnergy(e, c.playbook);
+  const free = energyTotal(e) - energyTotal(spent);
   return h('article', { class: 'index-card', style: `--tc:${TYPE_COLOR[sp.types[0]]};--tc2:${TYPE_COLOR[sp.types[1] ?? sp.types[0]]}` },
     h('header', { class: 'ic-head' },
       h('div', null,
@@ -115,8 +122,8 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
         c.movement ? h('span', { class: 'chip good' }, '➶ ', c.movement[0].toUpperCase() + c.movement.slice(1)) : null)),
     h('div', { class: 'ic-stats' }, STAT_KEYS.map((k) => h('div', { class: 'stat' }, h('small', null, STAT_LABEL[k]), h('b', null, st[k])))),
     h('section', { class: 'ic-sec' },
-      h('h4', null, 'Energy ', h('span', { class: 'muted' }, `${used}/${energyTotal(e)} slotted`)),
-      energyPips(e)),
+      h('h4', null, 'Energy ', h('span', { class: 'muted' }, `${free}/${energyTotal(e)} free · ${4 - c.playbook.length}/4 slots open`)),
+      energyPips(e, false, spent)),
     h('section', { class: 'ic-sec' },
       h('h4', null, 'Playbook', opts.editable ? h('button', { class: 'link', onclick: () => editPlaybook(c, changed) }, 'Edit moves') : null),
       h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
@@ -171,7 +178,13 @@ export function editPlaybook(c: CreatureInst, changed: () => void) {
     const body = h('div', { class: 'pb-edit' });
     const render = () => {
       const opts = learnable(c);
-      const usage = h('div', { class: 'pb-usage' }, h('span', null, 'Energy: '), energyPips(e), h('span', { class: 'muted' }, ` · ${sel.length}/4 moves`));
+      const spent = allocateEnergy(e, sel);
+      const total = energyTotal(e), free = total - energyTotal(spent), slots = 4 - sel.length;
+      const usage = h('div', { class: 'pb-usage' },
+        h('div', { class: 'pb-counters' },
+          h('span', { class: `pb-count ${free === 0 ? 'empty' : ''}` }, h('b', null, free), h('small', null, `/${total} energy left`)),
+          h('span', { class: `pb-count ${slots === 0 ? 'empty' : ''}` }, h('b', null, slots), h('small', null, `/4 move slots left`))),
+        energyPips(e, false, spent));
       const list = h('div', { class: 'moves grid' }, opts.map((id) => {
         const on = sel.includes(id);
         const canAdd = !on && sel.length < 4 && fits(e, [...sel, id]);

@@ -4,7 +4,7 @@ import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
 import { MOVES, MOVE_BY_ID } from '../src/data/moves';
 import { MAP_NODES, neighbors, CITIES } from '../src/data/map';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { createCreature, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, gainXp, maxHealth, maxVitality } from '../src/engine/creature';
+import { createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, gainXp, maxHealth, maxVitality } from '../src/engine/creature';
 import { createBattle, resolveRound, sendIn, chooseAI, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
@@ -236,5 +236,27 @@ describe('energy budget', () => {
     const m = migrate(s)!;
     expect(m.version).toBe(SAVE_VERSION);
     expect(m.roster[0].extraEnergy).toEqual({ water: 2, prisma: 2 });
+  });
+});
+
+describe('energy allocation (playbook UI)', () => {
+  it('commits exactly the cost of any playbook that fits, never more than generated', () => {
+    const sum = (m: Record<string, number | undefined>) => Object.values(m).reduce<number>((a, v) => a + (v ?? 0), 0);
+    for (const sp of SPECIES) {
+      const c = createCreature(sp.id, 5);
+      const e = energy(c);
+      const opts = learnable(c);
+      for (let trial = 0; trial < 20; trial++) {
+        const set = opts.filter(() => Math.random() < 0.4).slice(0, 4);
+        if (!fits(e, set)) continue;
+        const used = allocateEnergy(e, set);
+        expect(sum(used)).toBe(set.reduce((a, id) => a + sum(MOVE_BY_ID[id].cost), 0));
+        for (const [k, v] of Object.entries(used)) expect(v).toBeLessThanOrEqual(e[k as keyof typeof e] ?? 0);
+      }
+    }
+  });
+  it('prefers typed energy for Neutral and keeps Prisma for last', () => {
+    const neutralMove = MOVES.find((m) => Object.keys(m.cost).length === 1 && m.cost.neutral === 2)!;
+    expect(allocateEnergy({ water: 3, prisma: 2 }, [neutralMove.id])).toEqual({ water: 2 });
   });
 });

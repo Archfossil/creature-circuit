@@ -85,6 +85,35 @@ export function fits(e: EnergyMap, moveIds: string[]): boolean {
   return deficit <= (e.prisma ?? 0) && typed + neutral <= energyTotal(e);
 }
 
+/**
+ * Which generated energy a set of moves commits, mirroring `fits`: typed costs draw on their own
+ * type first and Prisma covers any shortfall; Neutral costs then draw on whichever typed energy has
+ * the most left, using Prisma last since it is the most flexible. Returns the amount committed per key.
+ */
+export function allocateEnergy(e: EnergyMap, moveIds: string[]): EnergyMap {
+  const left: EnergyMap = { ...e };
+  const used: EnergyMap = {};
+  const take = (k: EnergyKey, n: number) => {
+    const got = Math.min(n, left[k] ?? 0);
+    if (got > 0) { left[k] = (left[k] ?? 0) - got; used[k] = (used[k] ?? 0) + got; }
+    return n - got;
+  };
+  let neutral = 0;
+  for (const id of moveIds) {
+    for (const [k, v] of Object.entries(MOVE_BY_ID[id].cost)) {
+      if (k === 'neutral') neutral += v!;
+      else take('prisma', take(k as ElementType, v!));
+    }
+  }
+  while (neutral > 0) {
+    const best = TYPES.filter((t) => (left[t] ?? 0) > 0).sort((a, b) => (left[b] ?? 0) - (left[a] ?? 0))[0];
+    if (!best) break;
+    neutral = take(best, 1) + neutral - 1;
+  }
+  take('prisma', neutral);
+  return used;
+}
+
 /** Moves this creature may learn from the Master Move List. */
 export function learnable(c: CreatureInst): string[] {
   const e = energy(c);

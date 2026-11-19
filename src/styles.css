@@ -86,6 +86,9 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .pip.sm { width: 12px; height: 12px; border-width: 1.5px; }
 .pip.neutral { background: #fff; background-image: radial-gradient(circle, #bbb 25%, transparent 30%); }
 .pip.prisma { background: conic-gradient(#9013fe, #fc88fc, #f8e71c, #d0021b, #417505, #b57204, #9b9b9b, #50e3c2, #9013fe); }
+.pip { position: relative; transition: opacity 0.2s, filter 0.2s; }
+.pip.spent { opacity: 0.38; filter: grayscale(0.7); box-shadow: none; }
+.pip.spent::after { content: ''; position: absolute; left: -3px; right: -3px; top: 50%; height: 2px; margin-top: -1px; background: var(--ink); border-radius: 2px; transform: rotate(-45deg); }
 
 /* ── Title ───────────────────────────────────────────── */
 .title-screen { position: absolute; inset: 0; display: grid; place-items: center; padding: calc(16px + var(--sat)) 16px calc(16px + var(--sab)); pointer-events: none; background: radial-gradient(ellipse at center, rgba(20,18,30,0.05), rgba(20,18,30,0.45)); }
@@ -275,7 +278,12 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .mc-stats { display: flex; gap: 10px; font-size: 12px; font-weight: 700; color: var(--ink-2); flex-wrap: wrap; }
 .mc-text { font-size: 12px; color: var(--ink-2); }
 .mc-text em { color: var(--muted); }
-.pb-usage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-weight: 700; font-size: 13px; }
+.pb-usage { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; font-weight: 700; font-size: 13px; }
+.pb-counters { display: flex; gap: 8px; }
+.pb-count { display: inline-flex; align-items: baseline; gap: 3px; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper, #fffaf0); }
+.pb-count b { font-family: var(--font-head); font-size: 20px; line-height: 1; }
+.pb-count small { font-size: 11px; color: #6b6577; }
+.pb-count.empty b { color: var(--bad); }
 .sticky-foot { position: sticky; bottom: -18px; background: var(--paper); padding: 10px 0; border-top: 2px dashed var(--line); }
 
 /* Mini cards / lists */
