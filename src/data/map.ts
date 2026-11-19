@@ -7,9 +7,9 @@ const hubs: MapNode[] = [
   { id: 'aurora', name: 'Aurora Peak', kind: 'city', biome: 'tundra', x: -30, z: -40, rarity: 0, level: 1, cityType: 'astral' },
   { id: 'hollow', name: 'Hollow Crest', kind: 'city', biome: 'grove', x: -44, z: -14, rarity: 0, level: 1, cityType: 'charm' },
   { id: 'thunder', name: 'Thunder Spike', kind: 'city', biome: 'badlands', x: 2, z: -16, rarity: 0, level: 1, cityType: 'electric' },
-  { id: 'kilauea', name: 'Kilauea Forge', kind: 'city', biome: 'volcanic', x: 8, z: 48, rarity: 0, level: 1, cityType: 'fire' },
+  { id: 'kilauea', name: 'Kilauea Forge', kind: 'city', biome: 'volcanic', x: -38, z: 62, rarity: 0, level: 1, cityType: 'fire' },
   { id: 'gloom', name: 'Gloomshade', kind: 'city', biome: 'forest', x: -42, z: 14, rarity: 0, level: 1, cityType: 'grass' },
-  { id: 'canyon', name: 'Houndmouth Canyon', kind: 'city', biome: 'canyon', x: -20, z: 30, rarity: 0, level: 1, cityType: 'rock' },
+  { id: 'canyon', name: 'Houndmouth Canyon', kind: 'city', biome: 'canyon', x: -26, z: 34, rarity: 0, level: 1, cityType: 'rock' },
   { id: 'iron', name: 'Iron Coast', kind: 'city', biome: 'coast', x: 44, z: -26, rarity: 0, level: 1, cityType: 'steel' },
   { id: 'mangrove', name: 'Mangrove Port', kind: 'city', biome: 'swamp', x: 36, z: 24, rarity: 0, level: 1, cityType: 'water' },
   // Endgame venue
@@ -20,7 +20,9 @@ const hubs: MapNode[] = [
   { id: 'dustmere', name: 'Dustmere Trading Post', kind: 'town', biome: 'desert', x: -6, z: 22, rarity: 0, level: 1 },
   { id: 'ridgeway', name: 'Ridgeway', kind: 'town', biome: 'mountain', x: 24, z: -12, rarity: 0, level: 1 },
   { id: 'saltmarsh', name: 'Saltmarsh Landing', kind: 'town', biome: 'coast', x: 46, z: 2, rarity: 0, level: 1 },
-  { id: 'blackSand', name: 'Black Sand Cove', kind: 'town', biome: 'coast', x: 20, z: 42, rarity: 0, level: 1 },
+  { id: 'blackSand', name: 'Black Sand Cove', kind: 'town', biome: 'coast', x: 28, z: 55, rarity: 0, level: 1 },
+  // Amber's arena sits alone on Kilauea island, reached by ferry
+  { id: 'firepit', name: 'Amber\'s Fire Pit', kind: 'arena', biome: 'volcanic', x: 6, z: 64, rarity: 0, level: 1, arenaOf: 'kilauea' },
   // Legendary nodes
   { id: 'sunspire', name: 'Sunspire Summit', kind: 'legendary', biome: 'mountain', x: -10, z: -38, rarity: 3, level: 9, legendary: 'solstara', requires: { tier: 3, item: 'summit-pick' } },
   { id: 'ironwake', name: 'Ironwake Shoals', kind: 'legendary', biome: 'coast', x: 54, z: -40, rarity: 3, level: 11, legendary: 'thalassor', requires: { tier: 4 } },
@@ -48,11 +50,14 @@ const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; ra
   { a: 'ridgeway', b: 'stadium', legs: [['road', 'Stormchaser Road', 3]], bend: 2 },
   { a: 'aurora', b: 'sunspire', legs: [['mountain', 'Whiteout Col', 6]], bend: -2 },
   { a: 'iron', b: 'ironwake', legs: [], req: { movement: 'sail' } },
-  // Kilauea Forge island (reached by ferry from Mangrove Port)
-  { a: 'kilauea', b: 'blackSand', legs: [['volcanic', 'Steam Vents', 6]], bend: -3 },
-  { a: 'kilauea', b: 'blackSand', legs: [['volcanic', 'Lava Tubes', 7], ['coast', 'Obsidian Shore', 6]], bend: 6 },
+  // Kilauea island: Amber's Fire Pit and its wilds (reached by ferry from Mangrove Port or Kilauea Forge)
+  { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Steam Vents', 6]], bend: -3 },
+  { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Lava Tubes', 7], ['coast', 'Obsidian Shore', 6]], bend: 6 },
   // The endless canyon: a dead-end of high-rarity nodes
   { a: 'canyon', b: 'dustmere', legs: [['canyon', 'Shifting Depths', 6]], rarity: 1, bend: 9 },
+  // Kilauea Forge on the southwest volcanic coast (keep these last: new wild ids are appended)
+  { a: 'canyon', b: 'kilauea', legs: [['desert', 'Cinder Barrens', 3], ['volcanic', 'Ashfall Ridge', 4]], bend: -3 },
+  { a: 'gloom', b: 'kilauea', legs: [['meadow', 'Scorched Prairie', 3], ['desert', 'Glasswind Dunes', 3], ['volcanic', 'Smoldering Flats', 4]], bend: 8 },
 ];
 
 const nodes: MapNode[] = [...hubs];
@@ -80,8 +85,9 @@ for (const r of routes) {
   });
   edges.push({ a: prev, b: B.id, requires: r.req });
 }
-// The ferry
+// The ferries to Kilauea island
 edges.push({ a: 'mangrove', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
+edges.push({ a: 'kilauea', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
 // The Shifting Depths is a dead end; remove its exit to Dustmere so the canyon is a pocket
 {
   const depths = nodes.find((n) => n.name === 'Shifting Depths')!;
@@ -117,8 +123,9 @@ export const CITIES: Record<string, City> = {
     blurb: 'A town on rugged badlands, named for the colossal lightning rod that shields it from the roving storm.' },
   kilauea: { nodeId: 'kilauea', name: 'Kilauea Forge', type: 'fire', park: 'Hawai\'i Volcanoes', arbiter: 'Amber', accolade: 'Caldera Merit',
     arena: { name: 'Fire Pit', trick: 'flames', text: 'Steam vents scald any non-Fire creature every other round.' },
+    arenaNode: 'firepit',
     hotpot: { name: 'Volcanic Shoyu Nabe', buff: { power: 1 }, text: '+1 Power in your next battle.' },
-    blurb: 'A tropical island of steam vents and lava tunnels at the southern tip of Margos.' },
+    blurb: 'A forge town on the black-rock coast, warmed by lava channels. Offshore, Kilauea island smokes, and Amber\'s Fire Pit waits there. Ferries leave from the forge docks.' },
   gloom: { nodeId: 'gloom', name: 'Gloomshade', type: 'grass', park: 'Redwood', arbiter: 'Dahlia', accolade: 'Lily Merit',
     arena: { name: 'Forest Floor Arena', trick: 'darkness', text: 'In the lightless forest floor, challengers roll 1 lower to hit.' },
     hotpot: { name: 'Canopy Herb Nabe', buff: { vigor: 1 }, text: '+1 Vigor in your next battle.' },

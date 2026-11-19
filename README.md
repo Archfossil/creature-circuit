@@ -32,8 +32,8 @@ The game runs in any modern desktop or mobile browser that supports WebGL. It sa
 src/
   data/      schema.ts (content types) · types.ts (type chart) · species.ts · moves.ts · map.ts · content.ts
   engine/    pure game rules, no DOM
-             creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · state.ts (save)
-  render/    engine.ts (WebGL renderer) · world.ts (3D map) · battle.ts (3D arena) · creatureModel.ts (procedural creatures)
+             creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · events.ts (end-of-turn events) · state.ts (save)
+  render/    engine.ts (WebGL renderer) · world.ts (3D map) · land.ts (coastline math) · battle.ts (3D arena) · creatureModel.ts (procedural creatures) · trainerModel.ts (trainer minis)
   ui/        app.ts (screens & flows) · cards.ts (index cards) · dom.ts (sheets, dice, toasts) · sound.ts · settings.ts
 docs/        design documents (rules source of truth)
 tests/       engine tests
@@ -48,11 +48,13 @@ tests/       engine tests
 | Health → Vitality carry-over, victor restores Health | `battle.ts` → `applyDamage`, `handleKO` |
 | Stamina, Effort, Fatigue d10 check | `battle.ts` → `spendStamina`, `fatigueCheck` |
 | Affinity swaps (Alpha borrows from partner) | `battle.ts` → `doSwap` |
-| Energy requirements, Neutral and Prisma, 4-move playbook | `engine/creature.ts` → `fits`, `learnable` |
-| 10 XP per level, progression chart, Evolve / Capstone | `creature.ts` → `progressionTree`, `unlockNode` |
-| Totems, offerings, Recruitment Threshold | `world.ts` → `attemptRecruit` |
+| Energy requirements, Neutral and Prisma, 4-move playbook | `engine/creature.ts` → `fits`, `learnable`, `allocateEnergy` (which pips the editor crosses out) |
+| 10 XP per level, progression chart (skill tree), Evolve / Capstone | `creature.ts` → `progressionTree`, `availableNodes`, `unlockNode` |
+| Totems, offerings, Recruitment Threshold | `world.ts` → `attemptRecruit`, `offeringBonus`, `bestOfferings` |
+| Creature Codex: seen creatures, where to find them, effigies | `battle.ts` → `seenFoes`; `world.ts` → `encounterSpots`, `evolutionLine`, `speciesPool`, `carveTotem` |
 | Stables (Chanko Nabe), Markets, Shrines, Arbiters, arena tricks, Tier scaling | `world.ts` + `battle.ts` → `arenaTrick` |
 | 100 turns, seasons, weather dice, endgame bracket | `world.ts` → `endTurn`, `startEndgame` |
+| End-of-turn events | `engine/events.ts` → `rollEvent`, `eventView`, `resolveEvent` |
 
 ### Interpretations & additions (open to change)
 The docs leave a few points open. The prototype makes these calls:
@@ -61,7 +63,36 @@ The docs leave a few points open. The prototype makes these calls:
 - **Energy** is generated at 2× the base formula (stage-1 Commons make 6), and energy/Prisma nodes on the progression chart grant +2. This leaves room for real playbook trade-offs against move costs of 1–5 (`species.ts` → `ENERGY_SCALE`, `creature.ts` → `NODE_ENERGY`).
 - **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape.
 - **Trainer encounters**: on road and meadow nodes, a 3–4 explore roll may be a wandering trainer instead of a wild creature (prize: d6 coins).
-- **Statuses** for each type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. Each lasts 3 rounds.
+- **Statuses**, one per type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. A creature holds one status at a time. It lasts 3 rounds, counted only while that creature is in battle, and ends on a KO or when the battle ends. The in-game Menu → Status Effects lists exactly what each does (`moves.ts` → `STATUS_INFO`, `STATUS_FOR`).
+- **Creature Codex** (the docs' creature catalogue): a species is "seen" once it takes the field against you, whether wild, trainer, Arbiter or legendary. Bench creatures that never come out stay unseen. Effigies can only be carved for seen species. Each Codex page lists the wild nodes whose biome pool can produce the species or its earlier stages (weather boosts aside), and its best offering materials.
+- **Offerings**: a material's bonus is its highest `allure` value among the creature's types. Berries give +1 (Moonberry +2) to anyone. Up to 2 offerings go with each totem.
+- **Battle plates** lead with Vitality hearts (what actually decides a KO), with the Health bar below. A 🗿 badge marks wild species you've already recruited.
+- **End-of-turn events** (an addition, not in the design docs): after each turn's weather roll, one event is rolled (`EVENT_CHANCE` = 1 for playtesting; never the same one twice in a row). The pending event is saved, so it survives a reload. Closing its window never declines it: a pulsing pill at the bottom of the map reopens it, and the turn can't end until the player picks a choice (including an explicit decline). There are 14 to start:
+
+  | Event | What it offers |
+  | --- | --- |
+  | 🧳 Roaming Trader | Swap one of your creatures for theirs, made at the same level |
+  | 🩺 Creature Caretaker | Change a creature's Nature to one of 3 offered (keeps its unlocked perk count) |
+  | 🍲 Wandering Cook | 4 coins: active team restores Vitality and Health and clears Fatigue |
+  | 🥺 A Lost Creature | Adopt a common creature (a level under the Tier band), or guide it home for +1 Morale |
+  | 🐫 Merchant Caravan | An Elixir, Moonberry, Star Charm or Lure Incense at half price |
+  | ⛈️ Sudden Storm | Must choose: −1 Initiative, or −1 Vitality for each active creature |
+  | 🥋 Sparring Master | 5 coins: +10 XP for one creature |
+  | 🔮 Fortune Teller | 3 coins: +1 rarity die on the next encounter |
+  | 🧺 Windfall | Two free offering materials from the local biome |
+  | 🤺 Rival Challenge | Optional trainer battle, one level above the local wilds |
+  | 📜 Wise Hermit | 8 coins: one free progression point |
+  | 🦝 Pickpocket | Must choose: chase (d6 + follower Speed ≥ 7 wins d6 coins, else lose d6), or lose 3 coins |
+  | 🙏 Passing Pilgrim | A free Type Totem for one of your team's types |
+  | ♨️ Hidden Hot Spring | 1 Initiative: everyone clears Fatigue, refills Stamina, +1 Morale |
+
+  Each event is one entry in `EVENTS` with `create` (random params), `view` (text and choices) and `resolve` (the effect), so new ones are easy to add.
+- **Kilauea Forge** (Fire) is a mainland city on the southwest volcanic coast, linked to Houndmouth Canyon and Dustmere by new volcanic routes, so Fire is a valid home city. Only Amber's arena, **Amber's Fire Pit**, is on Kilauea island, reached by ferry from the Forge or Mangrove Port (Ferry Pass, sold at Saltmarsh Landing and the Forge, or Sail). A city can now keep its arena on a separate `arena` map node (`City.arenaNode`, `world.ts` → `arbiterHere`). New wild nodes were appended to the route list so existing saves keep their node ids.
+- **Trainer minis**: in battles against trainers, Arbiters and Champions, both trainers stand as tabletop minis on the far edge of the arena and hop when they send out a creature. The player's mini wears their chosen color. Arbiters wear their type's color, a gold circlet and cape, with their type emblem floating above. Roaming trainers are dressed by title (Hikers get wide hats and packs, Drifters hoods…), with colors seeded from their name so each always looks the same. Wild battles show no minis (`render/trainerModel.ts`).
+- **Battle XP**: every creature that took part earns participation XP when the battle ends, **win or lose** (KO'd ones too): `3 + (toughest foe level − its level)`, clamped to 1–5. The creature that knocks out an opponent also gets a KO bonus right away: `5 + 2 × (foe level − its level)`, clamped to 2–10. Running away earns nothing (`creature.ts` → `participationXp`, `xpForWin`; `battle.ts` → `awardBattleXp`).
+- **Town stables** fully recover the team (KOs, Vitality, Fatigue) and give +1 Morale for the same Initiative as a city action, but serve no Chanko Nabe buff. That stays a city specialty (`world.ts` → `rest`).
+- **Progression charts are skill trees.** Each node lists the nodes linked above it (`requires`), and all of them must be bought first. Evolving takes the center path: best stat → +2 energy **and** +1 Health → second stat → +1 Vitality → Evolve (6 points). The side branches (Signature → Movement, Speed → Stamina) are optional, and any you skip are left behind when the creature evolves. At the final stage, the Capstone needs both the Vitality and Stamina branches (8 points), and a +2 Prisma node hangs off the Movement branch.
+- **Saves** carry a `version` (currently 3). Older saves are migrated on load (`state.ts` → `migrate`): v1 → v2 doubles energy earned from chart nodes; v2 → v3 renames bought chart nodes to their skill-tree ids and keeps every earned bonus.
 - **Arbiter gates** follow the city lore: Salem needs the aurora, Fabian must be found in disguise, Dahlia needs a Canopy Rope, Stella needs 2 Merits, and Katy needs a Root Whistle or a creature that can Sail.
 
 ## 📂 Documentation Guide for Developers
@@ -79,4 +110,5 @@ To build out this game, please review the core design documents located in the `
 - **Phase 2:** ✅ Combat engine, energy pool generation, and modular custom move execution.
 - **Phase 3:** ✅ Arbiter challenge system, seasonal weather mechanics, and progression tracking.
 - **Phase 4:** 🟡 Content integration. Example creatures, moves and the map are in place; replace them with the final creature database and Master Move List (see `docs/05-data-schemas.md`).
+- **Phase 5:** 🟡 Systems depth. Done: end-of-turn events, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups and trainer minis. Next: balance passes from playtesting (event prices, XP rates, evolution costs).
 - **Next:** creature art to replace the procedural models, multiplayer (local pass-and-play or online), dual battles, and a map editor.

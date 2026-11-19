@@ -71,7 +71,7 @@ export type Biome =
   | 'forest' | 'mountain' | 'tundra' | 'lake' | 'river' | 'road' | 'swamp'
   | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove';
 
-export type NodeKind = 'wild' | 'town' | 'city' | 'legendary' | 'stadium';
+export type NodeKind = 'wild' | 'town' | 'city' | 'legendary' | 'stadium' | 'arena';
 
 /** Template: a node on the world map. */
 export interface MapNode {
@@ -85,6 +85,7 @@ export interface MapNode {
   level: number;        // typical wild creature level
   cityType?: ElementType;
   legendary?: string;   // species id roaming here
+  arenaOf?: string;     // kind 'arena': the city whose Arbiter fights here
   requires?: { tier?: number; item?: string; movement?: Movement };
 }
 
@@ -103,6 +104,8 @@ export interface City {
   arbiter: string;
   accolade: string;
   arena: { name: string; trick: ArenaTrick; text: string };
+  /** Set when the Arbiter's arena is its own map node away from the city (e.g. across the sea). */
+  arenaNode?: string;
   hotpot: { name: string; buff: Partial<Record<StatKey, number>>; text: string };
   blurb: string;
 }

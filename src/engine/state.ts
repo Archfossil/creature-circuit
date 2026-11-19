@@ -1,5 +1,6 @@
 import type { Movement, StatKey } from '../data/schema';
 import type { CreatureInst } from './creature';
+import type { PendingEvent } from './events';
 import { createCreature } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { pick } from './dice';
@@ -35,11 +36,16 @@ export interface GameState {
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };
   stats: { battlesWon: number; recruited: number; explored: number };
+  /** End-of-turn event waiting for an answer (see engine/events.ts). */
+  event?: PendingEvent;
+  /** Id of the last event rolled, so the same one never fires twice in a row. */
+  lastEvent?: string;
 }
 
 const KEY = 'creature-circuit-save-v1';
-/** v2: energy generation doubled; progression-chart energy nodes now grant +2. */
-export const SAVE_VERSION = 2;
+/** v2: energy generation doubled; progression-chart energy nodes now grant +2.
+ *  v3: progression charts became skill trees; some node ids moved. */
+export const SAVE_VERSION = 3;
 
 export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string): GameState {
   const s: GameState = {
@@ -81,6 +87,13 @@ export function migrate(s: GameState): GameState | null {
       for (const k of Object.keys(c.extraEnergy) as (keyof typeof c.extraEnergy)[]) c.extraEnergy[k] = c.extraEnergy[k]! * 2;
     }
     s.version = 2;
+  }
+  if (s.version === 2) {
+    // v2 charts: e Speed, f Movement/2nd energy, g Vitality, h Prisma. Earned bonuses are kept;
+    // only the ids move so the new tree shows those nodes as bought.
+    const rename: Record<string, string> = { e: 'f', f: 'g', g: 'h', h: 'p' };
+    for (const c of [...s.roster, ...s.reserve]) c.unlocked = c.unlocked.map((id) => rename[id] ?? id);
+    s.version = 3;
   }
   return s.version === SAVE_VERSION ? s : null;
 }

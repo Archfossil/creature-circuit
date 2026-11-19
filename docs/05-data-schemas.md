@@ -42,8 +42,9 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `rarity` | `common`, `prime`, `apex` or `legendary`. This sets the encounter rarity tier and the base Recruitment Threshold (RT). |
 | `stage` | 1–3. Stage 1 and 2 progression charts end in **Evolve**. Stage 3 charts (and creatures with no evolution) end in a **Capstone**. |
 | `base` | Level 1 attributes. Health = Vitality = `vigor` by default. In `species.ts` these are generated from rarity and stage plus a stat `bias`. |
-| `energy` | Energy generated per type, plus optional `prisma`, which counts as any type. This is a playbook requirement, not a resource spent each turn. |
+| `energy` | Energy generated per type, plus optional `prisma`, which counts as any type. This is a playbook requirement, not a resource spent each turn. In `species.ts` it is generated from rarity and stage, then multiplied by `ENERGY_SCALE` (2). Energy and Prisma nodes on the progression chart each add `NODE_ENERGY` (2). |
 | `rt` | Recruitment Threshold. The offering roll is 2d6 + totem + offerings, against `rt + floor(level / 3)`. |
+| `biomes` | Biomes the species prefers. A wild node offers it when its biome's type pool (`BIOME_TYPES` in `map.ts`) includes the species' first type, and it is preferred over same-type species without that biome. The Creature Codex lists these nodes. |
 | `ability` | An overworld passive (see `ABILITIES`). It is active only while the creature is **Following**. |
 | `affinity` | The swap-in team-up power (see `AFFINITIES`). It triggers when this creature is swapped in as the **Alpha**. |
 | `signature` / `movement` | Unlocked through progression-chart nodes. Movement abilities are `fly`, `sail`, `tunnel`, `portal` and `wayfind`. |
@@ -66,6 +67,8 @@ Each creature the player owns is saved as an instance of a species:
   "wins": 3, "losses": 0
 }
 ```
+
+`points` are unspent level-ups. `unlocked` lists the progression-chart nodes already bought. The chart is a skill tree generated per species by `progressionTree` in `creature.ts`: each node has a `requires` list, and every node in it must be unlocked before that node can be bought. Evolving resets `unlocked` for the new stage's chart.
 
 ## Move
 
@@ -107,7 +110,27 @@ Each creature the player owns is saved as an instance of a species:
   "requires": { "item": "ferry-pass", "movement": "sail" } }
 ```
 
-`kind` is one of `wild`, `town`, `city`, `stadium` or `legendary`. A requirement on an **edge** is met by the listed item **or** the listed movement. A requirement on a **node** needs everything it lists.
+`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. A requirement on an **edge** is met by the listed item **or** the listed movement. A requirement on a **node** needs everything it lists.
+
+An `arena` node is an Arbiter's arena that sits away from its city. It names its city in `arenaOf`, and that city's entry in `CITIES` sets `arenaNode` to the arena's id. Amber's Fire Pit on Kilauea island, reached by ferry from Kilauea Forge, works this way. Edges with `"via": "sail"` are sea routes: the 3D map leaves them as open water, so islands stay islands.
+
+Wild nodes are generated from the `routes` list in `map.ts` and numbered in order (`w1`, `w2`, …). Saves store node ids, so **add new routes at the end of the list**. Keep nodes at least 5 units apart and routes from crossing: `tests/engine.test.ts` checks both.
+
+## Turn event
+
+End-of-turn events live in [`src/engine/events.ts`](../src/engine/events.ts) as entries in `EVENTS`. Unlike the data above they are code, because each one has its own effect:
+
+```ts
+{
+  id: 'caravan', weight: 3,
+  when: (s) => true,                       // optional: only roll it when it makes sense
+  create: (s) => ({ item: 'elixir', price: 5 }),  // random params, stored on the save (plain JSON)
+  view: (s, d) => ({ title, icon, text, choices: [{ id: 'buy', label, disabled? , pick? }, DECLINE] }),
+  resolve: (s, d, choice, target?) => ({ text, tone: 'good' }),  // apply the effect
+}
+```
+
+Use a single-character emoji for `icon`: joined emoji such as 🧑‍⚕️ split into two glyphs on Windows. A choice with `pick: true` asks the player for a creature; `canPick` can refuse some. Every choice of every event is exercised by the tests.
 
 ## Item
 
@@ -116,4 +139,6 @@ Each creature the player owns is saved as an instance of a species:
   "icon": "🌲", "allure": { "grass": 2, "charm": 1 }, "text": "Sticky, fragrant." }
 ```
 
-`kind` is one of `restore`, `treat`, `material`, `totem`, `key` or `charm`. Typed totems (`totem:fire`) and effigies (`effigy:<speciesId>`) are carved at Shrines.
+`kind` is one of `restore`, `treat`, `material`, `totem`, `key` or `charm`. Typed totems (`totem:fire`) and effigies (`effigy:<speciesId>`) are carved at Shrines. An effigy can only be carved for a species in the player's Creature Codex (`dex.seen`).
+
+`allure` (materials only) is the recruiting bonus per type. When offered, a material adds its **highest** allure value among the creature's types, so Pine Resin gives +2 to a Grass creature, +1 to a Charm creature and 0 to others. Which materials each biome yields is set by `BIOME_MATERIALS` in `content.ts`.

@@ -158,8 +158,23 @@ export function autoPlaybook(c: CreatureInst): string[] {
 }
 
 // ── Progression tree ────────────────────────────────────────────
+// A skill tree on a 3-column grid. Every node lists the nodes it connects to above it
+// (`requires`), and ALL of them must be unlocked first. Evolve and the Capstone sit at
+// the bottom, so reaching them means buying every node on the way down.
+//
+//              a                    a  +1 best stat
+//            /   \                  b  +2 primary energy      c  +1 Health
+//           b     c                 d  Signature (or Focus)   e  +1 second stat (needs b AND c)
+//          / \   / \                f  +1 Speed
+//         d   e     f               g  Movement (or +2 secondary energy)
+//         |   |     |               h  +1 Vitality            i  +1 Stamina
+//         g   h     i               Evolve needs h. Final stage instead: p (+2 Prisma, needs g)
+//         |  / \   /                and Capstone (needs h AND i).
+//         p  evo/cap
 export interface ProgNode {
   id: string; row: number; col: number; label: string; text: string; icon: string;
+  /** Nodes that connect into this one. All must be unlocked before it can be bought. */
+  requires: string[];
   apply: (c: CreatureInst) => void;
   kind: 'stat' | 'energy' | 'signature' | 'movement' | 'evolve' | 'capstone' | 'prisma';
 }
@@ -168,29 +183,38 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
   const sp = speciesOf(c);
   const prim = sp.types[0];
   const sec = sp.types[1] ?? prim;
-  const statNode = (id: string, row: number, col: number, k: StatKey, n = 1): ProgNode => ({
-    id, row, col, label: `+${n} ${k[0].toUpperCase() + k.slice(1)}`, text: `Permanently +${n} ${k}.`, icon: '▲', kind: 'stat',
+  type Place = Pick<ProgNode, 'id' | 'row' | 'col' | 'requires'>;
+  const statNode = (p: Place, k: StatKey, n = 1): ProgNode => ({
+    ...p, label: `+${n} ${STAT_LABEL[k]}`, text: `Permanently +${n} ${STAT_LABEL[k]}.`, icon: '▲', kind: 'stat',
     apply: (cc) => { cc.bonus[k] = (cc.bonus[k] ?? 0) + n; },
   });
+  const energyNode = (p: Place, k: ElementType): ProgNode => ({
+    ...p, label: `+${NODE_ENERGY} ${cap(k)} Energy`, text: `Generate ${NODE_ENERGY} more energy for your playbook.`, icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, k, NODE_ENERGY),
+  });
   const bias = (Object.entries(sp.base) as [StatKey, number][]).filter(([k]) => k !== 'evasion').sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  const first = bias[0] === 'vigor' ? 'power' : bias[0];
+  const second = bias.find((k) => k !== first && !['vigor', 'speed', 'stamina'].includes(k)) ?? 'armor';
+
   const nodes: ProgNode[] = [
-    statNode('a', 0, 1, bias[0] === 'vigor' ? 'power' : bias[0]),
-    { id: 'b', row: 1, col: 0, label: `+${NODE_ENERGY} ${cap(prim)} Energy`, text: `Generate ${NODE_ENERGY} more energy for your playbook.`, icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, prim, NODE_ENERGY) },
-    { id: 'c', row: 1, col: 2, label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
+    statNode({ id: 'a', row: 0, col: 1, requires: [] }, first),
+    energyNode({ id: 'b', row: 1, col: 0, requires: ['a'] }, prim),
+    { id: 'c', row: 1, col: 2, requires: ['a'], label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
     sp.signature
-      ? { id: 'd', row: 2, col: 0, label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name}.`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
-      : statNode('d', 2, 0, 'focus'),
-    statNode('e', 2, 2, 'speed'),
+      ? { id: 'd', row: 2, col: 0, requires: ['b'], label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name}.`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
+      : statNode({ id: 'd', row: 2, col: 0, requires: ['b'] }, 'focus'),
+    statNode({ id: 'e', row: 2, col: 1, requires: ['b', 'c'] }, second),
+    statNode({ id: 'f', row: 2, col: 2, requires: ['c'] }, 'speed'),
     sp.movement
-      ? { id: 'f', row: 3, col: 0, label: `Learn ${cap(sp.movement)}`, text: `Unlocks the ${cap(sp.movement)} overworld ability.`, icon: '➶', kind: 'movement', apply: (cc) => { cc.movement = sp.movement; } }
-      : { id: 'f', row: 3, col: 0, label: `+${NODE_ENERGY} ${cap(sec)} Energy`, text: `Generate ${NODE_ENERGY} more energy.`, icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, sec, NODE_ENERGY) },
-    { id: 'g', row: 3, col: 2, label: '+1 Vitality', text: 'One more Vitality point.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
+      ? { id: 'g', row: 3, col: 0, requires: ['d'], label: `Learn ${cap(sp.movement)}`, text: `Unlocks the ${cap(sp.movement)} overworld ability.`, icon: '➶', kind: 'movement', apply: (cc) => { cc.movement = sp.movement; } }
+      : energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
+    { id: 'h', row: 3, col: 1, requires: ['e'], label: '+1 Vitality', text: 'One more Vitality heart.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
+    statNode({ id: 'i', row: 3, col: 2, requires: ['f'] }, 'stamina'),
   ];
   if (sp.evolvesTo) {
-    nodes.push({ id: 'evo', row: 4, col: 1, label: `Evolve → ${SPECIES_BY_ID[sp.evolvesTo].name}`, text: 'Evolve into the next stage. A new chart unlocks.', icon: '⇪', kind: 'evolve', apply: (cc) => evolve(cc) });
+    nodes.push({ id: 'evo', row: 4, col: 1, requires: ['h'], label: `Evolve → ${SPECIES_BY_ID[sp.evolvesTo].name}`, text: 'Evolve into the next stage. A new chart begins, and unbought nodes here are left behind.', icon: '⇪', kind: 'evolve', apply: (cc) => evolve(cc) });
   } else {
-    nodes.push({ id: 'h', row: 4, col: 0, label: `+${NODE_ENERGY} Prisma Energy`, text: 'Prisma counts as any type.', icon: '✦', kind: 'prisma', apply: (cc) => addEnergy(cc, 'prisma', NODE_ENERGY) });
-    nodes.push({ id: 'cap', row: 4, col: 2, label: 'Capstone: Bond', text: 'Attacks deal +1 damage per 5 Loyalty.', icon: '❖', kind: 'capstone', apply: (cc) => { cc.capstone = true; } });
+    nodes.push({ id: 'p', row: 4, col: 0, requires: ['g'], label: `+${NODE_ENERGY} Prisma Energy`, text: 'Prisma counts as any type.', icon: '✦', kind: 'prisma', apply: (cc) => addEnergy(cc, 'prisma', NODE_ENERGY) });
+    nodes.push({ id: 'cap', row: 4, col: 1, requires: ['h', 'i'], label: 'Capstone: Bond', text: 'Attacks deal +1 damage per 5 Loyalty.', icon: '❖', kind: 'capstone', apply: (cc) => { cc.capstone = true; } });
   }
   return nodes;
 }
@@ -200,13 +224,9 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 export const NODE_ENERGY = 2;
 function addEnergy(c: CreatureInst, k: EnergyKey, n: number) { c.extraEnergy[k] = (c.extraEnergy[k] ?? 0) + n; }
 
+/** Nodes that can be bought now: not yet unlocked, with every connecting node above already unlocked. */
 export function availableNodes(c: CreatureInst): ProgNode[] {
-  const tree = progressionTree(c);
-  return tree.filter((n) => {
-    if (c.unlocked.includes(n.id)) return false;
-    if (n.row === 0) return true;
-    return tree.some((p) => p.row === n.row - 1 && c.unlocked.includes(p.id));
-  });
+  return progressionTree(c).filter((n) => !c.unlocked.includes(n.id) && n.requires.every((r) => c.unlocked.includes(r)));
 }
 
 export function unlockNode(c: CreatureInst, nodeId: string): boolean {
@@ -247,8 +267,14 @@ export function gainXp(c: CreatureInst, xp: number): number {
   return levels;
 }
 
+/** KO bonus: XP for the creature that knocks out an opponent (2–10, more for tougher foes). */
 export function xpForWin(winnerLevel: number, loserLevel: number): number {
   return Math.max(2, Math.min(10, 5 + 2 * (loserLevel - winnerLevel)));
+}
+
+/** Participation XP: every creature that fought earns this when the battle ends, win or lose (1–5). */
+export function participationXp(level: number, foeLevel: number): number {
+  return Math.max(1, Math.min(5, 3 + (foeLevel - level)));
 }
 
 export function createCreature(speciesId: string, level = 1, opts: { nature?: string; auto?: boolean } = {}): CreatureInst {

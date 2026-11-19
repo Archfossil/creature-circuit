@@ -2,12 +2,20 @@ import * as THREE from 'three';
 import type { SceneView } from './engine';
 import { isMobile } from './engine';
 import { buildCreature, flash, unflash, type CreatureRig } from './creatureModel';
+import { buildTrainer, type TrainerLook, type TrainerRig } from './trainerModel';
 import { SPECIES_BY_ID } from '../data/species';
 import { BIOME_INFO } from '../data/content';
 import { TYPE_COLOR } from '../data/types';
 import type { Biome, ElementType } from '../data/schema';
 
 const POS: [THREE.Vector3, THREE.Vector3] = [new THREE.Vector3(-2.3, 0, 1.6), new THREE.Vector3(2.4, 0, -1.4)];
+/**
+ * Trainer minis stand on the far edge of the arena (radius < 6.2, so they're on the platform),
+ * player's on the left and the opponent's on the right, so both stay in frame for every camera
+ * layout, including phones in portrait.
+ */
+const TRAINER_POS: [THREE.Vector3, THREE.Vector3] = [new THREE.Vector3(-3.4, 0, -4.6), new THREE.Vector3(3.6, 0, -4.6)];
+const TRAINER_SCALE = 1.25;
 /** How far (0..1) each creature turns from its opponent toward the camera, so faces stay readable. */
 const CAMERA_CHEAT = 0.2;
 
@@ -29,6 +37,7 @@ export class BattleView implements SceneView {
   camera = new THREE.PerspectiveCamera(isMobile ? 50 : 40, innerWidth / innerHeight, 0.1, 300);
   private rigs: [CreatureRig | null, CreatureRig | null] = [null, null];
   private props = new THREE.Group();
+  private trainers: [TrainerRig | null, TrainerRig | null] = [null, null];
   private arena!: THREE.Mesh;
   private ring!: THREE.Mesh;
   private skyMat!: THREE.ShaderMaterial;
@@ -119,6 +128,28 @@ export class BattleView implements SceneView {
         this.props.add(pillar, flame);
       }
     }
+  }
+
+  /** Show (or clear, with null) the trainer minis for a battle. Only trainer battles have them. */
+  setTrainers(player: TrainerLook | null, foe: TrainerLook | null) {
+    for (const r of this.trainers) if (r) this.scene.remove(r.root);
+    this.trainers = [player ? buildTrainer(player) : null, foe ? buildTrainer(foe) : null];
+    this.trainers.forEach((r, side) => {
+      if (!r) return;
+      r.root.position.copy(TRAINER_POS[side]);
+      r.root.scale.setScalar(TRAINER_SCALE);
+      // face the other trainer, angled a little toward the camera like the creatures
+      const other = TRAINER_POS[side === 0 ? 1 : 0];
+      r.root.rotation.y = lerpAngle(yawToward(TRAINER_POS[side], other), yawToward(TRAINER_POS[side], this.camera.position), 0.3);
+      this.scene.add(r.root);
+    });
+  }
+
+  /** A little hop, e.g. when a trainer sends out a creature. */
+  trainerHop(side: 0 | 1) {
+    const r = this.trainers[side];
+    if (!r) return;
+    void this.tween(0.35, (k) => { r.root.position.y = Math.sin(k * Math.PI) * 0.35; });
   }
 
   setCreature(side: 0 | 1, speciesId: string | null, pop = true): Promise<void> {
@@ -256,6 +287,7 @@ export class BattleView implements SceneView {
   update(dt: number, t: number) {
     this.time = t;
     for (const r of this.rigs) r?.update(t);
+    for (const r of this.trainers) r?.update(t);
     for (let i = this.tweens.length - 1; i >= 0; i--) {
       const tw = this.tweens[i];
       tw.t += dt;

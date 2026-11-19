@@ -4,7 +4,7 @@ import { AFFINITIES } from '../data/content';
 import { effectiveness, TYPE_LABEL } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
-import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin } from './creature';
+import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin, participationXp } from './creature';
 import { roll, clashDie, pick } from './dice';
 
 export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
@@ -31,6 +31,8 @@ export interface Battle {
   participants: string[];
   biome: string;
   quickStep: boolean;
+  /** Species ids of every opposing creature that has taken the field (for the Creature Codex). */
+  seenFoes: string[];
 }
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
@@ -48,7 +50,7 @@ export type BEvent =
   | { t: 'tired'; side: 0 | 1; value: number; fatigue: number; fail: boolean; snap: Snap }
   | { t: 'ko'; side: 0 | 1; uid: string }
   | { t: 'send'; side: 0 | 1; idx: number; snap: Snap }
-  | { t: 'xp'; uid: string; amount: number; levels: number }
+  | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string }
   | { t: 'arena'; text: string }
   | { t: 'end'; result: NonNullable<Battle['over']> };
 
@@ -58,10 +60,21 @@ export function snap(b: Battle, c: CreatureInst): Snap {
 
 export const activeOf = (s: Side) => s.team[s.active];
 
+/** Type-chart multiplier a move gets against a defender's types, or null if the chart doesn't apply (Physical and Support). */
+export function typeMatchup(m: Move, defender: ElementType[]): number | null {
+  return m.kind === 'elemental' && m.type ? effectiveness(m.type, defender) : null;
+}
+
+/** Record the opposing side's active creature as seen. */
+function noteFoe(b: Battle) {
+  const sp = activeOf(b.sides[1])?.species;
+  if (sp && !b.seenFoes.includes(sp)) b.seenFoes.push(sp);
+}
+
 export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts: { arena?: Battle['arena']; legendary?: boolean; biome?: string; quickStep?: boolean } = {}): Battle {
   const b: Battle = {
     sides: [player, foe], round: 0, weather, arena: opts.arena, legendary: !!opts.legendary, fleeWarned: false,
-    status: {}, over: null, needSwap: false, participants: [], biome: opts.biome ?? 'meadow', quickStep: !!opts.quickStep,
+    status: {}, over: null, needSwap: false, participants: [], biome: opts.biome ?? 'meadow', quickStep: !!opts.quickStep, seenFoes: [],
   };
   for (const s of b.sides) {
     const first = s.team.findIndex((c) => !c.ko);
@@ -71,6 +84,7 @@ export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts:
   // Hot pot vigor buff: a little extra Health at the start
   if (player.buff?.vigor) for (const c of player.team) if (!c.ko) c.health += player.buff.vigor * 2;
   b.participants.push(activeOf(player).uid);
+  noteFoe(b);
   return b;
 }
 
@@ -203,6 +217,7 @@ export function resolveRound(b: Battle, pa: Action): BEvent[] {
     if (act.kind === 'flee') {
       ev.push({ t: 'say', text: `${nameOf(me)} lost interest and vanished into the wilds…`, tone: 'bad' });
       b.over = 'fled';
+      awardBattleXp(b, ev);
       ev.push({ t: 'end', result: 'fled' });
       break;
     }
@@ -284,7 +299,7 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   if (m.kind === 'physical') raw += eff(b, si, 'power') - eff(b, fi, 'armor');
   else {
     raw += eff(b, si, 'focus') - eff(b, fi, 'ward') + (m.type ? b.weather.typeBoost?.[m.type] ?? 0 : 0);
-    mult = m.type ? effectiveness(m.type, speciesOf(foe).types) : 1;
+    mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
   }
   if (c.capstone) raw += Math.floor(c.loyalty / 5);
   raw = Math.max(1, raw);
@@ -332,6 +347,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   const alpha = side.team[to];
   if (!alpha || alpha.ko) return;
   side.active = to;
+  noteFoe(b);
   side.mods = {};
   if (!b.participants.includes(alpha.uid) && si === 0) b.participants.push(alpha.uid);
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
@@ -389,6 +405,21 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   }
 }
 
+/**
+ * End-of-battle XP: every player creature that took part earns participation XP, win or lose
+ * (KO'd ones too), scaled by the toughest opponent. Running away earns nothing. KO bonuses are
+ * awarded separately, at the moment of each knockout.
+ */
+function awardBattleXp(b: Battle, ev: BEvent[]) {
+  const foeLevel = Math.max(...b.sides[1].team.map((c) => c.level));
+  for (const uid of b.participants) {
+    const c = b.sides[0].team.find((x) => x.uid === uid);
+    if (!c) continue;
+    const xp = participationXp(c.level, foeLevel);
+    ev.push({ t: 'xp', uid, amount: xp, levels: gainXp(c, xp), reason: 'battle' });
+  }
+}
+
 function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
   const ls = b.sides[loser];
   const ws = b.sides[loser === 0 ? 1 : 0];
@@ -408,18 +439,20 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
     const xp = xpForWin(winner.level, dead.level);
     const lv = gainXp(winner, xp);
     winner.morale = Math.min(10, winner.morale + 1);
-    ev.push({ t: 'xp', uid: winner.uid, amount: xp, levels: lv });
+    ev.push({ t: 'xp', uid: winner.uid, amount: xp, levels: lv, reason: 'ko', foe: nameOf(dead) });
   }
   if (loser === 0) dead.morale = Math.max(0, dead.morale - 1);
 
   const next = ls.team.findIndex((c) => !c.ko);
   if (next < 0) {
     b.over = loser === 1 ? 'win' : 'lose';
+    awardBattleXp(b, ev);
     ev.push({ t: 'end', result: b.over });
     return;
   }
   if (loser === 1) {
     ls.active = next;
+    noteFoe(b);
     ls.mods = {};
     ev.push({ t: 'send', side: 1, idx: next, snap: snap(b, ls.team[next]) });
     ev.push({ t: 'say', text: `${ls.name} sends out ${nameOf(ls.team[next])}!`, tone: 'info' });

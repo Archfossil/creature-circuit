@@ -2,12 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
 import { MOVES, MOVE_BY_ID } from '../src/data/moves';
-import { MAP_NODES, neighbors, CITIES } from '../src/data/map';
+import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES } from '../src/data/map';
+import type { MapNode } from '../src/data/schema';
+import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, gainXp, maxHealth, maxVitality } from '../src/engine/creature';
-import { createBattle, resolveRound, sendIn, chooseAI, type Side } from '../src/engine/battle';
+import { createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
+import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
+import * as E from '../src/engine/events';
+import { Box3 } from 'three';
+import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook } from '../src/render/trainerModel';
 
 const energyTotalOf = (c: ReturnType<typeof createCreature>) => Object.values(energy(c)).reduce((a, v) => a + (v ?? 0), 0);
 const side = (kind: Side['kind'], team: ReturnType<typeof createCreature>[]): Side => ({ kind, name: kind, team, active: 0, mods: {} });
@@ -97,12 +102,13 @@ describe('creature growth', () => {
     expect(unlockNode(c, first.id)).toBe(true);
     expect(c.points).toBe(0);
   });
-  it('the last node of a stage-1 chart evolves the creature', () => {
+  it('evolving takes the whole center path of a stage-1 chart', () => {
     const c = createCreature('emberfish', 1);
     c.points = 10;
-    for (const id of ['a', 'b', 'd', 'f', 'evo']) expect(unlockNode(c, id), id).toBe(true);
+    for (const id of ['a', 'b', 'c', 'e', 'h', 'evo']) expect(unlockNode(c, id), id).toBe(true);
     expect(c.species).toBe('cinderkoi');
     expect(c.unlocked).toEqual([]);
+    expect(c.points).toBe(4);
   });
 });
 
@@ -258,5 +264,376 @@ describe('energy allocation (playbook UI)', () => {
   it('prefers typed energy for Neutral and keeps Prisma for last', () => {
     const neutralMove = MOVES.find((m) => Object.keys(m.cost).length === 1 && m.cost.neutral === 2)!;
     expect(allocateEnergy({ water: 3, prisma: 2 }, [neutralMove.id])).toEqual({ water: 2 });
+  });
+});
+
+describe('Creature Codex', () => {
+  it('every species lists at least one place to find it', () => {
+    for (const sp of SPECIES) expect(W.encounterSpots(sp.id).length, sp.id).toBeGreaterThan(0);
+  });
+  it('listed spots really can produce the species', () => {
+    for (const sp of SPECIES.filter((x) => x.rarity !== 'legendary')) {
+      for (const { node, minStage } of W.encounterSpots(sp.id)) {
+        expect(W.speciesPool(node.biome, sp.types[0], sp.rarity, minStage)).toContain(sp);
+      }
+    }
+  });
+  it('evolution lines run earliest stage first', () => {
+    const final = SPECIES.find((x) => x.stage === 3 && SPECIES.some((p) => p.evolvesTo === x.id))!;
+    const line = W.evolutionLine(final.id);
+    expect(line.map((x) => x.stage)).toEqual([1, 2, 3]);
+    expect(line[line.length - 1].id).toBe(final.id);
+  });
+  it('best offerings match the recruiting bonus', () => {
+    const c = createCreature('puddlit', 3);
+    for (const o of W.bestOfferings('puddlit')) expect(W.offeringBonus([o.id], c)).toBe(o.bonus);
+  });
+  it('only trainer creatures that actually take the field join the Codex, and only those can be carved', () => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    const ace = createCreature('calderex', 10);
+    ace.playbook = ['quick-jab']; // Sure-hit, so every round lands
+    s.roster = [ace];
+    const [first, second, bench] = [createCreature('emberfish', 2), createCreature('pebbark', 2), createCreature('zapup', 2)];
+    first.vitality = 0; first.health = 1; // any hit knocks it out; the second stays healthy so it survives its first round
+    const b = createBattle(W.playerSide(s), { kind: 'trainer', name: 'Rival', team: [first, second, bench], active: 0, mods: {} }, WEATHER.clear);
+    expect(b.seenFoes).toEqual(['emberfish']);
+
+    // play real rounds until the trainer's second creature is sent out
+    for (let r = 0; r < 20 && b.seenFoes.length < 2 && !b.over; r++) resolveRound(b, { kind: 'move', move: 'quick-jab' });
+    expect(first.ko).toBe(true);
+    expect(activeOf(b.sides[1]).species).toBe('pebbark');
+    expect(b.seenFoes).toEqual(['emberfish', 'pebbark']);
+
+    // the battle ends before Zapup ever leaves the bench
+    W.finishBattle(s, b, { kind: 'trainer' });
+    expect(s.dex.seen).toEqual(expect.arrayContaining(['emberfish', 'pebbark']));
+    expect(s.dex.seen).not.toContain('zapup');
+
+    s.coins = 99; s.inventory['pine-resin'] = 4;
+    expect(W.carveTotem(s, 'effigy', 'zapup', ['pine-resin', 'pine-resin'])).toBeNull();
+    expect(W.carveTotem(s, 'effigy', 'pebbark', ['pine-resin', 'pine-resin'])).toBe('effigy:pebbark');
+  });
+});
+
+describe('progression skill tree', () => {
+  const fresh = (id: string) => { const c = createCreature(id, 1, { auto: false }); c.unlocked = []; c.points = 20; return c; };
+  const avail = (c: ReturnType<typeof createCreature>) => availableNodes(c).map((n) => n.id).sort();
+
+  it('every chart is a valid tree: prerequisites exist and sit in earlier rows, one node per cell', () => {
+    for (const sp of SPECIES) {
+      const tree = progressionTree(fresh(sp.id));
+      const byId = new Map(tree.map((n) => [n.id, n]));
+      expect(new Set(tree.map((n) => `${n.row},${n.col}`)).size, sp.id).toBe(tree.length);
+      for (const n of tree) for (const r of n.requires) {
+        expect(byId.has(r), `${sp.id}:${n.id} needs ${r}`).toBe(true);
+        expect(byId.get(r)!.row).toBeLessThan(n.row);
+      }
+      expect(tree.filter((n) => n.requires.length === 0).map((n) => n.id)).toEqual(['a']);
+      expect(tree.some((n) => n.kind === (sp.evolvesTo ? 'evolve' : 'capstone')), sp.id).toBe(true);
+    }
+  });
+  it('a node needs ALL of its connecting nodes, not just one', () => {
+    const c = fresh('emberfish');
+    expect(avail(c)).toEqual(['a']);
+    unlockNode(c, 'a');
+    expect(avail(c)).toEqual(['b', 'c']);
+    unlockNode(c, 'b');
+    expect(avail(c)).toEqual(['c', 'd']);       // e needs b AND c
+    expect(unlockNode(c, 'e')).toBe(false);
+    unlockNode(c, 'c');
+    expect(avail(c)).toContain('e');
+    expect(unlockNode(c, 'evo')).toBe(false);   // evolve needs h, which needs e
+    expect(c.species).toBe('emberfish');
+  });
+  it('side branches are optional for evolving and are left behind', () => {
+    const c = fresh('emberfish');
+    for (const id of ['a', 'b', 'd', 'g', 'c', 'f', 'i']) expect(unlockNode(c, id), id).toBe(true);
+    expect(avail(c)).toEqual(['e']);
+    for (const id of ['e', 'h', 'evo']) expect(unlockNode(c, id), id).toBe(true);
+    expect(c.species).toBe('cinderkoi');
+    expect(c.unlocked).toEqual([]);
+  });
+  it('the Capstone needs both the Vitality and Stamina branches', () => {
+    const finalSp = SPECIES.find((x) => !x.evolvesTo && x.rarity !== 'legendary')!;
+    const c = fresh(finalSp.id);
+    for (const id of ['a', 'b', 'c', 'e', 'h']) unlockNode(c, id);
+    expect(unlockNode(c, 'cap')).toBe(false);
+    unlockNode(c, 'f'); unlockNode(c, 'i');
+    expect(unlockNode(c, 'cap')).toBe(true);
+    expect(c.capstone).toBe(true);
+  });
+  it('v2 saves keep their bought nodes under the new ids', () => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    s.version = 2;
+    s.roster[0].unlocked = ['a', 'b', 'e', 'f', 'g', 'h'];
+    const m = migrate(s)!;
+    expect(m.version).toBe(SAVE_VERSION);
+    expect(m.roster[0].unlocked).toEqual(['a', 'b', 'f', 'g', 'h', 'p']);
+  });
+});
+
+describe('stables', () => {
+  const battered = () => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    const c = s.roster[0];
+    c.ko = true; c.health = 0; c.vitality = 0; c.fatigue = 2;
+    return { s, c };
+  };
+  it('a town stable fully recovers the team without a Chanko Nabe buff', () => {
+    const { s, c } = battered();
+    s.location = 'mistfall';
+    const r = W.rest(s, 'mistfall');
+    expect(c.ko).toBe(false);
+    expect(c.vitality).toBe(maxVitality(c));
+    expect(c.health).toBe(maxHealth(c));
+    expect(c.fatigue).toBe(0);
+    expect(s.hotpot).toBeUndefined();
+    expect(r.buff).toEqual({});
+  });
+  it('a city stable recovers the team and serves its Chanko Nabe', () => {
+    const { s, c } = battered();
+    const r = W.rest(s, 'thunder');
+    expect(c.ko).toBe(false);
+    expect(s.hotpot?.city).toBe('thunder');
+    expect(Object.keys(r.buff).length).toBeGreaterThan(0);
+  });
+});
+
+describe('turn events', () => {
+  const game = () => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    s.coins = 50;
+    s.roster.push(createCreature('emberfish', 4), createCreature('pebbark', 3));
+    s.roster[0].vitality = 1; s.roster[0].fatigue = 1; // so every event is eligible
+    return s;
+  };
+
+  it('has at least a dozen distinct events', () => {
+    expect(E.EVENT_IDS.length).toBeGreaterThanOrEqual(12);
+    expect(new Set(E.EVENT_IDS).size).toBe(E.EVENT_IDS.length);
+  });
+  it('every choice of every event resolves cleanly and clears the event', () => {
+    for (const id of E.EVENT_IDS) {
+      const probe = game();
+      E.rollEvent(probe, id);
+      for (const choice of E.eventView(probe)!.choices) {
+        const s: typeof probe = JSON.parse(JSON.stringify(probe)); // same rolled event for every choice
+        const ch = E.eventView(s)!.choices.find((c) => c.id === choice.id)!;
+        const target = ch.pick ? [...s.roster, ...s.reserve].find((c) => !ch.canPick?.(c)) : undefined;
+        const r = E.resolveEvent(s, ch.id, target?.uid);
+        expect(r, `${id}:${ch.id}`).not.toBeNull();
+        expect(r!.text.length).toBeGreaterThan(0);
+        expect(s.event).toBeUndefined();
+        expect(s.coins).toBeGreaterThanOrEqual(0);
+        expect(s.roster.length).toBeGreaterThan(0);
+      }
+    }
+  });
+  it('a pending event survives a save round-trip', () => {
+    const s = game();
+    E.rollEvent(s, 'caravan');
+    const copy = JSON.parse(JSON.stringify(s));
+    expect(E.eventView(copy)?.title).toBe('Merchant Caravan');
+  });
+  it('never rolls the same event twice in a row', () => {
+    const s = game();
+    for (let i = 0; i < 40; i++) {
+      const prev = s.lastEvent;
+      const ev = E.rollEvent(s);
+      if (ev) { expect(ev.id).not.toBe(prev); E.resolveEvent(s, E.eventView(s)!.choices.find((c) => !c.disabled && !c.pick)?.id ?? 'decline'); s.event = undefined; }
+    }
+  });
+  it('the trader swaps a creature for one of equal level in the same slot', () => {
+    const s = game();
+    E.rollEvent(s, 'trader');
+    const give = s.roster[1];
+    const r = E.resolveEvent(s, 'trade', give.uid)!;
+    expect(r.tone).toBe('good');
+    expect(s.roster).not.toContain(give);
+    expect(s.roster[1].level).toBe(give.level);
+    expect(s.roster[1].species).toBe(s.dex.caught[s.dex.caught.length - 1]);
+  });
+  it('the caretaker changes Nature, and refuses a creature that already has it', () => {
+    const s = game();
+    E.rollEvent(s, 'caretaker');
+    const c = s.roster[0];
+    const choice = E.eventView(s)!.choices.find((x) => x.id.startsWith('nature:') && x.id !== `nature:${c.nature}`)!;
+    const same = E.eventView(s)!.choices.find((x) => x.id === `nature:${c.nature}`);
+    if (same) expect(E.resolveEvent(s, same.id, c.uid)).toBeNull();
+    expect(E.resolveEvent(s, choice.id, c.uid)).not.toBeNull();
+    expect(c.nature).toBe(choice.id.slice(7));
+  });
+  it('paid choices are refused when you cannot afford them', () => {
+    const s = game();
+    s.coins = 0;
+    E.rollEvent(s, 'sparring');
+    expect(E.eventView(s)!.choices[0].disabled).toBeTruthy();
+    expect(E.resolveEvent(s, 'train', s.roster[0].uid)).toBeNull();
+    expect(s.event).toBeDefined();
+  });
+  it('accepting a rival challenge starts a trainer battle', () => {
+    const s = game();
+    E.rollEvent(s, 'rival');
+    const r = E.resolveEvent(s, 'fight')!;
+    expect(r.battle?.sides[1].kind).toBe('trainer');
+    expect(r.battle!.sides[1].team.length).toBeGreaterThan(0);
+  });
+});
+
+describe('type matchup for move badges', () => {
+  const elemental = (t: string) => MOVES.find((m) => m.kind === 'elemental' && m.type === t)!;
+  it('only Elemental attacks use the chart', () => {
+    expect(typeMatchup(MOVES.find((m) => m.kind === 'physical')!, ['fire'])).toBeNull();
+    expect(typeMatchup(MOVES.find((m) => m.kind === 'support')!, ['fire'])).toBeNull();
+  });
+  it('matches the battle multipliers: super effective, resisted, 4×, and immune', () => {
+    for (const a of TYPES) for (const d of TYPES) {
+      expect(typeMatchup(elemental(a), [d])).toBe(effectiveness(a, [d]));
+    }
+    const [weakA, weakB] = TYPES.filter((d) => STRONG.fire.includes(d));
+    expect(typeMatchup(elemental('fire'), [weakA, weakB])).toBe(4);
+    const resisters = TYPES.filter((d) => STRONG[d].includes('fire'));
+    expect(typeMatchup(elemental('fire'), [resisters[0], resisters[1]])).toBe(0);
+  });
+});
+
+describe('Fire city and Kilauea island', () => {
+  it('every city, Fire included, can be a home and is reachable on foot from the stadium', () => {
+    const seen = new Set(['stadium']);
+    const q = ['stadium'];
+    while (q.length) for (const { node, edge } of neighbors(q.shift()!)) if (!edge.requires && !node.requires && !seen.has(node.id)) { seen.add(node.id); q.push(node.id); }
+    for (const id of Object.keys(CITIES)) {
+      expect(seen.has(id), id).toBe(true);
+      const s = newGame('T', 'balanced', id, 'puddlit', '#fff');
+      expect(s.location).toBe(id);
+    }
+    expect(seen.has('firepit')).toBe(false); // the arena needs the ferry
+  });
+  it('Amber is challenged at the Fire Pit, not in Kilauea Forge', () => {
+    const s = newGame('T', 'balanced', 'kilauea', 'puddlit', '#fff');
+    expect(W.arbiterHere(s)).toBeNull();
+    s.location = 'firepit';
+    expect(W.arbiterHere(s)).toBe('kilauea');
+    s.location = 'thunder';
+    expect(W.arbiterHere(s)).toBe('thunder');
+  });
+  it('the ferry from Kilauea Forge needs a Ferry Pass (sold at the Forge) or Sail', () => {
+    const s = newGame('T', 'balanced', 'kilauea', 'puddlit', '#fff');
+    expect(W.canMoveTo(s, 'blackSand').ok).toBe(false);
+    expect(W.marketStock('kilauea')).toContain('ferry-pass');
+    s.inventory['ferry-pass'] = 1;
+    expect(W.canMoveTo(s, 'blackSand').ok).toBe(true);
+  });
+  it('Kilauea island is its own landmass and fits on the terrain', () => {
+    const island = landmassOf('firepit').sort();
+    expect(island).toContain('blackSand');
+    expect(island).not.toContain('kilauea');
+    expect(island).not.toContain('mangrove');
+    for (const id of island) expect(['blackSand', 'firepit'].includes(id) || NODE_BY_ID[id].kind === 'wild', id).toBe(true);
+    let maxZ = -1e9;
+    for (let x = -90; x <= 90; x += 2) for (let z = 40; z <= 100; z += 1) if (landField(x, z) > 0.05) maxZ = Math.max(maxZ, z);
+    expect(maxZ).toBeLessThanOrEqual(83); // terrain mesh ends at z = 84
+  });
+  it('the Fire city has Fire creatures nearby on the mainland', () => {
+    const near = neighbors('kilauea').map((x) => x.node).filter((n) => n.kind === 'wild');
+    expect(near.some((n) => BIOME_TYPES[n.biome].includes('fire'))).toBe(true);
+  });
+});
+
+describe('map layout', () => {
+  const dist = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
+  it('nodes never sit on top of each other', () => {
+    for (let i = 0; i < MAP_NODES.length; i++) for (let j = i + 1; j < MAP_NODES.length; j++) {
+      expect(dist(MAP_NODES[i], MAP_NODES[j]), `${MAP_NODES[i].name} / ${MAP_NODES[j].name}`).toBeGreaterThanOrEqual(5);
+    }
+  });
+  it('the Kilauea Forge routes are well spaced', () => {
+    const area = ['kilauea', 'canyon', ...neighbors('kilauea').map((x) => x.node.id)];
+    for (const id of new Set(area.flatMap((a) => [a, ...neighbors(a).map((x) => x.node.id)]))) {
+      for (const n of MAP_NODES) if (n.id !== id) expect(dist(NODE_BY_ID[id], n), `${NODE_BY_ID[id].name} / ${n.name}`).toBeGreaterThanOrEqual(7.5);
+    }
+  });
+  it('no two routes cross', () => {
+    const side = (a: MapNode, b: MapNode, c: MapNode) => Math.sign((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x));
+    for (let i = 0; i < MAP_EDGES.length; i++) for (let j = i + 1; j < MAP_EDGES.length; j++) {
+      const e = MAP_EDGES[i], f = MAP_EDGES[j];
+      if ([e.a, e.b].some((x) => x === f.a || x === f.b)) continue;
+      const [p, q, r, s] = [e.a, e.b, f.a, f.b].map((id) => NODE_BY_ID[id]);
+      const crosses = side(p, q, r) * side(p, q, s) < 0 && side(r, s, p) * side(r, s, q) < 0;
+      expect(crosses, `${p.name}–${q.name} crosses ${r.name}–${s.name}`).toBe(false);
+    }
+  });
+});
+
+describe('battle XP', () => {
+  const totalXp = (c: ReturnType<typeof createCreature>) => c.level * 10 + c.xp;
+  const play = (bt: ReturnType<typeof createBattle>, pick: () => Parameters<typeof resolveRound>[1]) => {
+    const events: ReturnType<typeof resolveRound> = [];
+    for (let r = 0; r < 60 && !bt.over; r++) {
+      events.push(...resolveRound(bt, pick()));
+      if (bt.needSwap) events.push(...sendIn(bt, bt.sides[0].team.findIndex((c) => !c.ko)));
+    }
+    return events;
+  };
+
+  it('participation XP is 1–5, more against tougher foes', () => {
+    expect(participationXp(5, 5)).toBe(3);
+    expect(participationXp(2, 20)).toBe(5);
+    expect(participationXp(20, 2)).toBe(1);
+  });
+  it('creatures earn XP for a lost battle, including the ones that were knocked out', () => {
+    const me = createCreature('puddlit', 1), mate = createCreature('sproutle', 1);
+    const bt = createBattle(side('player', [me, mate]), side('trainer', [createCreature('calderex', 12)]), WEATHER.clear);
+    bt.participants.push(mate.uid); // both fought
+    const before = [totalXp(me), totalXp(mate)];
+    const ev = play(bt, () => chooseAI(bt, 0));
+    expect(bt.over).toBe('lose');
+    expect(me.ko && mate.ko).toBe(true);
+    expect(totalXp(me)).toBeGreaterThan(before[0]);
+    expect(totalXp(mate)).toBeGreaterThan(before[1]);
+    expect(ev.filter((e) => e.t === 'xp' && e.reason === 'battle')).toHaveLength(2);
+    expect(ev.some((e) => e.t === 'xp' && e.reason === 'ko')).toBe(false);
+  });
+  it('the creature that lands a KO gets a bonus on top of participation XP', () => {
+    const me = createCreature('calderex', 10);
+    me.playbook = ['quick-jab'];
+    const foe = createCreature('sproutle', 1);
+    foe.vitality = 0; foe.health = 1;
+    const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+    const ev = play(bt, () => ({ kind: 'move', move: 'quick-jab' }));
+    expect(bt.over).toBe('win');
+    const mine = ev.filter((e) => e.t === 'xp' && e.uid === me.uid) as Extract<typeof ev[number], { t: 'xp' }>[];
+    expect(mine.map((e) => e.reason).sort()).toEqual(['battle', 'ko']);
+    expect(mine.find((e) => e.reason === 'ko')!.foe).toBe('Sproutle');
+  });
+  it('running away earns no XP', () => {
+    const me = createCreature('calderex', 10);
+    const bt = createBattle(side('player', [me]), side('wild', [createCreature('sproutle', 1)]), WEATHER.clear);
+    const before = totalXp(me);
+    const ev = play(bt, () => ({ kind: 'run' }));
+    expect(bt.over).toBe('escaped');
+    expect(ev.some((e) => e.t === 'xp')).toBe(false);
+    expect(totalXp(me)).toBe(before);
+  });
+});
+
+describe('trainer minis', () => {
+  it('a trainer always gets the same look, and titles decide their gear', () => {
+    expect(roamingLook('Hiker Rosa')).toEqual(roamingLook('Hiker Rosa'));
+    expect(roamingLook('Hiker Rosa')).toMatchObject({ hat: 'brim', pack: true });
+    expect(roamingLook('Drifter Kane').hat).toBe('hood');
+  });
+  it('Arbiters wear their type, the player wears their chosen color', () => {
+    const a = arbiterLook('Arbiter Amber', 'fire');
+    expect(a).toMatchObject({ emblem: 'fire', cape: true, hat: 'circlet' });
+    expect(playerLook('Rowan', '#ff00aa').outfit).toBe('#ff00aa');
+    expect(championLook('Champion Ivo').cape).toBe(true);
+  });
+  it('builds a mini that stands on its base, about two units tall', () => {
+    const rig = buildTrainer(roamingLook('Scout Ola'));
+    const box = new Box3().setFromObject(rig.root);
+    expect(box.min.y).toBeCloseTo(0, 1);
+    expect(box.max.y).toBeGreaterThan(1.6);
+    expect(box.max.y).toBeLessThan(2.4);
   });
 });

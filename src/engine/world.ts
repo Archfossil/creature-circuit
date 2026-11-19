@@ -1,5 +1,5 @@
-import type { ElementType, MapNode, Rarity, Species } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS } from '../data/map';
+import type { Biome, ElementType, MapNode, Rarity, Species } from '../data/schema';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, NATURE_BY_ID, itemInfo } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
@@ -174,14 +174,59 @@ function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
 export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost: ElementType[] = []): Species {
   const pool = BIOME_TYPES[node.biome];
   const type = weightedPick(TYPES.filter((t) => pool.includes(t) || boost.includes(t)).map((t) => ({ v: t, w: (pool.includes(t) ? 3 : 0) + (boost.includes(t) ? 2 : 0) })));
-  const stageCap = level >= 10 ? 3 : level >= 6 ? 2 : 1;
+  const stageCap = stageCapFor(level);
+  const list = speciesPool(node.biome, type, rarity, stageCap);
+  // prefer the highest stage allowed, but keep some variety
+  return weightedPick(list.map((x) => ({ v: x, w: x.stage === stageCap ? 3 : 1 })));
+}
+
+/** Highest evolution stage that can appear at a wild level. */
+export const stageCapFor = (level: number) => (level >= 10 ? 3 : level >= 6 ? 2 : 1);
+
+/** The species a biome can produce for a given type, rarity and stage cap (shared by encounters and the Codex). */
+export function speciesPool(biome: Biome, type: ElementType, rarity: Rarity, stageCap: number): Species[] {
   let cands = SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity && x.stage <= stageCap);
   if (!cands.length) cands = SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity);
   if (!cands.length) cands = SPECIES.filter((x) => x.rarity === 'common' && x.stage === 1);
-  const inBiome = cands.filter((x) => x.biomes.includes(node.biome));
-  const list = inBiome.length ? inBiome : cands;
-  // prefer the highest stage allowed, but keep some variety
-  return weightedPick(list.map((x) => ({ v: x, w: x.stage === stageCap ? 3 : 1 })));
+  const inBiome = cands.filter((x) => x.biomes.includes(biome));
+  return inBiome.length ? inBiome : cands;
+}
+
+// ── Creature Codex helpers ──────────────────────────────────────
+export interface Spot { node: MapNode; minStage: number }
+
+/**
+ * Map nodes where this species can turn up (ignoring weather): wild nodes whose biome
+ * pool includes it, plus its legendary node. `minStage` is the wild stage cap needed
+ * (2 = wild Lv 6+, 3 = wild Lv 10+).
+ */
+export function encounterSpots(speciesId: string): Spot[] {
+  const sp = SPECIES_BY_ID[speciesId];
+  const out: Spot[] = [];
+  for (const node of MAP_NODES) {
+    if (node.kind === 'legendary') { if (node.legendary === speciesId) out.push({ node, minStage: 1 }); continue; }
+    if (node.kind !== 'wild' || sp.rarity === 'legendary') continue;
+    if (!BIOME_TYPES[node.biome].includes(sp.types[0])) continue;
+    const cap = [1, 2, 3].find((c) => speciesPool(node.biome, sp.types[0], sp.rarity, c).includes(sp));
+    if (cap) out.push({ node, minStage: cap });
+  }
+  return out;
+}
+
+/** This species and its earlier stages, earliest first. */
+export function evolutionLine(speciesId: string): Species[] {
+  const line = [SPECIES_BY_ID[speciesId]];
+  for (let prev = SPECIES.find((x) => x.evolvesTo === line[0].id); prev; prev = SPECIES.find((x) => x.evolvesTo === line[0].id)) line.unshift(prev);
+  return line;
+}
+
+/** Offering materials that help recruit this species, best first. */
+export function bestOfferings(speciesId: string): { id: string; bonus: number }[] {
+  const types = SPECIES_BY_ID[speciesId].types;
+  return Object.values(ITEMS).filter((it) => it.kind === 'material' && it.allure)
+    .map((it) => ({ id: it.id, bonus: Math.max(0, ...types.map((t) => it.allure![t] ?? 0)) }))
+    .filter((x) => x.bonus > 0)
+    .sort((a, b) => b.bonus - a.bonus || a.id.localeCompare(b.id));
 }
 
 const TRAINER_NAMES = ['Hiker Rosa', 'Ranger Theo', 'Birder Juno', 'Camper Malik', 'Angler Pip', 'Botanist Ines', 'Geologist Rhea', 'Drifter Kane', 'Scout Ola', 'Painter Wren'];
@@ -215,6 +260,7 @@ export interface BattleSummary { coins: number; wiped: boolean; text: string[] }
 export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame'; city?: string; nodeId?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
+  for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
   if (b.over === 'win') {
     s.stats.battlesWon++;
     if (ctx.kind === 'trainer') { out.coins = roll(6) + Math.floor(b.sides[1].team[0].level / 2); out.text.push(`${b.sides[1].name} hands over ${out.coins} coins.`); }
@@ -303,13 +349,18 @@ export function spendCityAction(s: GameState): boolean {
   return true;
 }
 
-export function rest(s: GameState, city: string) {
+/**
+ * Rest at a stable: full recovery (KOs, Vitality, Health, Stamina, Fatigue) and +1 Morale for the active team.
+ * City stables also serve their Chanko Nabe, a battle buff (doubled at your home city). Town stables don't.
+ */
+export function rest(s: GameState, nodeId: string) {
   for (const c of [...s.roster, ...s.reserve]) fullRestore(c);
-  const ci = CITIES[city];
-  const advanced = s.trainer.home === city;
-  const buff = Object.fromEntries(Object.entries(ci.hotpot.buff).map(([k, v]) => [k, v! * (advanced ? 2 : 1)]));
-  s.hotpot = { city, buff };
   for (const c of s.roster) c.morale = Math.min(10, c.morale + 1);
+  const ci = CITIES[nodeId];
+  if (!ci) return { advanced: false, buff: {} as Record<string, number> };
+  const advanced = s.trainer.home === nodeId;
+  const buff = Object.fromEntries(Object.entries(ci.hotpot.buff).map(([k, v]) => [k, v! * (advanced ? 2 : 1)]));
+  s.hotpot = { city: nodeId, buff };
   return { advanced, buff };
 }
 
@@ -328,7 +379,7 @@ export function buy(s: GameState, id: string): boolean {
 }
 export function marketStock(nodeId: string): string[] {
   const n = NODE_BY_ID[nodeId];
-  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'star-charm'];
+  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'star-charm', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
   return TOWNS[nodeId]?.sells ?? [];
 }
 
@@ -336,6 +387,7 @@ export function carveTotem(s: GameState, kind: 'type' | 'effigy', target: string
   const cost = kind === 'type' ? 6 : 10;
   const need = kind === 'type' ? 1 : 2;
   if (s.coins < cost || materials.length < need) return null;
+  if (kind === 'effigy' && !s.dex.seen.includes(target)) return null; // effigies need a Creature Codex entry
   for (const m of materials.slice(0, need)) if (!hasItem(s, m)) return null;
   s.coins -= cost;
   for (const m of materials.slice(0, need)) addItem(s, m, -1);
@@ -410,6 +462,14 @@ export function arbiterBattle(s: GameState, cityId: string): Battle {
 }
 
 /** Arena entry conditions (flavor gates from the docs). */
+/** The city whose Arbiter can be challenged where the trainer stands: a city with its arena in town, or an arena node. */
+export function arbiterHere(s: GameState): string | null {
+  const n = here(s);
+  if (n.kind === 'arena') return n.arenaOf ?? null;
+  if (n.kind === 'city' && !CITIES[n.id].arenaNode) return n.id;
+  return null;
+}
+
 export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; wait?: boolean; findHim?: boolean } {
   if (s.merits.includes(cityId)) return { ok: false, reason: 'You already hold this Arbiter\'s accolade.' };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
@@ -494,7 +554,7 @@ export function endTurn(s: GameState, camping = false): TurnReport {
 
 export function flyTargets(s: GameState): string[] {
   if (!teamMovements(s).has('fly')) return [];
-  return s.visited.filter((id) => NODE_BY_ID[id].kind === 'city' && id !== s.location && id !== 'kilauea');
+  return s.visited.filter((id) => NODE_BY_ID[id].kind === 'city' && id !== s.location);
 }
 export function fly(s: GameState, id: string): boolean {
   if (s.initiative < 3 || !flyTargets(s).includes(id)) return false;

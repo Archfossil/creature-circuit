@@ -1,13 +1,15 @@
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChart, statusGuide } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
+import { playerLook, arbiterLook, championLook, roamingLook, type TrainerLook } from '../render/trainerModel';
 import type { GameState, TrainerStyle } from '../engine/state';
 import { newGame, save, load, clearSave, tierOf, season, follower, log } from '../engine/state';
 import * as W from '../engine/world';
+import * as E from '../engine/events';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
@@ -15,9 +17,9 @@ import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina } from '../engine
 import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
-import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo } from '../data/content';
+import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
-import type { ElementType } from '../data/schema';
+import type { ElementType, Item } from '../data/schema';
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3'];
 
@@ -37,6 +39,7 @@ export class App {
     this.engine.setView(this.world);
     root.append(this.ui);
     this.world.onNodeTap = (id) => this.onNodeTap(id);
+    this.world.onNodeDoubleTap = (id) => this.onNodeDoubleTap(id);
     this.title();
   }
 
@@ -82,7 +85,7 @@ export class App {
       } else if (n === 1) {
         body = h('div', { class: 'wizard' },
           h('p', { class: 'small' }, 'Your home city is where you return after a total team wipe. Its stable serves you an advanced Chanko Nabe (double hot-pot buff).'),
-          h('div', { class: 'choice-grid' }, Object.values(CITIES).filter((c) => c.nodeId !== 'kilauea').map((c) =>
+          h('div', { class: 'choice-grid' }, Object.values(CITIES).map((c) =>
             h('button', { class: `choice city ${home === c.nodeId ? 'sel' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}`, onclick: () => { home = c.nodeId; step(1); } },
               h('div', { class: 'row gap-s' }, typeIconImg(c.type, 28), h('b', null, c.name)),
               h('small', null, `${c.park} · Arbiter ${c.arbiter}`), h('small', { class: 'muted' }, c.blurb)))),
@@ -123,6 +126,7 @@ export class App {
     if (s.phase === 'endgame') { this.renderHud(); this.endgameSheet(); return; }
     if (s.phase === 'over') { this.gameOver(); return; }
     this.renderHud();
+    if (s.event) setTimeout(() => this.eventFlow(), 400);
     if (fresh) {
       log(s, `${s.trainer.name} set out from ${CITIES[s.trainer.home].name}.`);
       save(s);
@@ -167,7 +171,10 @@ export class App {
     const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''}`, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
       h('i', { style: `--p:${c.ko ? 0 : (c.vitality * maxHealth(c) + c.health) / (maxHealth(c) * (maxVitality(c) + 1))}` }))));
-    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, followerBtn, team), h('div', { class: 'hud-bottom' }, loc, actions)));
+    const ev = E.eventView(s);
+    const eventPill = ev ? h('button', { class: 'event-pill', onclick: () => this.eventFlow(), title: 'Answer this event before ending your turn' },
+      h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('small', null, 'Event waiting'), h('b', null, ev.title))) : null;
+    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, followerBtn, team), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
   }
 
@@ -177,6 +184,7 @@ export class App {
     if (n.kind === 'town') return 'Town · Safe haven';
     if (n.kind === 'stadium') return 'Circuit Stadium · Be here at the end of Turn 100';
     if (n.kind === 'legendary') return 'Legendary grounds';
+    if (n.kind === 'arena') { const c = CITIES[n.arenaOf!]; return `${TYPE_LABEL[c.type]} Arena · Arbiter ${c.arbiter}${this.s.merits.includes(c.nodeId) ? ' ✓' : ''}`; }
     return `${BIOME_INFO[n.biome].label} · Wild Lv ~${W.baseWildLevel(this.s, n)}${n.rarity ? ' · ★ rare' : ''}`;
   }
 
@@ -193,6 +201,7 @@ export class App {
       out.push(btn('⛺', 'Camp', () => this.camp()));
     }
     if (node.kind === 'city') out.push(btn('🏙️', 'City', () => this.citySheet(), { cls: 'hl' }));
+    if (node.kind === 'arena') out.push(btn('🏟️', 'Arena', () => this.arbiter(), { cls: 'hl' }));
     if (node.kind === 'town') out.push(btn('🏘️', 'Town', () => this.townSheet(), { cls: 'hl' }));
     if (node.kind === 'stadium') out.push(btn('🏟️', 'Stadium', () => this.stadiumSheet(), { cls: 'hl' }));
     if (W.flyTargets(s).length) out.push(btn('🪽', 'Fly', () => this.flySheet(), { cost: 3, disabled: s.initiative < 3 }));
@@ -217,6 +226,13 @@ export class App {
     this.showNodePreview(id);
   }
 
+  /** Double-tap shortcut: travel straight to an adjacent node. Blocked moves leave the preview up to explain why. */
+  onNodeDoubleTap(id: string) {
+    if (!settings().doubleTapTravel || this.busy || !this.s || this.s.phase !== 'map') return;
+    if (id === this.s.location || !neighbors(this.s.location).some((x) => x.node.id === id)) return;
+    if (W.canMoveTo(this.s, id).ok) this.travel(id);
+  }
+
   showNodePreview(id: string) {
     $('.node-preview')?.remove();
     const s = this.s;
@@ -232,6 +248,9 @@ export class App {
     } else if (n.kind === 'town') extra.push(h('p', { class: 'small' }, TOWNS[id].blurb, TOWNS[id].key ? h('b', null, ` Sells: ${itemInfo(TOWNS[id].key!).name}.`) : null));
     else if (n.kind === 'wild') {
       extra.push(h('p', { class: 'small row gap-s' }, 'Wild types:', ...BIOME_TYPES[n.biome].map((t: ElementType) => typeIconImg(t, 18))));
+    } else if (n.kind === 'arena') {
+      const c = CITIES[n.arenaOf!];
+      extra.push(h('p', { class: 'small' }, h('b', null, c.arena.name), ` · Arbiter ${c.arbiter}. `, c.arena.text));
     } else if (n.kind === 'legendary') {
       const sp = SPECIES_BY_ID[n.legendary!];
       extra.push(h('p', { class: 'small' }, s.flags.beaten.includes(id) ? 'The legend has moved on.' : `Something powerful stirs here… (${sp.types.map((t) => TYPE_LABEL[t]).join('/')})`));
@@ -321,6 +340,13 @@ export class App {
     const bv = this.battleView;
     const arenaType = ctx.city ? CITIES[ctx.city].type : undefined;
     bv.setup(b.biome as never, arenaType, s.weather === 'aurora' || ctx.city === 'aurora');
+    // trainer minis: only when the opponent is a trainer of some kind
+    const foeSide = b.sides[1];
+    const foeLook: TrainerLook | null =
+      foeSide.kind === 'arbiter' ? arbiterLook(foeSide.name, arenaType ?? CITIES[b.arena?.city ?? '']?.type ?? 'fire')
+        : foeSide.kind === 'champion' ? championLook(foeSide.name)
+          : foeSide.kind === 'trainer' ? roamingLook(foeSide.name) : null;
+    bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color) : null, foeLook);
     this.engine.setView(bv);
     const disp: [Snap, Snap] = [snapOf(activeOf(b.sides[0])), snapOf(activeOf(b.sides[1]))];
     const panel = h('div', { class: 'battle-ui' });
@@ -358,6 +384,7 @@ export class App {
     };
     const say = (t: string, tone?: string) => { logLine.textContent = t; logLine.className = `battle-log ${tone ?? ''}`; };
 
+    bv.trainerHop(0); bv.trainerHop(1);
     await Promise.all([bv.setCreature(0, activeOf(b.sides[0]).species), bv.setCreature(1, activeOf(b.sides[1]).species)]);
     renderPlate(0); renderPlate(1);
 
@@ -409,6 +436,7 @@ export class App {
           case 'buff': { const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, e.text, 'buff'); await wait(450); break; }
           case 'ko': sfx.ko(); await bv.ko(e.side); break;
           case 'send': {
+            bv.trainerHop(e.side);
             disp[e.side] = e.snap;
             await bv.setCreature(e.side, b.sides[e.side].team.find((x) => x.uid === e.snap.uid)!.species);
             renderPlate(e.side);
@@ -416,7 +444,7 @@ export class App {
           }
           case 'xp': {
             const c = b.sides[0].team.find((x) => x.uid === e.uid);
-            if (c) { say(`${nameOf(c)} gained ${e.amount} XP!`, 'good'); if (e.levels) sfx.good(); if (e.levels) toast(`${nameOf(c)} reached Lv ${c.level}! Unlock a node on its chart.`, 'good', 3500); await wait(600); }
+            if (c) { say(e.reason === 'ko' ? `${nameOf(c)} gained ${e.amount} XP for knocking out ${e.foe ?? 'its foe'}!` : `${nameOf(c)} gained ${e.amount} XP for battling.`, 'good'); if (e.levels) sfx.good(); if (e.levels) toast(`${nameOf(c)} reached Lv ${c.level}! Unlock a node on its chart.`, 'good', 3500); await wait(600); }
             break;
           }
           case 'end': break;
@@ -436,13 +464,20 @@ export class App {
         say(`What will ${nameOf(me)} do?`);
         const canSwap = b.round >= 1 && b.sides[0].team.filter((c) => !c.ko).length > 1;
         const canRun = ctx.kind === 'wild' || ctx.kind === 'legendary';
+        const foeTypes = speciesOf(activeOf(b.sides[1])).types;
         controls.replaceChildren(
-          h('div', { class: 'move-grid', role: 'group', 'aria-label': 'Moves (keys 1–4)' }, me.playbook.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: String(i + 1), onClick: () => act({ kind: 'move', move: id }) }))),
+          h('div', { class: 'move-grid', role: 'group', 'aria-label': 'Moves (keys 1–4)' }, me.playbook.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: String(i + 1), vs: foeTypes, onClick: () => act({ kind: 'move', move: id }) }))),
           h('div', { class: 'row gap-s sub-actions' },
             h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
             h('button', { class: 'btn ghost sm', disabled: !canSwap, title: canSwap ? '' : 'Swapping is allowed from round 2', onclick: () => swapPicker() }, '🔁 Swap'),
             canRun ? h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'run' }) }, '🏃 Run') : null,
+            h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
             h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card')));
+      };
+      const showTypes = () => {
+        const me = activeOf(b.sides[0]), foe = activeOf(b.sides[1]);
+        const attack = [...new Set(me.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m.kind === 'elemental' && m.type).map((m) => m.type!))];
+        typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe) });
       };
       const onKey = (ev: KeyboardEvent) => {
         if (document.querySelector('.sheet-wrap') || !controls.querySelector('.move-grid')) return;
@@ -451,6 +486,7 @@ export class App {
         if (n >= 1 && n <= me.playbook.length) act({ kind: 'move', move: me.playbook[n - 1] });
         else if (ev.key.toLowerCase() === 'b') act({ kind: 'move', move: CATCH_BREATH.id });
         else if (ev.key.toLowerCase() === 'r' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) act({ kind: 'run' });
+        else if (ev.key.toLowerCase() === 't') showTypes();
         else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[0].team.filter((c) => !c.ko).length > 1) swapPicker();
       };
       addEventListener('keydown', onKey);
@@ -520,6 +556,7 @@ export class App {
           h('h4', null, 'Totem'),
           h('div', { class: 'chips' }, totems.map((t) => h('button', { class: `pick ${t === totem ? 'sel' : ''}`, onclick: () => { totem = t; render(); } }, `${itemInfo(t).icon} ${W.itemDisplayName(t)} (${fmt(W.totemBonus(t, wild))})`))),
           h('h4', null, 'Offerings ', h('span', { class: 'muted' }, '(up to 2)')),
+          h('p', { class: 'small muted' }, `${sp.name} likes: ${W.bestOfferings(sp.id).slice(0, 4).map((o) => `${itemInfo(o.id).icon} ${itemInfo(o.id).name} +${o.bonus}`).join(', ')}. Any berry helps too.`),
           offers.length ? h('div', { class: 'chips' }, offers.map((o) => {
             const on = chosen.includes(o);
             return h('button', { class: `pick ${on ? 'sel' : ''}`, disabled: !on && chosen.length >= 2, onclick: () => { chosen = on ? chosen.filter((x) => x !== o) : [...chosen, o]; render(); } },
@@ -560,7 +597,9 @@ export class App {
         tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : ''}`, costTag, () => this.stable()),
         tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
         tile('🪵', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
-        tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
+        c.arenaNode
+          ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market, or a creature that can Sail).`, '', () => {}, true)
+          : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
     openSheet(c.name, body, { wide: true });
   }
 
@@ -572,8 +611,9 @@ export class App {
   stable() {
     if (!this.spend()) return;
     const r = W.rest(this.s, this.s.location);
+    const city = CITIES[this.s.location];
     closeAllSheets();
-    toast(`Your team devours the ${CITIES[this.s.location].hotpot.name}${r.advanced ? ' (home special!)' : ''}. Fully restored!`, 'good', 3500);
+    toast(city ? `Your team devours the ${city.hotpot.name}${r.advanced ? ' (home special!)' : ''}. Fully restored!` : 'Your team rests up at the town stable. Fully restored!', 'good', 3500);
     save(this.s);
     this.renderHud();
     if (this.s.reserve.length) this.rosterManager();
@@ -642,10 +682,12 @@ export class App {
       const cost = kind === 'type' ? 6 : 10;
       body.replaceChildren(
         h('p', { class: 'small' }, 'Carved totems lure specific creatures. Type totems: +3 for that type, −1 for others. Effigies: +5 for one species, −3 for all others (in bad taste!). A Plain Totem gives +1 to anyone.'),
-        h('div', { class: 'seg' }, h('button', { class: kind === 'type' ? 'sel' : '', onclick: () => { kind = 'type'; target = 'fire'; mats = []; render(); } }, 'Type Totem'), h('button', { class: kind === 'effigy' ? 'sel' : '', onclick: () => { kind = 'effigy'; target = s.dex.seen[0]; mats = []; render(); } }, 'Effigy')),
+        ...(kind === 'effigy' ? [h('p', { class: 'small muted' }, 'You can carve an Effigy of any creature in your Creature Codex: anything you’ve seen in the wild or in a trainer’s team. ', h('button', { class: 'link', onclick: () => this.codex() }, 'Open Codex'))] : []),
+        h('div', { class: 'seg' }, h('button', { class: kind === 'type' ? 'sel' : '', onclick: () => { kind = 'type'; target = 'fire'; mats = []; render(); } }, 'Type Totem'), h('button', { class: kind === 'effigy' ? 'sel' : '', onclick: () => { kind = 'effigy'; target = codexOrder(s.dex.seen)[0]; mats = []; render(); } }, 'Effigy')),
         kind === 'type'
           ? h('div', { class: 'chips' }, TYPES.map((t) => h('button', { class: `pick ${target === t ? 'sel' : ''}`, onclick: () => { target = t; render(); } }, typeIconImg(t, 16), ' ', TYPE_LABEL[t])))
-          : h('div', { class: 'chips' }, s.dex.seen.map((id) => h('button', { class: `pick ${target === id ? 'sel' : ''}`, onclick: () => { target = id; render(); } }, SPECIES_BY_ID[id].name))),
+          : h('div', { class: 'chips' }, codexOrder(s.dex.seen).map((id) => h('button', { class: `pick ${target === id ? 'sel' : ''}`, onclick: () => { target = id; render(); } },
+              h('img', { src: portrait(id), alt: '', width: 22, height: 22 }), SPECIES_BY_ID[id].name, s.dex.caught.includes(id) ? ' 🗿' : ''))),
         h('h4', null, `Materials (${mats.length}/${need})`),
         materials.length ? h('div', { class: 'chips' }, materials.map((m) => {
           const on = mats.includes(m);
@@ -663,7 +705,8 @@ export class App {
 
   async arbiter() {
     const s = this.s;
-    const id = s.location;
+    const id = W.arbiterHere(s);
+    if (!id) return;
     const c = CITIES[id];
     const gate = W.arbiterGate(s, id);
     if (s.merits.includes(id)) { toast(gate.reason ?? '', 'info'); return; }
@@ -712,15 +755,16 @@ export class App {
     const body = h('div', { class: 'city' },
       h('p', null, t.blurb),
       h('div', { class: 'tiles' },
+        tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', W.cityActionCost(s) ? `${W.cityActionCost(s)}⚡` : 'free', () => this.stable()),
         tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', 'free', () => this.market(true)),
         tile('🗺️', 'Notice Board', 'Local rumors and tips.', '', () => this.rumors())),
-      h('p', { class: 'small muted' }, 'Towns are safe from the wilds. Town markets cost no Initiative.'));
+      h('p', { class: 'small muted' }, 'Towns are safe from the wilds. Town markets cost no Initiative; the stable costs the same as a city action.'));
     openSheet(n.name, body, { wide: true });
   }
 
   rumors() {
     const tips = [
-      'The ferry to Kilauea Forge leaves from Mangrove Port — buy a Ferry Pass at Saltmarsh Landing.',
+      'Amber\u2019s Fire Pit is on Kilauea island. Ferries run from Mangrove Port and Kilauea Forge; buy a Ferry Pass at Saltmarsh Landing or the Forge.',
       'Stella only surfaces her fortress for trainers with 2 or more accolades.',
       'Dahlia waits on the Gloomshade forest floor. Lumber Hollow sells the rope to get down.',
       'They say Fabian always hides as a villager. Look closely.',
@@ -789,7 +833,7 @@ export class App {
           h('div', { class: 'bag-grid' }, ids.map((id) => {
             const it = itemInfo(id);
             const usable = ['restore', 'treat', 'charm'].includes(it.kind);
-            return h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, it.icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', s.inventory[id]), h('small', null, it.text)),
+            return h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, it.icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', s.inventory[id]), h('small', null, it.text), it.kind === 'material' ? materialDetail(it) : null),
               usable ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null);
           })))),
         Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '');
@@ -812,7 +856,16 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Turn flow
   // ════════════════════════════════════════════════════════════
+  /** True (and the event reopens) if an end-of-turn event is still waiting for an answer. */
+  private eventBlocks(): boolean {
+    if (!this.s.event) return false;
+    toast('Answer the waiting event before ending your turn.', 'info', 3000);
+    this.eventFlow();
+    return true;
+  }
+
   async camp() {
+    if (this.eventBlocks()) return;
     const ok = await confirmSheet('Make camp?', 'Camping ends your turn. Active creatures recover all Vitality and shake off Fatigue (KO\'d creatures still need a stable).', 'Camp & end turn');
     if (ok) this.endTurn(true, true);
   }
@@ -820,6 +873,7 @@ export class App {
   async endTurn(camping = false, skipConfirm = false) {
     const s = this.s;
     if (this.busy) return;
+    if (this.eventBlocks()) return;
     if (!skipConfirm && s.initiative > 0) {
       const ok = await confirmSheet('End turn?', `You still have ${s.initiative} Initiative left.`, 'End turn');
       if (!ok) return;
@@ -836,9 +890,56 @@ export class App {
     const w = WEATHER[s.weather];
     await rollDice(`Weather · ${SEASON_INFO[se].label}`, [{ sides: 6, value: r.weatherRoll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 650);
     this.busy = false;
+    E.rollEvent(s);
     save(s);
     this.renderHud();
     if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
+    if (s.event) await this.eventFlow();
+  }
+
+  /**
+   * Show the pending end-of-turn event and resolve the player's answer. Closing the window does NOT
+   * decline it: the event stays pending (reopen it from the HUD) until a choice is made.
+   */
+  async eventFlow(): Promise<void> {
+    const s = this.s;
+    const view = E.eventView(s);
+    if (!view || document.querySelector('.sheet-wrap.event-sheet')) return;
+    const answer = await new Promise<{ choice: string; uid?: string } | null>((resolve) => {
+      let settled = false;
+      const done = (v: { choice: string; uid?: string } | null) => { if (!settled) { settled = true; close(); resolve(v); } };
+      const choose = (ch: E.EventChoice) => {
+        if (!ch.pick) { done({ choice: ch.id }); return; }
+        const all = [...s.roster, ...s.reserve];
+        const closePick = openSheet(`${view.title} · choose a creature`, h('div', null,
+          h('p', { class: 'small' }, ch.label, ch.detail ? ` · ${ch.detail}` : ''),
+          h('div', { class: 'list' }, all.map((c) => {
+            const why = ch.canPick?.(c) ?? null;
+            const card = miniCard(c, { badge: why ? '✕' : undefined, onClick: () => { if (why) { toast(why, 'info'); return; } closePick(); done({ choice: ch.id, uid: c.uid }); } });
+            if (why) { card.classList.add('unpickable'); card.title = why; }
+            return card;
+          }))), { wide: true });
+      };
+      const body = h('div', { class: 'event' },
+        h('div', { class: 'event-head' }, h('span', { class: 'event-ico' }, view.icon), h('p', null, view.text)),
+        h('div', { class: 'event-choices' }, view.choices.map((ch) =>
+          h('button', { class: `event-choice ${ch.id === 'decline' ? 'ghost' : ''}`, disabled: !!ch.disabled, onclick: () => choose(ch) },
+            h('b', null, ch.label),
+            ch.disabled ? h('small', { class: 'bad-text' }, ch.disabled) : ch.detail ? h('small', null, ch.detail) : null))));
+      const close = openSheet(`${view.title}`, h('div', null, body,
+        h('p', { class: 'small muted center' }, 'Close this to check your team first. The event waits at the bottom of the screen.')),
+        { cls: 'event-sheet', onClose: () => { if (!settled) { settled = true; resolve(null); } } });
+    });
+    if (!answer) { this.renderHud(); return; }
+    const r = E.resolveEvent(s, answer.choice, answer.uid);
+    if (!r) { this.renderHud(); return; }
+    save(s);
+    this.renderHud();
+    toast(r.text, r.tone, 3500);
+    if (r.battle) {
+      await wait(400);
+      await this.runBattle(r.battle, { kind: 'trainer', intro: r.text });
+    }
   }
 
   async banner(title: string, sub: string) {
@@ -923,12 +1024,12 @@ export class App {
   // ════════════════════════════════════════════════════════════
   menu() {
     const close = openSheet('Menu', h('div', { class: 'tiles' },
-      tile('📖', 'Creature Dex', `${this.s.dex.caught.length} caught · ${this.s.dex.seen.length} seen`, '', () => { close(); this.dex(); }),
+      tile('📖', 'Creature Codex', `${this.s.dex.caught.length} recruited · ${this.s.dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
-      tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); openSheet('Type Chart', h('div', null, typeChart(), h('p', { class: 'small' }, 'Dual types multiply: 4× when both are weak, immune when both resist. Physical attacks ignore the chart.')), { wide: true }); }),
+      tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
       tile('❓', 'How to Play', 'Rules summary.', '', () => { close(); this.howToPlay(); }),
-      tile('⚙️', 'Settings', 'Sound, dice speed, motion.', '', () => { close(); this.settingsSheet(); }),
+      tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
       tile('🏠', 'Title Screen', 'Your game is autosaved.', '', () => { close(); this.title(); }),
       tile('🗑️', 'Abandon Journey', 'Delete this save.', '', async () => { close(); if (await confirmSheet('Abandon journey?', 'This deletes your save permanently.', 'Delete')) { clearSave(); this.title(); } })));
   }
@@ -937,28 +1038,77 @@ export class App {
     const body = h('div');
     const render = () => {
       const st = settings();
-      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion', label: string, text: string) =>
+      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel', label: string, text: string) =>
         h('label', { class: 'toggle' }, h('div', null, h('b', null, label), h('small', null, text)),
           h('input', { type: 'checkbox', role: 'switch', checked: st[k], onchange: (e: Event) => { setSetting(k, (e.target as HTMLInputElement).checked); if (k === 'sound' && st[k] === false) sfx.tap(); render(); } }));
       body.replaceChildren(
         toggle('sound', 'Sound effects', 'Dice, hits and fanfares (synthesized, no downloads).'),
         toggle('fastDice', 'Fast dice', 'Shorter dice-roll animations for quicker turns.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),
-        h('p', { class: 'small muted' }, 'Keyboard: 1–4 use moves, B catch breath, S swap, R run, Esc closes panels.'));
+        toggle('doubleTapTravel', 'Double-tap to travel', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button.'),
+        h('p', { class: 'small muted' }, 'Keyboard: 1–4 use moves, B catch breath, S swap, R run, T type chart, Esc closes panels.'));
     };
     render();
     openSheet('Settings', body);
   }
 
-  dex() {
+  codex() {
     const s = this.s;
-    openSheet('Creature Dex', h('div', { class: 'dex-grid' }, SPECIES.map((sp) => {
-      const caught = s.dex.caught.includes(sp.id), seen = s.dex.seen.includes(sp.id);
-      return h('div', { class: `dex-entry ${caught ? 'caught' : seen ? 'seen' : 'unknown'}`, style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
-        seen ? h('img', { src: portrait(sp.id) }) : h('div', { class: 'qm' }, '?'),
-        h('b', null, seen ? sp.name : '???'),
-        h('div', { class: 'row gap-s center' }, seen ? sp.types.map((t) => typeIconImg(t, 14)) : null, caught ? h('span', null, '🗿') : null));
-    })), { wide: true });
+    openSheet('Creature Codex', h('div', null,
+      h('p', { class: 'small muted' }, 'Every creature you meet in the wild or in a trainer’s team is recorded here. Tap one to see where to find it and what it likes. You can carve an Effigy of any creature in the Codex at a Carving Shrine.'),
+      h('div', { class: 'dex-grid' }, SPECIES.map((sp) => {
+        const caught = s.dex.caught.includes(sp.id), seen = s.dex.seen.includes(sp.id);
+        return h(seen ? 'button' : 'div', { class: `dex-entry ${caught ? 'caught' : seen ? 'seen' : 'unknown'}`, style: `--tc:${TYPE_COLOR[sp.types[0]]}`, onclick: seen ? () => this.codexEntry(sp.id) : undefined },
+          seen ? h('img', { src: portrait(sp.id), alt: '' }) : h('div', { class: 'qm' }, '?'),
+          h('b', null, seen ? sp.name : '???'),
+          h('div', { class: 'row gap-s center' }, seen ? sp.types.map((t) => typeIconImg(t, 14)) : null, caught ? h('span', { title: 'Recruited' }, '🗿') : null));
+      }))), { wide: true });
+  }
+
+  /** One Codex page: where to find the species (or its earlier stages) and how to win it over. */
+  codexEntry(id: string) {
+    const s = this.s;
+    const sp = SPECIES_BY_ID[id];
+    const caught = s.dex.caught.includes(id);
+    const nodeChip = (spot: W.Spot) => {
+      const visited = s.visited.includes(spot.node.id);
+      return h('span', { class: `chip ${visited ? '' : 'unvisited'}`, title: visited ? 'Visited' : 'Not visited yet' },
+        BIOME_INFO[spot.node.biome].icon, ' ', spot.node.name, spot.minStage > 1 ? h('small', { class: 'muted' }, ` · wild Lv ${spot.minStage === 2 ? 6 : 10}+`) : null);
+    };
+    const line = W.evolutionLine(id);
+    const where = line.map((member) => {
+      const spots = W.encounterSpots(member.id);
+      const known = s.dex.seen.includes(member.id);
+      const label = member.id === id ? sp.name : `Earlier stage: ${known ? member.name : '???'}`;
+      return h('div', { class: 'codex-where' },
+        h('b', null, label, h('span', { class: 'muted small' }, ` · Stage ${member.stage}`)),
+        spots.length ? h('div', { class: 'chips' }, spots.map(nodeChip))
+          : h('p', { class: 'small muted' }, member.id === id && line.length > 1 ? 'Not found in the wild at this stage. Evolve it from an earlier stage.' : 'Not known to roam the wild.'));
+    });
+    const offers = W.bestOfferings(id);
+    const biomesText = (mid: string) => materialBiomes(mid).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ');
+    openSheet(sp.name, h('div', { class: 'codex-entry' },
+      h('div', { class: 'recruit-head', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+        h('img', { src: portrait(sp.id), alt: '' }),
+        h('div', null,
+          h('h3', null, sp.name, caught ? h('span', { title: 'Recruited' }, ' 🗿') : null),
+          h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'chip' }, `Stage ${sp.stage}`), h('span', { class: 'chip' }, `RT ${sp.rt}`)),
+          h('p', { class: 'small' }, sp.dex))),
+      h('h4', null, '🗺️ Where to look'),
+      h('p', { class: 'small muted' }, 'Explore these wild nodes. Faded ones are places you haven’t visited yet. Rarer creatures need good star rolls, and weather can bring out other types too.'),
+      ...where,
+      h('h4', null, '🎁 Best offerings'),
+      offers.length ? h('div', { class: 'offer-list' }, offers.map((o) => {
+        const it = itemInfo(o.id);
+        const have = s.inventory[o.id] ?? 0;
+        return h('div', { class: 'offer-row' },
+          h('span', { class: 'bi-ico' }, it.icon),
+          h('div', null,
+            h('b', null, it.name, ' ', h('span', { class: 'good-text' }, `+${o.bonus}`), have ? h('span', { class: 'muted small' }, ` · you have ${have}`) : null),
+            h('small', { class: 'muted' }, `Found in: ${biomesText(o.id)}`)));
+      })) : h('p', { class: 'small muted' }, 'No material appeals to it.'),
+      h('p', { class: 'small' }, h('b', null, 'Also: '), `Sunberries and Dewberries give +1 and Moonberries +2 to any creature. A ${sp.types.map((t) => TYPE_LABEL[t]).join(' or ')} Totem gives +3, and a ${sp.name} Effigy gives +5. Carve either at a city’s Carving Shrine.`)),
+      { wide: true });
   }
 
   journal() {
@@ -988,19 +1138,32 @@ export class App {
   howToPlay(welcome = false) {
     openSheet(welcome ? `Welcome, ${this.s.trainer.name}!` : 'How to Play', h('div', { class: 'howto' },
       h('ol', null,
-        h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel.'),
+        h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel, or just double-tap it (you can turn this off in Settings).'),
         h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),
-        h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict status on a minimum damage roll. Damage drains Health, then Vitality hearts.'),
+        h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict a status on a minimum damage roll (see Menu → Status Effects, or tap a status tag in battle). In battle, each Elemental move shows how it lands on the current opponent (2× Super effective, ½ Resisted, No effect…), and 🔺 Types (or T) opens the chart for the matchup. Damage drains the Health bar, then a Vitality heart; out of hearts means KO.'),
         h('li', null, h('b', null, 'Stamina & Fatigue: '), 'each move costs Effort. At 0 Stamina you gain Fatigue — fatigued creatures roll d10 and may lose their turn.'),
-        h('li', null, h('b', null, 'Recruit: '), 'defeat a wild creature, then offer a totem plus offerings. Roll 2d6 + bonuses vs its Recruitment Threshold.'),
-        h('li', null, h('b', null, 'Grow: '), 'every 10 XP is a level — unlock a node on the back of the creature\'s index card. The last node evolves it.'),
-        h('li', null, h('b', null, 'Cities: '), 'rest at the Stable, shop, carve totems and challenge the Arbiter for a Merit.'),
+        h('li', null, h('b', null, 'Playbook: '), 'up to 4 moves. Energy is a requirement, not spent per use: the playbook editor crosses out the energy each move takes and counts what is left.'),
+        h('li', null, h('b', null, 'Recruit: '), 'defeat a wild creature, then offer a totem plus up to 2 offerings. Roll 2d6 + bonuses vs its Recruitment Threshold. Each material appeals to certain types (shown in your Bag).'),
+        h('li', null, h('b', null, 'Creature Codex: '), 'every creature you meet in the wild or in a trainer\u2019s team is recorded. Its page lists the nodes to explore for it (or its earlier stages) and its favorite offerings. You can carve an Effigy of any creature in your Codex.'),
+        h('li', null, h('b', null, 'Grow: '), 'every creature that fights earns XP when the battle ends, win or lose, and knocking out a foe earns a bonus (running away earns nothing). Every 10 XP is a level and a point to spend on the skill tree on the back of the creature\'s index card. A node opens once every node linked above it is bought. Evolving needs the whole center path; side branches are optional but are left behind when it evolves.'),
+        h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit.'),
+        h('li', null, h('b', null, 'Events: '), 'at the end of each turn something happens on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then.'),
+        h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets are free.'),
         h('li', null, h('b', null, 'Win: '), 'hold 8 Merits and stand in Circuit Stadium when Turn 100 ends. Then win the 8-trainer bracket.')),
       welcome ? h('p', { class: 'small muted' }, 'Tip: pick a Follower (top-left) — it leads your battles and powers your overworld Ability.') : null));
   }
 }
 
 // ── helpers ──────────────────────────────────────────────────────
+/** Species ids in Codex (species list) order. */
+function codexOrder(ids: string[]) { return SPECIES.filter((sp) => ids.includes(sp.id)).map((sp) => sp.id); }
+/** What an offering material is good for, and where it turns up. */
+function materialDetail(it: Item) {
+  const allure = (Object.entries(it.allure ?? {}) as [ElementType, number][]).sort((a, b) => b[1] - a[1]);
+  return h('div', { class: 'mat-detail' },
+    h('span', { class: 'row gap-s' }, allure.map(([t, v]) => h('span', { class: 'chip sm' }, typeIconImg(t, 14), ` ${TYPE_LABEL[t]} +${v}`))),
+    h('small', { class: 'muted' }, `Recruiting bonus for creatures of those types (the best match counts). Found in: ${materialBiomes(it.id).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ')}. Also used to carve totems.`));
+}
 function tile(icon: string, title: string, text: string, cost: string, fn: () => void, disabled = false) {
   return h('button', { class: 'tile', disabled, onclick: fn }, h('span', { class: 'tile-ico' }, icon), h('div', null, h('b', null, title), h('small', null, text)), cost ? h('span', { class: 'cost' }, cost) : null);
 }

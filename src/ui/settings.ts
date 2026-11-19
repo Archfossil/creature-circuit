@@ -1,10 +1,11 @@
 // Per-device preferences. Storage can be unavailable (private mode), so every access is guarded.
-export interface Settings { sound: boolean; fastDice: boolean; reduceMotion: boolean }
+export interface Settings { sound: boolean; fastDice: boolean; reduceMotion: boolean; doubleTapTravel: boolean }
 
 const KEY = 'creature-circuit-settings-v1';
 const defaults: Settings = {
   sound: true,
   fastDice: false,
+  doubleTapTravel: true,
   reduceMotion: typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches,
 };
 

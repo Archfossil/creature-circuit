@@ -9,38 +9,12 @@ import { TYPE_COLOR, typeIcon } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import { buildCreature, type CreatureRig } from './creatureModel';
 
-// ── Noise ───────────────────────────────────────────────────────
-function hash(x: number, z: number) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
-function vnoise(x: number, z: number) {
-  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
-  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
-  const a = hash(xi, zi), b = hash(xi + 1, zi), c = hash(xi, zi + 1), d = hash(xi + 1, zi + 1);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-}
-const fbm = (x: number, z: number) => vnoise(x, z) * 0.55 + vnoise(x * 2.1, z * 2.1) * 0.3 + vnoise(x * 4.3, z * 4.3) * 0.15;
-const smooth = (e0: number, e1: number, x: number) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+import { hash, fbm, smooth, landField, SEGS, segDist } from './land';
 
 const ELEV: Record<Biome, number> = {
   mountain: 3.2, tundra: 1.6, canyon: 2.2, badlands: 1.3, volcanic: 2.2, forest: 0.9, grove: 0.8, meadow: 0.5,
   road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25,
 };
-
-// Land segments (sail routes excluded so islands stay islands)
-const SEGS: [MapNode, MapNode][] = MAP_EDGES.filter((e) => e.via !== 'sail' && e.b !== 'ironwake' && e.a !== 'ironwake').map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]);
-
-function segDist(px: number, pz: number, a: MapNode, b: MapNode) {
-  const dx = b.x - a.x, dz = b.z - a.z;
-  const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (pz - a.z) * dz) / (dx * dx + dz * dz || 1)));
-  return Math.hypot(px - (a.x + dx * t), pz - (a.z + dz * t));
-}
-
-function landField(x: number, z: number) {
-  let d = 1e9;
-  for (const [a, b] of SEGS) d = Math.min(d, segDist(x, z, a, b));
-  for (const n of MAP_NODES) d = Math.min(d, Math.hypot(x - n.x, z - n.z) - (n.kind === 'city' ? 3 : n.kind === 'legendary' ? -1 : 1));
-  const R = 8.5 + fbm(x * 0.07, z * 0.07) * 7;
-  return smooth(R, R - 5, d);
-}
 
 /** Nearby nodes weighted for biome blending. */
 function biomeWeights(x: number, z: number) {
@@ -149,6 +123,9 @@ export class WorldView implements SceneView {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 600);
   onNodeTap: (id: string) => void = () => {};
+  /** Fired on the second of two quick taps/clicks on the same node (after `onNodeTap` for each). */
+  onNodeDoubleTap: (id: string) => void = () => {};
+  private lastTap = { id: '', t: 0 };
   interactive = true;
   title = false;
 
@@ -463,6 +440,25 @@ export class WorldView implements SceneView {
           lab.position.y = 2.4; g.add(lab);
         }
         ringR = 1.5;
+      } else if (n.kind === 'arena') {
+        // a stand-alone Arbiter arena: a type-coloured bowl with the type emblem above it
+        const ci = CITIES[n.arenaOf!];
+        const tc = TYPE_COLOR[ci.type];
+        const plat = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.9, 0.5, 10), new THREE.MeshStandardMaterial({ color: '#3a3230', flatShading: true }));
+        plat.position.y = 0.25; plat.castShadow = true; plat.receiveShadow = true;
+        const bowl = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.45, 6, 16), new THREE.MeshStandardMaterial({ color: tc, flatShading: true, emissive: new THREE.Color(tc), emissiveIntensity: 0.35 }));
+        bowl.rotation.x = Math.PI / 2; bowl.position.y = 0.75; bowl.castShadow = true;
+        const pit = new THREE.Mesh(new THREE.CircleGeometry(1.4, 16), new THREE.MeshStandardMaterial({ color: tc, emissive: new THREE.Color(tc), emissiveIntensity: 0.8 }));
+        pit.rotation.x = -Math.PI / 2; pit.position.y = 0.52;
+        g.add(plat, bowl, pit);
+        const tex = loader.load(typeIcon(ci.type)); tex.colorSpace = THREE.SRGBColorSpace;
+        const emblem = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+        emblem.position.set(0, 2.6, 0); emblem.scale.set(1.6, 1.6, 1);
+        g.add(emblem);
+        const lab = labelSprite(n.name, { accent: tc, sub: `${ci.arbiter} · Arbiter arena`, size: 0.024 });
+        lab.position.y = 3.8;
+        g.add(lab);
+        ringR = 1.8;
       } else if (n.kind === 'legendary') {
         const sp = SPECIES_BY_ID[n.legendary!];
         const col = TYPE_COLOR[sp.types[0]];
@@ -753,7 +749,13 @@ export class WorldView implements SceneView {
   private tap(x: number, y: number, ray: THREE.Raycaster, ndc: (x: number, y: number) => THREE.Vector2) {
     ray.setFromCamera(ndc(x, y), this.camera);
     const hits = ray.intersectObjects(this.hitMeshes, false);
-    if (hits.length) this.onNodeTap(hits[0].object.userData.nodeId);
+    if (!hits.length) { this.lastTap = { id: '', t: 0 }; return; }
+    const id: string = hits[0].object.userData.nodeId;
+    const now = performance.now();
+    const double = this.lastTap.id === id && now - this.lastTap.t < 400;
+    this.lastTap = double ? { id: '', t: 0 } : { id, t: now };
+    this.onNodeTap(id);
+    if (double) this.onNodeDoubleTap(id);
   }
 
   // ── Frame ──────────────────────────────────────────────────────

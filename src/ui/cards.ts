@@ -6,6 +6,7 @@ import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
 import type { ElementType, EnergyKey, Move } from '../data/schema';
 import { portrait } from '../render/engine';
+import { typeMatchup } from '../engine/battle';
 
 export function typeChip(t: ElementType, small = false) {
   return h('span', { class: `type-chip ${small ? 'sm' : ''}`, style: `--tc:${TYPE_COLOR[t]}` }, h('img', { src: typeIcon(t), alt: '' }), TYPE_LABEL[t]);
@@ -45,7 +46,19 @@ export function hpBlock(c: CreatureInst, compact = false) {
     h('div', { class: 'hp-row' }, h('span', { class: 'lbl' }, 'VIT'), hearts));
 }
 
-export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boolean; selected?: boolean; compact?: boolean; hotkey?: string } = {}) {
+/** How a move's typing lands on a defender: only Elemental moves use the type chart. */
+export function moveMatchup(m: Move, defender: ElementType[]): { mult: number; label: string; cls: string } | null {
+  const mult = typeMatchup(m, defender);
+  if (mult === null) return null;
+  if (mult === 0) return { mult, label: 'No effect', cls: 'x0' };
+  if (mult >= 4) return { mult, label: '4× Devastating', cls: 'x4' };
+  if (mult >= 2) return { mult, label: '2× Super effective', cls: 'x2' };
+  if (mult < 1) return { mult, label: '½ Resisted', cls: 'x05' };
+  return { mult, label: '1× Neutral', cls: 'x1' };
+}
+
+export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boolean; selected?: boolean; compact?: boolean; hotkey?: string; vs?: ElementType[] } = {}) {
+  const match = opts.vs ? moveMatchup(m, opts.vs) : null;
   const col = m.type ? TYPE_COLOR[m.type] : '#8a8796';
   const acc = m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}`;
   const dmg = m.dmgDie || m.dmgFlat ? `${m.dmgDie ? 'd' + m.dmgDie : ''}${m.dmgDie && m.dmgFlat ? '+' : ''}${m.dmgFlat || ''}` : '—';
@@ -63,6 +76,8 @@ export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boole
       h('span', { title: 'Accuracy' }, '🎯 ', acc),
       h('span', { title: 'Effort (stamina)' }, '💨 ', m.effort),
       m.speed ? h('span', { title: 'Speed modifier' }, '⚡', m.speed > 0 ? `+${m.speed}` : m.speed) : null),
+    match ? h('div', { class: `mc-eff ${match.cls}`, title: `Type matchup against the opponent: ×${match.mult}` }, match.label)
+      : opts.vs && m.kind === 'physical' ? h('div', { class: 'mc-eff phys', title: 'Physical attacks ignore the type chart' }, 'Ignores types') : null,
     opts.compact ? null : h('div', { class: 'mc-text' }, m.text, m.status ? h('em', null, ` Min roll: ${STATUS_INFO[m.status].name}.`) : null),
     opts.compact ? null : h('div', { class: 'mc-cost' }, energyPips(m.cost as Record<string, number>, true)));
 }
@@ -152,23 +167,60 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
   const av = new Set(availableNodes(c).map((n) => n.id));
   const rows = Math.max(...tree.map((n) => n.row)) + 1;
   const sp = speciesOf(c);
+  const label = (id: string) => tree.find((x) => x.id === id)?.label ?? id;
+  const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  links.setAttribute('class', 'chart-links');
+  links.setAttribute('aria-hidden', 'true');
+  const chart = h('div', { class: 'chart' }, links, Array.from({ length: rows }, (_, r) =>
+    h('div', { class: 'chart-row' }, [0, 1, 2].map((col) => {
+      const n = tree.find((x) => x.row === r && x.col === col);
+      if (!n) return h('div', { class: 'node empty' });
+      const have = c.unlocked.includes(n.id);
+      const can = av.has(n.id) && c.points > 0;
+      const missing = n.requires.filter((id) => !c.unlocked.includes(id));
+      return h('button', {
+        class: `node ${n.kind} ${have ? 'have' : can ? 'can' : av.has(n.id) ? 'avail' : 'locked'}`, disabled: !can, 'data-node': n.id,
+        title: n.requires.length ? `Needs: ${n.requires.map(label).join(' + ')}` : 'Starting node',
+        onclick: () => { if (unlockNode(c, n.id)) changed(); },
+      }, h('span', { class: 'node-ico' }, n.icon), h('b', null, n.label), h('small', null, n.text),
+        !have && missing.length ? h('small', { class: 'node-req' }, `Needs ${missing.map(label).join(' + ')}`) : null);
+    }))));
+  // draw connectors once laid out, and again whenever the card resizes
+  const draw = () => drawChartLinks(chart, links, tree, c.unlocked);
+  requestAnimationFrame(draw);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(chart);
   return h('article', { class: 'index-card back', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
     h('header', { class: 'ic-head' },
       h('div', null, h('h3', null, `${nameOf(c)} · Chart`), h('div', { class: 'ic-sub' }, h('span', null, `${c.points} node${c.points === 1 ? '' : 's'} to unlock · every 10 XP earns one`))),
       h('div', { class: 'lv-badge' }, h('small', null, 'LV'), c.level)),
-    h('div', { class: 'chart' }, Array.from({ length: rows }, (_, r) =>
-      h('div', { class: 'chart-row' }, [0, 1, 2].map((col) => {
-        const n = tree.find((x) => x.row === r && x.col === col);
-        if (!n) return h('div', { class: 'node empty' });
-        const have = c.unlocked.includes(n.id);
-        const can = av.has(n.id) && c.points > 0;
-        return h('button', {
-          class: `node ${n.kind} ${have ? 'have' : can ? 'can' : av.has(n.id) ? 'avail' : 'locked'}`, disabled: !can,
-          onclick: () => { if (unlockNode(c, n.id)) changed(); },
-        }, h('span', { class: 'node-ico' }, n.icon), h('b', null, n.label), h('small', null, n.text));
-      })))),
-    h('p', { class: 'small muted center' }, 'Each node requires a node in the row above. The final row holds an Evolution — or, at the final stage, a Capstone that grows with Loyalty.'),
+    chart,
+    h('p', { class: 'small muted center' }, 'A node opens once every node linked above it is unlocked. Evolving needs the whole center path; side branches are optional, but any you skip are left behind when the creature evolves. At the final stage, the Capstone needs both the Vitality and Stamina branches.'),
     h('footer', { class: 'ic-foot' }, h('button', { class: 'btn ghost', onclick: flip }, '↺ Flip to front')));
+}
+
+/** Draw a line from each prerequisite node down to the node that needs it. Bought links are solid. */
+function drawChartLinks(chart: HTMLElement, svg: SVGSVGElement, tree: ReturnType<typeof progressionTree>, unlocked: string[]) {
+  if (!chart.isConnected) return;
+  const box = chart.getBoundingClientRect();
+  if (!box.width) return;
+  const centre = (id: string, edge: 'top' | 'bottom') => {
+    const el = chart.querySelector<HTMLElement>(`[data-node="${id}"]`);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - box.left, y: (edge === 'top' ? r.top : r.bottom) - box.top };
+  };
+  const ns = 'http://www.w3.org/2000/svg';
+  svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+  svg.replaceChildren(...tree.flatMap((n) => n.requires.map((req) => {
+    const a = centre(req, 'bottom'), b = centre(n.id, 'top');
+    const line = document.createElementNS(ns, 'path');
+    if (!a || !b) return line;
+    const mid = (a.y + b.y) / 2;
+    line.setAttribute('d', `M${a.x},${a.y} C${a.x},${mid} ${b.x},${mid} ${b.x},${b.y}`);
+    const state = unlocked.includes(n.id) ? 'have' : unlocked.includes(req) ? 'open' : 'locked';
+    line.setAttribute('class', `link ${state}`);
+    return line;
+  })));
 }
 
 export function editPlaybook(c: CreatureInst, changed: () => void) {
@@ -219,12 +271,24 @@ export function statusGuide() {
     })));
 }
 
-export function typeChart() {
+/** The 8×8 type chart. `attack` rows and `defend` columns are highlighted (e.g. your moves vs the opponent). */
+export function typeChart(hl: { attack?: ElementType[]; defend?: ElementType[] } = {}) {
+  const atk = new Set(hl.attack ?? []), def = new Set(hl.defend ?? []);
   return h('div', { class: 'type-chart' },
     h('table', null,
-      h('thead', null, h('tr', null, h('th', null, 'ATK ↓ / DEF →'), TYPES.map((t) => h('th', null, typeIconImg(t, 22))))),
-      h('tbody', null, TYPES.map((a) => h('tr', null, h('th', null, typeIconImg(a, 22)), TYPES.map((d) => {
+      h('thead', null, h('tr', null, h('th', null, 'ATK ↓ / DEF →'), TYPES.map((t) => h('th', { class: def.has(t) ? 'hl' : '' }, typeIconImg(t, 22))))),
+      h('tbody', null, TYPES.map((a) => h('tr', { class: atk.has(a) ? 'hl' : '' }, h('th', { class: atk.has(a) ? 'hl' : '' }, typeIconImg(a, 22)), TYPES.map((d) => {
         const m = effectiveness(a, [d]);
-        return h('td', { class: m > 1 ? 'x2' : m < 1 ? 'x05' : '' }, m > 1 ? '2×' : m < 1 ? '½' : '');
+        const focus = atk.has(a) && def.has(d);
+        return h('td', { class: `${m > 1 ? 'x2' : m < 1 ? 'x05' : ''} ${def.has(d) ? 'hl-col' : ''} ${focus ? 'focus' : ''}` }, m > 1 ? '2×' : m < 1 ? '½' : '');
       }))))));
+}
+
+/** Type chart sheet. In battle, pass your moves' types and the opponent's types to highlight the matchup. */
+export function typeChartSheet(hl: { attack?: ElementType[]; defend?: ElementType[]; foeName?: string } = {}) {
+  const inBattle = !!hl.defend?.length;
+  return openSheet('Type Chart', h('div', null,
+    inBattle ? h('p', { class: 'small' }, 'Highlighted: your moves\u2019 types (rows) against ', h('b', null, hl.foeName ?? 'the opponent'), ' (', hl.defend!.map((t) => typeChip(t, true)), ').') : null,
+    typeChart(hl),
+    h('p', { class: 'small' }, 'Dual types multiply: 4× when both are weak, immune when both resist. Only Elemental attacks use the chart; Physical attacks ignore it.')), { wide: true });
 }

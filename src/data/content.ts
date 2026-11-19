@@ -73,7 +73,7 @@ export const ITEMS: Record<string, Item> = {
   // key items
   'fog-lantern': { id: 'fog-lantern', name: 'Fog Lantern', kind: 'key', price: 12, icon: '🏮', text: 'Lights the fog road into Hollow Crest.' },
   'canopy-rope': { id: 'canopy-rope', name: 'Canopy Rope', kind: 'key', price: 12, icon: '🪢', text: 'Lets you descend to Dahlia\'s arena on the forest floor.' },
-  'ferry-pass': { id: 'ferry-pass', name: 'Ferry Pass', kind: 'key', price: 15, icon: '⛴️', text: 'Ride the ferry from Mangrove Port to Kilauea Forge.' },
+  'ferry-pass': { id: 'ferry-pass', name: 'Ferry Pass', kind: 'key', price: 15, icon: '⛴️', text: 'Ride the ferry to Black Sand Cove on Kilauea island, from Mangrove Port or Kilauea Forge.' },
   'root-whistle': { id: 'root-whistle', name: 'Root Whistle', kind: 'key', price: 14, icon: '🎐', text: 'Asks the mangrove roots to open the path to Katy.' },
   'summit-pick': { id: 'summit-pick', name: 'Summit Pick', kind: 'key', price: 18, icon: '⛏️', text: 'Climb to Sunspire Summit.' },
 };
@@ -95,6 +95,11 @@ export const BIOME_MATERIALS: Record<Biome, string[]> = {
   desert: ['sage-bundle', 'ember-charcoal'], badlands: ['thunder-quartz', 'canyon-ochre'], coast: ['sea-glass', 'iron-filings'],
   volcanic: ['volcanic-glass', 'ember-charcoal'], canyon: ['canyon-ochre', 'thunder-quartz'],
 };
+
+/** Biomes where exploring can turn up this material. */
+export function materialBiomes(id: string): Biome[] {
+  return (Object.keys(BIOME_MATERIALS) as Biome[]).filter((b) => BIOME_MATERIALS[b].includes(id));
+}
 
 export const BIOME_INFO: Record<Biome, { label: string; color: string; icon: string }> = {
   forest: { label: 'Forest', color: '#3f7a3a', icon: '🌲' }, grove: { label: 'Fey Grove', color: '#6aa36a', icon: '🍄' },

@@ -24,7 +24,7 @@ The Arbiter of Thunder Spike is **Watson**. His arena sits directly underneath t
 
 ## 4. Kilauea Forge
 
-Based on the Hawai'i Volcanoes National Park in Hawaii. Kilauea Forge is an island forming the southern-most point of Margos and accessible by sailing from Mangrove Port. The island is a tropical paradise where the Fire type creatures enjoy the heat of  the nearby steam vents and lava tunnels.
+Based on the Hawai'i Volcanoes National Park in Hawaii. Kilauea Forge is a forge town on the volcanic southwest coast of the mainland, so Fire trainers can start their journey here like any other type. Offshore lies Kilauea island, the southern-most point of Margos, a tropical paradise where Fire type creatures enjoy the heat of the steam vents and lava tunnels. The island is reached by ferry (or by Sailing) from the Forge's docks or from Mangrove Port, landing at Black Sand Cove.
 
 The Arbiter of Kilauea Forge is **Amber**. Amber's arena rests in a pit of fire and flames, where steam vents and 
 
