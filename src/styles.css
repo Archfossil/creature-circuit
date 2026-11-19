@@ -709,3 +709,45 @@ body.gl-lost::after { content: 'Graphics were paused by your device. Tap to relo
 .cmp-table tr.up td:not(.cmp-arrow) { color: #0f6b3a; }
 .cmp-table tr.down td:not(.cmp-arrow) { color: #b3261e; }
 .cmp-delta { font-weight: 800; width: 40px; }
+
+/* Trainer customisation */
+.look-editor { display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: start; margin: 8px 0; }
+.look-preview { display: grid; justify-items: center; gap: 4px; padding: 8px; border-radius: 16px; border: 2px solid var(--tc); background: color-mix(in srgb, var(--tc) 12%, white); position: sticky; top: 0; }
+.look-preview img { width: 160px; height: 160px; }
+.look-preview small { font-size: 11px; color: var(--muted); text-align: center; }
+.look-fields { display: grid; gap: 8px; }
+.look-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatches.sm { flex-wrap: wrap; gap: 8px; }
+.swatches.sm .swatch { width: 30px; height: 30px; }
+@media (max-width: 560px) {
+  .look-editor { grid-template-columns: 1fr; }
+  .look-preview { position: static; }
+  .look-preview img { width: 120px; height: 120px; }
+}
+
+/* Signature move previews: on the chart, and locked in the playbook editor */
+.sig-preview { display: grid; gap: 4px; margin: 6px 8px; }
+.sig-preview small, .sig-locked small { font-size: 12px; font-weight: 700; color: var(--muted); }
+.sig-locked { display: grid; gap: 4px; position: relative; }
+.sig-locked .move-card { opacity: 0.75; filter: grayscale(0.4); }
+
+/* Morale & Loyalty chips (tap or hover for how they work) */
+button.chip.social { font-family: inherit; cursor: help; }
+.chip.social.good { background: #dcf7e8; border-color: #9fdcbc; }
+.social-status { padding: 8px 10px; border-radius: 10px; background: var(--paper-2, #f4ecdb); font-weight: 700; }
+.social-status.bad { background: #ffe1e1; }
+.social-status.good { background: #dcf7e8; }
+.social-help h4 { margin: 10px 0 2px; }
+.social-help p { margin: 2px 0; }
+div.perk { cursor: default; }
+.team-dot.unhappy::after { content: '⚠️'; position: absolute; top: 1px; right: 1px; font-size: 11px; line-height: 1; }
+
+/* Battle School */
+.school h4 { margin: 12px 0 6px; }
+.school-row { display: grid; grid-template-columns: 1fr 200px; gap: 10px; align-items: center; }
+.school-info { display: grid; gap: 4px; }
+.school-info .bar { height: 8px; border-radius: 6px; background: var(--paper-2, #eee3cc); overflow: hidden; border: 1px solid var(--line); }
+.school-info .bar i { display: block; height: 100%; background: #b05cff; }
+.school-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; }
+.school-coins { font-family: var(--font-head); font-size: 20px; min-width: 70px; text-align: center; }
+@media (max-width: 560px) { .school-row { grid-template-columns: 1fr; } }

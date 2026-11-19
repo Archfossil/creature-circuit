@@ -9,7 +9,7 @@ export type TrainerStyle = 'nature' | 'urban' | 'balanced';
 
 export interface GameState {
   version: number;
-  trainer: { name: string; style: TrainerStyle; home: string; color: string };
+  trainer: { name: string; style: TrainerStyle; home: string; color: string; look?: TrainerLookChoice };
   turn: number;
   initiative: number;
   weather: string;
@@ -36,6 +36,8 @@ export interface GameState {
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };
   stats: { battlesWon: number; recruited: number; explored: number };
+  /** Creatures left at a Battle School (see world.ts → enrollTraining). */
+  training?: Training[];
   /** End-of-turn event waiting for an answer (see engine/events.ts). */
   event?: PendingEvent;
   /** Id of the last event rolled, so the same one never fires twice in a row. */
@@ -47,10 +49,16 @@ const KEY = 'creature-circuit-save-v1';
  *  v3: progression charts became skill trees; some node ids moved. */
 export const SAVE_VERSION = 3;
 
-export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string): GameState {
+/** The player's mini customisation (colours are hex; hat/jacket are ids from render/trainerModel). Older saves have none. */
+/** A creature left at a Battle School: it earns `xp` over `turns` turns (2 XP a turn). */
+export interface Training { creature: CreatureInst; school: string; xp: number; turns: number; started: number; notified?: boolean }
+
+export interface TrainerLookChoice { skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string }
+
+export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string, look?: TrainerLookChoice): GameState {
   const s: GameState = {
     version: SAVE_VERSION,
-    trainer: { name, style, home, color },
+    trainer: { name, style, home, color, ...(look ? { look } : {}) },
     turn: 1, initiative: 5, weather: pick(SEASON_INFO.spring.dice),
     location: home, visited: [home], coins: 15,
     inventory: { totem: 2, salve: 2, sunberry: 2 },

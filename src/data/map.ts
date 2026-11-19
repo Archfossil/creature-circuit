@@ -21,6 +21,8 @@ const hubs: MapNode[] = [
   { id: 'ridgeway', name: 'Ridgeway', kind: 'town', biome: 'mountain', x: 24, z: -12, rarity: 0, level: 1 },
   { id: 'saltmarsh', name: 'Saltmarsh Landing', kind: 'town', biome: 'coast', x: 46, z: 2, rarity: 0, level: 1 },
   { id: 'blackSand', name: 'Black Sand Cove', kind: 'town', biome: 'coast', x: 28, z: 55, rarity: 0, level: 1 },
+  { id: 'quillhaven', name: 'Quillhaven', kind: 'town', biome: 'meadow', x: 30, z: 4, rarity: 0, level: 1 },
+  { id: 'valor', name: 'Valor Ridge', kind: 'town', biome: 'mountain', x: -8, z: -29, rarity: 0, level: 1 },
   // Amber's arena sits alone on Kilauea island, reached by ferry
   { id: 'firepit', name: 'Amber\'s Fire Pit', kind: 'arena', biome: 'volcanic', x: 6, z: 64, rarity: 0, level: 1, arenaOf: 'kilauea' },
   // Legendary nodes
@@ -58,6 +60,12 @@ const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; ra
   // Kilauea Forge on the southwest volcanic coast (keep these last: new wild ids are appended)
   { a: 'canyon', b: 'kilauea', legs: [['desert', 'Cinder Barrens', 3], ['volcanic', 'Ashfall Ridge', 4]], bend: -3 },
   { a: 'gloom', b: 'kilauea', legs: [['meadow', 'Scorched Prairie', 3], ['desert', 'Glasswind Dunes', 3], ['volcanic', 'Smoldering Flats', 4]], bend: 8 },
+  // Quillhaven and its Research Facility, between Ridgeway and Saltmarsh Landing
+  { a: 'ridgeway', b: 'quillhaven', legs: [['meadow', 'Survey Meadow', 4]], bend: 2 },
+  { a: 'quillhaven', b: 'saltmarsh', legs: [['river', 'Tidewater Ford', 5]], bend: -2 },
+  // Valor Ridge and its Battle School, in the hills between Mistfall and Thunder Spike
+  { a: 'mistfall', b: 'valor', legs: [['mountain', 'Sparring Slopes', 3]], bend: -2 },
+  { a: 'valor', b: 'thunder', legs: [['badlands', 'Drill Grounds', 3]], bend: 2 },
 ];
 
 const nodes: MapNode[] = [...hubs];
@@ -151,6 +159,8 @@ export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: strin
   ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt'], key: 'summit-pick' },
   saltmarsh: { blurb: 'Where the coast turns to marsh. The ferry office and the root-keepers are here.', sells: ['salve', 'sea-glass', 'marsh-lotus', 'totem'], key: 'ferry-pass' },
   blackSand: { blurb: 'Ferry landing on Kilauea\'s black sand. Hot springs bubble beside the dock.', sells: ['elixir', 'volcanic-glass', 'ember-charcoal'], },
+  valor: { blurb: 'A hill town of training yards and the Margos Battle School. Leave a creature with the drill masters and it comes back stronger.', sells: ['salve', 'energy-tonic', 'totem', 'dewberry'], special: 'school' },
+  quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea'], special: 'research' },
 };
 // The Root Whistle (Katy's arena) is sold at Saltmarsh too
 TOWNS.saltmarsh.sells.push('root-whistle');

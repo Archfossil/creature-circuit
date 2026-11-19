@@ -5,7 +5,9 @@ import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, t
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
-import { playerLook, arbiterLook, championLook, roamingLook, type TrainerLook } from '../render/trainerModel';
+import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, type TrainerLook } from '../render/trainerModel';
+import { trainerPortrait } from '../render/engine';
+import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle } from '../engine/state';
 import { newGame, save, load, clearSave, tierOf, season, follower, log } from '../engine/state';
 import * as W from '../engine/world';
@@ -13,8 +15,8 @@ import * as E from '../engine/events';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina } from '../engine/creature';
-import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors } from '../data/map';
+import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW } from '../engine/creature';
+import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
 import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes } from '../data/content';
@@ -22,6 +24,33 @@ import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { ElementType, Item } from '../data/schema';
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3'];
+
+/**
+ * Trainer customisation: a live preview of the mini plus swatches. Your colour always goes on the
+ * top and the hat (and the token's base); everything else is free to pick.
+ */
+function trainerLookEditor(get: () => { name: string; color: string; look: TrainerLookChoice }, set: (color: string, look: TrainerLookChoice) => void) {
+  const { name, color, look } = get();
+  const full = playerLook(name, color, look);
+  const cur = { skin: full.skin, hair: full.hair, pants: full.pants, hat: full.hat, jacket: full.jacket ?? 'jacket', hairStyle: full.hairStyle ?? 'short' };
+  const upd = (patch: Partial<TrainerLookChoice>, c = color) => set(c, { ...cur, ...patch });
+  const swatches = (label: string, list: string[], value: string, on: (v: string) => void) =>
+    h('div', { class: 'field' }, h('span', null, label), h('div', { class: 'swatches sm' }, list.map((c) =>
+      h('button', { class: `swatch ${c === value ? 'sel' : ''}`, style: `background:${c}`, 'aria-label': `${label} ${c}`, 'aria-pressed': String(c === value), onclick: () => on(c) }))));
+  const options = (label: string, list: { id: string; label: string }[], value: string, on: (v: string) => void) =>
+    h('div', { class: 'field' }, h('span', null, label), h('div', { class: 'look-opts' }, list.map((o) =>
+      h('button', { class: `pb-filter ${o.id === value ? 'on' : ''}`, 'aria-pressed': String(o.id === value), onclick: () => on(o.id) }, o.label))));
+  return h('div', { class: 'look-editor' },
+    h('div', { class: 'look-preview', style: `--tc:${color}` }, h('img', { src: trainerPortrait(full), alt: 'Your trainer' }), h('small', null, 'Your trainer, on the map and in battle')),
+    h('div', { class: 'look-fields' },
+      swatches('Main colour (top, hat and token)', TRAINER_COLORS, color, (c) => upd({}, c)),
+      options('Jacket', JACKET_OPTIONS, cur.jacket, (v) => upd({ jacket: v })),
+      options('Hat', HAT_OPTIONS, cur.hat, (v) => upd({ hat: v })),
+      swatches('Skin tone', SKIN, cur.skin, (v) => upd({ skin: v })),
+      options('Hair style (ties and streaks use your main colour)', HAIR_STYLE_OPTIONS, cur.hairStyle, (v) => upd({ hairStyle: v })),
+      swatches('Hair colour', HAIR, cur.hair, (v) => upd({ hair: v })),
+      swatches('Pants', PANTS, cur.pants, (v) => upd({ pants: v }))));
+}
 
 export class App {
   engine: Engine;
@@ -69,12 +98,13 @@ export class App {
 
   newGameWizard() {
     let name = 'Rowan', color = TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = 'thunder', starter = STARTERS[3];
+    let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket', hairStyle: 'short' };
     const step = (n: number) => {
       let body: HTMLElement;
       if (n === 0) {
         body = h('div', { class: 'wizard' },
           h('label', { class: 'field' }, h('span', null, 'Trainer name'), h('input', { value: name, maxlength: 16, oninput: (e: Event) => { name = (e.target as HTMLInputElement).value || 'Rowan'; } })),
-          h('div', { class: 'field' }, h('span', null, 'Pawn color'), h('div', { class: 'swatches' }, TRAINER_COLORS.map((c) => h('button', { class: `swatch ${c === color ? 'sel' : ''}`, style: `background:${c}`, onclick: () => { color = c; step(0); } })))),
+          trainerLookEditor(() => ({ name, color, look }), (c, l) => { color = c; look = l; step(0); }),
           h('div', { class: 'field' }, h('span', null, 'Trainer style'),
             h('div', { class: 'choice-grid three' },
               ([['nature', '🌲 Wild-at-heart', 'First re-explore each turn is free. City actions cost +1 Initiative.'],
@@ -104,7 +134,7 @@ export class App {
               h('p', { class: 'small' }, h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
               h('p', { class: 'small muted' }, `Evolves: ${sp.name} → ${SPECIES_BY_ID[sp.evolvesTo!].name} → ${SPECIES_BY_ID[SPECIES_BY_ID[sp.evolvesTo!].evolvesTo!].name}`))),
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'),
-            h('button', { class: 'btn primary', onclick: () => { close(); this.start(newGame(name.trim() || 'Rowan', style, home, starter, color), true); } }, 'Begin Journey ✦')));
+            h('button', { class: 'btn primary', onclick: () => { close(); this.start(newGame(name.trim() || 'Rowan', style, home, starter, color, look), true); } }, 'Begin Journey ✦')));
       }
       sheetBody.replaceChildren(body);
       $('.sheet-head h2', sheetEl).textContent = ['Your Trainer', 'Home City', 'Choose a Starter'][n];
@@ -119,7 +149,7 @@ export class App {
     this.s = s;
     closeAllSheets();
     this.world.setTitleMode(false);
-    this.world.setTrainerColor(s.trainer.color);
+    this.world.setTrainerLook(playerLook(s.trainer.name, s.trainer.color, s.trainer.look));
     this.world.setPawnAt(s.location);
     this.world.focus(s.location, true);
     this.engine.setView(this.world);
@@ -144,7 +174,8 @@ export class App {
     const se = season(s);
     this.world.setSeason(se);
     this.world.setWeather(s.weather, se);
-    this.world.setVisited(s.visited, s.flags.beaten);
+    // legendary nodes glow only while their Legendary is there (not beaten, not held by a trainer)
+    this.world.setVisited(s.visited, MAP_NODES.filter((n) => n.kind === 'legendary' && !W.legendaryHere(s, n)).map((n) => n.id));
     const f = follower(s);
     this.world.setFollower(f ? f.species : null);
     this.world.setReach(this.reach());
@@ -168,7 +199,7 @@ export class App {
       f ? h('img', { src: portrait(f.species), alt: '' }) : h('span', { class: 'none' }, '—'),
       h('div', null, h('small', null, 'Following'), h('b', null, f ? nameOf(f) : 'Nobody')),
       f ? h('span', { class: 'ability-tag' }, ABILITIES[speciesOf(f).ability].name) : null);
-    const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''}`, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
+    const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale}) and may leave` : undefined, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
       h('i', { style: `--p:${c.ko ? 0 : (c.vitality * maxHealth(c) + c.health) / (maxHealth(c) * (maxVitality(c) + 1))}` }))));
     const ev = E.eventView(s);
@@ -253,7 +284,8 @@ export class App {
       extra.push(h('p', { class: 'small' }, h('b', null, c.arena.name), ` · Arbiter ${c.arbiter}. `, c.arena.text));
     } else if (n.kind === 'legendary') {
       const sp = SPECIES_BY_ID[n.legendary!];
-      extra.push(h('p', { class: 'small' }, s.flags.beaten.includes(id) ? 'The legend has moved on.' : `Something powerful stirs here… (${sp.types.map((t) => TYPE_LABEL[t]).join('/')})`));
+      const held = [...s.roster, ...s.reserve].some((c) => c.species === n.legendary);
+      extra.push(h('p', { class: 'small' }, held ? `${sp.name} travels with you. Each Legendary exists once per game.` : s.flags.beaten.includes(id) ? 'The legend has moved on.' : `Something powerful stirs here… (${sp.types.map((t) => TYPE_LABEL[t]).join('/')})`));
     }
     const card = h('div', { class: 'node-preview', style: n.cityType ? `--tc:${TYPE_COLOR[n.cityType]}` : '' },
       h('button', { class: 'icon-btn close', onclick: () => { this.selected = null; card.remove(); } }, '✕'),
@@ -358,7 +390,7 @@ export class App {
       foeSide.kind === 'arbiter' ? arbiterLook(foeSide.name, arenaType ?? CITIES[b.arena?.city ?? '']?.type ?? 'fire')
         : foeSide.kind === 'champion' ? championLook(foeSide.name)
           : foeSide.kind === 'trainer' ? roamingLook(foeSide.name) : null;
-    bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color) : null, foeLook);
+    bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color, s.trainer.look) : null, foeLook);
     this.engine.setView(bv);
     // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
     if (W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
@@ -817,9 +849,113 @@ export class App {
       h('div', { class: 'tiles' },
         tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', W.cityActionCost(s) ? `${W.cityActionCost(s)}⚡` : 'free', () => this.stable()),
         tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', 'free', () => this.market(true)),
+        t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
+        t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', 'free', () => this.researchSheet()) : null,
         tile('🗺️', 'Notice Board', 'Local rumors and tips.', '', () => this.rumors())),
       h('p', { class: 'small muted' }, 'Towns are safe from the wilds. Town markets cost no Initiative; the stable costs the same as a city action.'));
     openSheet(n.name, body, { wide: true });
+  }
+
+  /** Valor Ridge's Battle School: enrol a creature (coins → XP over turns) and pick creatures up. */
+  schoolSheet() {
+    const s = this.s;
+    const body = h('div', { class: 'school' });
+    let pickUid: string | null = null;
+    let coins = Math.min(20, s.coins - (s.coins % 2));
+    const render = () => {
+      const here = (s.training ?? []).filter((t) => t.school === s.location);
+      const away = (s.training ?? []).filter((t) => t.school !== s.location);
+      const all = [...s.roster, ...s.reserve];
+      if (pickUid && !all.some((c) => c.uid === pickUid)) pickUid = null;
+      coins = Math.max(0, Math.min(coins, s.coins));
+      const turns = W.trainingTurns(coins);
+      const target = all.find((c) => c.uid === pickUid);
+      const why = target ? W.enrollBlock(s, target.uid, coins) : 'Choose a creature to enrol.';
+      // levels it would gain: walk the XP bar from where it is now
+      const levelsFor = (c: CreatureInst | undefined) => (c ? Math.floor((c.xp + coins + (c.morale >= 7 ? 1 : 0)) / 10) : 0);
+      const step = (d: number) => () => { coins = Math.max(0, Math.min(s.coins, coins + d)); render(); };
+      body.replaceChildren(
+        h('p', { class: 'small' }, 'The drill masters train a creature while you travel. It earns 1 XP for every coin you pay, at 2 XP per turn, so 20 coins buys 20 XP over 10 turns. Pick it up early and it keeps the XP earned so far. When you collect it, spend its new level-up points on its chart.'),
+        h('h4', null, `🥋 In training here (${here.length})`),
+        here.length ? h('div', { class: 'list' }, here.map((t) => {
+          const p = W.trainingProgress(s, t);
+          return h('div', { class: 'school-row' },
+            miniCard(t.creature, { badge: p.done ? '✓ Done' : `${p.elapsed}/${t.turns}` }),
+            h('div', { class: 'school-info' },
+              h('div', { class: 'bar xp' }, h('i', { style: `width:${(p.xp / t.xp) * 100}%` })),
+              h('small', null, p.done ? `Finished: ${p.xp} XP earned.` : `${p.xp}/${t.xp} XP · ${t.turns - p.elapsed} turn${t.turns - p.elapsed === 1 ? '' : 's'} to go`),
+              h('button', { class: `btn ${p.done ? 'primary' : 'ghost'} sm`, onclick: async () => {
+                if (!p.done && !(await confirmSheet(`Pick up ${nameOf(t.creature)} early?`, `It has earned ${p.xp} of ${t.xp} XP so far. The rest of the course is forfeited (no refund).`, 'Pick up now'))) return;
+                const r = W.pickUpTraining(s, t.creature.uid);
+                if (!r) return;
+                await rollDice(`How was school? · ${r.name}`, [{ sides: 6, value: r.roll, tone: r.mood === 'great' ? 'good' : r.mood === 'rough' ? 'bad' : undefined }],
+                  r.mood === 'great' ? 'Loved it: +2 Morale, +1 Loyalty' : r.mood === 'rough' ? 'Rough time: −2 Morale, −1 Loyalty' : 'Got through it fine', 900);
+                save(s); this.renderHud();
+                toast(r.text, r.mood === 'rough' ? 'info' : 'good', 6000);
+                render();
+                const c = [...s.roster, ...s.reserve].find((x) => x.uid === t.creature.uid);
+                if (c && c.points > 0) this.showCreature(c);
+              } }, p.done ? 'Pick up' : 'Pick up early')));
+        })) : h('p', { class: 'small muted' }, 'No one is training here.'),
+        away.length ? h('p', { class: 'small muted' }, `Training elsewhere: ${away.map((t) => `${nameOf(t.creature)} (${NODE_BY_ID[t.school].name})`).join(', ')}.`) : '',
+        h('h4', null, '📝 Enrol a creature'),
+        h('div', { class: 'list' }, all.map((c) => miniCard(c, { selected: c.uid === pickUid, onClick: () => { pickUid = c.uid; render(); } }))),
+        h('div', { class: 'school-pay' },
+          h('span', null, 'Pay'),
+          h('button', { class: 'btn ghost sm', onclick: step(-10) }, '−10'), h('button', { class: 'btn ghost sm', onclick: step(-2) }, '−2'),
+          h('b', { class: 'school-coins' }, `🪙 ${coins}`),
+          h('button', { class: 'btn ghost sm', onclick: step(2) }, '+2'), h('button', { class: 'btn ghost sm', onclick: step(10) }, '+10'),
+          h('small', { class: 'muted' }, `You have 🪙 ${s.coins}`)),
+        h('p', { class: 'small' }, `→ ${coins} XP over ${turns} turn${turns === 1 ? '' : 's'}`, target ? ` · ${nameOf(target)} would gain about ${levelsFor(target)} level${levelsFor(target) === 1 ? '' : 's'}` : '', '. It’s away from your team until you pick it up, and its mood about the stay is rolled when you do.'),
+        h('div', { class: 'row end' },
+          h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: () => {
+            if (!target) return;
+            const t = W.enrollTraining(s, target.uid, coins);
+            if (!t) return;
+            sfx.good(); save(s); this.renderHud();
+            toast(`${nameOf(target)} starts training: ${t.xp} XP over ${t.turns} turns. You’ll be told when it’s done.`, 'good', 4500);
+            pickUid = null;
+            render();
+          } }, why && target ? why : `Enrol for 🪙 ${coins}`)));
+    };
+    render();
+    openSheet('Battle School', body, { wide: true });
+  }
+
+  /** Quillhaven's Research Facility: release a creature for coins (level × rarity rate). */
+  researchSheet() {
+    const s = this.s;
+    const body = h('div');
+    const render = () => {
+      const all = [...s.roster, ...s.reserve];
+      body.replaceChildren(
+        h('p', { class: 'small' }, 'The researchers pay for every creature released into their care: its level × 2 for Common, × 3 Prime, × 4 Apex, × 5 Legendary. A released Legendary returns to its home on the map, where it can be challenged again.'),
+        h('p', { class: 'small muted' }, 'Releasing is permanent. Your Codex keeps the record.'),
+        h('div', { class: 'list' }, all.map((c) => {
+          const why = W.releaseBlock(s, c.uid);
+          const sp = speciesOf(c);
+          const pay = W.researchPayout(c);
+          const card = miniCard(c, { badge: `🪙 ${pay}`, onClick: async () => {
+            if (why) { toast(why, 'info'); return; }
+            const ok = await confirmSheet(`Release ${nameOf(c)}?`,
+              `${nameOf(c)} (Lv ${c.level}, ${sp.rarity}) goes to the Research Facility for good. You receive 🪙 ${pay} (Lv ${c.level} × ${W.RESEARCH_RATE[sp.rarity]}).${sp.rarity === 'legendary' ? ' It returns to its legendary grounds on the map.' : ''}`,
+              `Release for 🪙 ${pay}`);
+            if (!ok) return;
+            const r = W.releaseToResearch(s, c.uid);
+            if (!r) return;
+            sfx.good();
+            save(s);
+            this.renderHud();
+            toast(r.text, 'good', 4500);
+            render();
+          } });
+          if (why) { card.classList.add('unpickable'); card.title = why; }
+          return h('div', { class: 'swap-row' }, card,
+            h('small', null, s.reserve.includes(c) ? 'In a totem · ' : 'Active · ', `${sp.rarity} × ${W.RESEARCH_RATE[sp.rarity]}`, why ? h('span', { class: 'muted' }, ` · ${why}`) : null));
+        })));
+    };
+    render();
+    openSheet('Research Facility', body, { wide: true });
   }
 
   rumors() {
@@ -832,6 +968,8 @@ export class App {
       'Sunspire Summit holds a legend. Tier 3 climbers with a Summit Pick only.',
       'The Shifting Depths below Houndmouth Canyon hold rare creatures. Bring a strong team.',
       'Creatures that learn Fly can whisk you to any city you\'ve visited.',
+      'The Research Facility at Quillhaven pays well for released creatures, and best of all for rare ones.',
+      'The Battle School at Valor Ridge trains creatures while you travel: a coin per XP.',
       'Be at Circuit Stadium when Turn 100 ends — with all 8 Merits — or the season is over.',
     ];
     openSheet('Notice Board', h('ul', { class: 'tips' }, tips.sort(() => Math.random() - 0.5).slice(0, 4).map((t) => h('li', null, '📌 ', t))));
@@ -862,6 +1000,8 @@ export class App {
     const body = h('div', null,
       h('div', { class: 'list' }, s.roster.map((c) => miniCard(c, { badge: c.uid === s.following ? 'Following' : undefined, onClick: () => this.showCreature(c) }))),
       s.reserve.length ? [h('h4', null, `Resting in totems (${s.reserve.length})`), h('div', { class: 'list' }, s.reserve.map((c) => miniCard(c, { onClick: () => this.showCreature(c) }))), h('p', { class: 'small muted' }, 'Swap your active team at any city Stable.')] : null);
+    if (s.training?.length) body.append(h('h4', null, `🥋 At Battle School (${s.training.length})`),
+      h('p', { class: 'small muted' }, s.training.map((t) => { const p = W.trainingProgress(s, t); return `${nameOf(t.creature)} at ${NODE_BY_ID[t.school].name}: ${p.done ? 'finished, ready to pick up' : `${p.xp}/${t.xp} XP, ${t.turns - p.elapsed} turns to go`}`; }).join(' · ')));
     openSheet('Your Team', body, { wide: true });
   }
 
@@ -980,6 +1120,17 @@ export class App {
     closeAllSheets();
     $('.node-preview')?.remove();
     const r = W.endTurn(s, camping);
+    // Morale: warnings for creatures that just became unhappy, then any d10 checks for those already warned
+    for (const td of r.trainingDone) toast(`🥋 ${td.name} has finished training at ${td.school}. Pick it up there.`, 'good', 6000);
+    for (const lg of r.legendsReturned) toast(`✨ ${lg.name} has left your side and returned to ${lg.home}. Another trainer may find it there.`, 'info', 6000);
+    for (const c of [...s.roster, ...s.reserve]) {
+      if (speciesOf(c).rarity === 'legendary' && c.loyalty <= 3) toast(`✨ ${nameOf(c)}’s Loyalty is fading: it leaves in ${c.loyalty} turn${c.loyalty === 1 ? '' : 's'} unless you give it treats, or release it at Quillhaven’s Research Facility first.`, 'bad', 5000);
+    }
+    for (const n of r.warned) toast(`⚠️ ${n} is unhappy and might leave. Raise its Morale (win battles, let it Follow you, give it treats) before the turn ends again.`, 'bad', 6000);
+    for (const ch of r.checks) {
+      await rollDice(`Morale check · ${ch.name}`, [{ sides: 10, value: ch.roll, tone: ch.left ? 'bad' : 'good' }],
+        ch.left ? `Rolled ${ch.roll}, above Loyalty ${ch.loyalty}: ${ch.name} leaves.` : `Rolled ${ch.roll}, not above Loyalty ${ch.loyalty}: ${ch.name} stays, but loses 1 Loyalty.`, 900);
+    }
     for (const n of r.left) toast(`${n} lost faith in you and returned to the wild…`, 'bad', 4000);
     if (r.ended === 'endgame') { this.busy = false; save(s); this.renderHud(); this.endgameSheet(); return; }
     if (r.ended === 'over') { this.busy = false; save(s); this.gameOver(); return; }
@@ -1136,12 +1287,27 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Menus & info
   // ════════════════════════════════════════════════════════════
+  /** Change the trainer's appearance mid-journey: the map token and battle mini update at once. */
+  trainerLookSheet() {
+    const s = this.s;
+    const body = h('div');
+    const render = () => body.replaceChildren(trainerLookEditor(() => ({ name: s.trainer.name, color: s.trainer.color, look: s.trainer.look ?? {} }), (c, l) => {
+      s.trainer.color = c; s.trainer.look = l;
+      save(s);
+      this.world.setTrainerLook(playerLook(s.trainer.name, c, l));
+      render();
+    }));
+    render();
+    openSheet('Trainer Look', body, { wide: true });
+  }
+
   menu() {
     const close = openSheet('Menu', h('div', { class: 'tiles' },
       tile('📖', 'Creature Codex', `${this.s.dex.caught.length} recruited · ${this.s.dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
+      tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'Rules summary.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
       tile('🏠', 'Title Screen', 'Your game is autosaved.', '', () => { close(); this.title(); }),
@@ -1266,6 +1432,10 @@ export class App {
         h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit.'),
         h('li', null, h('b', null, 'Events: '), 'at the end of each turn something happens on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
         h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets are free.'),
+        h('li', null, h('b', null, 'Morale & Loyalty: '), 'happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good. Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty. Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0, so release them at the Research Facility before then for coins. Tap Morale or Loyalty on a card for details.'),
+        h('li', null, h('b', null, 'Battle School: '), 'at Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn. You’re told when it’s done; pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).'),
+        h('li', null, h('b', null, 'Research Facility: '), 'in Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary). Each Legendary exists once per game, and a released one returns to its grounds on the map.'),
+        h('li', null, h('b', null, 'Your trainer: '), 'pick a top, hat, hair style, skin tone, hair colour and pants when you start (or later in Menu → Trainer Look). Your main colour always goes on the top, the hat and any hair tie or streak. That mini is your token on the map and stands behind you in trainer battles.'),
         h('li', null, h('b', null, 'Win: '), 'hold 8 Merits and stand in Circuit Stadium when Turn 100 ends. Then win the 8-trainer bracket.')),
       welcome ? h('p', { class: 'small muted' }, 'Tip: pick a Follower (top-left) — it leads your battles and powers your overworld Ability.') : null));
   }

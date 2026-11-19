@@ -3,17 +3,17 @@ import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES } from '../src/data/roster';
 import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from '../src/data/moves';
-import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES } from '../src/data/map';
+import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { recommendPlaybook, suggestGoal, expectedDamage, stats, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
+import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import { Box3 } from 'three';
-import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook } from '../src/render/trainerModel';
+import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
 
 const energyTotalOf = (c: ReturnType<typeof createCreature>) => Object.values(energy(c)).reduce((a, v) => a + (v ?? 0), 0);
 const side = (kind: Side['kind'], team: ReturnType<typeof createCreature>[]): Side => ({ kind, name: kind, team, active: 0, mods: {} });
@@ -361,6 +361,225 @@ describe('battle lead', () => {
   });
 });
 
+describe('Research Facility and Legendaries', () => {
+  const game = () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 4), createCreature('fizzlet', 5));
+    s.reserve.push(createCreature('calderex', 6));
+    return s;
+  };
+  it('Quillhaven is a reachable town with a Research Facility', () => {
+    expect(NODE_BY_ID.quillhaven.kind).toBe('town');
+    expect(TOWNS.quillhaven.special).toBe('research');
+    expect(neighbors('quillhaven').length).toBeGreaterThanOrEqual(2);
+    expect(landmassOf('quillhaven')).toContain('stadium');
+  });
+  it('pays level × 2/3/4/5 by rarity', () => {
+    const s = game();
+    const [, common, prime] = s.roster, apex = s.reserve[0];
+    expect(W.researchPayout(common)).toBe(4 * 2);
+    expect(W.researchPayout(prime)).toBe(5 * 3);
+    expect(W.researchPayout(apex)).toBe(6 * 4);
+    expect(W.researchPayout(createCreature('solstara', 9))).toBe(9 * 5);
+    const before = s.coins;
+    s.following = common.uid;
+    W.releaseToResearch(s, common.uid);
+    expect(s.coins).toBe(before + 8);
+    expect(s.roster).not.toContain(common);
+    expect(s.following).toBe(s.roster[0].uid); // a released follower is replaced
+    expect(s.dex.caught).toContain('puddlit'); // the Codex keeps its records
+  });
+  it('never leaves the trainer without an active creature', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    expect(W.releaseBlock(s, s.roster[0].uid)).not.toBeNull();
+    s.reserve.push(createCreature('zapup', 3));
+    expect(W.releaseBlock(s, s.roster[0].uid)).not.toBeNull(); // only active creature
+    expect(W.releaseBlock(s, s.reserve[0].uid)).toBeNull();
+  });
+  it('each Legendary exists once: held or beaten, its node is quiet; released, it returns', () => {
+    const s = game();
+    const node = NODE_BY_ID.sunspire;
+    expect(W.legendaryHere(s, node)).toBe(true);
+    const sol = createCreature('solstara', 9);
+    s.reserve.push(sol);
+    s.flags.beaten.push('sunspire');
+    expect(W.legendaryHere(s, node)).toBe(false);
+    const r = W.releaseToResearch(s, sol.uid)!;
+    expect(r.coins).toBe(45);
+    expect(r.text).toContain('Sunspire Summit');
+    expect(s.flags.beaten).not.toContain('sunspire');
+    expect(W.legendaryHere(s, node)).toBe(true);
+    // holding it (even without a beaten flag) keeps the node quiet
+    s.reserve.push(createCreature('solstara', 9));
+    expect(W.legendaryHere(s, node)).toBe(false);
+  });
+});
+
+describe('morale and loyalty', () => {
+  const report = () => ({ weatherRoll: 0, seasonChanged: false, left: [] as string[], warned: [] as string[], checks: [] as W.MoraleCheck[], legendsReturned: [] as { name: string; home: string }[], trainingDone: [] as { name: string; school: string }[] });
+  const game = () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 3));
+    s.turn = 3; // odd turn: no follower bonus
+    return s;
+  };
+  it('high morale earns Loyalty each turn and unlocks Nature perks that never re-lock', () => {
+    const s = game();
+    const c = s.roster[1];
+    c.morale = 9; c.loyalty = 2; c.perks = 0;
+    W.moraleAndLoyalty(s, report());
+    expect(c.loyalty).toBe(3);
+    expect(c.perks).toBe(1); // first perk threshold is 3
+    c.morale = 2; c.moraleWarned = true; c.moraleMark = 2;
+    for (let i = 0; i < 10 && s.roster.includes(c); i++) W.moraleAndLoyalty(s, report());
+    if (s.roster.includes(c)) expect(c.loyalty).toBeLessThan(3); // (or it left on a high roll)
+    expect(c.perks).toBe(1); // losing Loyalty (or leaving) never re-locks perks
+  });
+  it('low morale warns first, with no roll that turn', () => {
+    const s = game();
+    const c = s.roster[1];
+    c.morale = 3;
+    const r = report();
+    W.moraleAndLoyalty(s, r);
+    expect(r.warned).toEqual([nameOf(c)]);
+    expect(r.checks).toEqual([]);
+    expect(c.moraleWarned).toBe(true);
+  });
+  it('after a warning, each turn without a morale gain rolls d10 vs Loyalty: above leaves, otherwise −1 Loyalty', () => {
+    for (let trial = 0; trial < 60; trial++) {
+      const s = game();
+      const c = s.roster[1];
+      c.morale = 2; c.moraleWarned = true; c.moraleMark = 2; c.loyalty = 5;
+      const r = report();
+      W.moraleAndLoyalty(s, r);
+      expect(r.checks.length).toBe(1);
+      const ch = r.checks[0];
+      if (ch.roll > 5) { expect(ch.left).toBe(true); expect(s.roster).not.toContain(c); expect(r.left).toEqual([nameOf(c)]); }
+      else { expect(ch.left).toBe(false); expect(c.loyalty).toBe(4); }
+    }
+  });
+  it('raising morale during the turn skips the check; at 0 Loyalty the check always fails', () => {
+    const s = game();
+    const c = s.roster[1];
+    c.morale = 3; c.moraleWarned = true; c.moraleMark = 2; c.loyalty = 0;
+    const r = report();
+    W.moraleAndLoyalty(s, r);
+    expect(r.checks).toEqual([]); // morale rose from 2 to 3 since last turn
+    const r2 = report();
+    W.moraleAndLoyalty(s, r2);
+    expect(r2.checks[0].left).toBe(true);
+    expect(s.roster).not.toContain(c);
+  });
+  it('morale back above the low line clears the warning', () => {
+    const s = game();
+    const c = s.roster[1];
+    c.morale = 6; c.moraleWarned = true;
+    W.moraleAndLoyalty(s, report());
+    expect(c.moraleWarned).toBe(false);
+  });
+  it('Legendaries lose 1 Loyalty every turn, even at high Morale, then return to their grounds', () => {
+    const s = game();
+    const sol = createCreature('solstara', 9);
+    sol.morale = 10; sol.loyalty = 2;
+    s.reserve.push(sol);
+    s.flags.beaten.push('sunspire');
+    const r1 = report();
+    W.moraleAndLoyalty(s, r1);
+    expect(sol.loyalty).toBe(1);
+    expect(r1.legendsReturned).toEqual([]);
+    const r2 = report();
+    W.moraleAndLoyalty(s, r2);
+    expect(s.reserve).not.toContain(sol);
+    expect(r2.legendsReturned).toEqual([{ name: 'Solstara', home: 'Sunspire Summit' }]);
+    expect(W.legendaryHere(s, NODE_BY_ID.sunspire)).toBe(true); // back on the board
+  });
+  it('a recruited Legendary arrives with full Loyalty', () => {
+    const s = game();
+    const sol = createCreature('solstara', 1); // RT 12: a double six on 2d6, so keep trying
+    for (let i = 0; i < 2000 && !s.roster.concat(s.reserve).includes(sol); i++) { s.inventory.totem = 5; W.attemptRecruit(s, sol, 'totem', []); }
+    expect(s.roster.concat(s.reserve)).toContain(sol);
+    expect(sol.loyalty).toBe(W.LEGENDARY_START_LOYALTY);
+  });
+  it('when the active team empties, a creature steps out of its totem', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    const sol = createCreature('solstara', 9);
+    sol.loyalty = 1;
+    s.roster = [sol]; s.reserve = [createCreature('zapup', 3)]; s.following = sol.uid;
+    s.turn = 3;
+    W.moraleAndLoyalty(s, report());
+    expect(s.roster.map((c) => c.species)).toEqual(['zapup']);
+    expect(s.following).toBe(s.roster[0].uid);
+  });
+  it('your last active creature never leaves', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    const c = s.roster[0];
+    c.morale = 0; c.moraleWarned = true; c.moraleMark = 0; c.loyalty = 0;
+    const r = report();
+    W.moraleAndLoyalty(s, r);
+    expect(s.roster).toContain(c);
+    expect(r.checks[0].left).toBe(false);
+  });
+});
+
+describe('Battle School', () => {
+  const game = () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 1));
+    s.location = 'valor'; s.coins = 50;
+    return s;
+  };
+  it('Valor Ridge is a reachable town with a Battle School', () => {
+    expect(TOWNS.valor.special).toBe('school');
+    expect(neighbors('valor').length).toBeGreaterThanOrEqual(2);
+    expect(landmassOf('valor')).toContain('stadium');
+  });
+  it('coins become XP, over half as many turns, and the creature leaves the team meanwhile', () => {
+    const s = game();
+    const c = s.roster[1];
+    const t = W.enrollTraining(s, c.uid, 20)!;
+    expect([t.xp, t.turns, s.coins]).toEqual([20, 10, 30]);
+    expect(s.roster).not.toContain(c);
+    expect(W.trainingTurns(7)).toBe(4);
+    s.turn += 4;
+    expect(W.trainingProgress(s, t)).toMatchObject({ elapsed: 4, xp: 8, done: false });
+    s.turn += 20;
+    expect(W.trainingProgress(s, t)).toMatchObject({ elapsed: 10, xp: 20, done: true });
+  });
+  it('the end of the turn that finishes the course sends one notification', () => {
+    const s = game();
+    const t = W.enrollTraining(s, s.roster[1].uid, 4)!; // 2 turns
+    expect(W.endTurn(s).trainingDone).toEqual([]);
+    expect(W.endTurn(s).trainingDone).toEqual([{ name: nameOf(t.creature), school: 'Valor Ridge' }]);
+    expect(W.endTurn(s).trainingDone).toEqual([]);
+  });
+  it('picking up grants the XP earned so far (early pick-ups too) and rolls the creature’s mood', () => {
+    for (let trial = 0; trial < 30; trial++) {
+      const s = game();
+      const c = s.roster[1];
+      c.morale = 5; c.loyalty = 4;
+      W.enrollTraining(s, c.uid, 20);
+      s.turn += 5; // half-way
+      const r = W.pickUpTraining(s, c.uid)!;
+      expect(r.xp).toBe(10);
+      expect(c.level).toBe(2);
+      expect(c.points).toBe(1); // a node to unlock on its chart
+      expect([...s.roster, ...s.reserve]).toContain(c);
+      expect(s.training).toEqual([]);
+      const want = r.roll <= 2 ? [3, 3] : r.roll >= 5 ? [7, 5] : [5, 4];
+      expect([c.morale, c.loyalty]).toEqual(want);
+    }
+  });
+  it('can only collect where it trains, and can’t send away your only creature or overspend', () => {
+    const s = game();
+    const c = s.roster[1];
+    expect(W.enrollBlock(s, c.uid, 999)).not.toBeNull();
+    W.enrollTraining(s, c.uid, 10);
+    expect(W.enrollBlock(s, s.roster[0].uid, 10)).not.toBeNull(); // the last one left
+    s.location = 'mistfall';
+    expect(W.pickUpTraining(s, c.uid)).toBeNull();
+  });
+});
+
 describe('camping', () => {
   it('tends one creature per Initiative left, most wounded first', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
@@ -431,6 +650,16 @@ describe('recommended playbooks', () => {
     const vsWater = recommendPlaybook(c, { kind: 'vs', type: 'water' }).map((id) => MOVE_BY_ID[id]);
     expect(vsWater.some((m) => m.kind === 'elemental' && m.type === 'fire')).toBe(false);
     expect(expectedDamage(c, MOVE_BY_ID['ember'], 'grass')).toBeGreaterThan(expectedDamage(c, MOVE_BY_ID['ember'], 'water'));
+  });
+});
+
+describe('signature move previews', () => {
+  it('the Signature Move node says what it teaches and how hard it hits', () => {
+    const c = createCreature('puddlit', 1);
+    const node = progressionTree(c).find((n) => n.kind === 'signature')!;
+    expect(node.text).toContain('Riptide');
+    expect(node.text).toContain('d8 Water attack');
+    expect(learnable(c)).not.toContain('sig-riptide'); // still locked until the node is bought
   });
 });
 
@@ -899,13 +1128,32 @@ describe('trainer minis', () => {
   it('a trainer always gets the same look, and titles decide their gear', () => {
     expect(roamingLook('Hiker Rosa')).toEqual(roamingLook('Hiker Rosa'));
     expect(roamingLook('Hiker Rosa')).toMatchObject({ hat: 'brim', pack: true });
-    expect(roamingLook('Drifter Kane').hat).toBe('hood');
+    expect(roamingLook('Drifter Kane').hat).toBe('beanie');
   });
   it('Arbiters wear their type, the player wears their chosen color', () => {
     const a = arbiterLook('Arbiter Amber', 'fire');
     expect(a).toMatchObject({ emblem: 'fire', cape: true, hat: 'circlet' });
     expect(playerLook('Rowan', '#ff00aa').outfit).toBe('#ff00aa');
     expect(championLook('Champion Ivo').cape).toBe(true);
+  });
+  it('player customisation applies, but the top and hat always use the chosen colour', () => {
+    const look = playerLook('Rowan', '#3d8bff', { skin: SKIN[4], hair: HAIR[5], pants: PANTS[6], hat: 'beanie', jacket: 'coat' });
+    expect(look).toMatchObject({ outfit: '#3d8bff', hatColor: '#3d8bff', rim: '#3d8bff', skin: SKIN[4], hair: HAIR[5], pants: PANTS[6], hat: 'beanie', jacket: 'coat' });
+    // unknown or missing choices fall back to defaults (old saves have no look at all)
+    expect(playerLook('Rowan', '#3d8bff', { hat: 'crown', jacket: 'cape', hairStyle: 'afro' })).toMatchObject({ hat: 'cap', jacket: 'jacket', hairStyle: 'short' });
+    expect(playerLook('Rowan', '#3d8bff', { hat: 'hood', jacket: 'hoodie' })).toMatchObject({ hat: 'cap', jacket: 'pouch' }); // retired options
+    expect(playerLook('Rowan', '#3d8bff', { hairStyle: 'ponytail' }).hairAccent).toBe('#3d8bff');
+    expect(playerLook('Rowan', '#3d8bff')).toEqual(playerLook('Rowan', '#3d8bff', {}));
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff', { hat: 'brim' });
+    expect(s.trainer.look).toEqual({ hat: 'brim' });
+  });
+  it('every jacket and hat builds a mini of a sensible size', () => {
+    for (const j of JACKET_OPTIONS) for (const hat of HAT_OPTIONS) for (const hs of HAIR_STYLE_OPTIONS) {
+      const rig = buildTrainer(playerLook('Rowan', '#ff6b3d', { jacket: j.id, hat: hat.id, hairStyle: hs.id }));
+      const box = new Box3().setFromObject(rig.root);
+      expect(box.max.y, `${j.id}/${hat.id}`).toBeGreaterThan(1.6);
+      expect(box.max.y, `${j.id}/${hat.id}`).toBeLessThan(2.4);
+    }
   });
   it('builds a mini that stands on its base, about two units tall', () => {
     const rig = buildTrainer(roamingLook('Scout Ola'));

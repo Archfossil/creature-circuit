@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildTrainer, playerLook, type TrainerLook, type TrainerRig } from './trainerModel';
 import type { SceneView } from './engine';
 import { isMobile } from './engine';
 import { MAP_NODES, MAP_EDGES, NODE_BY_ID, CITIES } from '../data/map';
@@ -147,6 +148,7 @@ export class WorldView implements SceneView {
   private rings = new Map<string, THREE.Mesh>();
   private hitMeshes: THREE.Mesh[] = [];
   private pawn!: THREE.Group;
+  private pawnRig: TrainerRig | null = null;
   private follower: CreatureRig | null = null;
   private followerSpecies = '';
   private particles!: THREE.Points;
@@ -508,26 +510,23 @@ export class WorldView implements SceneView {
     }
   }
 
+  /** The map token: the player's own trainer mini (same model as in battle), on a glowing ring. */
   private buildPawn() {
     this.pawn = new THREE.Group();
-    const pts = [
-      new THREE.Vector2(0, 0), new THREE.Vector2(0.62, 0), new THREE.Vector2(0.62, 0.12), new THREE.Vector2(0.45, 0.22),
-      new THREE.Vector2(0.3, 0.5), new THREE.Vector2(0.22, 1.0), new THREE.Vector2(0.38, 1.12), new THREE.Vector2(0.2, 1.2), new THREE.Vector2(0, 1.22),
-    ];
-    const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 16), new THREE.MeshStandardMaterial({ color: '#ff6b3d', roughness: 0.35, metalness: 0.1 }));
-    body.castShadow = true;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 14), body.material);
-    head.position.y = 1.5; head.castShadow = true;
     const glow = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.95, 32), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false }));
     glow.rotation.x = -Math.PI / 2; glow.position.y = 0.05;
-    this.pawn.add(body, head, glow);
+    this.pawn.add(glow);
     this.pawn.scale.setScalar(1.15);
     this.scene.add(this.pawn);
+    this.setTrainerLook(playerLook('Rowan', '#ff6b3d'));
   }
 
-  setTrainerColor(c: string) {
-    const m = (this.pawn.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    m.color.set(c);
+  /** Swap the token's mini for a new look (new game, or the player changed their appearance). */
+  setTrainerLook(look: TrainerLook) {
+    if (this.pawnRig) this.pawn.remove(this.pawnRig.root);
+    this.pawnRig = buildTrainer(look);
+    this.pawnRig.root.scale.setScalar(1.35);
+    this.pawn.add(this.pawnRig.root);
   }
 
   private buildParticles() {
@@ -789,6 +788,7 @@ export class WorldView implements SceneView {
       this.pawn.position.y += Math.sin(t * 3) * 0.002;
     }
     this.pawn.rotation.y = Math.sin(t * 0.8) * 0.2;
+    this.pawnRig?.update(t);
     if (this.follower) {
       const fp = this.follower.root.position;
       const want = this.pawn.position.clone().add(new THREE.Vector3(-1.3, -0.4, 0.6));

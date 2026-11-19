@@ -91,6 +91,12 @@ Each creature the player owns is saved as an instance of a species:
 }
 ```
 
+`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`).
+
+The save also holds:
+- **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`.
+- **`trainer.look`:** the trainer's customisation: skin, hair, hair style, hat, jacket and pants.
+
 `points` are unspent level-ups. `unlocked` lists the progression-chart nodes already bought. The chart is a skill tree generated per species by `progressionTree` in `creature.ts`: each node has a `requires` list, and every node in it must be unlocked before that node can be bought. Evolving resets `unlocked` for the new stage's chart.
 
 ## Move

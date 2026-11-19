@@ -57,3 +57,15 @@ The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and
 The map is a series of nodes between towns and cities. Each node represents a biome, each creature can be caught in a specific type of biome. Between Iron Coast and Gloomshade might be mostly coasts, roads, or forests for example.
 
 Legendary Nodes are specific slots on the map where legendary creatures roam. These often require some other steps to be done first before they can be unlocked.
+
+**Each Legendary exists once per game** (prototype rule). A Legendary waits at its node until it is beaten, whether it's recruited or driven off. While any trainer holds it, its node stays quiet. Releasing it at a Research Facility returns it to its node, where another trainer (or you again) can try for it. Legendaries also lose 1 Loyalty every turn and return to their node on their own at 0 Loyalty, so they cycle between trainers over a season.
+
+## Towns with special services
+
+**Quillhaven** sits on the meadows between Ridgeway and Saltmarsh Landing, home to the Margos **Research Facility**. Trainers can release a recruited creature into the researchers' care for coins: its level × 2 (Common), × 3 (Prime), × 4 (Apex) or × 5 (Legendary). Release is permanent, though the Codex keeps its record. You can't release your last creature, or your only active one.
+
+**Valor Ridge** sits in the hills between Mistfall and Thunder Spike, home to the Margos **Battle School**:
+- **Enrolling:** pay coins and leave a creature. It earns 1 XP per coin, at 2 XP a turn, so a course takes half as many turns as the XP it buys. While it trains, it is away from your team.
+- **Picking up:** collect it at the school any time. An early pick-up keeps the XP earned so far, and the rest is forfeited. You're notified at the end of the turn its course finishes. Its new level-up points are then spent on its chart as usual.
+- **How it felt about the stay:** a d6 decides. 1–2 is rough (−2 Morale, −1 Loyalty), 3–4 is fine, and 5–6 is great (+2 Morale, +1 Loyalty).
+- **Legendaries:** they keep losing Loyalty while away, and may have gone back to their grounds by the time you return.

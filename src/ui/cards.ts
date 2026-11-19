@@ -1,6 +1,6 @@
 import { h, openSheet } from './dom';
 import type { CreatureInst } from '../engine/creature';
-import { speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
+import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR } from '../data/moves';
 import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
@@ -130,6 +130,32 @@ function meter(label: string, v: number, max: number, cls = '') {
   return h('div', { class: `meter ${cls}` }, h('span', { class: 'lbl' }, label), h('div', { class: 'bar' }, h('i', { style: `width:${(v / max) * 100}%` })), h('span', { class: 'num' }, `${v}/${max}`));
 }
 
+const MORALE_HELP = `Morale (0–10): how happy this creature is with you.
+Gain: winning battles it fights in (+1), Following you (+1 every other turn), treats and berries, stables, some events.
+Lose: being knocked out (−1), a team wipe (−1 each), waiting in a totem (−1 every 10 turns).
+High (${MORALE_HIGH}+): +1 Loyalty at the end of every turn, and +1 XP per battle.
+Low (${MORALE_LOW} or less): you get a warning. After that, every turn that ends without its Morale rising rolls a d10. Above its Loyalty, it leaves your team; otherwise it loses 1 Loyalty.`;
+const LOYALTY_HELP = `Loyalty (0–${LOYALTY_MAX}): trust built over time.
+Gain: +1 at the end of each turn while Morale is ${MORALE_HIGH}+; treats add Loyalty too.
+Use: reaching each Nature perk's threshold unlocks it for good. Perks never re-lock. At the Capstone, attacks deal +1 damage per 5 Loyalty.
+Lose: −1 each time it survives a low-Morale check. At 0 Loyalty, a low-Morale check always means it leaves.`;
+
+/** A sheet explaining Morale and Loyalty, with this creature's current standing. */
+export function socialHelp(c: CreatureInst) {
+  const nat = NATURE_BY_ID[c.nature];
+  const status = c.morale <= MORALE_LOW
+    ? (c.moraleWarned ? `⚠️ ${nameOf(c)} is unhappy and has been warned. If a turn ends without its Morale rising, it rolls a d10: above ${c.loyalty} it leaves, otherwise it loses 1 Loyalty.` : `⚠️ ${nameOf(c)} is unhappy. At the end of this turn you'll get a warning.`)
+    : c.morale >= MORALE_HIGH ? `💖 ${nameOf(c)} is happy: +1 Loyalty at the end of each turn.` : `${nameOf(c)} is content. Raise its Morale to ${MORALE_HIGH} to start earning Loyalty.`;
+  const next = nat?.perks[c.perks];
+  const legendary = speciesOf(c).rarity === 'legendary';
+  openSheet('Morale & Loyalty', h('div', { class: 'social-help' },
+    legendary ? h('p', { class: 'social-status bad' }, `✨ Legendaries never fully settle. ${nameOf(c)} loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn, whatever its Morale, and gains none from Morale (treats still add some). At 0 Loyalty it returns to its grounds on the map: about ${c.loyalty} turn${c.loyalty === 1 ? '' : 's'} from now. Releasing it at Quillhaven’s Research Facility pays × 5 its level.`) : null,
+    h('p', { class: `social-status ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}` }, status),
+    h('h4', null, `💖 Morale · ${c.morale}/10`), ...MORALE_HELP.split('\n').slice(1).map((l) => h('p', { class: 'small' }, l)),
+    h('h4', null, `🤝 Loyalty · ${c.loyalty}/${LOYALTY_MAX}`), ...LOYALTY_HELP.split('\n').slice(1).map((l) => h('p', { class: 'small' }, l)),
+    nat ? h('p', { class: 'small' }, h('b', null, `${nat.name} perks: `), nat.perks.map((p, i) => `${i < c.perks ? '✓' : '○'} ${p.name} (${p.cost})`).join(' · '), next ? ` · next at ${next.cost} Loyalty` : ' · all unlocked') : null));
+}
+
 export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node } = {}) {
   const wrap = h('div', { class: 'card-flip' });
   let back = false;
@@ -163,8 +189,11 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
       meter('STA', c.stamina, maxStamina(c)),
       meter('XP', c.xp, 10, 'xp'),
       h('div', { class: 'row gap-s small' },
-        h('span', { class: 'chip' }, '💖 Morale ', h('b', null, c.morale), '/10'),
-        h('span', { class: 'chip' }, '🤝 Loyalty ', h('b', null, c.loyalty)),
+        h('button', { class: `chip social ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}`, title: MORALE_HELP, onclick: () => socialHelp(c) },
+          c.morale <= MORALE_LOW ? '⚠️ ' : '💖 ', 'Morale ', h('b', null, c.morale), '/10'),
+        h('button', { class: `chip social ${sp.rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: sp.rarity === 'legendary' ? `${LOYALTY_HELP}
+Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to its grounds at 0.` : LOYALTY_HELP, onclick: () => socialHelp(c) },
+          sp.rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), `/${LOYALTY_MAX}`),
         c.fatigue ? h('span', { class: 'chip bad' }, '😮‍💨 Fatigue ', h('b', null, c.fatigue)) : null,
         c.movement ? h('span', { class: 'chip good' }, '➶ ', c.movement[0].toUpperCase() + c.movement.slice(1)) : null)),
     h('div', { class: 'ic-stats' }, STAT_KEYS.map((k) => h('div', { class: 'stat' }, h('small', null, STAT_LABEL[k]), h('b', null, st[k])))),
@@ -182,12 +211,10 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
       h('p', { class: 'small' }, nat.text),
       h('div', { class: 'perks' }, nat.perks.map((p, i) => {
         const have = i < c.perks;
-        const next = i === c.perks;
-        return h('button', {
-          class: `perk ${have ? 'have' : ''} ${next && c.loyalty >= p.cost ? 'ready' : ''}`, disabled: !opts.editable || !next || c.loyalty < p.cost,
-          onclick: () => { if (c.loyalty >= p.cost && i === c.perks) { c.loyalty -= p.cost; c.perks++; changed(); } },
-        }, h('b', null, p.name), h('small', null, have ? '✓ ' + p.text : `${p.cost} Loyalty · ${p.text}`));
-      }))),
+        return h('div', { class: `perk ${have ? 'have' : ''}`, title: have ? 'Unlocked for good.' : `Unlocks automatically at ${p.cost} Loyalty.` },
+          h('b', null, p.name), h('small', null, have ? '✓ ' + p.text : `At ${p.cost} Loyalty · ${p.text}`));
+      })),
+      h('p', { class: 'small muted' }, 'Perks unlock as Loyalty reaches each threshold and are never lost. ', h('button', { class: 'link', onclick: () => socialHelp(c) }, 'How Morale & Loyalty work'))),
     h('p', { class: 'dex' }, sp.dex),
     opts.extra ?? null,
     h('footer', { class: 'ic-foot' },
@@ -227,6 +254,10 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
       h('div', null, h('h3', null, `${nameOf(c)} · Chart`), h('div', { class: 'ic-sub' }, h('span', null, `${c.points} node${c.points === 1 ? '' : 's'} to unlock · every 10 XP earns one`))),
       h('div', { class: 'lv-badge' }, h('small', null, 'LV'), c.level)),
     chart,
+    // what the Signature Move node would teach, so it can be judged before spending a point on it
+    sp.signature && c.signature !== sp.signature ? h('div', { class: 'sig-preview' },
+      h('small', null, '★ Signature Move preview (unlocked by its node on this chart)'),
+      moveCard(MOVE_BY_ID[sp.signature])) : null,
     h('p', { class: 'small muted center' }, 'A node opens once every node linked above it is unlocked. Evolving needs the whole center path; side branches are optional, but any you skip are left behind when the creature evolves. At the final stage, the Capstone needs both the Vitality and Stamina branches.'),
     h('footer', { class: 'ic-foot' }, h('button', { class: 'btn ghost', onclick: flip }, '↺ Flip to front')));
 }
@@ -294,6 +325,8 @@ export function editPlaybook(c: CreatureInst, changed: () => void) {
       name: ['Name: A → Z', () => 0],
     };
     const body = h('div', { class: 'pb-edit' });
+    const sigId = speciesOf(c).signature;
+    const lockedSig = sigId && c.signature !== sigId ? sigId : null;
     const render = () => {
       const all = learnable(c);
       const spent = allocateEnergy(e, sel);
@@ -334,7 +367,11 @@ export function editPlaybook(c: CreatureInst, changed: () => void) {
         const on = sel.includes(id);
         const canAdd = !on && sel.length < 4 && fits(e, [...sel, id]);
         return moveCard(MOVE_BY_ID[id], { selected: on, disabled: !on && !canAdd, onClick: () => { sel = on ? sel.filter((x) => x !== id) : [...sel, id]; render(); } });
-      }) : [h('p', { class: 'small muted' }, 'No moves match this filter.')]);
+      }) : [h('p', { class: 'small muted' }, 'No moves match this filter.')],
+        // the species' Signature Move, shown locked until its chart node is bought
+        lockedSig && matches(MOVE_BY_ID[lockedSig], filter) && !fitsOnly ? h('div', { class: 'sig-locked' },
+          moveCard(MOVE_BY_ID[lockedSig], { disabled: true }),
+          h('small', null, '🔒 Signature Move: unlock it from the ★ node on the progression chart.')) : null);
       body.replaceChildren(
         h('p', { class: 'small' }, 'Energy is a requirement, not a cost per use. A move fits if your creature generates enough of each type; Neutral slots take any energy and Prisma counts as any type.'),
         usage, controls, list,

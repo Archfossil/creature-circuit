@@ -13,9 +13,13 @@ export interface CreatureInst {
   xp: number;
   points: number;           // unspent progression nodes
   nature: string;
-  morale: number;           // 0-10
-  loyalty: number;          // currency for nature perks
-  perks: number;            // nature perks unlocked (0-3, in order)
+  morale: number;           // 0-10: how happy it is with you (see MORALE_HIGH / MORALE_LOW)
+  loyalty: number;          // 0-10: trust earned at high morale; reaching a perk's threshold unlocks it
+  perks: number;            // nature perks unlocked (0-3, in order). Never re-locked.
+  /** Set once the trainer has been warned about low morale; from then on, each turn ends with a morale check. */
+  moraleWarned?: boolean;
+  /** Morale at the end of the previous turn, to tell whether it was raised since. */
+  moraleMark?: number;
   bonus: Partial<Stats> & { health?: number; vitality?: number };
   extraEnergy: EnergyMap;
   unlocked: string[];       // progression node ids (current stage chart)
@@ -191,6 +195,13 @@ export interface ProgNode {
   kind: 'stat' | 'energy' | 'signature' | 'movement' | 'evolve' | 'capstone' | 'prisma';
 }
 
+/** One-line summary of a move for chart nodes, e.g. "d8+1 Astral attack". */
+export function sigSummary(m: Move): string {
+  const dmg = m.dmgDie || m.dmgFlat ? `${m.dmgDie ? `d${m.dmgDie}` : ''}${m.dmgDie && m.dmgFlat ? '+' : ''}${m.dmgFlat || ''} ` : '';
+  const kind = m.kind === 'support' ? 'support move' : m.kind === 'physical' ? 'physical attack' : 'attack';
+  return `${dmg}${m.type ? `${m.type[0].toUpperCase()}${m.type.slice(1)} ` : ''}${kind}`;
+}
+
 export function progressionTree(c: CreatureInst): ProgNode[] {
   const sp = speciesOf(c);
   const prim = sp.types[0];
@@ -212,7 +223,7 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
     energyNode({ id: 'b', row: 1, col: 0, requires: ['a'] }, prim),
     { id: 'c', row: 1, col: 2, requires: ['a'], label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
     sp.signature
-      ? { id: 'd', row: 2, col: 0, requires: ['b'], label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name}.`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
+      ? { id: 'd', row: 2, col: 0, requires: ['b'], label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name} (${sigSummary(MOVE_BY_ID[sp.signature])}).`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
       : statNode({ id: 'd', row: 2, col: 0, requires: ['b'] }, 'focus'),
     statNode({ id: 'e', row: 2, col: 1, requires: ['b', 'c'] }, second),
     statNode({ id: 'f', row: 2, col: 2, requires: ['c'] }, 'speed'),
@@ -272,7 +283,7 @@ export function evolve(c: CreatureInst) {
 }
 
 export function gainXp(c: CreatureInst, xp: number): number {
-  if (c.morale >= 8) xp += 1;
+  if (c.morale >= MORALE_HIGH) xp += 1;
   c.xp += xp;
   let levels = 0;
   while (c.xp >= 10) { c.xp -= 10; c.level++; c.points++; levels++; }
@@ -287,6 +298,28 @@ export function xpForWin(winnerLevel: number, loserLevel: number): number {
 /** Participation XP: every creature that fought earns this when the battle ends, win or lose (1–5). */
 export function participationXp(level: number, foeLevel: number): number {
   return Math.max(1, Math.min(5, 3 + (foeLevel - level)));
+}
+
+// ── Morale & Loyalty ────────────────────────────────────────────
+/** Morale at or above this earns +1 Loyalty at the end of each turn (and +1 XP per battle). */
+export const MORALE_HIGH = 7;
+/** Morale at or below this puts the creature at risk of leaving (warning first, then a d10 check each turn). */
+export const MORALE_LOW = 3;
+export const LOYALTY_MAX = 10;
+/** Legendaries lose this much Loyalty every turn and never gain it from Morale (see world.ts → moraleAndLoyalty). */
+export const LEGENDARY_LOYALTY_DRAIN = 1;
+
+/** Unlock every Nature perk whose Loyalty threshold has been reached. Perks never re-lock. */
+export function syncPerks(c: CreatureInst) {
+  const n = NATURE_BY_ID[c.nature];
+  if (!n) return;
+  while (c.perks < n.perks.length && c.loyalty >= n.perks[c.perks].cost) c.perks++;
+}
+
+/** Add (or remove) Loyalty within 0–10, unlocking any perks it reaches. */
+export function addLoyalty(c: CreatureInst, n: number) {
+  c.loyalty = Math.max(0, Math.min(LOYALTY_MAX, c.loyalty + n));
+  syncPerks(c);
 }
 
 export function createCreature(speciesId: string, level = 1, opts: { nature?: string; auto?: boolean } = {}): CreatureInst {

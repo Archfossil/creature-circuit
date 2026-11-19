@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SPECIES_BY_ID } from '../data/species';
 import { buildCreature } from './creatureModel';
+import { buildTrainer, type TrainerLook } from './trainerModel';
 
 export const isMobile = matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
@@ -109,4 +110,34 @@ export function portrait(speciesId: string): string {
   cache.set(speciesId, url);
   rig.root.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; m?.dispose?.(); });
   return url;
+}
+
+/** A still image of a trainer mini (the customisation preview). Cached per look. */
+export function trainerPortrait(look: TrainerLook): string {
+  const key = 'trainer:' + JSON.stringify(look);
+  const hit = cache.get(key);
+  if (hit) return hit;
+  if (!pr) {
+    pr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    pr.setSize(320, 320);
+    pr.setPixelRatio(1);
+    pr.toneMapping = THREE.ACESFilmicToneMapping;
+    pr.outputColorSpace = THREE.SRGBColorSpace;
+  }
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight('#ffffff', '#8a7a66', 1.6));
+  const d = new THREE.DirectionalLight('#fff6e0', 2.2);
+  d.position.set(2, 4, 4);
+  scene.add(d);
+  const rig = buildTrainer(look);
+  rig.root.rotation.y = -0.55; // three-quarter view, so ponytails and long hair show
+  scene.add(rig.root);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+  cam.position.set(0.9, 1.9, 4.6);
+  cam.lookAt(0, 1.0, 0);
+  pr.setClearColor(0x000000, 0);
+  pr.render(scene, cam);
+  const url = pr.domElement.toDataURL('image/png');
+  cache.set(key, url);
+  return url; // trainer materials are shared (cached in trainerModel), so nothing is disposed here
 }

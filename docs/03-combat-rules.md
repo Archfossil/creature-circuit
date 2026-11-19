@@ -60,6 +60,17 @@ Loyalty tracks trust with the trainer and unlocks high-tier behavioral bonuses b
 
 Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers" often, and receive active praise and care from their trainers will have high morale. Creatures who are on losing streaks in battle, are left in their totems, get neglected or ignored by their trainers, or are passed over when the trainer hands out items and treats will have low morale. Creatures with low morale can reject their trainers and return to the wild. Creatures with high Morale gain bonuses to their earned Loyalty and Experience.
 
+> **Prototype rules: Morale & Loyalty** (tap either chip on a creature's card for the in-game summary)
+> - **Morale (0–10).** It rises when the creature wins a battle it fought in (+1), Follows you (+1 every other turn), gets treats or berries, rests at a stable, or through some events. It falls when it's knocked out (−1), on a team wipe (−1 each), and while it waits in a totem (−1 every 10 turns).
+> - **High Morale (7+)** earns +1 Loyalty at the end of every turn, plus +1 XP per battle.
+> - **Loyalty (0–10).** Reaching each Nature perk's threshold (e.g. 3 / 6 / 10) unlocks that perk automatically and permanently. Perks never re-lock. Loyalty isn't spent. At the Capstone, attacks deal +1 damage per 5 Loyalty.
+> - **Low Morale (3 or less)** first triggers a warning. After that, every turn that ends without the creature's Morale having risen rolls a d10:
+>   - **Above its Loyalty:** it leaves the team.
+>   - **Otherwise:** it stays but loses 1 Loyalty.
+>
+>   At 0 Loyalty any roll leaves, so even a creature with full Loyalty can eventually be lost, but it has to wear its Loyalty down first. A creature never leaves if it's your only one; it only loses Loyalty. If your active team empties, a creature steps out of its totem. Raising Morale above 3 clears the warning.
+> - **Legendaries never fully settle.** A recruited Legendary arrives with 10 Loyalty and loses 1 every turn, whatever its Morale. It gains no Loyalty from Morale, though treats still add some. At 0 Loyalty it leaves and returns to its grounds on the map for another trainer to find. Releasing it at the Research Facility first pays × 5 its level. Expect to hold a Legendary for about 10 turns unless your plan is built around keeping it.
+
 ## Affinity
 
 Affinity powers team-up swaps, enabling an incoming "Alpha" creature to leverage attributes fed by a benched partner. When you swap Creatures mid-battle one of the Creatures is designated as the "Alpha" in the arrangement. The Alpha has an affinity ability which is triggered as the two creatures swap, but the exact power of the affinity ability is determined by the other creature. Affinity attacks all work differently, but they might borrow the contributing Creature's stats or type for the specific attack.

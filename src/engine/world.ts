@@ -1,12 +1,12 @@
 import type { Biome, ElementType, MapNode, Rarity, Species } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
-import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, NATURE_BY_ID, itemInfo } from '../data/content';
+import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
-import type { GameState } from './state';
+import type { GameState, Training } from './state';
 import { tierOf, teamMovements, follower, addItem, hasItem, log } from './state';
 import type { CreatureInst } from './creature';
-import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend } from './creature';
+import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
@@ -71,7 +71,7 @@ export function moveTo(s: GameState, id: string): Outcome | null {
   if (!s.visited.includes(id)) s.visited.push(id);
   const node = NODE_BY_ID[id];
   if (node.kind === 'legendary') {
-    if (s.flags.beaten.includes(id)) return { t: 'nothing', roll: 0 };
+    if (!legendaryHere(s, node)) return { t: 'nothing', roll: 0 };
     return { t: 'legendary', battle: legendaryBattle(s, node) };
   }
   if (node.kind !== 'wild') return { t: 'arrive', node };
@@ -241,6 +241,126 @@ function trainerEncounter(s: GameState, node: MapNode, r: number): Outcome {
   return { t: 'trainer', roll: r, name, battle };
 }
 
+// ── Legendaries: one of each per game ───────────────────────────
+/**
+ * Each Legendary exists once per game. It waits at its node until it is beaten (recruited or driven
+ * off), and it can't appear while any trainer holds it. Releasing it at a Research Facility puts it
+ * back on its node for someone else to try.
+ */
+export function legendaryHere(s: GameState, node: MapNode): boolean {
+  if (node.kind !== 'legendary' || !node.legendary) return false;
+  if (s.flags.beaten.includes(node.id)) return false;
+  return ![...s.roster, ...s.reserve].some((c) => c.species === node.legendary);
+}
+
+// ── Research Facility (Quillhaven) ──────────────────────────────
+/** Coins per level for a released creature, by rarity. */
+export const RESEARCH_RATE: Record<Rarity, number> = { common: 2, prime: 3, apex: 4, legendary: 5 };
+export const researchPayout = (c: CreatureInst) => c.level * RESEARCH_RATE[speciesOf(c).rarity];
+
+/** Why this creature can't be released right now (null = it can). */
+export function releaseBlock(s: GameState, uid: string): string | null {
+  const all = [...s.roster, ...s.reserve];
+  if (!all.some((c) => c.uid === uid)) return 'Not one of your creatures.';
+  if (all.length <= 1) return 'You can’t give up your last creature.';
+  if (s.roster.length === 1 && s.roster[0].uid === uid) return 'Your only active creature. Swap another in from a totem first.';
+  return null;
+}
+
+/**
+ * Release a recruited creature to the Research Facility for coins (level × 2/3/4/5 by rarity).
+ * A Legendary returns to its node on the board.
+ */
+export function releaseToResearch(s: GameState, uid: string): { coins: number; text: string } | null {
+  if (releaseBlock(s, uid)) return null;
+  const list = s.roster.some((c) => c.uid === uid) ? s.roster : s.reserve;
+  const c = list.find((x) => x.uid === uid)!;
+  const coins = researchPayout(c);
+  list.splice(list.indexOf(c), 1);
+  if (s.following === uid) s.following = s.roster[0]?.uid ?? null;
+  s.coins += coins;
+  let text = `${nameOf(c)} is in the researchers’ care now. You receive 🪙 ${coins}.`;
+  const home = returnLegendary(s, c);
+  if (home) text += ` The researchers return it to ${home}, where it waits for its next challenger.`;
+  log(s, `Released ${nameOf(c)} (Lv ${c.level}) to the Research Facility for ${coins} coins.`);
+  return { coins, text };
+}
+
+// ── Battle School (Valor Ridge) ─────────────────────────────────
+// Pay coins and leave a creature: it earns XP equal to the coins, at 2 XP a turn (so the course
+// takes half as many turns as the XP). Pick it up any time for the XP earned so far.
+export const SCHOOL_XP_PER_TURN = 2;
+export const trainingTurns = (coins: number) => Math.ceil(coins / SCHOOL_XP_PER_TURN);
+
+/** Why a creature can't be enrolled (null = it can). */
+export function enrollBlock(s: GameState, uid: string, coins: number): string | null {
+  if (TOWNS[s.location]?.special !== 'school') return 'You need to be at a Battle School.';
+  const all = [...s.roster, ...s.reserve];
+  if (!all.some((c) => c.uid === uid)) return 'Not one of your creatures.';
+  if (all.length <= 1) return 'You can’t send away your only creature.';
+  if (!Number.isInteger(coins) || coins < SCHOOL_XP_PER_TURN) return `Training costs at least 🪙 ${SCHOOL_XP_PER_TURN}.`;
+  if (coins > s.coins) return 'Not enough coins.';
+  return null;
+}
+
+/** Leave a creature at the Battle School for `coins` coins (XP = coins, turns = coins / 2). */
+export function enrollTraining(s: GameState, uid: string, coins: number): Training | null {
+  if (enrollBlock(s, uid, coins)) return null;
+  const list = s.roster.some((c) => c.uid === uid) ? s.roster : s.reserve;
+  const c = list.splice(list.findIndex((x) => x.uid === uid), 1)[0];
+  if (!s.roster.length && s.reserve.length) s.roster.push(s.reserve.shift()!);
+  if (s.following === uid) s.following = s.roster[0]?.uid ?? null;
+  s.coins -= coins;
+  const t: Training = { creature: c, school: s.location, xp: coins, turns: trainingTurns(coins), started: s.turn };
+  (s.training ??= []).push(t);
+  log(s, `Left ${nameOf(c)} at ${NODE_BY_ID[s.location].name}'s Battle School: ${coins} XP over ${t.turns} turns.`);
+  return t;
+}
+
+/** How far along a course is: turns elapsed, XP earned so far, and whether it's finished. */
+export function trainingProgress(s: GameState, t: Training) {
+  const elapsed = Math.max(0, Math.min(t.turns, s.turn - t.started));
+  return { elapsed, xp: Math.min(t.xp, elapsed * SCHOOL_XP_PER_TURN), done: elapsed >= t.turns };
+}
+
+export type TrainingMood = 'great' | 'fine' | 'rough';
+export interface PickupResult { name: string; xp: number; levels: number; mood: TrainingMood; morale: number; loyalty: number; roll: number; legendLeft?: string; text: string }
+
+/**
+ * Collect a creature from the Battle School (you must be there). It gets the XP earned so far (its
+ * chart points are then yours to spend), and a d6 decides how it felt about the stay:
+ * 1–2 rough (−2 Morale, −1 Loyalty), 3–4 fine (no change), 5–6 great (+2 Morale, +1 Loyalty).
+ * A Legendary keeps losing Loyalty while away, so it may have left for its grounds.
+ */
+export function pickUpTraining(s: GameState, uid: string): PickupResult | null {
+  const i = (s.training ?? []).findIndex((t) => t.creature.uid === uid);
+  if (i < 0 || s.training![i].school !== s.location) return null;
+  const t = s.training![i];
+  const c = t.creature;
+  const { elapsed, xp } = trainingProgress(s, t);
+  s.training!.splice(i, 1);
+  const levels = xp > 0 ? gainXp(c, xp) : 0;
+  const r = roll(6);
+  const mood: TrainingMood = r <= 2 ? 'rough' : r >= 5 ? 'great' : 'fine';
+  const dm = mood === 'great' ? 2 : mood === 'rough' ? -2 : 0, dl = mood === 'great' ? 1 : mood === 'rough' ? -1 : 0;
+  c.morale = Math.max(0, Math.min(10, c.morale + dm));
+  addLoyalty(c, dl);
+  const moodText = mood === 'great' ? 'loved its time there' : mood === 'rough' ? 'had a rough time' : 'got through it fine';
+  let text = `${nameOf(c)} earned ${xp} XP${levels ? ` (+${levels} level${levels === 1 ? '' : 's'}: chart points to spend)` : ''} and ${moodText}${dm ? ` (Morale ${dm > 0 ? '+' : ''}${dm}, Loyalty ${dl > 0 ? '+' : ''}${dl})` : ''}.`;
+  let legendLeft: string | undefined;
+  if (speciesOf(c).rarity === 'legendary') {
+    addLoyalty(c, -elapsed * LEGENDARY_LOYALTY_DRAIN); // the drain doesn't pause for school
+    if (c.loyalty <= 0) {
+      legendLeft = returnLegendary(s, c) ?? 'the wilds';
+      text += ` Its Loyalty ran out while it was away: it has returned to ${legendLeft}.`;
+    }
+  }
+  if (!legendLeft) { if (s.roster.length < 3) s.roster.push(c); else s.reserve.push(c); }
+  if (!s.following) s.following = s.roster[0]?.uid ?? null;
+  log(s, `Picked up ${nameOf(c)} from the Battle School: +${xp} XP, ${mood} stay.`);
+  return { name: nameOf(c), xp, levels, mood, morale: dm, loyalty: dl, roll: r, legendLeft, text };
+}
+
 function legendaryBattle(s: GameState, node: MapNode): Battle {
   const c = createCreature(node.legendary!, node.level + Math.floor(s.turn / 25));
   if (!s.dex.seen.includes(c.species)) s.dex.seen.push(c.species);
@@ -339,6 +459,8 @@ export function attemptRecruit(s: GameState, wild: CreatureInst, totem: string, 
   if (success) {
     fullRestore(wild);
     wild.morale = 6;
+    // Legendaries arrive with full Loyalty, then burn through it (see moraleAndLoyalty)
+    if (speciesOf(wild).rarity === 'legendary') addLoyalty(wild, LEGENDARY_START_LOYALTY);
     if (s.roster.length < 3) s.roster.push(wild); else s.reserve.push(wild);
     if (!s.dex.caught.includes(wild.species)) s.dex.caught.push(wild.species);
     s.stats.recruited++;
@@ -418,7 +540,7 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
   else if (id === 'elixir') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = maxVitality(c); c.fatigue = 0; msg = `${nameOf(c)} is fully refreshed.`; }
   else if (id === 'calm-tea') { c.fatigue = 0; msg = `${nameOf(c)} sips the tea. Fatigue cleared.`; }
   else if (id === 'energy-tonic') { const t = speciesOf(c).types[0]; c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
-  else if (it.kind === 'treat') { const n = id === 'moonberry' ? 2 : 1; c.morale = Math.min(10, c.morale + n); c.loyalty += n; msg = `${nameOf(c)} happily munches the ${it.name}! (+${n} Morale, +${n} Loyalty)`; }
+  else if (it.kind === 'treat') { const n = id === 'moonberry' ? 2 : 1; c.morale = Math.min(10, c.morale + n); addLoyalty(c, n); msg = `${nameOf(c)} happily munches the ${it.name}! (+${n} Morale, +${n} Loyalty)`; }
   else if (id === 'lure-incense') { s.flags.lure = true; msg = 'You light the incense. Wild creatures will come to you.'; }
   else if (id === 'star-charm') { s.flags.starCharm = true; msg = 'The Star Charm glimmers. Your next encounter rolls an extra star die.'; }
   else return 'That can\'t be used here.';
@@ -426,16 +548,6 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
   return msg;
 }
 
-export function buyPerk(s: GameState, uid: string): boolean {
-  const c = [...s.roster, ...s.reserve].find((x) => x.uid === uid);
-  if (!c) return false;
-  const n = NATURE_BY_ID[c.nature];
-  const perk = n.perks[c.perks];
-  if (!perk || c.loyalty < perk.cost) return false;
-  c.loyalty -= perk.cost;
-  c.perks++;
-  return true;
-}
 
 // ── Arbiters & NPC teams ────────────────────────────────────────
 export function arbiterTeam(type: ElementType, tier: number): CreatureInst[] {
@@ -514,7 +626,19 @@ export function endgameBattle(s: GameState): Battle {
 }
 
 // ── Turn flow ───────────────────────────────────────────────────
-export interface TurnReport { weatherRoll: number; seasonChanged: boolean; left: string[]; ended?: 'endgame' | 'over' }
+/** A low-morale check at the end of a turn: d10 against Loyalty. */
+export interface MoraleCheck { name: string; roll: number; loyalty: number; left: boolean }
+export interface TurnReport {
+  weatherRoll: number; seasonChanged: boolean; left: string[]; ended?: 'endgame' | 'over';
+  /** Creatures that just dropped to low morale (the warning). */
+  warned: string[];
+  /** Morale checks rolled this turn for creatures that stayed unhappy after their warning. */
+  checks: MoraleCheck[];
+  /** Legendaries that left this turn and went back to their grounds on the map. */
+  legendsReturned: { name: string; home: string }[];
+  /** Creatures that finished their Battle School training this turn. */
+  trainingDone: { name: string; school: string }[];
+}
 
 /** Creatures that would benefit from camping, most in need first (missing Vitality, then Fatigue). KO'd ones need a stable. */
 export function campNeeds(s: GameState): CreatureInst[] {
@@ -534,31 +658,90 @@ export function campTargets(s: GameState, chosen?: string[]): CreatureInst[] {
 }
 
 /** End the turn. `camping`: true tends the most wounded, or pass the uids the trainer chose to tend. */
+/**
+ * End-of-turn Morale & Loyalty:
+ * - the Following creature gains +1 Morale every other turn; creatures waiting in totems lose 1 every 10 turns;
+ * - high Morale (7+) earns +1 Loyalty, which unlocks Nature perks at their thresholds (perks never re-lock);
+ * - low Morale (3 or less) first triggers a warning. After that, each turn that ends without its Morale
+ *   having risen rolls a d10: above its Loyalty, it leaves; otherwise it loses 1 Loyalty instead.
+ *   At 0 Loyalty any roll is above it. Your last active creature never leaves (it just loses Loyalty).
+ */
+/** Loyalty a Legendary arrives with. It loses 1 every turn, so this is roughly how many turns you keep it. */
+export const LEGENDARY_START_LOYALTY = 10;
+
+/** A Legendary that leaves a trainer (released, or gone of its own accord) returns to its grounds on the map. */
+function returnLegendary(s: GameState, c: CreatureInst): string | null {
+  const sp = speciesOf(c);
+  if (sp.rarity !== 'legendary') return null;
+  const home = MAP_NODES.find((n) => n.kind === 'legendary' && n.legendary === sp.id);
+  if (!home) return null;
+  s.flags.beaten = s.flags.beaten.filter((id) => id !== home.id);
+  return home.name;
+}
+
+/** Remove a creature that leaves the team; promote one from a totem if the active team empties. */
+function depart(s: GameState, list: CreatureInst[], i: number) {
+  const [c] = list.splice(i, 1);
+  if (!s.roster.length && s.reserve.length) s.roster.push(s.reserve.shift()!);
+  if (s.following === c.uid) s.following = s.roster[0]?.uid ?? null;
+  return returnLegendary(s, c);
+}
+
+export function moraleAndLoyalty(s: GameState, report: TurnReport) {
+  const f = follower(s);
+  if (f && s.turn % 2 === 0) f.morale = Math.min(10, f.morale + 1);
+  if (s.turn % 10 === 0) for (const c of s.reserve) c.morale = Math.max(0, c.morale - 1);
+  for (const list of [s.roster, s.reserve]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const c = list[i];
+      const raised = c.moraleMark !== undefined && c.morale > c.moraleMark;
+      const legendary = speciesOf(c).rarity === 'legendary';
+      const onlyOne = s.roster.length + s.reserve.length <= 1;
+      if (legendary) {
+        // Legendaries never settle: they lose 1 Loyalty every turn, whatever their Morale,
+        // and at 0 Loyalty they return to their grounds for another trainer to find.
+        addLoyalty(c, -LEGENDARY_LOYALTY_DRAIN);
+        if (c.loyalty <= 0 && !onlyOne) {
+          const home = depart(s, list, i);
+          report.left.push(nameOf(c));
+          report.legendsReturned.push({ name: nameOf(c), home: home ?? 'the wilds' });
+          log(s, `${nameOf(c)}'s Loyalty ran out. It returned to ${home ?? 'the wilds'}.`);
+          continue;
+        }
+      } else if (c.morale >= MORALE_HIGH) addLoyalty(c, 1);
+      if (c.morale > MORALE_LOW) c.moraleWarned = false;
+      else if (!c.moraleWarned) {
+        c.moraleWarned = true;
+        report.warned.push(nameOf(c));
+        log(s, `${nameOf(c)} is unhappy (Morale ${c.morale}). Raise its Morale or it may leave.`);
+      } else if (!raised) {
+        const r = roll(10);
+        const leaves = r > c.loyalty && !onlyOne;
+        report.checks.push({ name: nameOf(c), roll: r, loyalty: c.loyalty, left: leaves });
+        if (leaves) {
+          report.left.push(nameOf(c));
+          const home = depart(s, list, i);
+          if (home) report.legendsReturned.push({ name: nameOf(c), home });
+          log(s, `${nameOf(c)} lost faith and returned to ${home ?? 'the wild'} (rolled ${r} over Loyalty ${c.loyalty}).`);
+          continue;
+        }
+        addLoyalty(c, -1);
+        log(s, `${nameOf(c)} stays, for now (rolled ${r} against Loyalty ${c.loyalty + 1}). Loyalty −1.`);
+      }
+      c.moraleMark = c.morale;
+    }
+  }
+}
+
 export function endTurn(s: GameState, camping: boolean | string[] = false): TurnReport {
-  const report: TurnReport = { weatherRoll: 0, seasonChanged: false, left: [] };
+  const report: TurnReport = { weatherRoll: 0, seasonChanged: false, left: [], warned: [], checks: [], legendsReturned: [], trainingDone: [] };
   if (camping) {
     const tended = campTargets(s, Array.isArray(camping) ? camping : undefined);
     for (const c of tended) { c.vitality = maxVitality(c); c.fatigue = 0; }
     s.initiative = 0;
     log(s, tended.length ? `You made camp. ${tended.map(nameOf).join(', ')} recovered Vitality and shook off Fatigue.` : 'You made camp, but no one needed tending.');
   }
-  // follower bonds
-  const f = follower(s);
-  if (f) { f.loyalty += 1; if (s.turn % 2 === 0) f.morale = Math.min(10, f.morale + 1); }
-  // neglected creatures in totems lose morale over time
-  if (s.turn % 10 === 0) {
-    for (const c of s.reserve) c.morale = Math.max(0, c.morale - 1);
-  }
-  // creatures with no morale return to the wild
-  for (const list of [s.reserve, s.roster]) {
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (list[i].morale <= 0 && (list !== s.roster || s.roster.length > 1)) {
-        report.left.push(nameOf(list[i]));
-        log(s, `${nameOf(list[i])} lost faith and returned to the wild.`);
-        list.splice(i, 1);
-      }
-    }
-  }
+  moraleAndLoyalty(s, report);
   if (s.turn === 100) {
     if (s.location === 'stadium' && s.merits.length >= 8) { startEndgame(s); report.ended = 'endgame'; }
     else { s.phase = 'over'; report.ended = 'over'; }
@@ -575,6 +758,13 @@ export function endTurn(s: GameState, camping: boolean | string[] = false): Turn
   report.weatherRoll = roll(6);
   s.weather = SEASON_INFO[season].dice[report.weatherRoll - 1];
   if (!s.roster.some((c) => c.uid === s.following)) s.following = s.roster[0]?.uid ?? null;
+  for (const t of s.training ?? []) {
+    if (!t.notified && trainingProgress(s, t).done) {
+      t.notified = true;
+      report.trainingDone.push({ name: nameOf(t.creature), school: NODE_BY_ID[t.school].name });
+      log(s, `${nameOf(t.creature)} finished training at ${NODE_BY_ID[t.school].name}.`);
+    }
+  }
   return report;
 }
 
