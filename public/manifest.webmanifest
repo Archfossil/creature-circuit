@@ -1,0 +1,10 @@
+{
+  "name": "Creature Circuit",
+  "short_name": "Creature Circuit",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#2b2a33",
+  "theme_color": "#2b2a33",
+  "icons": [{ "src": "assets/types/astral.png", "sizes": "512x512", "type": "image/png" }]
+}
