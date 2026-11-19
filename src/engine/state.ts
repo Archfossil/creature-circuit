@@ -38,10 +38,12 @@ export interface GameState {
 }
 
 const KEY = 'creature-circuit-save-v1';
+/** v2: energy generation doubled; progression-chart energy nodes now grant +2. */
+export const SAVE_VERSION = 2;
 
 export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string): GameState {
   const s: GameState = {
-    version: 1,
+    version: SAVE_VERSION,
     trainer: { name, style, home, color },
     turn: 1, initiative: 5, weather: pick(SEASON_INFO.spring.dice),
     location: home, visited: [home], coins: 15,
@@ -68,9 +70,19 @@ export function load(): GameState | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const s = JSON.parse(raw) as GameState;
-    return s.version === 1 ? s : null;
+    return migrate(JSON.parse(raw) as GameState);
   } catch { return null; }
+}
+/** Bring an older save up to SAVE_VERSION, or null if it can't be read. */
+export function migrate(s: GameState): GameState | null {
+  if (s.version === 1) {
+    // energy nodes unlocked under v1 granted +1; they grant +2 now
+    for (const c of [...s.roster, ...s.reserve]) {
+      for (const k of Object.keys(c.extraEnergy) as (keyof typeof c.extraEnergy)[]) c.extraEnergy[k] = c.extraEnergy[k]! * 2;
+    }
+    s.version = 2;
+  }
+  return s.version === SAVE_VERSION ? s : null;
 }
 export function clearSave() { try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
 

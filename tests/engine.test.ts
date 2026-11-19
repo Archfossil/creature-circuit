@@ -6,9 +6,10 @@ import { MAP_NODES, neighbors, CITIES } from '../src/data/map';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
 import { createCreature, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, gainXp, maxHealth, maxVitality } from '../src/engine/creature';
 import { createBattle, resolveRound, sendIn, chooseAI, type Side } from '../src/engine/battle';
-import { newGame, tierOf } from '../src/engine/state';
+import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
 import * as W from '../src/engine/world';
 
+const energyTotalOf = (c: ReturnType<typeof createCreature>) => Object.values(energy(c)).reduce((a, v) => a + (v ?? 0), 0);
 const side = (kind: Side['kind'], team: ReturnType<typeof createCreature>[]): Side => ({ kind, name: kind, team, active: 0, mods: {} });
 
 describe('type chart (docs/03)', () => {
@@ -209,5 +210,31 @@ describe('encounter scaling by Trainer Tier', () => {
     expect(W.tierRarityCap(1)).toBe('prime');
     expect(W.tierRarityCap(2)).toBe('apex');
     expect([1, 2, 3, 4, 5].map(W.tierRarityDice)).toEqual([0, 0, 1, 1, 2]);
+  });
+});
+
+describe('energy budget', () => {
+  it('stage-1 commons make 6 energy; energy nodes grant +2', () => {
+    const c = createCreature('puddlit', 1);
+    expect(SPECIES_BY_ID['puddlit'].stage).toBe(1);
+    expect(energyTotalOf(c)).toBe(6);
+    c.points = 2;
+    unlockNode(c, 'a');
+    unlockNode(c, 'b');
+    expect(energyTotalOf(c)).toBe(8);
+  });
+  it('starters can afford a full-cost own-type move plus more', () => {
+    for (const id of STARTERS) {
+      const c = createCreature(id, 2);
+      expect(c.playbook.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+  it('v1 saves double their unlocked energy on load', () => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    s.version = 1;
+    s.roster[0].extraEnergy = { water: 1, prisma: 1 };
+    const m = migrate(s)!;
+    expect(m.version).toBe(SAVE_VERSION);
+    expect(m.roster[0].extraEnergy).toEqual({ water: 2, prisma: 2 });
   });
 });

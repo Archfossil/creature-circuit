@@ -146,7 +146,7 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
   const bias = (Object.entries(sp.base) as [StatKey, number][]).filter(([k]) => k !== 'evasion').sort((a, b) => b[1] - a[1]).map(([k]) => k);
   const nodes: ProgNode[] = [
     statNode('a', 0, 1, bias[0] === 'vigor' ? 'power' : bias[0]),
-    { id: 'b', row: 1, col: 0, label: `+1 ${cap(prim)} Energy`, text: 'Generate one more energy for your playbook.', icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, prim, 1) },
+    { id: 'b', row: 1, col: 0, label: `+${NODE_ENERGY} ${cap(prim)} Energy`, text: `Generate ${NODE_ENERGY} more energy for your playbook.`, icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, prim, NODE_ENERGY) },
     { id: 'c', row: 1, col: 2, label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
     sp.signature
       ? { id: 'd', row: 2, col: 0, label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name}.`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
@@ -154,19 +154,21 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
     statNode('e', 2, 2, 'speed'),
     sp.movement
       ? { id: 'f', row: 3, col: 0, label: `Learn ${cap(sp.movement)}`, text: `Unlocks the ${cap(sp.movement)} overworld ability.`, icon: '➶', kind: 'movement', apply: (cc) => { cc.movement = sp.movement; } }
-      : { id: 'f', row: 3, col: 0, label: `+1 ${cap(sec)} Energy`, text: 'Generate one more energy.', icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, sec, 1) },
+      : { id: 'f', row: 3, col: 0, label: `+${NODE_ENERGY} ${cap(sec)} Energy`, text: `Generate ${NODE_ENERGY} more energy.`, icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, sec, NODE_ENERGY) },
     { id: 'g', row: 3, col: 2, label: '+1 Vitality', text: 'One more Vitality point.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
   ];
   if (sp.evolvesTo) {
     nodes.push({ id: 'evo', row: 4, col: 1, label: `Evolve → ${SPECIES_BY_ID[sp.evolvesTo].name}`, text: 'Evolve into the next stage. A new chart unlocks.', icon: '⇪', kind: 'evolve', apply: (cc) => evolve(cc) });
   } else {
-    nodes.push({ id: 'h', row: 4, col: 0, label: '+1 Prisma Energy', text: 'Prisma counts as any type.', icon: '✦', kind: 'prisma', apply: (cc) => addEnergy(cc, 'prisma', 1) });
+    nodes.push({ id: 'h', row: 4, col: 0, label: `+${NODE_ENERGY} Prisma Energy`, text: 'Prisma counts as any type.', icon: '✦', kind: 'prisma', apply: (cc) => addEnergy(cc, 'prisma', NODE_ENERGY) });
     nodes.push({ id: 'cap', row: 4, col: 2, label: 'Capstone: Bond', text: 'Attacks deal +1 damage per 5 Loyalty.', icon: '❖', kind: 'capstone', apply: (cc) => { cc.capstone = true; } });
   }
   return nodes;
 }
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+/** Energy granted by an energy or Prisma node on the progression chart. */
+export const NODE_ENERGY = 2;
 function addEnergy(c: CreatureInst, k: EnergyKey, n: number) { c.extraEnergy[k] = (c.extraEnergy[k] ?? 0) + n; }
 
 export function availableNodes(c: CreatureInst): ProgNode[] {

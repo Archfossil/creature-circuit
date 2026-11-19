@@ -58,6 +58,7 @@ tests/       engine tests
 The docs leave a few points open. The prototype makes these calls:
 - **Wild-at-heart (nature) trainers** get their *first* re-explore each turn free, so re-exploring can't be repeated endlessly.
 - **Encounter scaling** follows Trainer Tier. Wild and roaming-trainer levels sit around 2 × Tier (just under that Tier's Arbiter), and a node's level shifts them by −1 to +2. Tier 1 can't roll Apex wilds. Tiers 3–4 roll one extra rarity die and Tier 5 rolls two. Roaming trainers bring more Prime/Apex creatures and bigger teams at higher Tiers (`world.ts` → `baseWildLevel`, `tierRarityDice`).
+- **Energy** is generated at 2× the base formula (stage-1 Commons make 6), and energy/Prisma nodes on the progression chart grant +2. This leaves room for real playbook trade-offs against move costs of 1–5 (`species.ts` → `ENERGY_SCALE`, `creature.ts` → `NODE_ENERGY`).
 - **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape.
 - **Trainer encounters**: on road and meadow nodes, a 3–4 explore roll may be a wandering trainer instead of a wild creature (prize: d6 coins).
 - **Statuses** for each type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. Each lasts 3 rounds.

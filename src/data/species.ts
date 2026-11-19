@@ -22,13 +22,16 @@ function baseStats(rarity: Rarity, stage: number, bias: StatKey[], weak?: StatKe
   return st;
 }
 
+/** Energy is generated at 2x the original prototype rate so playbooks have room for real choices. */
+export const ENERGY_SCALE = 2;
+
 function energyFor(types: ElementType[], rarity: Rarity, stage: number): EnergyMap {
   const r = rarity === 'common' ? 0 : rarity === 'prime' ? 1 : rarity === 'apex' ? 2 : 3;
-  const total = 3 + (stage - 1) * 2 + r;
+  const total = (3 + (stage - 1) * 2 + r) * ENERGY_SCALE;
   const e: EnergyMap = {};
   if (types.length === 1) e[types[0]] = total;
   else { e[types[0]] = Math.ceil(total * 0.6); e[types[1]] = Math.floor(total * 0.4); }
-  if (stage === 3 || r >= 2) e.prisma = r >= 3 ? 2 : 1;
+  if (stage === 3 || r >= 2) e.prisma = (r >= 3 ? 2 : 1) * ENERGY_SCALE;
   return e;
 }
 
