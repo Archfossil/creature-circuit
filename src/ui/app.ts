@@ -341,16 +341,20 @@ export class App {
       const sp = speciesOf(c);
       const mh = maxHealth(c), mv = maxVitality(c);
       const pct = sn.ko ? 0 : Math.min(100, (sn.health / mh) * 100);
+      const recruited = sd.kind === 'wild' && s.dex.caught.includes(c.species);
       plates[side].replaceChildren(
         h('div', { class: 'pl-top' },
           h('b', null, nameOf(c)), h('span', { class: 'lv' }, `Lv ${c.level}`),
           h('span', { class: 'pl-types' }, sp.types.map((t) => typeIconImg(t, 16))),
+          recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
           sn.status ? h('span', { class: 'status-tag', title: STATUS_INFO[sn.status].text }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
-        h('div', { class: 'hp-row' }, h('div', { class: 'bar' }, h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' })), h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`)),
-        h('div', { class: 'pl-sub' },
-          h('span', { class: 'hearts' }, Array.from({ length: mv }, (_, i) => h('span', { class: `heart ${i < sn.vitality ? 'on' : ''}` }, '♥'))),
-          side === 0 ? h('span', { class: 'sta' }, '💨 ', `${sn.stamina}/${maxStamina(c)}`, sn.fatigue ? h('b', { class: 'fat' }, ` · Fatigue ${sn.fatigue}`) : null) : null,
-          h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: x.ko ? 'ko' : '' })))));
+        // Vitality first: hearts are what actually decide the fight
+        h('div', { class: 'pl-vit' },
+          h('span', { class: 'hearts', title: `Vitality ${sn.vitality}/${mv}` }, Array.from({ length: mv }, (_, i) => h('span', { class: `heart ${i < sn.vitality ? 'on' : ''}` }, '♥'))),
+          h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: x.ko ? 'ko' : '' })))),
+        h('div', { class: 'hp-row', title: 'Health' }, h('div', { class: 'bar' }, h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' })), h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`)),
+        ...(side === 0 ? [h('div', { class: 'pl-sub' },
+          h('span', { class: 'sta' }, '💨 ', `${sn.stamina}/${maxStamina(c)}`, sn.fatigue ? h('b', { class: 'fat' }, ` · Fatigue ${sn.fatigue}`) : null))] : []));
     };
     const say = (t: string, tone?: string) => { logLine.textContent = t; logLine.className = `battle-log ${tone ?? ''}`; };
 
