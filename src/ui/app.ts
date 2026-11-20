@@ -1581,7 +1581,8 @@ export class App {
       let done = false;
       const body = h('div');
       const render = () => {
-        const mods = W.totemBonus(totem, wild) + W.offeringBonus(chosen, wild) + (W.ability(s) === 'luckyCharm' ? 1 : 0);
+        const accepted = W.acceptedOffering(s, wild);
+        const mods = W.totemBonus(totem, wild) + W.offeringBonus(chosen, wild) + (accepted ? W.offeringBonus([accepted], wild) : 0) + (W.ability(s) === 'luckyCharm' ? 1 : 0);
         const need = W.recruitTarget(wild);
         const chance = probAtLeast(need - mods);
         body.replaceChildren(
@@ -1591,7 +1592,8 @@ export class App {
               h('p', { class: 'small' }, `Defeated, ${sp.name} watches you warily. Offer a totem — if it accepts, it will inhabit the totem and join you.`))),
           h('h4', null, 'Totem'),
           h('div', { class: 'chips' }, totems.map((t) => h('button', { class: `pick ${t === totem ? 'sel' : ''}`, onclick: () => { totem = t; render(); } }, `${itemInfo(t).icon} ${W.itemDisplayName(t)} (${fmt(W.totemBonus(t, wild))})`))),
-          h('h4', null, 'Offerings ', h('span', { class: 'muted' }, '(up to 2)')),
+          accepted ? h('p', { class: 'small good-text' }, `✓ Already accepted your ${itemInfo(accepted).icon} ${itemInfo(accepted).name} in the Depths (${fmt(W.offeringBonus([accepted], wild))}).`) : '',
+          h('h4', null, accepted ? 'More offerings ' : 'Offerings ', h('span', { class: 'muted' }, '(up to 2)')),
           h('p', { class: 'small muted' }, `${sp.name} likes: ${W.bestOfferings(sp.id).slice(0, 4).map((o) => `${itemInfo(o.id).icon} ${itemInfo(o.id).name} +${o.bonus}`).join(', ')}. Any berry helps too.`),
           offers.length ? h('div', { class: 'chips' }, offers.map((o) => {
             const on = chosen.includes(o);
@@ -1639,6 +1641,36 @@ export class App {
           ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market, or a creature that can Sail).`, '', () => {}, true)
           : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
     openSheet(c.name, body, { wide: true });
+  }
+
+  /** Shifting Depths → Explore the Depths: choose an offering material; a creature that craves it answers. */
+  depthsSheet() {
+    const s = this.s;
+    const mats = Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && W.depthsCalls(id).length);
+    const close = openSheet('🕳️ Explore the Depths', h('div', null,
+      h('p', null, `Choose an offering to leave at the edge of the dark. A wild creature of a type that craves it climbs up to meet you (the stronger the craving, the likelier that type), as rare as those on the Sinkhole Stair. It has already accepted the offering, so it counts toward recruiting it if you win. Costs ${W.DEPTHS_COST} Initiative and the material.`),
+      mats.length ? h('div', { class: 'list' }, mats.map((id) => {
+        const it = itemInfo(id);
+        const why = W.depthsBlock(s, id);
+        return h('button', { class: 'choice depths-offer', disabled: !!why, title: why ?? '', onclick: async () => { close(); await this.exploreDepths(id); } },
+          h('div', { class: 'row gap-s' }, h('span', { class: 'bi-ico' }, it.icon), h('b', null, `${it.name} ×${s.inventory[id]}`)),
+          h('div', { class: 'row gap-s wrap' }, h('small', { class: 'muted' }, 'Calls: '), W.depthsCalls(id).map((c) => h('span', { class: 'row gap-xs' }, typeChip(c.type, true), h('small', null, c.w >= 2 ? 'strongly' : 'sometimes')))),
+          why ? h('small', { class: 'bad-text' }, why) : null);
+      })) : h('p', { class: 'small muted' }, 'You have no offering materials. Find them by exploring (each biome has its own), or buy Canyon Ochre and Ember Charcoal at the market here.')), { wide: true });
+  }
+
+  async exploreDepths(material: string) {
+    const s = this.s;
+    if (this.busy) return;
+    const out = W.exploreDepths(s, material);
+    if (!out) { toast(W.depthsBlock(s, material) ?? 'Nothing stirs below.', 'info'); return; }
+    this.busy = true;
+    closeAllSheets();
+    save(s); this.renderHud();
+    try {
+      await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 700);
+    } finally { this.busy = false; }
+    await this.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
   }
 
   /** City Trainer Hall: battle a local trainer (once per city per turn). */
@@ -1823,6 +1855,7 @@ export class App {
         this.swapTile(),
         tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', '0⚡', () => this.market(true)),
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
+        t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
         tile('🗺️', 'Notice Board', 'Local rumors and tips.', '', () => this.rumors())),
       h('p', { class: 'small muted' }, 'Towns are safe from the wilds. Town markets cost no Initiative; the stable costs the same as a city action.'));
@@ -1939,7 +1972,7 @@ export class App {
       'They say Fabian always hides as a villager. Look closely.',
       'Salem\'s arena only opens under the aurora — come in winter, or be ready to wait for nightfall.',
       'Sunspire Summit holds a legend. Tier 3 climbers with a Summit Pick only.',
-      'The Shifting Depths below Houndmouth Canyon hold rare creatures. Bring a strong team.',
+      'Down the Sinkhole Stair below Houndmouth Canyon lies Shifting Depths. Leave an offering at the edge of the dark and something that craves it climbs up.',
       'Creatures that learn Fly can whisk you to any city you\'ve visited.',
       'The Research Facility at Quillhaven pays well for released creatures, and best of all for rare ones.',
       'The Battle School at Valor Ridge trains creatures while you travel: a coin per XP.',
@@ -2487,6 +2520,7 @@ export class App {
         h('li', null, h('b', null, 'Following: '), 'at the start of each turn you’re asked who follows you. The follower leads every battle, uses its Ability on the map, and gains Morale every other turn. Tap the Following chip any time to switch, or turn the prompt off in Settings.'),
         h('li', null, h('b', null, 'Trainer Halls: '), 'every city has one. Battle a local trainer once per turn (a city action). Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.'),
         h('li', null, h('b', null, 'Battle School: '), 'at Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn. You’re told when it’s done; pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).'),
+        h('li', null, h('b', null, 'Explore the Depths: '), 'at Shifting Depths (down the Sinkhole Stair from Houndmouth Canyon), leave an offering material: a wild creature of a type that craves it climbs up to battle you (1 Initiative). It has already accepted the offering, so it counts toward recruiting it.'),
         h('li', null, h('b', null, 'Research Facility: '), 'in Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary). Each Legendary exists once per game, and a released one returns to its grounds on the map.'),
         h('li', null, h('b', null, 'Your trainer: '), 'pick a top, hat, hair style, skin tone, hair colour and pants when you start (or later in Menu → Trainer Look). Your main colour always goes on the top, the hat and any hair tie or streak. That mini is your token on the map and stands behind you in trainer battles.'),
         h('li', null, h('b', null, 'Win: '), 'hold 8 Merits and stand in Circuit Stadium when Turn 100 ends. Then win the 8-trainer bracket.')),

@@ -1,5 +1,5 @@
 import type { Biome, ElementType, MapNode, Rarity, Species } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
@@ -184,7 +184,8 @@ function trainerRarity(tier: number): Rarity {
   return r < apex ? 'apex' : r < apex + prime ? 'prime' : 'common';
 }
 
-function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
+/** Roll the rarity stars for an encounter at a node (Star Charm, Star Seeker and Tier add dice). */
+function rollRarity(s: GameState, node: MapNode): { stars: { face: number; star: Star }[]; rarity: Rarity } {
   const tier = tierOf(s);
   const nDice = 2 + tierRarityDice(tier) + (ability(s) === 'starSeeker' ? 1 : 0) + (s.flags.starCharm ? 1 : 0);
   s.flags.starCharm = false;
@@ -194,7 +195,11 @@ function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
   const score = node.rarity + full + Math.floor(half / 2);
   const rolled: Rarity = score >= 3 ? 'apex' : score >= 2 ? 'prime' : 'common';
   const cap = tierRarityCap(tier);
-  const rarity: Rarity = RARITY_RANK[rolled] > RARITY_RANK[cap] ? cap : rolled;
+  return { stars, rarity: RARITY_RANK[rolled] > RARITY_RANK[cap] ? cap : rolled };
+}
+
+function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
+  const { stars, rarity } = rollRarity(s, node);
   const level = wildLevel(s, node);
   const sp = pickSpecies(node, rarity, level, weather(s).encounter);
   const wild = createCreature(sp.id, level);
@@ -210,6 +215,61 @@ export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost:
   const list = speciesPool(node.biome, type, rarity, stageCap);
   // prefer the highest stage allowed, but keep some variety
   return weightedPick(list.map((x) => ({ v: x, w: x.stage === stageCap ? 3 : 1 })));
+}
+
+// ── Shifting Depths: Explore the Depths ─────────────────────────
+/** Initiative to Explore the Depths (plus one offering material). */
+export const DEPTHS_COST = 1;
+
+/** The types an offering material calls up from the Depths, with how strongly (its allure). */
+export function depthsCalls(material: string): { type: ElementType; w: number }[] {
+  const allure = itemInfo(material).allure ?? {};
+  return (Object.entries(allure) as [ElementType, number][]).filter(([, w]) => w > 0).map(([type, w]) => ({ type, w })).sort((a, b) => b.w - a.w);
+}
+
+/** Why the trainer can't Explore the Depths with this material right now (null = they can). */
+export function depthsBlock(s: GameState, material: string): string | null {
+  if (TOWNS[s.location]?.special !== 'depths') return 'You need to be at Shifting Depths.';
+  if (s.initiative < DEPTHS_COST) return `Exploring the Depths takes ${DEPTHS_COST} Initiative.`;
+  if (!s.roster.some((c) => !c.ko)) return 'Your team needs rest before going down.';
+  if (itemInfo(material).kind !== 'material' || !depthsCalls(material).length) return 'Offer a material that creatures crave.';
+  if ((s.inventory[material] ?? 0) < 1) return `You don’t have any ${itemInfo(material).name}.`;
+  return null;
+}
+
+/**
+ * Explore the Depths: leave an offering material at the edge of the dark and a wild creature that
+ * craves it answers. It's one of the material's types (stronger allure, likelier), with rarity rolled
+ * as at the Sinkhole Stair (a rare area) and that node's level. It has already accepted the offering,
+ * so the material's bonus counts toward recruiting it (s.flags.depthsOffering).
+ */
+export function exploreDepths(s: GameState, material: string): { stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle } | null {
+  if (depthsBlock(s, material)) return null;
+  s.initiative -= DEPTHS_COST;
+  addItem(s, material, -1);
+  const stair = NODE_BY_ID[DEPTHS_STAIR];
+  const { stars, rarity } = rollRarity(s, stair);
+  const level = wildLevel(s, stair);
+  const sp = depthsSpecies(material, rarity, level);
+  const wild = createCreature(sp.id, level);
+  if (!s.dex.seen.includes(sp.id)) s.dex.seen.push(sp.id);
+  s.flags.depthsOffering = { uid: wild.uid, item: material };
+  s.stats.explored++;
+  log(s, `Left ${itemInfo(material).name} at the edge of the Depths. A wild ${sp.name} climbed up to claim it.`);
+  const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: 'canyon', quickStep: ability(s) === 'quickStep' });
+  return { stars, rarity, battle };
+}
+
+/** A species that would accept this material: one of its types matches the material's allure. */
+export function depthsSpecies(material: string, rarity: Rarity, level: number): Species {
+  const calls = depthsCalls(material);
+  const appeal = (sp: Species) => Math.max(0, ...sp.types.map((t) => calls.find((c) => c.type === t)?.w ?? 0));
+  const cap = stageCapFor(level);
+  const fits = (sp: Species) => sp.rarity !== 'legendary' && appeal(sp) > 0;
+  let list = SPECIES.filter((sp) => fits(sp) && sp.rarity === rarity && sp.stage <= cap);
+  if (!list.length) list = SPECIES.filter((sp) => fits(sp) && sp.stage <= cap);
+  if (!list.length) list = SPECIES.filter(fits);
+  return weightedPick(list.map((sp) => ({ v: sp, w: appeal(sp) * (sp.stage === cap ? 3 : 1) })));
 }
 
 /** Highest evolution stage that can appear at a wild level. */
@@ -540,9 +600,17 @@ export function offeringBonus(ids: string[], c: CreatureInst): number {
 }
 export function recruitTarget(c: CreatureInst) { return speciesOf(c).rt + Math.floor(c.level / 3); }
 
+/** The offering this wild creature already accepted (Explore the Depths), counted toward recruiting it. */
+export function acceptedOffering(s: GameState, wild: CreatureInst): string | null {
+  const o = s.flags.depthsOffering;
+  return o && o.uid === wild.uid ? o.item : null;
+}
+
 export function attemptRecruit(s: GameState, wild: CreatureInst, totem: string, offerings: string[]) {
   const dice = [roll(6), roll(6)];
-  const mods = totemBonus(totem, wild) + offeringBonus(offerings, wild) + (ability(s) === 'luckyCharm' ? 1 : 0) + styleRecruitMod(s);
+  const accepted = acceptedOffering(s, wild);
+  s.flags.depthsOffering = undefined;
+  const mods = totemBonus(totem, wild) + offeringBonus(offerings, wild) + (accepted ? offeringBonus([accepted], wild) : 0) + (ability(s) === 'luckyCharm' ? 1 : 0) + styleRecruitMod(s);
   const total = dice[0] + dice[1] + mods;
   const need = recruitTarget(wild);
   addItem(s, totem, -1);

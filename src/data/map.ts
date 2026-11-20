@@ -23,6 +23,8 @@ const hubs: MapNode[] = [
   { id: 'blackSand', name: 'Black Sand Cove', kind: 'town', biome: 'coast', x: 28, z: 55, rarity: 0, level: 1 },
   { id: 'quillhaven', name: 'Quillhaven', kind: 'town', biome: 'meadow', x: 30, z: 4, rarity: 0, level: 1 },
   { id: 'valor', name: 'Valor Ridge', kind: 'town', biome: 'mountain', x: -8, z: -29, rarity: 0, level: 1 },
+  // At the bottom of the canyon pocket: offer a material and something from the deep answers
+  { id: 'depths', name: 'Shifting Depths', kind: 'town', biome: 'canyon', x: -10, z: 42, rarity: 0, level: 1 },
   // Amber's arena sits alone on Kilauea island, reached by ferry
   { id: 'firepit', name: 'Amber\'s Fire Pit', kind: 'arena', biome: 'volcanic', x: 6, z: 64, rarity: 0, level: 1, arenaOf: 'kilauea' },
   // Legendary nodes
@@ -55,8 +57,8 @@ const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; ra
   // Kilauea island: Amber's Fire Pit and its wilds (reached by ferry from Mangrove Port or Kilauea Forge)
   { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Steam Vents', 6]], bend: -3 },
   { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Lava Tubes', 7], ['coast', 'Obsidian Shore', 6]], bend: 6 },
-  // The endless canyon: a dead-end of high-rarity nodes
-  { a: 'canyon', b: 'dustmere', legs: [['canyon', 'Shifting Depths', 6]], rarity: 1, bend: 9 },
+  // The endless canyon: a high-rarity stair down to the town of Shifting Depths (a dead end)
+  { a: 'canyon', b: 'depths', legs: [['canyon', 'Sinkhole Stair', 6]], rarity: 1, bend: 3 },
   // Kilauea Forge on the southwest volcanic coast (keep these last: new wild ids are appended)
   { a: 'canyon', b: 'kilauea', legs: [['desert', 'Cinder Barrens', 3], ['volcanic', 'Ashfall Ridge', 4]], bend: -3 },
   { a: 'gloom', b: 'kilauea', legs: [['meadow', 'Scorched Prairie', 3], ['desert', 'Glasswind Dunes', 3], ['volcanic', 'Smoldering Flats', 4]], bend: 8 },
@@ -96,12 +98,8 @@ for (const r of routes) {
 // The ferries to Kilauea island
 edges.push({ a: 'mangrove', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
 edges.push({ a: 'kilauea', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
-// The Shifting Depths is a dead end; remove its exit to Dustmere so the canyon is a pocket
-{
-  const depths = nodes.find((n) => n.name === 'Shifting Depths')!;
-  const idx = edges.findIndex((e) => e.a === depths.id && e.b === 'dustmere');
-  if (idx >= 0) edges.splice(idx, 1);
-}
+/** The wild stair leading down to Shifting Depths (its level and rarity set what the Depths turn up). */
+export const DEPTHS_STAIR = nodes.find((n) => n.name === 'Sinkhole Stair')!.id;
 
 export const MAP_NODES = nodes;
 export const MAP_EDGES = edges;
@@ -161,6 +159,7 @@ export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: strin
   blackSand: { blurb: 'Ferry landing on Kilauea\'s black sand. Hot springs bubble beside the dock.', sells: ['elixir', 'volcanic-glass', 'ember-charcoal'], },
   valor: { blurb: 'A hill town of training yards and the Margos Battle School. Leave a creature with the drill masters and it comes back stronger.', sells: ['salve', 'energy-tonic', 'totem', 'dewberry'], special: 'school' },
   quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea'], special: 'research' },
+  depths: { blurb: 'Lantern-lit ledges at the bottom of the endless canyon. Leave an offering at the edge of the dark, and something that craves it climbs up to meet you.', sells: ['salve', 'totem', 'canyon-ochre', 'ember-charcoal'], special: 'depths' },
 };
 // The Root Whistle (Katy's arena) is sold at Saltmarsh too
 TOWNS.saltmarsh.sells.push('root-whistle');

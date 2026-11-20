@@ -48,6 +48,8 @@ export interface GameState {
     challenged?: string[];
     /** Cities whose Trainer Hall you've already battled in this turn. */
     sparred?: string[];
+    /** Explore the Depths: the wild creature that already accepted this offering (counts toward recruiting it). */
+    depthsOffering?: { uid: string; item: string };
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };

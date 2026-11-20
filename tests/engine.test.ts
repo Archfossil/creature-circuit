@@ -7,7 +7,7 @@ import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit } from '../src/engine/edits';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
@@ -782,6 +782,56 @@ describe('saved copies (save library)', () => {
     expect(saveKindOf(JSON.stringify(m))).toBe('hotseat');
     expect(saveKindOf(JSON.stringify({ ...m, owners: ['a', 'b'] }))).toBe('online');
     expect(saveKindOf('{"nope":1}')).toBeNull();
+  });
+});
+
+describe('Shifting Depths', () => {
+  it('is a town at the bottom of the canyon pocket, reached by the Sinkhole Stair', () => {
+    const stair = MAP_NODES.find((n) => n.name === 'Sinkhole Stair')!;
+    expect(stair.kind).toBe('wild');
+    expect(MAP_NODES.find((n) => n.id === 'depths')).toMatchObject({ name: 'Shifting Depths', kind: 'town' });
+    const exits = (id: string) => MAP_EDGES.filter((e) => e.a === id || e.b === id).map((e) => (e.a === id ? e.b : e.a)).sort();
+    expect(exits(stair.id)).toEqual(['canyon', 'depths']);
+    expect(exits('depths')).toEqual([stair.id]); // a dead end
+  });
+  it('Explore the Depths: a material calls a creature that craves it, which already accepted the offering', () => {
+    for (let i = 0; i < 40; i++) {
+      const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+      s.location = 'depths';
+      s.inventory['ember-charcoal'] = 1; // fire 2, rock 1
+      const out = W.exploreDepths(s, 'ember-charcoal');
+      expect(out).not.toBeNull();
+      const wild = out!.battle.sides[1].team[0];
+      expect(speciesOf(wild).types.some((t) => t === 'fire' || t === 'rock')).toBe(true);
+      expect(s.initiative).toBe(5 - W.DEPTHS_COST);
+      expect(s.inventory['ember-charcoal'] ?? 0).toBe(0);
+      expect(W.acceptedOffering(s, wild)).toBe('ember-charcoal');
+      expect(W.acceptedOffering(s, createCreature('zapup', 3))).toBeNull();
+    }
+  });
+  it('needs the town, Initiative and a craved material', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    s.inventory['ember-charcoal'] = 1;
+    expect(W.depthsBlock(s, 'ember-charcoal')).toMatch(/Shifting Depths/);
+    s.location = 'depths';
+    expect(W.depthsBlock(s, 'salve')).toMatch(/material/);
+    expect(W.depthsBlock(s, 'pine-resin')).toMatch(/don’t have/);
+    s.initiative = 0;
+    expect(W.depthsBlock(s, 'ember-charcoal')).toMatch(/Initiative/);
+    expect(W.exploreDepths(s, 'ember-charcoal')).toBeNull();
+  });
+  it('the accepted offering counts toward recruiting, once', () => {
+    let withBonus = 0, without = 0;
+    for (let i = 0; i < 300; i++) {
+      const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+      s.location = 'depths'; s.inventory['ember-charcoal'] = 1; s.inventory.totem = 2;
+      const wild = W.exploreDepths(s, 'ember-charcoal')!.battle.sides[1].team[0];
+      const r = W.attemptRecruit(s, wild, 'totem', []);
+      withBonus += r.mods;
+      expect(s.flags.depthsOffering).toBeUndefined();
+      without += W.attemptRecruit(s, createCreature(wild.species, wild.level), 'totem', []).mods;
+    }
+    expect(withBonus).toBeGreaterThan(without);
   });
 });
 
