@@ -49,7 +49,7 @@ Wild creatures at a Tier sit just under the Arbiter's level (wild level band cen
 | 2 | Fabian | Hollow Crest | Charm | Glamour Grove | `illusion`: Arbiter's creatures +Evasion | Stat (Arbiter) | Glamour Merit | Find him in disguise |
 | 3 | Watson | Thunder Spike | Electric | Under the Spike | `volts`: lightning heals Electric creatures, shocks the rest | Hazard / heal (both sides) | Bolt Merit | None |
 | 4 | Amber | Kilauea Forge | Fire | Fire Pit | `flames`: steam vents scald | Hazard (both sides) | Caldera Merit | Arena is on Kilauea island |
-| 5 | Dahlia | Gloomshade | Grass | Forest Floor Arena | `darkness`: challenger's accuracy down | Accuracy (challenger) | Lily Merit | Canopy Rope |
+| 5 | Dahlia | Gloomshade | Grass | Forest Floor Arena | `darkness`: challenger's accuracy down | Accuracy (challenger) | Lily Merit | Follow her trail on the Forest Floor (Canopy Rope to get down) |
 | 6 | Cliff | Houndmouth Canyon | Rock | Crumbling Plateau | `crumble`: the plateau shrinks each round; challenger rung out when it's gone | Timer (challenger) | Plateau Merit | None |
 | 7 | Stella | Iron Coast | Steel | Floating Fortress | `fortress`: Arbiter's creatures +Armor and +Ward | Stat (Arbiter) | Anchor Merit | Clear the Iron Coast Gauntlet |
 | 8 | Katy | Mangrove Port | Water | Root Maze | `roots`: challenger's Speed down | Stat (challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
@@ -120,7 +120,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 - **After beating Salem,** bridges open from the ring to the **Eye of the Sky**, where the Legendary **Nimbalune** (Water/Astral, Lv 10 + 1 per 25 turns) waits.
 - **Code:** `portalOpen`, `stepCloudLap`, `cloudLapProgress` and `cloudStepExtra` (with `moveCost`) in `world.ts`; the Cloud satchel in `addItem` and `moveTrainer` (`state.ts`); the island in `src/data/map.ts` (`CLOUD_RING`, `CLOUD_EYE`).
 - **Rules on screen:** before stepping through the portal, a prompt shows every rule and the trainer's status (portal, step cost, lap, satchel), with Step through / Not now. On the island, a ☁️ Cloud Island chip on the HUD shows the lap, the satchel and the portal at a glance, and opens the same rules. It disappears once the trainer leaves (`cloudRules`, `cloudPrompt`, `cloudSheet` in `app.ts`).
-- **Look:** cotton candy pinks and purples veined with a sinister dark purple, candy-floss puffs and dark spires, under a dusky violet sky (deep purple at night).
+- **Look:** cotton candy pinks and purples veined with a sinister dark purple, candy-floss puffs and dark spires, under a dusky violet sky (deep purple at night). Paths and node tiles are midnight plum (`#2a0f3a`, tiles with a white rim) so they stand out from the pastel ground.
 
 **Winter:** Aurora Peak is always under **Aurora Night** all Winter (turns 76–100), whatever the rolled weather.
 
@@ -178,11 +178,28 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 | Type | Arena | Effect | Merit | Access condition |
 |---|---|---|---|---|
-| Grass | Forest Floor Arena | `darkness` (Accuracy, challenger) | Lily Merit | Canopy Rope |
+| Grass | Forest Floor Arena | `darkness` (Accuracy, challenger) | Lily Merit | Dahlia's Trail on the Forest Floor |
 
 **Setting:** boardwalks and ring platforms built into towering redwoods. Inspired by Redwood.
 
-**Access:** the arena is on the forest floor. The challenger needs a **Canopy Rope**. It's a **roaming key item**: each game it's sold in a different town (see [Roaming key items](#roaming-key-items)). The arena's hint and the Notice Boards name this season's town.
+**Access: the Forest Floor and Dahlia's Trail.** Dahlia's arena hides on the **Forest Floor**, a single dark node below Gloomshade. It's no longer reached from the city menu.
+
+- **Getting down:** climb down from Gloomshade with a **Canopy Rope**, a roaming key item sold in a different town each game (see [Roaming key items](#roaming-key-items)).
+- **Exploring:** the Forest Floor is explored again and again (🔍 Explore, the usual Initiative), with a **d8**:
+
+  | d8 | Result |
+  |---|---|
+  | 1–2 | Nothing. The active team loses 1 Morale: they fear the dark. |
+  | 3–4 | A wild creature. Always night creatures, since it's dark. Running needs **7+** instead of 4+, unless the follower has Quick Step. Sweet Scent makes 3–5 encounters. |
+  | 5–6 | An exotic find: Duskberry (+2 Morale, +1 Loyalty), Root Salve (+2 Vitality and clears Fatigue), Heartwood Resin (Grass 3 / Charm 2 / Rock 1) or Glowcap (Charm 3 / Grass 2 / Astral 1). Each is a slight improvement on its usual counterpart. Forager and Keen Nose work as usual. |
+  | 7–8 | A sign of **Dahlia's Trail**. |
+
+- **After Dahlia is beaten:** the Forest Floor's explore die becomes a **d6** with the same table (1–2 nothing, 3–4 a creature, 5–6 an exotic find). Trail results can't come up any more, so no explore is wasted on them (`floorDie`).
+- **The trail:** **3 + Tier** signs (4 at Tier 1, up to 8 at Tier 5) reveal her arena. A 🏟️ Dahlia button then appears on the Forest Floor.
+- **Starting over:** **leaving the Forest Floor, by choice or by being sent home after a defeat, loses every sign.** Some Forest Floor events also cost a sign.
+- **Hostile events:** while there, only the Forest Floor's hostile, forced events happen (see the [events doc](./10-events.md#forest-floor-events)).
+- **On screen:** a rules prompt before climbing down, and a 🌲 Forest Floor HUD chip (trail progress, the rules) while there.
+- **Code:** `exploreFloor`, `trailProgress`, `trailNeeded` and `floorFind` in `world.ts`; the trail reset in `moveTrainer` (`state.ts`); `FOREST_FLOOR` in `map.ts`; `hardRun` in `battle.ts`; `floorRules`, `floorPrompt` and `floorSheet` in `app.ts`.
 
 **Arena effect: Darkness.** In the lightless forest floor, the challenger's accuracy rolls are 1 lower (2 lower at Tier 4+). Sure-hit moves ignore it.
 
@@ -256,7 +273,7 @@ Two Arbiter keys move each game, so every run sends trainers somewhere new:
 
 | Key item | Opens | Sold in |
 |---|---|---|
-| Canopy Rope | Dahlia (Gloomshade) | A random eligible town, rolled each game |
+| Canopy Rope | The Forest Floor below Gloomshade (Dahlia) | A random eligible town, rolled each game |
 | Root Whistle | Katy (Mangrove Port) | A different random eligible town, rolled each game |
 
 - **Eligible towns:** every town without a special facility: Mistfall, Lumber Hollow, Dustmere Trading Post, Ridgeway and Saltmarsh Landing. Valor Ridge (Battle School), Quillhaven (Research Facility), Shifting Depths, and any future facility town are left out. So is Black Sand Cove, because it's only reachable by ferry, which would lock a key item behind another one.
@@ -288,6 +305,7 @@ Observations from the current code, to review when balancing. Tick them off or m
   - Watson and Cliff are free.
 - [ ] **A Cloud Island trip takes 14–35 Initiative** (7 island steps at +1 per Tier), so 3–7 turns. A trainer must survive several nights and stranded days on the island. Fine as a pilgrimage, or too long at Tier 3+?
 - [ ] **The Cloud satchel** makes the island all-or-nothing for items. Universal offerings found there can't be used to recruit on the island itself.
+- [ ] **Dahlia's Trail at Tier 5** needs 8 signs at 1 in 4 per explore: about 32 explores (Initiative), plus hostile events that can cost signs. Long enough?
 - [ ] **The Gauntlet grows to 10 trainers at Tier 5,** which costs at least 10 Initiative (2 turns or more), plus Stable rests. Leaving Stella for last makes her by far the most expensive Arbiter to reach.
 - [ ] **Losing costs nothing** against Arbiters (except a full wipe). Repeated attempts are cheap apart from the Initiative.
 - [ ] **The prize scales with Tier** (🪙 10–50), so later Merits pay more.

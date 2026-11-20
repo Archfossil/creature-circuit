@@ -70,6 +70,8 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `research-facility`: 🔬: Research Facility (Quillhaven).
 - [ ] `cloud-portal`: 🌀: Cloud Island Portal (Aurora Peak) and the Cloud Island screen.
 - [ ] `cloud-satchel`: ☁️: Cloud satchel (island loot not yet secured, in the Bag).
+- [ ] `forest-floor`: 🌲: The Forest Floor (Gloomshade's Dahlia tile, rules screen, HUD chip).
+- [ ] `dahlia-trail`: 🏮: Dahlia's Trail (trail found, explore result).
 - [ ] `explore-depths`: 🕳️: Explore the Depths (Shifting Depths).
 - [ ] `notice-board`: 🗺️: Notice Board (rumors). Also the "Where to look" heading in the Codex.
 - [ ] `enrol`: 📝: Battle School "Enrol a creature" heading.
@@ -99,6 +101,7 @@ Shown on map node previews, Codex pages and filters, and material "found in" lis
 - [ ] `biome-volcanic`: 🌋
 - [ ] `biome-canyon`: 🪨
 - [ ] `biome-cloud`: ☁️ (Cloud Island)
+- [ ] `biome-deepwood`: 🌑 (the Forest Floor)
 
 ## 5. Weather (11) & seasons (4) ★★★
 
@@ -163,6 +166,12 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `mat-wildflower`: 🌼 Wildflower
 - [ ] `mat-canyon-ochre`: 🟠 Canyon Ochre
 - [ ] `mat-volcanic-glass`: 🖤 Volcanic Glass
+
+**Exotic finds (the Forest Floor)**
+- [ ] `item-root-salve`: 🌿 Root Salve
+- [ ] `item-duskberry`: 🫐 Duskberry (needs a distinct icon from Dewberry)
+- [ ] `mat-heartwood-resin`: 🪵 Heartwood Resin (needs a distinct icon from Ember Charcoal)
+- [ ] `mat-glowcap`: 🍄 Glowcap
 
 **Universal offerings (Cloud Island)**
 - [ ] `mat-cloud-silk`: ☁️ Cloud Silk
@@ -283,6 +292,11 @@ Shown large on each event card.
 - [ ] `event-sky-whale`: 🐋 (Cloud Island)
 - [ ] `event-cloud-bank`: 🌫️ (Cloud Island)
 - [ ] `event-sunlit-clouds`: ☀️ (Cloud Island)
+- [ ] `event-stalker`: 👁️ (Forest Floor)
+- [ ] `event-grasping-roots`: 🌱 (Forest Floor)
+- [ ] `event-spore-cloud`: 🍄 (Forest Floor)
+- [ ] `event-whispers`: 🌫️ (Forest Floor)
+- [ ] `event-shade-thieves`: 🦇 (Forest Floor)
 
 ## 11. Trainer styles (8) ★
 

@@ -3,7 +3,7 @@ import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES } from '../src/data/roster';
 import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from '../src/data/moves';
-import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS } from '../src/data/map';
+import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS } from '../src/data/content';
@@ -852,6 +852,116 @@ describe('day & night', () => {
   });
 });
 
+describe('the Forest Floor (Dahlia)', () => {
+  const atGloom = (merits: string[] = []) => {
+    const s = newGame('T', 'balanced', 'gloom', 'sproutle', '#fff');
+    s.location = 'gloom'; s.merits = merits;
+    s.roster.push(createCreature('zapup', 3));
+    return s;
+  };
+  const down = (s: ReturnType<typeof newGame>) => { s.inventory['canopy-rope'] = 1; s.initiative = 5; expect(W.moveTo(s, FOREST_FLOOR)).not.toBeNull(); };
+  /** Explore until a result of this kind turns up. */
+  const exploreUntil = (s: ReturnType<typeof newGame>, t: string) => {
+    for (let i = 0; i < 400; i++) { s.initiative = 5; s.event = undefined; const o = W.reexplore(s)!; if (o.t === t) return o; }
+    throw new Error(`no ${t}`);
+  };
+  it('is one node below Gloomshade, reached only with a Canopy Rope', () => {
+    expect(neighbors(FOREST_FLOOR).map((x) => x.node.id)).toEqual(['gloom']);
+    const s = atGloom();
+    expect(W.canMoveTo(s, FOREST_FLOOR).ok).toBe(false);
+    s.inventory['canopy-rope'] = 1;
+    expect(W.canMoveTo(s, FOREST_FLOOR).ok).toBe(true);
+    expect(W.arbiterHere(s)).toBeNull(); // Dahlia isn't in the city any more
+  });
+  it('explores with a d8: nothing costs Morale, encounters are hard to run from, and the trail leads to Dahlia', () => {
+    const s = atGloom();
+    down(s);
+    const nothing = exploreUntil(s, 'nothing');
+    expect(nothing).toMatchObject({ die: 8, dark: true });
+    const before = s.roster.map((c) => c.morale);
+    exploreUntil(s, 'nothing');
+    expect(s.roster.every((c, i) => c.morale <= before[i])).toBe(true);
+    const enc = exploreUntil(s, 'encounter');
+    if (enc.t === 'encounter') { expect(enc.die).toBe(8); expect(enc.battle.hardRun).toBe(true); }
+    s.flags.dahliaTrail = 0;
+    expect(W.arbiterGate(s, 'gloom')).toMatchObject({ ok: false, trail: true });
+    const need = W.trailNeeded(s);
+    expect(need).toBe(3 + tierOf(s));
+    let found = false;
+    for (let i = 0; i < 2000 && !found; i++) { s.initiative = 5; const o = W.reexplore(s)!; if (o.t === 'trail') { expect(o.die).toBe(8); found = o.found; } }
+    expect(found).toBe(true);
+    expect(W.arbiterHere(s)).toBe('gloom');
+    expect(W.arbiterGate(s, 'gloom').ok).toBe(true);
+  });
+  it('once Dahlia is beaten, exploring rolls a d6 with no trail results', () => {
+    const s = atGloom(['gloom']);
+    down(s);
+    for (let i = 0; i < 300; i++) {
+      s.initiative = 5;
+      const o = W.reexplore(s)!;
+      expect(o.t).not.toBe('trail');
+      if ('die' in o && o.die !== undefined) expect(o.die).toBe(6);
+      expect(o.t === 'nothing' || o.t === 'encounter' || o.t === 'item' || o.t === 'itemChoice').toBe(true);
+    }
+    expect(s.flags.dahliaTrail ?? 0).toBe(0);
+  });
+  it('leaving the Forest Floor, by choice or by defeat, loses the trail', () => {
+    const s = atGloom();
+    down(s);
+    s.flags.dahliaTrail = 2;
+    s.initiative = 5;
+    W.moveTo(s, 'gloom');
+    expect(s.flags.dahliaTrail).toBe(0);
+    const w = atGloom();
+    down(w);
+    w.flags.dahliaTrail = 3;
+    const lost = createBattle(side('player', [w.roster[0]]), side('wild', [createCreature('zapup', 3)]), WEATHER.clear);
+    lost.over = 'lose';
+    for (const c of w.roster) c.ko = true;
+    W.finishBattle(w, lost, { kind: 'wild' });
+    expect(w.location).toBe(w.trainer.home);
+    expect(w.flags.dahliaTrail).toBe(0);
+  });
+  it('running needs a 7+ down here, unless Quick Step', () => {
+    let escaped = 0;
+    for (let i = 0; i < 300; i++) {
+      const b = createBattle(side('player', [createCreature('puddlit', 5)]), side('wild', [createCreature('zapup', 5)]), WEATHER.clear, { hardRun: true });
+      if (resolveRound(b, { kind: 'run' }).some((e) => e.t === 'end' && e.result === 'escaped')) escaped++;
+    }
+    expect(escaped / 300).toBeLessThan(0.45);
+    const qs = createBattle(side('player', [createCreature('puddlit', 5)]), side('wild', [createCreature('zapup', 5)]), WEATHER.clear, { hardRun: true, quickStep: true });
+    expect(resolveRound(qs, { kind: 'run' }).some((e) => e.t === 'end' && e.result === 'escaped')).toBe(true);
+  });
+  it('only Forest Floor events happen down there, and they are all forced', () => {
+    for (let i = 0; i < 120; i++) {
+      const s = atGloom();
+      s.location = FOREST_FLOOR; s.turn = 4 + (i % 2); s.inventory.salve = 2;
+      const ev = E.rollEvent(s);
+      if (!ev) continue;
+      expect(E.EVENT_PLACES[ev.id]).toBe('floor');
+      expect(E.eventView(s)!.forced).toBe(true);
+    }
+    for (const id of Object.keys(E.EVENT_PLACES).filter((k) => E.EVENT_PLACES[k] === 'floor')) {
+      const s = atGloom();
+      expect(E.rollEvent(s)?.id).not.toBe(id); // never in the city
+    }
+  });
+  it('exotic finds are a little better than the usual ones', () => {
+    const s = atGloom();
+    const c = s.roster[0];
+    c.vitality = 0; c.fatigue = 2; c.ko = false;
+    s.inventory['root-salve'] = 1;
+    W.useItem(s, 'root-salve', c.uid);
+    expect(c.vitality).toBe(Math.min(maxVitality(c), 2));
+    expect(c.fatigue).toBe(0);
+    const morale = c.morale;
+    s.inventory.duskberry = 1;
+    W.useItem(s, 'duskberry', c.uid);
+    expect(c.morale).toBe(Math.min(10, morale + 2));
+    expect(W.offeringBonus(['heartwood-resin'], createCreature('sproutle', 3))).toBeGreaterThan(W.offeringBonus(['pine-resin'], createCreature('sproutle', 3)));
+  });
+});
+
 describe('Cloud Island (Salem)', () => {
   const night = 4, day = 3, winterDay = 77;
   const trainer = (turn = night) => {
@@ -1167,8 +1277,16 @@ describe('Shifting Depths', () => {
     expect(stair.kind).toBe('wild');
     expect(MAP_NODES.find((n) => n.id === 'depths')).toMatchObject({ name: 'Shifting Depths', kind: 'town' });
     const exits = (id: string) => MAP_EDGES.filter((e) => e.a === id || e.b === id).map((e) => (e.a === id ? e.b : e.a)).sort();
-    expect(exits(stair.id)).toEqual(['canyon', 'depths']);
-    expect(exits('depths')).toEqual([stair.id]); // a dead end
+    expect(exits('depths').length).toBe(1); // a dead end
+    // walking back from the Depths: a chain of canyon wilds, through the Sinkhole Stair, up to Houndmouth Canyon
+    const path: string[] = [];
+    for (let at = 'depths', prev = ''; at !== 'canyon';) {
+      const next = exits(at).filter((x) => x !== prev);
+      expect(next.length, `${at} should lead one way back`).toBe(1);
+      prev = at; at = next[0]; path.push(at);
+    }
+    expect(path).toContain(stair.id);
+    expect(path.length - 1).toBeGreaterThanOrEqual(3); // 3 wilds between the town and the city
   });
   it('Explore the Depths: a material calls a creature that craves it, which already accepted the offering', () => {
     for (let i = 0; i < 40; i++) {
@@ -1811,6 +1929,8 @@ describe('turn events', () => {
         const s: typeof probe = JSON.parse(JSON.stringify(probe)); // same rolled event for every choice
         const ch = E.eventView(s)!.choices.find((c) => c.id === choice.id)!;
         const target = ch.pick ? [...s.roster, ...s.reserve].find((c) => !ch.canPick?.(c)) : undefined;
+        // a disabled choice (e.g. it needs an item you don't have) can't be taken
+        if (ch.disabled) { expect(E.resolveEvent(s, ch.id, target?.uid), `${id}:${ch.id} is disabled`).toBeNull(); continue; }
         const r = E.resolveEvent(s, ch.id, target?.uid);
         expect(r, `${id}:${ch.id}`).not.toBeNull();
         expect(r!.text.length).toBeGreaterThan(0);
@@ -1972,10 +2092,10 @@ describe('Fire city and Kilauea island', () => {
     expect(island).toContain('blackSand');
     expect(island).not.toContain('kilauea');
     expect(island).not.toContain('mangrove');
-    for (const id of island) expect(['blackSand', 'firepit'].includes(id) || NODE_BY_ID[id].kind === 'wild', id).toBe(true);
+    for (const id of island) expect(['blackSand', 'firepit'].includes(id) || ['wild', 'legendary'].includes(NODE_BY_ID[id].kind), id).toBe(true);
     let maxZ = -1e9;
-    for (let x = -90; x <= 90; x += 2) for (let z = 40; z <= 100; z += 1) if (landField(x, z) > 0.05) maxZ = Math.max(maxZ, z);
-    expect(maxZ).toBeLessThanOrEqual(83); // terrain mesh ends at z = 84
+    for (let x = -90 * MAP_SCALE; x <= 90 * MAP_SCALE; x += 2) for (let z = 40 * MAP_SCALE; z <= 110 * MAP_SCALE; z += 1) if (landField(x, z) > 0.05) maxZ = Math.max(maxZ, z);
+    expect(maxZ).toBeLessThanOrEqual(100 * MAP_SCALE - 1); // terrain mesh ends at z = 100 × MAP_SCALE
   });
   it('the Fire city has Fire creatures nearby on the mainland', () => {
     const near = neighbors('kilauea').map((x) => x.node).filter((n) => n.kind === 'wild');
@@ -1995,6 +2115,46 @@ describe('map layout', () => {
     for (const id of new Set(area.flatMap((a) => [a, ...neighbors(a).map((x) => x.node.id)]))) {
       for (const n of MAP_NODES) if (n.id !== id) expect(dist(NODE_BY_ID[id], n), `${NODE_BY_ID[id].name} / ${n.name}`).toBeGreaterThanOrEqual(7.5);
     }
+  });
+  it('Legendary spots are spread over the north, centre and south, each holding a real Legendary', () => {
+    const spots = MAP_NODES.filter((n) => n.kind === 'legendary');
+    for (const n of spots) {
+      expect(SPECIES_BY_ID[n.legendary!]?.rarity, n.name).toBe('legendary');
+      expect(W.encounterSpots(n.legendary!).map((x) => x.node.id), n.name).toContain(n.id);
+    }
+    expect(new Set(spots.map((n) => n.legendary)).size).toBe(spots.length); // one of each Legendary
+    const stadium = NODE_BY_ID.stadium;
+    expect(spots.filter((n) => n.z < stadium.z - 20).length).toBeGreaterThanOrEqual(3); // north
+    expect(spots.filter((n) => n.z >= stadium.z - 20).length).toBeGreaterThanOrEqual(4); // centre and south
+  });
+  it('every route between towns and cities has 3–5 wild nodes', () => {
+    const hubKinds = ['city', 'town', 'stadium', 'arena'];
+    const hubs = MAP_NODES.filter((n) => hubKinds.includes(n.kind)).map((n) => n.id);
+    // walk each route out of each hub, through wild nodes, to the next hub
+    for (const start of hubs) {
+      for (const first of neighbors(start).filter((x) => x.node.kind === 'wild' && !isCloudNode(x.node.id))) {
+        let prev = start, at = first.node.id, count = 0;
+        while (NODE_BY_ID[at].kind === 'wild') {
+          count++;
+          const next = neighbors(at).map((x) => x.node.id).filter((id) => id !== prev);
+          if (next.length !== 1) break;
+          prev = at; at = next[0];
+        }
+        if (hubKinds.includes(NODE_BY_ID[at].kind)) expect(count, `${NODE_BY_ID[start].name} → ${NODE_BY_ID[at].name}`).toBeGreaterThanOrEqual(3);
+        expect(count, `${NODE_BY_ID[start].name} → ${NODE_BY_ID[at].name}`).toBeLessThanOrEqual(5);
+      }
+    }
+  });
+  it('the original wild nodes keep their ids when the map grows (saves stay valid)', () => {
+    const original = ['Frostbite Flats', 'Glacier Stair', 'Fogbank Path', 'Fernway', 'Mossy Hollow', 'Rainshadow Glen', 'Shadeway', 'Fallen Giant',
+      'Sunbaked Meadow', 'Redrock Pass', 'Mesa Rim', 'Sagebrush Flat', 'Circuit Road', 'Snowmelt River', 'Pine Ridge', 'Bison Meadow', 'Crosswind Road',
+      'Willow Lake', 'Static Badlands', 'Sheer Buttes', 'Old Mine Road', 'Ore Cliffs', 'Pebble Beach', 'Lighthouse Point', 'Sawgrass River', 'Heron Slough',
+      'Cypress Road', 'Lily Lake', 'Gator Slough', 'Stormchaser Road', 'Whiteout Col', 'Steam Vents', 'Lava Tubes', 'Obsidian Shore', 'Sinkhole Stair',
+      'Cinder Barrens', 'Ashfall Ridge', 'Scorched Prairie', 'Glasswind Dunes', 'Smoldering Flats', 'Survey Meadow', 'Tidewater Ford', 'Sparring Slopes', 'Drill Grounds'];
+    original.forEach((name, i) => expect(NODE_BY_ID[`w${i + 1}`]?.name).toBe(name));
+    expect(MAP_NODES.filter((n) => /^w\d+$/.test(n.id)).length).toBe(original.length);
+    expect(MAP_NODES.filter((n) => /^n\d+$/.test(n.id)).length).toBeGreaterThan(40);
+    expect(new Set(MAP_NODES.map((n) => n.name)).size).toBe(MAP_NODES.length);
   });
   it('no two routes cross', () => {
     const side = (a: MapNode, b: MapNode, c: MapNode) => Math.sign((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x));

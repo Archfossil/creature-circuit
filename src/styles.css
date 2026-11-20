@@ -907,3 +907,6 @@ button.seat:hover, button.seat:focus-visible { background: var(--tc); color: #ff
 .chip.ring-timer { font-weight: 800; background: #fff1e4; border-color: #c4703a; }
 .chip.ring-timer.urgent { background: #c4462a; color: #fff; border-color: #7a2410; animation: ring-pulse 0.9s ease-in-out infinite; }
 @keyframes ring-pulse { 50% { transform: scale(1.08); } }
+
+/* Forest Floor HUD chip */
+.floor-chip { background: linear-gradient(135deg, #2b4a2e, #15291b); color: #e8f3dc; border-color: #0b150d; box-shadow: 0 3px 0 #0b150d; }

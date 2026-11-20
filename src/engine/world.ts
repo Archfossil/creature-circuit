@@ -1,5 +1,5 @@
 import type { Biome, ElementType, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, timeOfDay } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
@@ -74,12 +74,15 @@ export function canMoveTo(s: GameState, id: string): MoveCheck {
 const cap = (x: string) => x[0].toUpperCase() + x.slice(1);
 
 // ── Exploration ─────────────────────────────────────────────────
+/** `die`: the explore die (6, or 8 on the Forest Floor). `dark`: a Forest Floor "nothing" (the team loses Morale). */
 export type Outcome =
-  | { t: 'nothing'; roll: number }
-  | { t: 'encounter'; roll: number; stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle }
+  | { t: 'nothing'; roll: number; die?: number; dark?: boolean }
+  | { t: 'encounter'; roll: number; stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle; die?: number }
   | { t: 'trainer'; roll: number; name: string; battle: Battle }
-  | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number }
-  | { t: 'itemChoice'; roll: number; options: Find[] }
+  | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number; die?: number }
+  | { t: 'itemChoice'; roll: number; options: Find[]; die?: number }
+  /** Forest Floor: a sign of Dahlia's Trail. `found`: enough signs to reach her arena. */
+  | { t: 'trail'; roll: number; die: number; steps: number; need: number; found: boolean }
   | { t: 'legendary'; battle: Battle }
   | { t: 'arrive'; node: MapNode };
 
@@ -110,6 +113,7 @@ export function reexplore(s: GameState): Outcome | null {
 }
 
 function explore(s: GameState): Outcome {
+  if (s.location === FOREST_FLOOR) return exploreFloor(s);
   const node = here(s);
   s.stats.explored++;
   let r = roll(6);
@@ -147,18 +151,76 @@ export function claimFind(s: GameState, f: Find): Find {
 
 const findKey = (f: Find) => f.items.map((i) => `${i.id}×${i.n}`).join('+') + `|${f.coins}`;
 
-function discoverItem(s: GameState, node: MapNode, r: number): Outcome {
+function discoverItem(s: GameState, node: MapNode, r: number, finder: (s: GameState, node: MapNode) => Find = rollFind, die = 6): Outcome {
   // Keen Nose: sniff out three different finds and let the trainer keep one
   if (ability(s) === 'keenNose') {
     const options: Find[] = [];
     for (let tries = 0; options.length < 3 && tries < 30; tries++) {
-      const f = rollFind(s, node);
+      const f = finder(s, node);
       if (!options.some((o) => findKey(o) === findKey(f))) options.push(f);
     }
-    return { t: 'itemChoice', roll: r, options };
+    return { t: 'itemChoice', roll: r, options, die };
   }
-  const f = claimFind(s, rollFind(s, node));
-  return { t: 'item', roll: r, itemRoll: f.itemRoll, items: f.items, coins: f.coins };
+  const f = claimFind(s, finder(s, node));
+  return { t: 'item', roll: r, itemRoll: f.itemRoll, items: f.items, coins: f.coins, die };
+}
+
+// ── The Forest Floor (Dahlia) ───────────────────────────────────
+// One dark node below Gloomshade, reached by rope (Canopy Rope). Exploring it rolls a d8:
+// 1–2 nothing (the team loses 1 Morale: they fear the dark), 3–4 a wild creature (hard to run from),
+// 5–6 an exotic find, 7–8 a sign of Dahlia's Trail. 3 + Tier signs lead to her arena. Leaving the
+// Forest Floor, by choice or by being sent home, loses the trail (see state.ts → moveTrainer).
+
+/** Signs of Dahlia's Trail needed to find her arena: 3, +1 per Tier. */
+export const trailNeeded = (s: GameState) => 3 + tierOf(s);
+export function trailProgress(s: GameState) {
+  const need = trailNeeded(s);
+  const steps = Math.min(need, s.flags.dahliaTrail ?? 0);
+  return { steps, need, found: steps >= need, onFloor: s.location === FOREST_FLOOR };
+}
+
+/** The Forest Floor's explore die: a d8 while Dahlia's Trail matters, a d6 (no trail results) once she's beaten. */
+export const floorDie = (s: GameState) => (s.merits.includes('gloom') ? 6 : 8);
+
+function exploreFloor(s: GameState): Outcome {
+  const node = here(s);
+  s.stats.explored++;
+  const die = floorDie(s);
+  let r = roll(die);
+  if (s.flags.lure) { s.flags.lure = false; r = 3 + (r % 2); }
+  const encounterTo = ability(s) === 'sweetScent' ? 5 : 4;
+  if (r <= 2) {
+    for (const c of s.roster) if (!c.ko) c.morale = Math.max(0, c.morale - 1);
+    return { t: 'nothing', roll: r, die, dark: true };
+  }
+  if (r <= encounterTo) {
+    const { stars, rarity } = rollRarity(s, node);
+    const level = wildLevel(s, node);
+    // the Forest Floor is always dark: night creatures are out
+    const sp = pickSpecies(node, rarity, level, weather(s).encounter, 'night');
+    const wild = createCreature(sp.id, level);
+    if (!s.dex.seen.includes(sp.id)) s.dex.seen.push(sp.id);
+    const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: node.biome, quickStep: ability(s) === 'quickStep', hardRun: true });
+    return { t: 'encounter', roll: r, stars, rarity, battle, die };
+  }
+  if (r <= 6) return discoverItem(s, node, r, floorFind, die);
+  s.flags.dahliaTrail = (s.flags.dahliaTrail ?? 0) + 1;
+  const t = trailProgress(s);
+  if (t.found && s.flags.dahliaTrail === t.need) log(s, 'Followed Dahlia’s Trail to her arena on the Forest Floor.');
+  return { t: 'trail', roll: r, die: 8, steps: t.steps, need: t.need, found: t.found };
+}
+
+/** Forest Floor finds: exotic, a little better than the usual ones (Duskberries, Heartwood Resin, Glowcaps, Root Salve). */
+function floorFind(s: GameState): Find {
+  const ir = roll(6);
+  const mult = ability(s) === 'forager' ? 2 : 1;
+  const items: { id: string; n: number }[] = [];
+  let coins = 0;
+  if (ir <= 2) items.push({ id: 'duskberry', n: mult });
+  else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS.deepwood), n: mult });
+  else if (ir === 5) items.push({ id: 'root-salve', n: 1 });
+  else { items.push({ id: pick(BIOME_MATERIALS.deepwood), n: 1 }); coins = roll(6) + 3; }
+  return { itemRoll: ir, items, coins };
 }
 
 // ── Encounter scaling by Trainer Tier ───────────────────────────
@@ -722,7 +784,7 @@ export function offeringBonus(ids: string[], c: CreatureInst): number {
   for (const id of ids) {
     const it = ITEMS[id];
     if (!it) continue;
-    if (it.kind === 'treat') total += id === 'moonberry' ? 2 : 1;
+    if (it.kind === 'treat') total += id === 'moonberry' || id === 'duskberry' ? 2 : 1;
     else if (it.allure) total += Math.max(0, ...sp.types.map((t) => it.allure![t] ?? 0));
   }
   return total;
@@ -837,8 +899,12 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
   if (id === 'salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 1); msg = `${nameOf(c)} regained 1 Vitality.`; }
   else if (id === 'elixir') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = maxVitality(c); c.fatigue = 0; msg = `${nameOf(c)} is fully refreshed.`; }
   else if (id === 'calm-tea') { c.fatigue = 0; msg = `${nameOf(c)} sips the tea. Fatigue cleared.`; }
+  else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained 2 Vitality, and its Fatigue is cleared.`; }
   else if (id === 'energy-tonic') { const t = speciesOf(c).types[0]; c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
-  else if (it.kind === 'treat') { const n = id === 'moonberry' ? 2 : 1; c.morale = Math.min(10, c.morale + n); addLoyalty(c, n); msg = `${nameOf(c)} happily munches the ${it.name}! (+${n} Morale, +${n} Loyalty)`; }
+  else if (it.kind === 'treat') {
+    const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;
+    c.morale = Math.min(10, c.morale + mor); addLoyalty(c, loy); msg = `${nameOf(c)} happily munches the ${it.name}! (+${mor} Morale, +${loy} Loyalty)`;
+  }
   else if (id === 'lure-incense') { s.flags.lure = true; msg = 'You light the incense. Wild creatures will come to you.'; }
   else if (id === 'star-charm') { s.flags.starCharm = true; msg = 'The Star Charm glimmers. Your next encounter rolls an extra star die.'; }
   else return 'That can\'t be used here.';
@@ -882,11 +948,12 @@ export function arbiterBattle(s: GameState, cityId: string): Battle {
 export function arbiterHere(s: GameState): string | null {
   const n = here(s);
   if (n.kind === 'arena') return n.arenaOf ?? null;
+  if (n.id === FOREST_FLOOR) return 'gloom'; // Dahlia's arena hides on the Forest Floor
   if (n.kind === 'city' && !CITIES[n.id].arenaNode) return n.id;
   return null;
 }
 
-export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; findHim?: boolean; gauntlet?: boolean; cloud?: boolean } {
+export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; findHim?: boolean; gauntlet?: boolean; cloud?: boolean; trail?: boolean } {
   if (s.merits.includes(cityId)) return { ok: false, reason: 'You already hold this Arbiter\'s accolade.' };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
   switch (cityId) {
@@ -896,7 +963,11 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
       return { ok: false, cloud: true, reason: `Salem only faces trainers who have walked a full lap of Cloud Island (${lap.steps}/${lap.need} steps). Its portal opens at night, or any time in Winter.` };
     }
     case 'hollow': return s.flags.fabianFound ? { ok: true } : { ok: false, findHim: true, reason: 'Fabian is hiding somewhere in town, in disguise.' };
-    case 'gloom': return hasItem(s, 'canopy-rope') ? { ok: true } : { ok: false, reason: `Dahlia's arena is on the forest floor. You need a Canopy Rope (sold in ${keyTownName(s, 'canopy-rope')} this season).` };
+    case 'gloom': {
+      if (s.location !== FOREST_FLOOR) return { ok: false, reason: `Dahlia's arena hides on the Forest Floor below Gloomshade. Climb down with a Canopy Rope (sold in ${keyTownName(s, 'canopy-rope')} this season) and follow her trail.` };
+      const t = trailProgress(s);
+      return t.found ? { ok: true } : { ok: false, trail: true, reason: `Follow Dahlia's Trail to find her arena: ${t.steps}/${t.need} signs found. Keep exploring the Forest Floor.` };
+    }
     case 'iron': {
       if (s.flags.stellaOpen) return { ok: true };
       const g = gauntletProgress(s);

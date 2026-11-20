@@ -34,7 +34,7 @@ The Arbiter of Kilauea Forge is **Amber**. Amber's arena rests in a pit of fire 
 
 Based on the Redwood National Parks in California and representing our Grass type. Gloomshade is a city built into massive towering trees where the people live on elevated boardwalks and ringed platforms, high off the forest floor. The trees are so tall, and the canopy so thick, that sunlight doesn't manage to reach the forest floor. In most places in Gloomshade, looking over the edge of one of the boardwalks is like looking into a bottomless black pit. The creatures which occupy the forest floor are quite ferocious indeed, but for trainers brave enough to descend, they can find some of the most powerful Grass types in the world. For the less daring, there are plenty which occupy the areas surrounding the Gloomshade forest, or who live among the people up near the canopy.
 
-The Arbiter of Gloomshade is **Dahlia**. Her arena is built somewhere in the Gloomshade forest floor, where only trainers brave and strong enough to dare to descend from the canopy can challenge her and earn her accolade, the Lily Badge. The Canopy Rope needed to descend is sold in a different town each game.
+The Arbiter of Gloomshade is **Dahlia**. Her arena is built somewhere in the Gloomshade forest floor, where only trainers brave and strong enough to dare to descend from the canopy can challenge her and earn her accolade, the Lily Badge. The Canopy Rope needed to descend is sold in a different town each game. Below Gloomshade lies the **Forest Floor**, a single dark node explored again and again: the trainer must follow signs of Dahlia's Trail (3, +1 per Tier) to find her arena, and loses the trail on leaving. Once Dahlia is beaten, it can still be explored for its creatures and exotic finds, with no trail to chase.
 
 ## 6. Houndmouth Canyon
 
@@ -56,7 +56,9 @@ The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and
 
 # Map Design
 
-The map is a series of nodes between towns and cities. Each node represents a biome, each creature can be caught in a specific type of biome. Between Iron Coast and Gloomshade might be mostly coasts, roads, or forests for example.
+Legendary creatures wait at seven spots across the map, each at the end of a short branch path: Sunspire Summit, Ironwake Shoals and the Eye of the Sky (Cloud Island) in the north, and Willowheart Isle (central lakes), Dunecrown Mesa (southern desert), Boglight Hollow (south-eastern swamps) and Caldera Heart (Kilauea island) in the centre and south.
+
+The map is a series of nodes between towns and cities. Every route between two towns or cities has 3–5 wild nodes, so the journey between them is a real trip with several chances to explore, find items and meet creatures. Each node represents a biome, each creature can be caught in a specific type of biome. Between Iron Coast and Gloomshade might be mostly coasts, roads, or forests for example.
 
 Legendary Nodes are specific slots on the map where legendary creatures roam. These often require some other steps to be done first before they can be unlocked.
 

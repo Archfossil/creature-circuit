@@ -140,6 +140,13 @@ export const GUIDE: GuideCategory[] = [
         '- Its wilds turn up universal offerings that work on any creature: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3). The island has its own events too.',
         '- Beat Salem, then come back: the bridges to the Eye of the Sky, in the middle of the ring, open, and a Legendary waits there.',
       ] },
+      { id: 'floor', title: 'The Forest Floor', body: [
+        'Below Gloomshade lies the Forest Floor, one lightless place reached with a Canopy Rope. Dahlia’s arena hides somewhere down there. Its rules show before you climb down, and while you’re there the 🌲 Forest Floor chip (top left) shows your progress and opens them again.',
+        '- Explore it again and again with a d8: 1–2 nothing (your team loses Morale: they fear the dark), 3–4 a wild creature (hard to run from unless Quick Step), 5–6 an exotic find, 7–8 a sign of Dahlia’s Trail.',
+        '- Find 3 signs, +1 per Tier, and her arena appears. Leave the Forest Floor, by choice or by defeat, and the trail is lost.',
+        '- Once Dahlia is beaten, exploring down there rolls a d6 instead: the same table without the trail, so you can hunt its creatures and exotic finds without wasting explores.',
+        '- Its events are all hostile: stalkers, grasping roots, spore clouds, whispers and thieves.',
+      ] },
       { id: 'camping', title: 'Camping', body: [
         'On a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue.',
         'Camp early to tend more of your team. Knocked-out creatures need a Stable.',

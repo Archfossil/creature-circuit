@@ -80,7 +80,7 @@ export interface Move {
 
 export type Biome =
   | 'forest' | 'mountain' | 'tundra' | 'lake' | 'river' | 'road' | 'swamp'
-  | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove' | 'cloud';
+  | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove' | 'cloud' | 'deepwood';
 
 export type NodeKind = 'wild' | 'town' | 'city' | 'legendary' | 'stadium' | 'arena';
 
@@ -105,7 +105,7 @@ export interface MapEdge {
   a: string;
   b: string;
   /** sail: a sea route. portal: the Cloud Island portal, open at night or in Winter. */
-  via?: 'sail' | 'road' | 'portal';
+  via?: 'sail' | 'road' | 'portal' | 'rope';
   requires?: { item?: string; movement?: Movement };
 }
 

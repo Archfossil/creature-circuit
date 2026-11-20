@@ -47,11 +47,13 @@ export const ITEMS: Record<string, Item> = {
   // restores (overworld only — items are never used in battle)
   'salve': { id: 'salve', name: 'Vigor Salve', kind: 'restore', price: 4, icon: '🩹', text: 'Restore 1 Vitality to a creature.' },
   'elixir': { id: 'elixir', name: 'Hot Spring Elixir', kind: 'restore', price: 10, icon: '🧪', text: 'Fully restore Vitality and clear Fatigue.' },
+  'root-salve': { id: 'root-salve', name: 'Root Salve', kind: 'restore', price: 8, icon: '🌿', text: 'A Forest Floor remedy: restore 2 Vitality and clear Fatigue.' },
   'calm-tea': { id: 'calm-tea', name: 'Calm Tea', kind: 'restore', price: 5, icon: '🍵', text: 'Clear all Fatigue from a creature.' },
   'energy-tonic': { id: 'energy-tonic', name: 'Energy Tonic', kind: 'restore', price: 30, icon: '⚗️', text: 'Permanently +1 energy of the creature\'s primary type.' },
   // treats (morale & loyalty)
   'sunberry': { id: 'sunberry', name: 'Sunberry', kind: 'treat', price: 2, icon: '🍓', text: 'A treat: +1 Morale, +1 Loyalty.' },
   'dewberry': { id: 'dewberry', name: 'Dewberry', kind: 'treat', price: 2, icon: '🫐', text: 'A treat: +1 Morale, +1 Loyalty.' },
+  'duskberry': { id: 'duskberry', name: 'Duskberry', kind: 'treat', price: 4, icon: '🫐', text: 'A Forest Floor treat: +2 Morale, +1 Loyalty.' },
   'moonberry': { id: 'moonberry', name: 'Moonberry', kind: 'treat', price: 5, icon: '🍇', text: 'A rare treat: +2 Morale, +2 Loyalty.' },
   // charms
   'lure-incense': { id: 'lure-incense', name: 'Lure Incense', kind: 'charm', price: 6, icon: '🕯️', text: 'Your next explore is a guaranteed wild encounter.' },
@@ -75,6 +77,9 @@ export const ITEMS: Record<string, Item> = {
   // universal offerings (Cloud Island): every creature likes them
   'cloud-silk': material('cloud-silk', 'Cloud Silk', '☁️', universal(1), 'Threads spun from a passing cloud. Every creature finds it soothing: +1 to recruit any creature.'),
   'stardust': material('stardust', 'Stardust', '✨', universal(2), 'Glittering dust that drifts down on Cloud Island. +2 to recruit any creature.'),
+  // exotic Forest Floor finds: slight improvements over the usual ones
+  'heartwood-resin': material('heartwood-resin', 'Heartwood Resin', '🪵', { grass: 3, charm: 2, rock: 1 }, 'Amber sap from the oldest trunks on the Forest Floor. A richer Pine Resin.'),
+  'glowcap': material('glowcap', 'Glowcap', '🍄', { charm: 3, grass: 2, astral: 1 }, 'A mushroom that glows in the dark of the Forest Floor. A richer Moon Moss.'),
   'moonbow-prism': material('moonbow-prism', 'Moonbow Prism', '🌈', universal(3), 'A rare shard of a rainbow seen by moonlight. +3 to recruit any creature.'),
   // key items
   'fog-lantern': { id: 'fog-lantern', name: 'Fog Lantern', kind: 'key', price: 12, icon: '🏮', text: 'Lights the fog road into Hollow Crest.' },
@@ -102,6 +107,8 @@ export const BIOME_MATERIALS: Record<Biome, string[]> = {
   volcanic: ['volcanic-glass', 'ember-charcoal'], canyon: ['canyon-ochre', 'thunder-quartz'],
   // Cloud Island: universal offerings only (the prism is the rare one, 1 in 5)
   cloud: ['cloud-silk', 'cloud-silk', 'stardust', 'stardust', 'moonbow-prism'],
+  // the Forest Floor: exotic, a little stronger than the materials above
+  deepwood: ['heartwood-resin', 'glowcap'],
 };
 
 /** Biomes where exploring can turn up this material. */
@@ -118,6 +125,7 @@ export const BIOME_INFO: Record<Biome, { label: string; color: string; icon: str
   badlands: { label: 'Badlands', color: '#c98f5a', icon: '🏜️' }, coast: { label: 'Coast', color: '#d9cfb0', icon: '🏖️' },
   volcanic: { label: 'Volcanic', color: '#4a3a38', icon: '🌋' }, canyon: { label: 'Canyon', color: '#c4703a', icon: '🪨' },
   cloud: { label: 'Cloud', color: '#f4a9d8', icon: '☁️' },
+  deepwood: { label: 'Forest Floor', color: '#1f3524', icon: '🌑' },
 };
 
 // ── Weather ─────────────────────────────────────────────

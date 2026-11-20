@@ -92,8 +92,8 @@ export class BattleView implements SceneView {
     (this.scene.getObjectByName('ground') as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: bc, roughness: 1, flatShading: true });
     (this.arena.material as THREE.MeshStandardMaterial).color.set(arenaType ? '#f3ead6' : bc.clone().lerp(new THREE.Color('#efe6cf'), 0.65));
     (this.ring.material as THREE.MeshStandardMaterial).color.set(arenaType ? TYPE_COLOR[arenaType] : '#2b2a33');
-    const top = night ? (biome === 'cloud' ? '#1a0b2e' : '#0e1838') : biome === 'volcanic' ? '#e07a4a' : biome === 'tundra' ? '#9fc3e0' : biome === 'cloud' ? '#7a4aa8' : '#5fb4e8';
-    const bottom = night ? (biome === 'cloud' ? '#5b2a7a' : '#3a4a7a') : biome === 'volcanic' ? '#ffcf9a' : biome === 'swamp' ? '#cfe0c0' : biome === 'cloud' ? '#f6c3e4' : '#f4e8cf';
+    const top = night ? (biome === 'cloud' ? '#1a0b2e' : '#0e1838') : biome === 'volcanic' ? '#e07a4a' : biome === 'tundra' ? '#9fc3e0' : biome === 'cloud' ? '#7a4aa8' : biome === 'deepwood' ? '#0f1a12' : '#5fb4e8';
+    const bottom = night ? (biome === 'cloud' ? '#5b2a7a' : '#3a4a7a') : biome === 'volcanic' ? '#ffcf9a' : biome === 'swamp' ? '#cfe0c0' : biome === 'cloud' ? '#f6c3e4' : biome === 'deepwood' ? '#2b3d27' : '#f4e8cf';
     this.skyMat.uniforms.top.value.set(top);
     this.skyMat.uniforms.bottom.value.set(bottom);
     (this.scene.fog as THREE.Fog).color.set(bottom);
@@ -106,8 +106,8 @@ export class BattleView implements SceneView {
       const r = 12 + Math.random() * 12;
       const x = Math.cos(a) * r * 1.3, z = Math.sin(a) * r - 2;
       let m: THREE.Mesh;
-      if (['forest', 'grove', 'swamp', 'meadow', 'river', 'lake', 'tundra'].includes(biome)) {
-        m = new THREE.Mesh(new THREE.ConeGeometry(1 + Math.random(), 3 + Math.random() * 3, 6), new THREE.MeshStandardMaterial({ color: biome === 'tundra' ? '#5c7f6e' : '#2f6b3a', flatShading: true }));
+      if (['forest', 'grove', 'swamp', 'meadow', 'river', 'lake', 'tundra', 'deepwood'].includes(biome)) {
+        m = new THREE.Mesh(new THREE.ConeGeometry(1 + Math.random(), 3 + Math.random() * 3, 6), new THREE.MeshStandardMaterial({ color: biome === 'tundra' ? '#5c7f6e' : biome === 'deepwood' ? '#15291b' : '#2f6b3a', flatShading: true }));
         m.position.set(x, 1.5, z);
       } else {
         const s = 0.8 + Math.random() * 2.2;

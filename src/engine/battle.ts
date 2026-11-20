@@ -33,6 +33,8 @@ export interface Battle {
   participants: string[];
   biome: string;
   quickStep: boolean;
+  /** The Forest Floor: running away needs a 7+ (d6 + Speed difference) instead of 4+, unless Quick Step. */
+  hardRun?: boolean;
   /** Species ids of every opposing creature that has taken the field (for the Creature Codex). */
   seenFoes: string[];
   /** Opposing creatures that took the field (uids), e.g. to reward a hotseat duel's defender. */
@@ -90,10 +92,13 @@ function noteFoe(b: Battle) {
   if (foe && !(b.foeParticipants ??= []).includes(foe.uid)) b.foeParticipants.push(foe.uid);
 }
 
-export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts: { arena?: Battle['arena']; legendary?: boolean; biome?: string; quickStep?: boolean } = {}): Battle {
+/** Run roll needed on the Forest Floor (normally 4). */
+export const HARD_RUN = 7;
+
+export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts: { arena?: Battle['arena']; legendary?: boolean; biome?: string; quickStep?: boolean; hardRun?: boolean } = {}): Battle {
   const b: Battle = {
     sides: [player, foe], round: 0, weather, arena: opts.arena, legendary: !!opts.legendary, fleeWarned: false,
-    status: {}, over: null, needSwap: false, participants: [], biome: opts.biome ?? 'meadow', quickStep: !!opts.quickStep, seenFoes: [],
+    status: {}, over: null, needSwap: false, participants: [], biome: opts.biome ?? 'meadow', quickStep: !!opts.quickStep, hardRun: !!opts.hardRun, seenFoes: [],
   };
   for (const s of b.sides) {
     // keep the chosen lead (e.g. the Following creature) unless it can't fight
@@ -313,14 +318,14 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
 
   if (pa.kind === 'run') {
     const me = activeOf(b.sides[0]);
-    const ok = b.quickStep || roll(6) + eff(b, 0, 'speed') - eff(b, 1, 'speed') >= 4;
+    const ok = b.quickStep || roll(6) + eff(b, 0, 'speed') - eff(b, 1, 'speed') >= (b.hardRun ? HARD_RUN : 4);
     if (ok) {
       ev.push({ t: 'say', text: `${nameOf(me)} got away safely!`, tone: 'info' });
       b.over = 'escaped';
       ev.push({ t: 'end', result: 'escaped' });
       return ev;
     }
-    ev.push({ t: 'say', text: `Couldn't escape!`, tone: 'bad' });
+    ev.push({ t: 'say', text: b.hardRun ? 'Couldn\'t escape! The dark Forest Floor hems you in.' : `Couldn't escape!`, tone: 'bad' });
   }
 
   const speedOf = (si: 0 | 1, a: Action | { kind: 'flee' }) => {

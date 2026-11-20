@@ -46,9 +46,9 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 | 14 | [Steel / Astral](#steel--astral) | ☐ | ☐ | ☐ | ☐ | Mountain |
 | 15 | [Water / Astral](#water--astral) | ☐ | ☐ | ☐ | ☑ | Tundra, Cloud |
 | 16 | [Charm / Electric](#charm--electric) | ☐ | ☐ | ☐ | ☐ | Meadow, Cloud |
-| 17 | [Charm / Fire](#charm--fire) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, Lake, Cloud |
-| 18 | [Charm / Grass](#charm--grass) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow |
-| 19 | [Charm / Rock](#charm--rock) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, Lake, Cloud |
+| 17 | [Charm / Fire](#charm--fire) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, Lake, Cloud, Forest Floor |
+| 18 | [Charm / Grass](#charm--grass) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, Forest Floor |
+| 19 | [Charm / Rock](#charm--rock) | ☐ | ☐ | ☐ | ☐ | Forest Floor |
 | 20 | [Steel / Charm](#steel--charm) | ☐ | ☐ | ☐ | ☐ | Mountain, Road, Coast |
 | 21 | [Water / Charm](#water--charm) | ☐ | ☐ | ☐ | ☐ | Lake, Cloud |
 | 22 | [Electric / Fire](#electric--fire) | ☐ | ☐ | ☐ | ☐ | Desert |
@@ -60,11 +60,11 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 | 28 | [Fire / Rock](#fire--rock) | ☐ | ☐ | ☐ | ☐ | Desert, Volcanic, Canyon |
 | 29 | [Fire / Steel](#fire--steel) | ☐ | ☐ | ☐ | ☐ | Desert, Volcanic, Canyon |
 | 30 | [Fire / Water](#fire--water) | ☐ | ☐ | ☐ | ☐ | Desert, Volcanic, Canyon |
-| 31 | [Grass / Rock](#grass--rock) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, River, Swamp |
-| 32 | [Grass / Steel](#grass--steel) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, River, Swamp |
+| 31 | [Grass / Rock](#grass--rock) | ☐ | ☐ | ☐ | ☐ | Forest Floor |
+| 32 | [Grass / Steel](#grass--steel) | ☐ | ☐ | ☐ | ☐ | Forest, Fey Grove, Meadow, River, Swamp, Forest Floor |
 | 33 | [Grass / Water](#grass--water) | ☐ | ☐ | ☐ | ☐ | River, Swamp |
 | 34 | [Rock / Steel](#rock--steel) | ☐ | ☐ | ☐ | ☐ | Mountain |
-| 35 | [Rock / Water](#rock--water) | ☐ | ☐ | ☐ | ☐ | Mountain, Desert, Badlands, Volcanic, Canyon |
+| 35 | [Rock / Water](#rock--water) | ☐ | ☐ | ☐ | ☐ | Mountain, Desert, Badlands, Volcanic, Canyon, Forest Floor |
 | 36 | [Steel / Water](#steel--water) | ☐ | ☐ | ☐ | ☑ | Coast |
 
 ---
@@ -343,7 +343,7 @@ Spawns in: Meadow, Cloud.
 
 ## Charm / Fire
 
-Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud.
+Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud, Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -360,7 +360,7 @@ Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud.
 
 ## Charm / Grass
 
-Spawns in: Forest, Fey Grove, Meadow.
+Spawns in: Forest, Fey Grove, Meadow, Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -377,7 +377,7 @@ Spawns in: Forest, Fey Grove, Meadow.
 
 ## Charm / Rock
 
-Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud.
+Spawns in: Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -424,7 +424,7 @@ Spawns in: Lake, Cloud.
 | Apex | 1 | **Aquabloomwisp** | `ph-water-charm-apex-1` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Aquabloomwyrm** | `ph-water-charm-apex-2` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 3 | **Aquabloomtitan** | `ph-water-charm-apex-3` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | Move: Sail | Placeholder | ☐ | ☐ |
-| Legendary | — | **Aquabloomeon** | `ph-water-charm-legendary` | Water / Charm | Nocturnal | Trailblazer | Tag Strike | Move: Sail · Map: not placed | Placeholder | ☐ | ☐ |
+| Legendary | — | **Aquabloomeon** | `ph-water-charm-legendary` | Water / Charm | Nocturnal | Trailblazer | Tag Strike | Move: Sail · Map: Boglight Hollow | Placeholder | ☐ | ☐ |
 
 ## Electric / Fire
 
@@ -475,7 +475,7 @@ Spawns in: Desert, Badlands.
 | Apex | 1 | **Zapstonewisp** | `ph-electric-rock-apex-1` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Zapstonewyrm** | `ph-electric-rock-apex-2` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 3 | **Zapstonetitan** | `ph-electric-rock-apex-3` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapstoneeon** | `ph-electric-rock-legendary` | Electric / Rock | Diurnal | Star Seeker | Siphon | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapstoneeon** | `ph-electric-rock-legendary` | Electric / Rock | Diurnal | Star Seeker | Siphon | Move: Fly · Map: Dunecrown Mesa | Placeholder | ☐ | ☐ |
 
 ## Electric / Steel
 
@@ -560,7 +560,7 @@ Spawns in: Desert, Volcanic, Canyon.
 | Apex | 1 | **Pyrogearwisp** | `ph-fire-steel-apex-1` | Fire / Steel | Diurnal | Forager | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Pyrogearwyrm** | `ph-fire-steel-apex-2` | Fire / Steel | Diurnal | Forager | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 3 | **Pyrogeartitan** | `ph-fire-steel-apex-3` | Fire / Steel | Diurnal | Forager | Tag Strike | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pyrogeareon** | `ph-fire-steel-legendary` | Fire / Steel | Diurnal | Trailblazer | Siphon | Map: not placed | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pyrogeareon** | `ph-fire-steel-legendary` | Fire / Steel | Diurnal | Trailblazer | Siphon | Map: Caldera Heart | Placeholder | ☐ | ☐ |
 
 ## Fire / Water
 
@@ -581,7 +581,7 @@ Spawns in: Desert, Volcanic, Canyon.
 
 ## Grass / Rock
 
-Spawns in: Forest, Fey Grove, Meadow, River, Swamp.
+Spawns in: Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -598,7 +598,7 @@ Spawns in: Forest, Fey Grove, Meadow, River, Swamp.
 
 ## Grass / Steel
 
-Spawns in: Forest, Fey Grove, Meadow, River, Swamp.
+Spawns in: Forest, Fey Grove, Meadow, River, Swamp, Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -628,7 +628,7 @@ Spawns in: River, Swamp.
 | Apex | 1 | **Sprigtidewisp** | `ph-grass-water-apex-1` | Grass / Water | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Sprigtidewyrm** | `ph-grass-water-apex-2` | Grass / Water | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 3 | **Sprigtidetitan** | `ph-grass-water-apex-3` | Grass / Water | Diurnal | Keen Nose | Rally | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Sprigtideeon** | `ph-grass-water-legendary` | Grass / Water | Diurnal | Sweet Scent | Slipstream | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Legendary | — | **Sprigtideeon** | `ph-grass-water-legendary` | Grass / Water | Diurnal | Sweet Scent | Slipstream | Move: Wayfind · Map: Willowheart Isle | Placeholder | ☐ | ☐ |
 
 ## Rock / Steel
 
@@ -649,7 +649,7 @@ Spawns in: Mountain.
 
 ## Rock / Water
 
-Spawns in: Mountain, Desert, Badlands, Volcanic, Canyon.
+Spawns in: Mountain, Desert, Badlands, Volcanic, Canyon, Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|

@@ -1,6 +1,6 @@
 // Pure terrain math for the world map: noise and where the land is. No three.js here, so the
 // map tests can check the coastline (e.g. that Kilauea stays an island).
-import { MAP_NODES, MAP_EDGES, NODE_BY_ID } from '../data/map';
+import { MAP_NODES, MAP_EDGES, NODE_BY_ID, MAP_SCALE } from '../data/map';
 import type { MapNode } from '../data/schema';
 
 // ── Noise ───────────────────────────────────────────────────────
@@ -28,8 +28,9 @@ export function landField(x: number, z: number) {
   let d = 1e9;
   for (const [a, b] of SEGS) d = Math.min(d, segDist(x, z, a, b));
   for (const n of MAP_NODES) d = Math.min(d, Math.hypot(x - n.x, z - n.z) - (n.kind === 'city' || n.kind === 'arena' ? 3 : n.kind === 'legendary' ? -1 : 1));
-  const R = 8.5 + fbm(x * 0.07, z * 0.07) * 7;
-  return smooth(R, R - 5, d);
+  // coast distance and its noise scale with the map, so a bigger map keeps the same shape
+  const R = (8.5 + fbm((x * 0.07) / MAP_SCALE, (z * 0.07) / MAP_SCALE) * 7) * MAP_SCALE;
+  return smooth(R, R - 5 * MAP_SCALE, d);
 }
 
 /** Map nodes on the same landmass as `nodeId` (flood fill over land on a 1-unit grid). */
@@ -40,7 +41,7 @@ export function landmassOf(nodeId: string): string[] {
   while (q.length) {
     const [x, z] = q.pop()!;
     const k = `${x},${z}`;
-    if (seen.has(k) || x < -90 || x > 90 || z < -75 || z > 95 || landField(x, z) <= 0.05) continue;
+    if (seen.has(k) || x < -90 * MAP_SCALE || x > 90 * MAP_SCALE || z < -75 * MAP_SCALE || z > 105 * MAP_SCALE || landField(x, z) <= 0.05) continue;
     seen.add(k);
     q.push([x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]);
   }

@@ -12,7 +12,7 @@ import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, spe
 import type { Battle } from './battle';
 import { createBattle } from './battle';
 import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather } from './world';
-import { BIOME_TYPES, isCloudNode } from '../data/map';
+import { BIOME_TYPES, isCloudNode, FOREST_FLOOR } from '../data/map';
 import { pick, roll, weightedPick, uid } from './dice';
 
 /** Chance that a turn ends with an event. 1 = every turn (good for playtesting); lower it to taste. */
@@ -52,8 +52,8 @@ interface EventDef {
   when?: (s: GameState) => boolean;
   /** Optional: only by day or only at night (odd turns are day, even turns night). Unset = any time. */
   time?: TimeOfDay;
-  /** 'cloud': only happens on Cloud Island (and while there, only these events happen). */
-  place?: 'cloud';
+  /** 'cloud' / 'floor': only happens on Cloud Island / the Forest Floor (and while there, only those events happen). */
+  place?: 'cloud' | 'floor';
   create: (s: GameState) => EventData;
   view: (s: GameState, d: EventData) => Omit<EventView, 'id'>;
   resolve: (s: GameState, d: EventData, choice: string, target?: CreatureInst) => EventResult;
@@ -691,11 +691,133 @@ const EVENTS: EventDef[] = [
       return { text: 'You comb the clouds and find a Cloud Silk and a Stardust.', tone: 'good' };
     },
   },
+
+  // ── The Forest Floor (only there; all hostile) ─────────────────
+  {
+    id: 'stalker', weight: 3, place: 'floor',
+    when: (s) => s.roster.some((c) => !c.ko),
+    create: () => ({}),
+    view: (s) => ({
+      title: 'Something in the Dark', icon: '👁️', forced: true,
+      text: 'Eyes glint between the roots. Something big has been stalking you, and now it’s close.',
+      choices: [
+        { id: 'fight', label: 'Turn and fight', detail: 'A tough wild creature, 2 levels above the usual. Running is hard down here.' },
+        { id: 'bait', label: 'Throw it some food', detail: 'Lose a random treat or offering material from your bag.', disabled: baitItems(s).length ? undefined : 'You have no treats or materials.' },
+        { id: 'flee', label: 'Flee into the dark', detail: 'You lose your bearings: −1 sign of Dahlia’s Trail.' },
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'bait') { const id = pick(baitItems(s)); addItem(s, id, -1); return { text: `You toss it the ${ITEMS[id]?.name ?? id}. It drags it off into the dark.`, tone: 'info' }; }
+      if (choice === 'flee') { s.flags.dahliaTrail = Math.max(0, (s.flags.dahliaTrail ?? 0) - 1); return { text: 'You run until the eyes are gone, and lose the trail. (−1 sign)', tone: 'bad' }; }
+      const level = baseWildLevel(s, here(s)) + 2;
+      const wild = createCreature(pickSpecies(here(s), 'prime', level, [], 'night').id, level);
+      if (!s.dex.seen.includes(wild.species)) s.dex.seen.push(wild.species);
+      const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${nameOf(wild)}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: 'deepwood', hardRun: true });
+      return { text: `A wild ${nameOf(wild)} lunges from the dark!`, tone: 'bad', battle };
+    },
+  },
+  {
+    id: 'roots', weight: 3, place: 'floor',
+    when: (s) => s.roster.some((c) => !c.ko),
+    create: (s) => { const c = pick(s.roster.filter((x) => !x.ko)); return { uid: c.uid, name: nameOf(c) }; },
+    view: (s, d) => ({
+      title: 'Grasping Roots', icon: '🌱', forced: true,
+      text: `Roots coil out of the dark and seize ${d.name}, dragging it toward the soil.`,
+      choices: [
+        { id: 'cut', label: 'Cut it free · 1 Initiative', detail: 'Slow, careful work.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+        { id: 'tear', label: 'Tear it free', detail: `${d.name} loses 1 Vitality and 1 Morale.` },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      const c = team(s).find((x) => x.uid === d.uid);
+      if (!c) return { text: 'The roots slither back into the soil.', tone: 'info' };
+      if (choice === 'cut') { s.initiative -= 1; return { text: `You hack ${nameOf(c)} free, root by root.`, tone: 'info' }; }
+      c.vitality = Math.max(c.ko ? 0 : 1, c.vitality - 1); cheer(c, -1);
+      return { text: `${nameOf(c)} rips free, bruised and shaken. (−1 Vitality, −1 Morale)`, tone: 'bad' };
+    },
+  },
+  {
+    id: 'spores', weight: 2, place: 'floor',
+    create: () => ({}),
+    view: (s) => {
+      const f = follower(s);
+      const spd = f ? stats(f).speed : 0;
+      return {
+        title: 'Spore Cloud', icon: '🍄', forced: true,
+        text: 'A huge fungus bursts, and a choking cloud of spores rolls toward your team.',
+        choices: [
+          { id: 'tea', label: 'Brew a Calm Tea', detail: 'Uses one Calm Tea. Your team breathes through the steam, unharmed.', disabled: (s.inventory['calm-tea'] ?? 0) > 0 ? undefined : 'You have no Calm Tea.' },
+          { id: 'run', label: f ? `Follow ${nameOf(f)} out of the cloud` : 'Run for it', detail: `Roll d6 + Speed ${spd} ≥ 7 to escape. Miss: your active team gains 1 Fatigue and −1 Morale.` },
+        ],
+      };
+    },
+    resolve: (s, _d, choice) => {
+      if (choice === 'tea') { addItem(s, 'calm-tea', -1); return { text: 'The tea’s steam keeps the spores at bay.', tone: 'info' }; }
+      const f = follower(s);
+      const r = roll(6);
+      if (r + (f ? stats(f).speed : 0) >= 7) return { text: 'You burst out of the cloud before it reaches you.', tone: 'good', rolls: [r] };
+      for (const c of s.roster) if (!c.ko) { c.fatigue = Math.min(5, c.fatigue + 1); cheer(c, -1); }
+      return { text: 'The spores catch you. Your team coughs and stumbles. (+1 Fatigue, −1 Morale)', tone: 'bad', rolls: [r] };
+    },
+  },
+  {
+    id: 'whispers', weight: 2, place: 'floor',
+    create: () => ({}),
+    view: (s) => ({
+      title: 'Whispers in the Dark', icon: '🌫️', forced: true,
+      text: 'Voices whisper from every direction, mimicking Dahlia’s. The trail blurs.',
+      choices: [
+        { id: 'retrace', label: 'Retrace your steps · 2 Initiative', detail: 'Keep the trail.', disabled: s.initiative < 2 ? 'Not enough Initiative.' : undefined },
+        { id: 'follow', label: 'Follow the voices', detail: '−1 sign of Dahlia’s Trail.' },
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'retrace') { s.initiative -= 2; return { text: 'You find your own footprints again. The trail holds.', tone: 'info' }; }
+      s.flags.dahliaTrail = Math.max(0, (s.flags.dahliaTrail ?? 0) - 1);
+      return { text: 'The voices lead you in circles. (−1 sign of the trail)', tone: 'bad' };
+    },
+  },
+  {
+    id: 'shadethieves', weight: 2, place: 'floor',
+    when: (s) => Object.keys(s.inventory).some((id) => (s.inventory[id] ?? 0) > 0 && ITEMS[id]?.kind !== 'key'),
+    create: () => ({}),
+    view: (s) => {
+      const f = follower(s);
+      const spd = f ? stats(f).speed : 0;
+      return {
+        title: 'Shade Thieves', icon: '🦇', forced: true,
+        text: 'Shadows flit across your bag. Something small and quick is making off with your things!',
+        choices: [
+          { id: 'let', label: 'Let them go', detail: 'Lose one random item (never a key item).' },
+          { id: 'chase', label: f ? `Send ${nameOf(f)} after them` : 'Chase them', detail: `Roll d6 + Speed ${spd} ≥ 7: you lose nothing. Miss: you lose the item, and your follower loses 1 Vitality in the scramble.` },
+        ],
+      };
+    },
+    resolve: (s, _d, choice) => {
+      const loot = Object.keys(s.inventory).filter((id) => (s.inventory[id] ?? 0) > 0 && ITEMS[id]?.kind !== 'key');
+      const id = loot.length ? pick(loot) : null;
+      if (choice === 'chase') {
+        const f = follower(s);
+        const r = roll(6);
+        if (r + (f ? stats(f).speed : 0) >= 7) return { text: 'You catch the thieves and shake your things loose.', tone: 'good', rolls: [r] };
+        if (f && !f.ko) f.vitality = Math.max(1, f.vitality - 1);
+        if (id) addItem(s, id, -1);
+        return { text: `They get away${id ? ` with your ${ITEMS[id]?.name ?? id}` : ''}, and the scramble leaves ${f ? nameOf(f) : 'you'} bruised.`, tone: 'bad', rolls: [r] };
+      }
+      if (id) addItem(s, id, -1);
+      return { text: id ? `The shadows vanish with your ${ITEMS[id]?.name ?? id}.` : 'The shadows find nothing worth taking.', tone: 'bad' };
+    },
+  },
 ];
 
+/** Treats and materials a trainer could throw to a stalker. */
+function baitItems(s: GameState) {
+  return Object.keys(s.inventory).filter((id) => (s.inventory[id] ?? 0) > 0 && ['treat', 'material'].includes(ITEMS[id]?.kind ?? ''));
+}
+
 export const EVENT_IDS = EVENTS.map((e) => e.id);
-/** Where each event can happen: 'cloud' (Cloud Island only) or 'anywhere' (anywhere else). */
-export const EVENT_PLACES: Record<string, 'cloud' | 'anywhere'> = Object.fromEntries(EVENTS.map((e) => [e.id, e.place ?? 'anywhere']));
+/** Where each event can happen: 'cloud' (Cloud Island only), 'floor' (the Forest Floor only) or 'anywhere' (anywhere else). */
+export const EVENT_PLACES: Record<string, 'cloud' | 'floor' | 'anywhere'> = Object.fromEntries(EVENTS.map((e) => [e.id, e.place ?? 'anywhere']));
 /** When each event can happen: 'day', 'night' or 'any'. */
 export const EVENT_TIMES: Record<string, TimeOfDay | 'any'> = Object.fromEntries(EVENTS.map((e) => [e.id, e.time ?? 'any']));
 const BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
@@ -705,8 +827,9 @@ export function rollEvent(s: GameState, force?: string): PendingEvent | null {
   if (s.phase !== 'map' || s.event) return s.event ?? null;
   if (!force && Math.random() >= EVENT_CHANCE) return null;
   const now = timeOfDay(s.turn);
-  const onCloud = isCloudNode(s.location);
-  const pool = force ? [BY_ID[force]] : EVENTS.filter((e) => e.id !== s.lastEvent && (e.place === 'cloud') === onCloud && (!e.time || e.time === now) && (!e.when || e.when(s)));
+  // Cloud Island and the Forest Floor have their own events, and only those happen there
+  const place = isCloudNode(s.location) ? 'cloud' : s.location === FOREST_FLOOR ? 'floor' : undefined;
+  const pool = force ? [BY_ID[force]] : EVENTS.filter((e) => e.id !== s.lastEvent && e.place === place && (!e.time || e.time === now) && (!e.when || e.when(s)));
   if (!pool.length) return null;
   const def = weightedPick(pool.map((e) => ({ v: e, w: e.weight })));
   s.event = { id: def.id, data: def.create(s) };

@@ -8,7 +8,7 @@ Every event in the game, what it offers, and how to add more. Events are the lit
 
 - **When:** from the second round on, each trainer's turn starts with one event (in hotseat and online, after the first trainer's weather roll). `EVENT_CHANCE` (currently 1, every turn) can lower that.
 - **Which one:** picked at random, weighted by each event's **weight**. Events whose **condition** isn't met are skipped (e.g. the Pickpocket needs 3+ coins). **The same event never comes twice in a row** for a trainer.
-- **Cloud Island:** while a trainer is on Cloud Island, only the [Cloud Island events](#cloud-island-events) can happen, and those never happen anywhere else.
+- **Cloud Island and the Forest Floor:** while a trainer is on Cloud Island, only the [Cloud Island events](#cloud-island-events) can happen. On the Forest Floor, only the [Forest Floor events](#forest-floor-events) can happen. Neither set happens anywhere else.
 - **Day & night:** odd turns are day and even turns are night. Day events only happen on day turns, night events only on night turns, and "Any" events at either. Each event's story matches: campfires, stars and overnight trouble at night; trainers, trades and errands by day.
 - **Answering:** the event card opens at the start of the turn. Most events can be declined. **Forced** events (storm, pickpocket, squabble, bad berries) need a real decision. The player can close the card to check their team first: it waits as a pill at the bottom of the screen, and the turn can't end until it's answered.
 - **Picking a creature:** some choices ask the player to pick one of their creatures. Choices can rule creatures out (e.g. knocked out), and can show a **before → after** stat comparison first (trades, Nature changes).
@@ -59,8 +59,13 @@ Day and night each have **35** weight of eligible events: 20 of time-specific ev
 | 27 | 🐋 Sky Whale | `skywhale` | Cloud Island | 2 | Any | On Cloud Island, with a follower | Yes (two good options) | Free, or 1 Initiative |
 | 28 | 🌫️ Cloud Bank | `cloudbank` | Cloud Island | 2 | Any | On Cloud Island | **Yes** | 1 Initiative, or Morale at risk |
 | 29 | ☀️ Sunlit Clouds | `sunlit` | Cloud Island | 3 | Day | On Cloud Island | Yes (two good options) | Free |
+| 30 | 👁️ Something in the Dark | `stalker` | Forest Floor | 3 | Any | On the Forest Floor, a creature able to fight | **Yes** | A hard battle, an item, or a trail sign |
+| 31 | 🌱 Grasping Roots | `roots` | Forest Floor | 3 | Any | On the Forest Floor, a creature not KO'd | **Yes** | 1 Initiative, or Vitality and Morale |
+| 32 | 🍄 Spore Cloud | `spores` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | A Calm Tea, or Fatigue and Morale |
+| 33 | 🌫️ Whispers in the Dark | `whispers` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | 2 Initiative, or a trail sign |
+| 34 | 🦇 Shade Thieves | `shadethieves` | Forest Floor | 2 | Any | On the Forest Floor, with a non-key item | **Yes** | An item (and maybe Vitality) |
 
-**Kinds:** *Cloud Island* events only happen on Cloud Island. *Creatures* change or add to your team. *Service* means paying for a benefit. *Find* is a free gift. *Hazard* forces a choice between two costs. *Battle* starts a fight. *Gamble* is a dice bet. *Rest* recovers the team.
+**Kinds:** *Cloud Island* and *Forest Floor* events only happen there. *Creatures* change or add to your team. *Service* means paying for a benefit. *Find* is a free gift. *Hazard* forces a choice between two costs. *Battle* starts a fight. *Gamble* is a dice bet. *Rest* recovers the team.
 
 "Forced: Yes (… options)" means there is no plain "No thanks", but every option is good or harmless.
 
@@ -402,6 +407,71 @@ Daylight burns the portal shut until night (the trainer is stranded on the islan
 - **Bask in the sun:** the active team (not KO'd) gets full Vitality and Health, and Fatigue cleared.
 - **Comb the clouds:** get 1 Cloud Silk and 1 Stardust.
 
+### Forest Floor events
+
+These only happen while the trainer is on the Forest Floor below Gloomshade (see [Arbiters & Arenas](./11-arbiters-and-arenas.md), Dahlia). While there, nothing else happens. **They're all hostile and forced:** there's no "No thanks", only a choice of how to suffer. Total weight 12, any time of day (it's always dark down there).
+
+### 30. 👁️ Something in the Dark · `stalker`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Forest Floor | 3 | Any | On the Forest Floor, a creature able to fight | **Yes** |
+
+Something big has been stalking you through the roots.
+
+**Choices**
+- **Turn and fight:** a wild battle against a Prime night creature, 2 levels above the usual. Running needs a 7+ (unless Quick Step), as everywhere on the Forest Floor. It can be recruited if beaten.
+- **Throw it some food:** lose a random treat or offering material. Disabled if you have none.
+- **Flee into the dark:** −1 sign of Dahlia's Trail.
+
+### 31. 🌱 Grasping Roots · `roots`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Forest Floor | 3 | Any | On the Forest Floor, a creature not KO'd | **Yes** |
+
+Roots seize one random active creature.
+
+**Choices**
+- **Cut it free · 1 Initiative.**
+- **Tear it free:** it loses 1 Vitality (never below 1 heart) and 1 Morale.
+
+### 32. 🍄 Spore Cloud · `spores`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Forest Floor | 2 | Any | On the Forest Floor | **Yes** |
+
+A fungus bursts into a choking spore cloud.
+
+**Choices**
+- **Brew a Calm Tea:** uses one Calm Tea, no harm done. Disabled if you have none.
+- **Follow (follower) out of the cloud:** roll d6 + the follower's Speed. On **7 or more**, you escape. Otherwise, the active team gains 1 Fatigue and −1 Morale.
+
+### 33. 🌫️ Whispers in the Dark · `whispers`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Forest Floor | 2 | Any | On the Forest Floor | **Yes** |
+
+Voices mimicking Dahlia's blur the trail.
+
+**Choices**
+- **Retrace your steps · 2 Initiative:** keep the trail.
+- **Follow the voices:** −1 sign of Dahlia's Trail.
+
+### 34. 🦇 Shade Thieves · `shadethieves`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Forest Floor | 2 | Any | On the Forest Floor, with a non-key item | **Yes** |
+
+Shadows make off with your things.
+
+**Choices**
+- **Let them go:** lose one random item (never a key item).
+- **Send (follower) after them:** roll d6 + the follower's Speed. On **7 or more**, you lose nothing. Otherwise, you lose the item and the follower loses 1 Vitality.
+
 ---
 
 ## Adding a new event
@@ -444,7 +514,7 @@ Add an entry to the `EVENTS` list in `src/engine/events.ts`:
 {
   id: 'my-event', weight: 2,
   time: 'night',                                   // optional: 'day' or 'night' only (unset = any time)
-  // place: 'cloud',                               // optional: Cloud Island only (and only these happen there)
+  // place: 'cloud',                               // optional: 'cloud' or 'floor': Cloud Island / Forest Floor only (and only those happen there)
   when: (s) => s.coins >= 5,                       // optional: only roll it when it makes sense
   create: (s) => ({ price: 5 }),                   // details rolled once and saved with the event (plain JSON)
   view: (s, d) => ({

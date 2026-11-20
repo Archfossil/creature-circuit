@@ -1,6 +1,7 @@
 import type { MapNode, MapEdge, City, Biome, ElementType } from './schema';
 
-// The region of Margos. North is -z, east is +x. Roughly 110 x 100 world units.
+// The region of Margos. North is -z, east is +x. Hub positions below are on the original ~110 x 100 layout
+// and are multiplied by MAP_SCALE, so the real map is about 190 x 175 world units.
 
 const hubs: MapNode[] = [
   // Cities
@@ -30,51 +31,80 @@ const hubs: MapNode[] = [
   // Legendary nodes
   { id: 'sunspire', name: 'Sunspire Summit', kind: 'legendary', biome: 'mountain', x: -10, z: -38, rarity: 3, level: 9, legendary: 'solstara', requires: { tier: 3, item: 'summit-pick' } },
   { id: 'ironwake', name: 'Ironwake Shoals', kind: 'legendary', biome: 'coast', x: 54, z: -40, rarity: 3, level: 11, legendary: 'thalassor', requires: { tier: 4 } },
+  // The Forest Floor: one dark node below Gloomshade, reached by rope. Dahlia's arena hides here.
+  { id: 'forestfloor', name: 'Forest Floor', kind: 'wild', biome: 'deepwood', x: -52, z: 17, rarity: 1, level: 6 },
+  // Legendaries of the centre and south (their species are roster placeholders until designed)
+  { id: 'willowheart', name: 'Willowheart Isle', kind: 'legendary', biome: 'lake', x: -18, z: 17, rarity: 3, level: 8, legendary: 'ph-grass-water-legendary', requires: { tier: 2 } },
+  { id: 'dunecrown', name: 'Dunecrown Mesa', kind: 'legendary', biome: 'desert', x: 6, z: 36, rarity: 3, level: 9, legendary: 'ph-electric-rock-legendary', requires: { tier: 3 } },
+  { id: 'boglight', name: 'Boglight Hollow', kind: 'legendary', biome: 'swamp', x: 50, z: 32, rarity: 3, level: 10, legendary: 'ph-water-charm-legendary', requires: { tier: 3 } },
+  { id: 'calderaheart', name: 'Caldera Heart', kind: 'legendary', biome: 'volcanic', x: 16, z: 80, rarity: 3, level: 11, legendary: 'ph-fire-steel-legendary', requires: { tier: 4 } },
 ];
 
-type Leg = [Biome, string, number?]; // biome, name, level
+/**
+ * The map's size: every hub coordinate, route bend and the Cloud Island are multiplied by this, and
+ * the terrain (render/land.ts, render/world.ts) scales with it, so the map keeps its shape at any size.
+ * 1.75 makes room for 3–5 wild nodes on every route between towns and cities.
+ */
+export const MAP_SCALE = 1.75;
+for (const h of hubs) { h.x = +(h.x * MAP_SCALE).toFixed(2); h.z = +(h.z * MAP_SCALE).toFixed(2); }
+
+/**
+ * A wild node on a route: biome, name, level, and `true` for nodes added when the map grew. Wild ids
+ * stay stable for saves: the original nodes are w1, w2 … in route order, the added ones n1, n2 … in
+ * route order. Add any future node with the `true` flag, at the END of the routes list (or the end of
+ * a route's legs), so no existing id shifts.
+ */
+type Leg = [Biome, string, number?, boolean?];
+const added = (b: Biome, name: string, level: number): Leg => [b, name, level, true];
 
 /** A route between two hubs; intermediate wild nodes are laid out along the line with a gentle wiggle. */
 const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; rarity?: number; bend?: number }[] = [
-  { a: 'aurora', b: 'mistfall', legs: [['tundra', 'Frostbite Flats', 3], ['mountain', 'Glacier Stair', 3]], bend: 3 },
-  { a: 'mistfall', b: 'hollow', legs: [['grove', 'Fogbank Path', 2], ['forest', 'Fernway', 2]], req: { item: 'fog-lantern', movement: 'wayfind' }, bend: -3 },
-  { a: 'hollow', b: 'lumber', legs: [['forest', 'Mossy Hollow', 2], ['grove', 'Rainshadow Glen', 3]], bend: 3 },
-  { a: 'lumber', b: 'gloom', legs: [['forest', 'Shadeway', 3], ['forest', 'Fallen Giant', 4]], bend: -2 },
-  { a: 'gloom', b: 'canyon', legs: [['meadow', 'Sunbaked Meadow', 3], ['canyon', 'Redrock Pass', 4]], bend: 3 },
-  { a: 'canyon', b: 'dustmere', legs: [['canyon', 'Mesa Rim', 4], ['desert', 'Sagebrush Flat', 3]], bend: -3 },
-  { a: 'dustmere', b: 'stadium', legs: [['road', 'Circuit Road', 2]] },
-  { a: 'mistfall', b: 'thunder', legs: [['river', 'Snowmelt River', 2], ['mountain', 'Pine Ridge', 2]], bend: 3 },
-  { a: 'thunder', b: 'stadium', legs: [['meadow', 'Bison Meadow', 1]] },
-  { a: 'lumber', b: 'stadium', legs: [['road', 'Crosswind Road', 2], ['lake', 'Willow Lake', 2]], bend: 3 },
-  { a: 'thunder', b: 'ridgeway', legs: [['badlands', 'Static Badlands', 3], ['badlands', 'Sheer Buttes', 4]], bend: -3 },
-  { a: 'ridgeway', b: 'iron', legs: [['road', 'Old Mine Road', 4], ['mountain', 'Ore Cliffs', 5]], bend: 3 },
-  { a: 'iron', b: 'saltmarsh', legs: [['coast', 'Pebble Beach', 5], ['coast', 'Lighthouse Point', 5]], bend: -3 },
-  { a: 'saltmarsh', b: 'mangrove', legs: [['river', 'Sawgrass River', 5], ['swamp', 'Heron Slough', 5]], bend: 2 },
-  { a: 'stadium', b: 'mangrove', legs: [['road', 'Cypress Road', 3], ['lake', 'Lily Lake', 4], ['swamp', 'Gator Slough', 5]], bend: -3 },
-  { a: 'ridgeway', b: 'stadium', legs: [['road', 'Stormchaser Road', 3]], bend: 2 },
+  { a: 'aurora', b: 'mistfall', legs: [['tundra', 'Frostbite Flats', 3], added('tundra', 'Rimeglass Shelf', 3), ['mountain', 'Glacier Stair', 3]], bend: 3 },
+  { a: 'mistfall', b: 'hollow', legs: [added('mountain', 'Misty Switchback', 2), ['grove', 'Fogbank Path', 2], ['forest', 'Fernway', 2], added('grove', 'Lantern Glade', 2)], req: { item: 'fog-lantern', movement: 'wayfind' }, bend: -3 },
+  { a: 'hollow', b: 'lumber', legs: [added('grove', 'Dewdrop Dell', 2), ['forest', 'Mossy Hollow', 2], ['grove', 'Rainshadow Glen', 3], added('forest', 'Bracken Trail', 3)], bend: 3 },
+  { a: 'lumber', b: 'gloom', legs: [['forest', 'Shadeway', 3], added('forest', 'Hollow Log Crossing', 3), ['forest', 'Fallen Giant', 4]], bend: -2 },
+  { a: 'gloom', b: 'canyon', legs: [added('forest', 'Fernlight Edge', 3), ['meadow', 'Sunbaked Meadow', 3], added('meadow', 'Thistle Rise', 3), added('canyon', 'Ochre Steps', 4), ['canyon', 'Redrock Pass', 4]], bend: 3 },
+  { a: 'canyon', b: 'dustmere', legs: [['canyon', 'Mesa Rim', 4], added('canyon', 'Hoodoo Row', 4), ['desert', 'Sagebrush Flat', 3], added('desert', 'Tumbleweed Hollow', 3)], bend: -3 },
+  { a: 'dustmere', b: 'stadium', legs: [added('desert', 'Caravan Rest', 2), ['road', 'Circuit Road', 2], added('road', 'Banner Mile', 2)] },
+  { a: 'mistfall', b: 'thunder', legs: [added('mountain', 'Frostmelt Falls', 2), ['river', 'Snowmelt River', 2], added('river', 'Otter Bend', 2), ['mountain', 'Pine Ridge', 2]], bend: 3 },
+  { a: 'thunder', b: 'stadium', legs: [added('badlands', 'Rumble Flats', 1), ['meadow', 'Bison Meadow', 1], added('meadow', 'Tallgrass Run', 1), added('road', 'Arena Approach', 2)] },
+  { a: 'lumber', b: 'stadium', legs: [added('forest', 'Sawmill Track', 2), ['road', 'Crosswind Road', 2], added('meadow', 'Windmill Green', 2), ['lake', 'Willow Lake', 2], added('lake', 'Reedbank', 2)], bend: 3 },
+  { a: 'thunder', b: 'ridgeway', legs: [['badlands', 'Static Badlands', 3], added('badlands', 'Fulgurite Field', 3), ['badlands', 'Sheer Buttes', 4], added('mountain', 'Ridge Foothills', 4)], bend: -3 },
+  { a: 'ridgeway', b: 'iron', legs: [['road', 'Old Mine Road', 4], added('mountain', 'Slag Heaps', 4), ['mountain', 'Ore Cliffs', 5], added('coast', 'Rustwater Cove', 5)], bend: 3 },
+  { a: 'iron', b: 'saltmarsh', legs: [added('coast', 'Anchor Rocks', 5), ['coast', 'Pebble Beach', 5], added('coast', 'Kelp Shallows', 5), ['coast', 'Lighthouse Point', 5], added('coast', 'Driftwood Spit', 5)], bend: -3 },
+  { a: 'saltmarsh', b: 'mangrove', legs: [['river', 'Sawgrass River', 5], added('river', 'Egret Shallows', 5), ['swamp', 'Heron Slough', 5], added('swamp', 'Cypress Knees', 5)], bend: 2 },
+  { a: 'stadium', b: 'mangrove', legs: [added('road', 'Lantern Road', 3), ['road', 'Cypress Road', 3], ['lake', 'Lily Lake', 4], added('lake', 'Frog Chorus Pond', 4), ['swamp', 'Gator Slough', 5]], bend: -3 },
+  { a: 'ridgeway', b: 'stadium', legs: [added('mountain', 'Ridgeback Trail', 3), added('road', 'Thunderhead Pass', 3), ['road', 'Stormchaser Road', 3], added('meadow', 'Pennant Fields', 3), added('road', 'Grand Approach', 3)], bend: 2 },
+  // the two Legendary approaches stay short: they're climbs, not journeys between towns
   { a: 'aurora', b: 'sunspire', legs: [['mountain', 'Whiteout Col', 6]], bend: -2 },
   { a: 'iron', b: 'ironwake', legs: [], req: { movement: 'sail' } },
   // Kilauea island: Amber's Fire Pit and its wilds (reached by ferry from Mangrove Port or Kilauea Forge)
-  { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Steam Vents', 6]], bend: -3 },
-  { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Lava Tubes', 7], ['coast', 'Obsidian Shore', 6]], bend: 6 },
+  { a: 'firepit', b: 'blackSand', legs: [added('volcanic', 'Cinder Cone', 6), added('volcanic', 'Ember Flue', 6), ['volcanic', 'Steam Vents', 6]], bend: -1.5 },
+  { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Lava Tubes', 7], added('volcanic', 'Magma Chamber', 7), ['coast', 'Obsidian Shore', 6], added('coast', 'Sulfur Springs', 6)], bend: 6 },
   // The endless canyon: a high-rarity stair down to the town of Shifting Depths (a dead end)
-  { a: 'canyon', b: 'depths', legs: [['canyon', 'Sinkhole Stair', 6]], rarity: 1, bend: 3 },
-  // Kilauea Forge on the southwest volcanic coast (keep these last: new wild ids are appended)
-  { a: 'canyon', b: 'kilauea', legs: [['desert', 'Cinder Barrens', 3], ['volcanic', 'Ashfall Ridge', 4]], bend: -3 },
-  { a: 'gloom', b: 'kilauea', legs: [['meadow', 'Scorched Prairie', 3], ['desert', 'Glasswind Dunes', 3], ['volcanic', 'Smoldering Flats', 4]], bend: 8 },
+  { a: 'canyon', b: 'depths', legs: [added('canyon', 'Redrock Descent', 5), ['canyon', 'Sinkhole Stair', 6], added('canyon', 'Echoing Shaft', 6)], rarity: 1, bend: 3 },
+  // Kilauea Forge on the southwest volcanic coast
+  { a: 'canyon', b: 'kilauea', legs: [['desert', 'Cinder Barrens', 3], added('desert', 'Ashen Wash', 4), ['volcanic', 'Ashfall Ridge', 4], added('volcanic', 'Forge Road', 4)], bend: -3 },
+  { a: 'gloom', b: 'kilauea', legs: [['meadow', 'Scorched Prairie', 3], added('meadow', 'Wildfire Scar', 3), ['desert', 'Glasswind Dunes', 3], added('desert', 'Mirage Flats', 4), ['volcanic', 'Smoldering Flats', 4]], bend: 8 },
   // Quillhaven and its Research Facility, between Ridgeway and Saltmarsh Landing
-  { a: 'ridgeway', b: 'quillhaven', legs: [['meadow', 'Survey Meadow', 4]], bend: 2 },
-  { a: 'quillhaven', b: 'saltmarsh', legs: [['river', 'Tidewater Ford', 5]], bend: -2 },
+  { a: 'ridgeway', b: 'quillhaven', legs: [added('meadow', 'Benchmark Hill', 4), ['meadow', 'Survey Meadow', 4], added('meadow', 'Clover Rise', 4)], bend: 2 },
+  { a: 'quillhaven', b: 'saltmarsh', legs: [added('meadow', 'Specimen Fields', 4), ['river', 'Tidewater Ford', 5], added('coast', 'Saltgrass Flats', 5)], bend: -2 },
   // Valor Ridge and its Battle School, in the hills between Mistfall and Thunder Spike
-  { a: 'mistfall', b: 'valor', legs: [['mountain', 'Sparring Slopes', 3]], bend: -2 },
-  { a: 'valor', b: 'thunder', legs: [['badlands', 'Drill Grounds', 3]], bend: 2 },
+  { a: 'mistfall', b: 'valor', legs: [added('mountain', 'Banner Cliffs', 3), ['mountain', 'Sparring Slopes', 3], added('mountain', 'Recruit Rise', 3)], bend: -2 },
+  { a: 'valor', b: 'thunder', legs: [['badlands', 'Drill Grounds', 3], added('badlands', 'March Road', 3), added('badlands', 'Static Steppe', 3)], bend: 2 },
+  // Legendary branches in the centre and south (an end can be a node's name, e.g. a wild node on a route above)
+  { a: 'Willow Lake', b: 'willowheart', legs: [added('lake', 'Reedmist Shallows', 7)], bend: 2 },
+  { a: 'dustmere', b: 'dunecrown', legs: [added('desert', 'Singing Sands', 8)], bend: -2 },
+  { a: 'mangrove', b: 'boglight', legs: [added('swamp', 'Wisplight Bog', 9)], bend: 2 },
+  { a: 'Magma Chamber', b: 'calderaheart', legs: [added('volcanic', 'Ember Rift', 10)], bend: -1 },
 ];
 
 const nodes: MapNode[] = [...hubs];
 const edges: MapEdge[] = [];
-const byId = (id: string) => nodes.find((n) => n.id === id)!;
+/** A node by id, or by name (so a route can branch off a wild node defined by an earlier route). */
+const byId = (id: string) => nodes.find((n) => n.id === id) ?? nodes.find((n) => n.name === id)!;
 
-let wildCount = 0;
+let wildCount = 0, addedCount = 0;
 for (const r of routes) {
   const A = byId(r.a), B = byId(r.b);
   const dx = B.x - A.x, dz = B.z - A.z;
@@ -83,8 +113,8 @@ for (const r of routes) {
   let prev = A.id;
   r.legs.forEach((leg, i) => {
     const t = (i + 1) / (r.legs.length + 1);
-    const bend = (r.bend ?? 0) * Math.sin(Math.PI * t);
-    const id = `w${++wildCount}`;
+    const bend = (r.bend ?? 0) * MAP_SCALE * Math.sin(Math.PI * t);
+    const id = leg[3] ? `n${++addedCount}` : `w${++wildCount}`;
     nodes.push({
       id, name: leg[1], kind: 'wild', biome: leg[0],
       x: +(A.x + dx * t + px * bend).toFixed(2), z: +(A.z + dz * t + pz * bend).toFixed(2),
@@ -105,7 +135,7 @@ export const CLOUD_EYE = 'cloudeye';
 export const CLOUD_NODES = [...CLOUD_RING, CLOUD_EYE];
 export const isCloudNode = (id: string) => CLOUD_NODES.includes(id);
 {
-  const cx = -58, cz = -66, r = 7.5;
+  const cx = -58 * MAP_SCALE, cz = -66 * MAP_SCALE, r = 10;
   const names = ['Gatecloud Landing', 'Nimbus Steps', 'Starfall Drift', 'Moonbow Arch', 'Thunderhead Rise', 'Stillwind Hollow'];
   const start = Math.atan2(26, 28); // the gate faces Aurora Peak
   CLOUD_RING.forEach((id, i) => {
@@ -117,6 +147,10 @@ export const isCloudNode = (id: string) => CLOUD_NODES.includes(id);
   for (const id of [CLOUD_RING[0], CLOUD_RING[2], CLOUD_RING[4]]) edges.push({ a: id, b: CLOUD_EYE });
   edges.push({ a: 'aurora', b: CLOUD_RING[0], via: 'portal' });
 }
+
+// The rope down to the Forest Floor (needs a Canopy Rope)
+export const FOREST_FLOOR = 'forestfloor';
+edges.push({ a: 'gloom', b: FOREST_FLOOR, via: 'rope', requires: { item: 'canopy-rope' } });
 
 // The ferries to Kilauea island
 edges.push({ a: 'mangrove', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
@@ -156,6 +190,7 @@ export const CITIES: Record<string, City> = {
     hotpot: { name: 'Volcanic Shoyu Nabe', buff: { power: 1 }, text: '+1 Power in your next battle.' },
     blurb: 'A forge town on the black-rock coast, warmed by lava channels. Offshore, Kilauea island smokes, and Amber\'s Fire Pit waits there. Ferries leave from the forge docks.' },
   gloom: { nodeId: 'gloom', name: 'Gloomshade', type: 'grass', park: 'Redwood', arbiter: 'Dahlia', accolade: 'Lily Merit',
+    arenaNode: 'forestfloor',
     arena: { name: 'Forest Floor Arena', trick: 'darkness', text: 'In the lightless forest floor, challengers roll 1 lower to hit.' },
     hotpot: { name: 'Canopy Herb Nabe', buff: { vigor: 1 }, text: '+1 Vigor in your next battle.' },
     blurb: 'Boardwalks and ring platforms built into towering redwoods, high above a bottomless dark.' },
@@ -209,4 +244,5 @@ export const BIOME_TYPES: Record<Biome, ElementType[]> = {
   desert: ['fire', 'electric', 'rock'], badlands: ['electric', 'rock'], coast: ['water', 'steel'],
   volcanic: ['fire', 'rock'], canyon: ['rock', 'fire'],
   cloud: ['astral', 'electric', 'water', 'charm'],
+  deepwood: ['grass', 'charm', 'rock'],
 };

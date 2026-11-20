@@ -11,11 +11,15 @@ import { SPECIES_BY_ID } from '../data/species';
 import { buildCreature, type CreatureRig } from './creatureModel';
 
 import { hash, fbm, smooth, landField, SEGS, segDist } from './land';
+import { MAP_SCALE as S } from '../data/map';
 
 const ELEV: Record<Biome, number> = {
   mountain: 3.2, tundra: 1.6, canyon: 2.2, badlands: 1.3, volcanic: 2.2, forest: 0.9, grove: 0.8, meadow: 0.5,
-  road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25, cloud: 3.4,
+  road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25, cloud: 3.4, deepwood: 0.3,
 };
+
+/** Cloud Island's paths and node tiles: midnight plum, for contrast with the cotton-candy ground. */
+const CLOUD_PATH = '#2a0f3a';
 
 /** How much a point belongs to Cloud Island (0–1), from the nearby nodes' biomes. */
 function cloudWeight(x: number, z: number) {
@@ -199,7 +203,7 @@ export class WorldView implements SceneView {
     const sz = isMobile ? 1024 : 2048;
     this.sun.shadow.mapSize.set(sz, sz);
     const sc = this.sun.shadow.camera;
-    sc.left = -95; sc.right = 95; sc.top = 95; sc.bottom = -95; sc.near = 1; sc.far = 220;
+    sc.left = -95 * S; sc.right = 95 * S; sc.top = 95 * S; sc.bottom = -95 * S; sc.near = 1; sc.far = 220 * S;
     this.sun.shadow.bias = -0.0008;
     this.sun.shadow.normalBias = 0.4;
     this.scene.add(this.sun, this.sun.target);
@@ -218,10 +222,12 @@ export class WorldView implements SceneView {
   }
 
   private buildTerrain() {
-    const W = 180, D = 160, segX = isMobile ? 110 : 150, segZ = isMobile ? 98 : 134;
+    // the terrain covers the whole (scaled) map; detail grows a little less than the map so it stays fast
+    // covers x −90…90 and z −76…100 (× S): the south reaches past Kilauea island's Caldera Heart
+    const W = 180 * S, D = 176 * S, segX = Math.round((isMobile ? 110 : 150) * S * 0.85), segZ = Math.round((isMobile ? 98 : 134) * S * 0.85);
     let geo: THREE.BufferGeometry = new THREE.PlaneGeometry(W, D, segX, segZ);
     geo.rotateX(-Math.PI / 2);
-    geo.translate(0, 0, 4);
+    geo.translate(0, 0, 12 * S);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(pos.getX(i), pos.getZ(i)));
     geo = geo.toNonIndexed();
@@ -294,8 +300,8 @@ export class WorldView implements SceneView {
         uniform float uTime; uniform vec3 uDeep; uniform vec3 uShallow; varying vec3 vW; varying float vWave;
         #include <fog_pars_fragment>
         void main(){
-          float r = length(vW.xz - vec2(0.0, 5.0));
-          float k = smoothstep(40.0, 110.0, r);
+          float r = length(vW.xz - vec2(0.0, 5.0 * ${S.toFixed(3)}));
+          float k = smoothstep(40.0 * ${S.toFixed(3)}, 110.0 * ${S.toFixed(3)}, r);
           vec3 c = mix(uShallow, uDeep, 0.55 + k*0.45);
           float n1 = sin(vW.x*0.9+uTime*1.1+sin(vW.z*0.7)*2.0)*sin(vW.z*1.1-uTime*0.8+sin(vW.x*0.5)*2.0);
           float sparkle = smoothstep(0.82, 1.0, n1) * 0.22;
@@ -320,14 +326,15 @@ export class WorldView implements SceneView {
     const pines: Spot[] = [], rounds: Spot[] = [], rocks: Spot[] = [], cacti: Spot[] = [], trunks: Spot[] = [], puffs: Spot[] = [], spires: Spot[] = [];
     const density: Partial<Record<Biome, [number, 'pine' | 'round' | 'rock' | 'cactus' | 'puff' | 'spire'][]>> = {
       cloud: [[0.3, 'puff'], [0.07, 'spire']],
+      deepwood: [[0.7, 'pine'], [0.15, 'round']],
       forest: [[0.62, 'pine'], [0.15, 'round']], grove: [[0.5, 'round'], [0.12, 'pine']], swamp: [[0.35, 'round']],
       meadow: [[0.1, 'round']], mountain: [[0.18, 'pine'], [0.22, 'rock']], tundra: [[0.12, 'pine'], [0.06, 'rock']],
       desert: [[0.1, 'cactus'], [0.06, 'rock']], badlands: [[0.18, 'rock']], canyon: [[0.25, 'rock']], coast: [[0.06, 'rock']],
       volcanic: [[0.16, 'rock'], [0.05, 'round']], lake: [[0.2, 'round']], river: [[0.25, 'round']], road: [[0.08, 'round']],
     };
     const step = isMobile ? 1.9 : 1.55;
-    for (let x = -88; x < 88; x += step) {
-      for (let z = -74; z < 84; z += step) {
+    for (let x = -88 * S; x < 88 * S; x += step) {
+      for (let z = -74 * S; z < 98 * S; z += step) {
         const jx = x + (hash(x, z) - 0.5) * step, jz = z + (hash(z, x) - 0.5) * step;
         const { h, land } = rawHeight(jx, jz);
         if (land < 0.85 || h < 0.5) continue;
@@ -344,7 +351,7 @@ export class WorldView implements SceneView {
             const y = heightAt(jx, jz);
             const s = 0.75 + hash(jx, jz * 9) * 0.6;
             const spot: Spot = { x: jx, z: jz, y, s, r: hash(jz, jx) * 6.28, c: new THREE.Color() };
-            if (kind === 'pine') { spot.c.set(n.biome === 'tundra' ? '#5c7f6e' : '#2f6b3a').offsetHSL(0, 0, (hash(jx, 1) - 0.5) * 0.08); pines.push(spot); trunks.push({ ...spot, c: new THREE.Color('#6b4a2f') }); }
+            if (kind === 'pine') { spot.c.set(n.biome === 'tundra' ? '#5c7f6e' : n.biome === 'deepwood' ? '#15291b' : '#2f6b3a').offsetHSL(0, 0, (hash(jx, 1) - 0.5) * 0.08); pines.push(spot); trunks.push({ ...spot, c: new THREE.Color('#6b4a2f') }); }
             if (kind === 'round') { spot.c.set(n.biome === 'grove' ? '#7fb069' : n.biome === 'swamp' ? '#4f7a3a' : '#5d9b3f').offsetHSL((hash(jx, 2) - 0.5) * 0.04, 0, (hash(jx, 3) - 0.5) * 0.1); rounds.push(spot); trunks.push({ ...spot, c: new THREE.Color('#6b4a2f') }); }
             if (kind === 'rock') { spot.c.set(n.biome === 'canyon' || n.biome === 'badlands' ? '#b8693a' : n.biome === 'volcanic' ? '#3a3230' : '#9a958c').offsetHSL(0, 0, (hash(jx, 4) - 0.5) * 0.1); rocks.push(spot); }
             if (kind === 'cactus') { spot.c.set('#4f8a3c'); cacti.push(spot); }
@@ -378,6 +385,7 @@ export class WorldView implements SceneView {
 
   private buildPaths() {
     const stones: THREE.Vector3[] = [];
+    const cloudStones: THREE.Vector3[] = [];
     const sea: THREE.Vector3[] = [];
     for (const e of MAP_EDGES) {
       const a = NODE_BY_ID[e.a], b = NODE_BY_ID[e.b];
@@ -391,7 +399,7 @@ export class WorldView implements SceneView {
         const clearA = a.kind === 'city' ? 3.6 : 1.6, clearB = b.kind === 'city' ? 3.6 : 1.6;
         if (da < clearA || db < clearB) continue;
         if (isSea) sea.push(new THREE.Vector3(x, 0.12, z));
-        else stones.push(new THREE.Vector3(x, heightAt(x, z) + 0.06, z));
+        else (a.biome === 'cloud' || b.biome === 'cloud' ? cloudStones : stones).push(new THREE.Vector3(x, heightAt(x, z) + 0.06, z));
       }
     }
     const geo = new THREE.CylinderGeometry(0.28, 0.32, 0.12, 7);
@@ -400,6 +408,11 @@ export class WorldView implements SceneView {
     stones.forEach((p, i) => { mtx.makeRotationY(hash(p.x, p.z) * 3); mtx.setPosition(p); m.setMatrixAt(i, mtx); });
     m.receiveShadow = true;
     this.scene.add(m);
+    // Cloud Island paths: midnight plum stones, a little larger, so they read against the pastel ground
+    const cm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.34, 0.38, 0.14, 7), new THREE.MeshStandardMaterial({ color: CLOUD_PATH, roughness: 0.6, flatShading: true }), cloudStones.length);
+    cloudStones.forEach((p, i) => { mtx.makeRotationY(hash(p.x, p.z) * 3); mtx.setPosition(p); cm.setMatrixAt(i, mtx); });
+    cm.receiveShadow = true;
+    this.scene.add(cm);
     const sm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 10), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.85 }), sea.length);
     sea.forEach((p, i) => { mtx.identity(); mtx.setPosition(p); sm.setMatrixAt(i, mtx); });
     this.scene.add(sm);
@@ -419,9 +432,11 @@ export class WorldView implements SceneView {
       const biomeCol = BIOME_INFO[n.biome].color;
       let ringR = 1;
       if (n.kind === 'wild') {
-        const tile = new THREE.Mesh(hex, new THREE.MeshStandardMaterial({ color: biomeCol, flatShading: true, roughness: 0.6 }));
+        // Cloud Island: midnight-plum tiles with a white rim, so they stand out from the pastel ground
+        const cloud = n.biome === 'cloud';
+        const tile = new THREE.Mesh(hex, new THREE.MeshStandardMaterial({ color: cloud ? CLOUD_PATH : biomeCol, flatShading: true, roughness: 0.6 }));
         tile.position.y = 0.2; tile.castShadow = true; tile.receiveShadow = true;
-        const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.5, 0.18, 6), new THREE.MeshStandardMaterial({ color: '#fff8e8', flatShading: true }));
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(cloud ? 1.55 : 1.42, cloud ? 1.65 : 1.5, 0.18, 6), new THREE.MeshStandardMaterial({ color: cloud ? '#ffffff' : '#fff8e8', flatShading: true }));
         rim.position.y = 0.06; rim.receiveShadow = true;
         g.add(rim, tile);
         const em = emojiSprite(BIOME_INFO[n.biome].icon, '#2b2a33');
@@ -576,7 +591,7 @@ export class WorldView implements SceneView {
   }
 
   private buildAurora() {
-    const geo = new THREE.PlaneGeometry(160, 40, 80, 1);
+    const geo = new THREE.PlaneGeometry(160 * S, 40, 80, 1);
     this.auroraMat = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
       uniforms: { uTime: { value: 0 }, uStrength: { value: 0.25 } },
@@ -584,7 +599,7 @@ export class WorldView implements SceneView {
       fragmentShader: 'uniform float uTime; uniform float uStrength; varying vec2 vUv; void main(){ float band = sin(vUv.x*24.0+uTime*0.8)*0.5+0.5; float a = smoothstep(0.0,0.5,vUv.y)*smoothstep(1.0,0.4,vUv.y); vec3 c = mix(vec3(0.15,1.0,0.55), vec3(0.6,0.25,1.0), vUv.y); gl_FragColor = vec4(c, a*(0.4+band*0.6)*uStrength); }',
     });
     this.aurora = new THREE.Mesh(geo, this.auroraMat);
-    this.aurora.position.set(-10, 32, -95);
+    this.aurora.position.set(-10 * S, 32, -95 * S);
     this.scene.add(this.aurora);
   }
 
@@ -601,7 +616,7 @@ export class WorldView implements SceneView {
         m.castShadow = true;
         c.add(m);
       }
-      c.position.set(-90 + i * 22, 20 + hash(i, 9) * 6, -60 + hash(i, 5) * 120);
+      c.position.set((-90 + i * 22) * S, 20 + hash(i, 9) * 6, (-60 + hash(i, 5) * 120) * S);
       this.clouds.push(c);
       this.scene.add(c);
     }
@@ -774,7 +789,7 @@ export class WorldView implements SceneView {
 
   setTitleMode(on: boolean) {
     this.title = on;
-    if (on) { this.goal.set(-4, 0, 6); this.goalDist = 92; }
+    if (on) { this.goal.set(-4 * S, 0, 6 * S); this.goalDist = 92 * 1.4; }
     else this.goalDist = this.defaultDist();
   }
 
@@ -816,7 +831,7 @@ export class WorldView implements SceneView {
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
-        this.goalDist = THREE.MathUtils.clamp(distStart * (pinchStart / Math.max(1, d)), 16, 95);
+        this.goalDist = THREE.MathUtils.clamp(distStart * (pinchStart / Math.max(1, d)), 16, 120);
       }
       this.clampGoal();
     });
@@ -830,13 +845,13 @@ export class WorldView implements SceneView {
     canvas.addEventListener('wheel', (e) => {
       if (!this.interactive || this.title) return;
       e.preventDefault();
-      this.goalDist = THREE.MathUtils.clamp(this.goalDist * (1 + Math.sign(e.deltaY) * 0.1), 16, 95);
+      this.goalDist = THREE.MathUtils.clamp(this.goalDist * (1 + Math.sign(e.deltaY) * 0.1), 16, 120);
     }, { passive: false });
   }
 
   private clampGoal() {
-    this.goal.x = THREE.MathUtils.clamp(this.goal.x, -70, 70);
-    this.goal.z = THREE.MathUtils.clamp(this.goal.z, -72, 70); // north edge reaches Cloud Island
+    this.goal.x = THREE.MathUtils.clamp(this.goal.x, -70 * S, 70 * S);
+    this.goal.z = THREE.MathUtils.clamp(this.goal.z, -72 * S, 82 * S); // north edge reaches Cloud Island
   }
 
   private tap(x: number, y: number, ray: THREE.Raycaster, ndc: (x: number, y: number) => THREE.Vector2) {
@@ -867,7 +882,7 @@ export class WorldView implements SceneView {
     const pulse = 1 + Math.sin(t * 5) * 0.06;
     for (const [, r] of this.rings) if (r.visible) r.scale.setScalar((r.userData.base ??= r.scale.x) * pulse);
     const windX = this.fx === 'wind' ? 6 : 1.2;
-    for (const c of this.clouds) { c.position.x += dt * windX; if (c.position.x > 110) c.position.x = -110; }
+    for (const c of this.clouds) { c.position.x += dt * windX; if (c.position.x > 110 * S) c.position.x = -110 * S; }
 
     // pawn hop
     if (this.hopping) {

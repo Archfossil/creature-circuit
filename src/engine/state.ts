@@ -3,7 +3,7 @@ import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import { createCreature } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
-import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS } from '../data/map';
+import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR } from '../data/map';
 import { pick } from './dice';
 
 export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'haggler' | 'drill' | 'caretaker' | 'pathfinder';
@@ -60,6 +60,8 @@ export interface GameState {
     cloudDir?: 1 | -1;
     /** A full lap of Cloud Island is done: Salem will battle this trainer from now on. */
     salemWorthy?: boolean;
+    /** Forest Floor: Dahlia's Trail results found on this visit (reset on leaving). */
+    dahliaTrail?: number;
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };
@@ -125,6 +127,11 @@ export const GAUNTLET_CITY = 'iron';
  * resets an unfinished Gauntlet and leaving Cloud Island ends a lap in progress.
  */
 export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } = {}) {
+  // leaving the Forest Floor, by choice or by defeat, loses Dahlia's Trail
+  if (s.location === FOREST_FLOOR && id !== FOREST_FLOOR && s.flags.dahliaTrail) {
+    log(s, `Left the Forest Floor: Dahlia's Trail is lost (${s.flags.dahliaTrail} found).`);
+    s.flags.dahliaTrail = 0;
+  }
   if (isCloudNode(s.location) && !isCloudNode(id)) {
     // leaving Cloud Island ends any lap in progress
     if (s.flags.cloudLap) { s.flags.cloudLap = 0; s.flags.cloudDir = undefined; }
