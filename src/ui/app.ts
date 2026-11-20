@@ -751,7 +751,7 @@ export class App {
       const se = season(s);
       if (s.turn > 1 && seasonForTurn(s.turn - 1) !== se) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in Margos.`);
       const w = WEATHER[s.weather];
-      await rollDice(`Weather for Turn ${s.turn} · everyone`, [{ sides: 6, value: roll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 900);
+      await rollDice(`Weather for Turn ${s.turn} · everyone`, [{ sides: 6, value: roll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 900, { read: true });
     }
     if (s.turn > 1) toast(timeOfDay(s.turn) === 'night' ? '🌙 Night falls: nocturnal creatures are out.' : '☀️ Dawn breaks: diurnal creatures are out.', 'info', 2600);
     if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
@@ -1257,24 +1257,26 @@ export class App {
         toast(`Arrived at ${n.name}`, 'info');
         if (n.kind === 'city' || n.kind === 'town') save(s);
       } else if (out.t === 'nothing') {
-        if (out.roll) await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: out.dark ? 'bad' : 'info', label: '1–2 Nothing' }], out.dark ? 'Nothing but the dark. Your team shivers. (−1 Morale)' : 'Nothing but wind and birdsong.', 600);
+        if (out.roll) await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: out.dark ? 'bad' : 'info', label: '1–2 Nothing' }], out.dark ? 'Nothing but the dark. Your team shivers. (−1 Morale)' : 'Nothing but wind and birdsong.', 600, { read: true });
         if (out.refund) { toast(`🌲 Ranger’s instinct: +1 Initiative back (${W.rangerRefundsLeft(s)} more this turn).`, 'good', 2600); this.renderHud(); }
         if (out.dark) this.renderHud();
       } else if (out.t === 'trail') {
-        await rollDice('Explore', [{ sides: out.die, value: out.roll, tone: 'good', label: '7–8 Dahlia’s Trail' }], out.found ? 'The trail ends at a ring of lanterns: Dahlia’s arena!' : `A sign of Dahlia’s Trail: ${out.steps}/${out.need}.`, 700);
+        await rollDice('Explore', [{ sides: out.die, value: out.roll, tone: 'good', label: '7–8 Dahlia’s Trail' }], out.found ? 'The trail ends at a ring of lanterns: Dahlia’s arena!' : `A sign of Dahlia’s Trail: ${out.steps}/${out.need}.`, 700, { read: true });
         sfx.good();
         if (out.found) { toast('🏮 You found Dahlia’s arena! Challenge her from here (🏟️ Dahlia), before you leave the Forest Floor.', 'good', 5000); this.renderHud(); }
         else toast(`🌲 Dahlia’s Trail: ${out.steps}/${out.need}. Keep exploring.`, 'info', 2600);
       } else if (out.t === 'item') {
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }, { sides: 6, value: out.itemRoll, label: 'Find' }], s.location === FOREST_FLOOR ? 'Something exotic glints in the dark!' : 'You discovered something!', 500);
+        // two beats: the explore roll reveals that something's here, then the find roll reveals what
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], s.location === FOREST_FLOOR ? 'Something exotic glints in the dark!' : 'You discovered something!', 700, { read: true });
         const names = out.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`);
         if (out.coins) names.push(`🪙 ${out.coins} coins`);
+        await rollDice('Find', [{ sides: 6, value: out.itemRoll, tone: 'good', label: 'Find d6' }], `Found ${names.join(', ')}!`, 900, { read: true });
         sfx.good();
         toast(`Found ${names.join(', ')}${isCloudNode(s.location) ? ' (held in your Cloud satchel until you escape)' : ''}`, 'good', 3200);
         log(s, `Found ${names.join(', ')} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'itemChoice') {
         // Keen Nose: three finds to choose from
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], 'Your follower’s Keen Nose picks up three scents…', 500);
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], 'Your follower’s Keen Nose picks up three scents…', 500, { read: true });
         const label = (f: W.Find) => [...f.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`), ...(f.coins ? [`🪙 ${f.coins} coins`] : [])].join(' + ');
         const pickIt = await new Promise<W.Find>((resolve) => {
           const close = openSheet('👃 Keen Nose · pick one find', h('div', null,
@@ -1288,13 +1290,13 @@ export class App {
         toast(`Found ${label(got)}${isCloudNode(s.location) ? ' (held in your Cloud satchel until you escape)' : ''}`, 'good', 3200);
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], s.location === FOREST_FLOOR ? 'Something moves in the dark…' : 'Something rustles nearby…', 300);
-        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 700);
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], s.location === FOREST_FLOOR ? 'Something moves in the dark…' : 'Something rustles nearby…', 700, { read: true });
+        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
         this.busy = false;
         await this.runBattle(out.battle, { kind: 'wild', intro: `A wild ${nameOf(out.battle.sides[1].team[0])} appeared!` });
         return;
       } else if (out.t === 'trainer') {
-        await rollDice('Explore', [{ sides: 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], `${out.name} challenges you!`, 500);
+        await rollDice('Explore', [{ sides: 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], `${out.name} challenges you!`, 700, { read: true });
         this.busy = false;
         await this.runBattle(out.battle, { kind: 'trainer', intro: `${out.name} wants to battle!` });
         return;
@@ -1659,7 +1661,7 @@ export class App {
             h('button', { class: 'btn primary', onclick: async () => {
               done = true; close();
               const r = W.attemptRecruit(s, wild, totem, chosen);
-              await rollDice('Offering', r.dice.map((v) => ({ sides: 6, value: v, tone: r.success ? 'good' : 'bad' })), `${r.dice[0]} + ${r.dice[1]} ${fmt(r.mods)} = ${r.total} vs ${r.need}`, 700);
+              await rollDice('Offering', r.dice.map((v) => ({ sides: 6, value: v, tone: r.success ? 'good' : 'bad' })), `${r.dice[0]} + ${r.dice[1]} ${fmt(r.mods)} = ${r.total} vs ${r.need}`, 700, { read: true });
               if (r.success) { toast(`${sp.name} embraced your totem and joined you!`, 'good', 3500); if (s.roster.length >= 3 && !s.roster.includes(wild)) toast('Your active team is full — it rests in its totem (swap it in for free at any city or town).', 'info', 4000); }
               else toast(`${sp.name} refused the offering and slipped away.`, 'bad', 3000);
               resolve();
@@ -1730,7 +1732,7 @@ export class App {
     closeAllSheets();
     save(s); this.renderHud();
     try {
-      await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 700);
+      await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 900, { read: true });
     } finally { this.busy = false; }
     await this.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
   }
@@ -2072,7 +2074,7 @@ export class App {
                 const r = W.pickUpTraining(s, t.creature.uid);
                 if (!r) return;
                 await rollDice(`How was school? · ${r.name}`, [{ sides: 6, value: r.roll, tone: r.mood === 'great' ? 'good' : r.mood === 'rough' ? 'bad' : undefined }],
-                  r.mood === 'great' ? 'Loved it: +2 Morale, +1 Loyalty' : r.mood === 'rough' ? 'Rough time: −2 Morale, −1 Loyalty' : 'Got through it fine', 900);
+                  r.mood === 'great' ? 'Loved it: +2 Morale, +1 Loyalty' : r.mood === 'rough' ? 'Rough time: −2 Morale, −1 Loyalty' : 'Got through it fine', 900, { read: true });
                 save(s); this.renderHud();
                 toast(r.text, r.mood === 'rough' ? 'info' : 'good', 6000);
                 render();
@@ -2368,7 +2370,7 @@ export class App {
     for (const n of r.warned) toast(`⚠️ ${n} is unhappy and might leave. Raise its Morale (win battles, let it Follow you, give it treats) before the turn ends again.`, 'bad', 6000);
     for (const ch of r.checks) {
       await rollDice(`Morale check · ${ch.name}`, [{ sides: 10, value: ch.roll, tone: ch.left ? 'bad' : 'good' }],
-        ch.left ? `Rolled ${ch.roll}, above Loyalty ${ch.loyalty}: ${ch.name} leaves.` : `Rolled ${ch.roll}, not above Loyalty ${ch.loyalty}: ${ch.name} stays, but loses 1 Loyalty.`, 900);
+        ch.left ? `Rolled ${ch.roll}, above Loyalty ${ch.loyalty}: ${ch.name} leaves.` : `Rolled ${ch.roll}, not above Loyalty ${ch.loyalty}: ${ch.name} stays, but loses 1 Loyalty.`, 900, { read: true });
     }
     for (const n of r.left) toast(`${n} lost faith in you and returned to the wild…`, 'bad', 4000);
     if (r.ended === 'endgame') { this.busy = false; save(s); this.renderHud(); this.endgameSheet(); return; }
@@ -2383,7 +2385,7 @@ export class App {
     const se = season(s);
     if (r.seasonChanged) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in Margos.`);
     const w = WEATHER[s.weather];
-    await rollDice(`Weather · ${SEASON_INFO[se].label}`, [{ sides: 6, value: r.weatherRoll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 650);
+    await rollDice(`Weather · ${SEASON_INFO[se].label}`, [{ sides: 6, value: r.weatherRoll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 650, { read: true });
     this.busy = false;
     save(s);
     this.renderHud();

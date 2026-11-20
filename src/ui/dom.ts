@@ -98,20 +98,29 @@ export function confirmSheet(title: string, text: string, yes = 'Confirm', no = 
 // ── Dice ──────────────────────────────────────────────────────
 export interface DieSpec { sides: number; value: number; label?: string; tone?: 'good' | 'bad' | 'info'; face?: string }
 
-/** Show a tabletop dice roll overlay. Resolves when the animation ends. */
-export async function rollDice(title: string, dice: DieSpec[], caption?: string, hold = 900): Promise<void> {
+/** How long a result caption stays up so it can be read: a base beat plus time per character, capped. */
+export const readHold = (caption: string | undefined, hold: number) => Math.max(hold, Math.min(3400, 1100 + 32 * (caption?.length ?? 0)));
+
+/** Show a tabletop dice roll overlay. Resolves when the animation ends. The caption (the result) stays
+ *  hidden while the dice tumble and is revealed only once they land.
+ *  `read`: hold long enough to read the caption, and resolve only after the overlay has faded, so a
+ *  follow-up roll starts on a clean screen (used for rolls on the map). */
+export async function rollDice(title: string, dice: DieSpec[], caption?: string, hold = 900, opts: { read?: boolean } = {}): Promise<void> {
+  if (opts.read) hold = readHold(caption, hold);
   mirror.dice?.(title, dice, caption, hold);
   const fast = settings().fastDice || settings().reduceMotion;
   const spin = fast ? 260 : 650;
-  if (fast) hold = Math.round(hold * 0.45);
+  if (fast) hold = opts.read ? Math.max(Math.round(hold * 0.45), Math.round(hold * 0.7)) : Math.round(hold * 0.45);
   sfx.dice();
   const tray = h('div', { class: 'dice-tray' });
-  const wrap = h('div', { class: 'dice-overlay', role: 'status', 'aria-live': 'polite', 'aria-label': `${title}: ${dice.map((d) => d.face ?? d.value).join(', ')}${caption ? '. ' + caption : ''}` }, h('div', { class: 'dice-card' }, h('div', { class: 'dice-title' }, title), tray, caption ? h('div', { class: 'dice-caption' }, caption) : null));
+  const cap = caption ? h('div', { class: 'dice-caption' }, caption) : null;
+  const wrap = h('div', { class: 'dice-overlay', role: 'status', 'aria-live': 'polite', 'aria-label': `${title}: rolling…` }, h('div', { class: 'dice-card' }, h('div', { class: 'dice-title' }, title), tray, cap));
   const els = dice.map((d) => {
     const face = h('div', { class: `die d${d.sides}` }, h('span', null, '?'));
-    const box = h('div', { class: 'die-box' }, face, h('small', null, d.label ?? `d${d.sides}`));
+    const tag = h('small', null, `d${d.sides}`);   // the die's own label (e.g. "3–4 Encounter") waits until it lands
+    const box = h('div', { class: 'die-box' }, face, tag);
     tray.append(box);
-    return { d, face };
+    return { d, face, tag };
   });
   document.body.append(wrap);
   requestAnimationFrame(() => wrap.classList.add('in'));
@@ -119,17 +128,21 @@ export async function rollDice(title: string, dice: DieSpec[], caption?: string,
   await new Promise<void>((res) => {
     const tick = () => {
       const el = performance.now() - t0;
-      for (const { d, face } of els) {
+      for (const { d, face, tag } of els) {
         if (el < spin) { face.firstElementChild!.textContent = String(1 + Math.floor(Math.random() * d.sides)); face.classList.add('rolling'); }
-        else { face.classList.remove('rolling'); face.firstElementChild!.textContent = d.face ?? String(d.value); if (d.tone) face.classList.add(d.tone); }
+        else { face.classList.remove('rolling'); face.firstElementChild!.textContent = d.face ?? String(d.value); if (d.tone) face.classList.add(d.tone); if (d.label) tag.textContent = d.label; }
       }
       if (el < spin) requestAnimationFrame(tick); else { sfx.land(); res(); }
     };
     tick();
   });
+  // the dice have landed: now reveal the result
+  cap?.classList.add('shown');
+  wrap.setAttribute('aria-label', `${title}: ${dice.map((d) => d.face ?? d.value).join(', ')}${caption ? '. ' + caption : ''}`);
   await wait(hold);
   wrap.classList.remove('in');
   setTimeout(() => wrap.remove(), 250);
+  if (opts.read) await wait(280);
 }
 
 export function floatText(x: number, y: number, text: string, cls = '') {
