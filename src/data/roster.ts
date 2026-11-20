@@ -5,14 +5,14 @@
 // generated PLACEHOLDER (id `ph-<type>-<type|mono>-<rarity>-<stage>`, `placeholder: true`) so the
 // game has a full roster to test with. To swap one in: add the real species in species.ts and point
 // its slot in `HANDMADE_SLOTS` / `HANDMADE_LEGENDARIES` below at it; the placeholder disappears.
-import type { Biome, BodyShape, CreatureLook, ElementType, Movement, Rarity, StatKey } from './schema';
+import type { Biome, BodyShape, CreatureLook, ElementType, Rarity, StatKey } from './schema';
 import { TYPES, TYPE_COLOR, TYPE_LABEL } from './types';
 import { BIOME_TYPES } from './map';
 
 export interface Def {
   id: string; name: string; types: ElementType[]; rarity: Rarity; stage: 1 | 2 | 3; next?: string;
   bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest'];
-  biomes: Biome[]; ability: string; affinity: string; sig?: string; move?: Movement; dex: string;
+  biomes: Biome[]; ability: string; affinity: string; sig?: string; dex: string;
   placeholder?: boolean;
 }
 
@@ -78,7 +78,6 @@ const SHAPES: Record<ElementType, [BodyShape, BodyShape, BodyShape, BodyShape]> 
 const CREST: Record<ElementType, NonNullable<CreatureLook['crest']>> = {
   astral: 'halo', charm: 'ears', electric: 'antenna', fire: 'flame', grass: 'leaf', rock: 'crystal', steel: 'plates', water: 'fin',
 };
-const MOVE: Partial<Record<ElementType, Movement>> = { astral: 'fly', charm: 'wayfind', electric: 'fly', grass: 'wayfind', rock: 'tunnel', water: 'sail' };
 const SIG: Record<ElementType, string> = {
   astral: 'sig-borealis', charm: 'sig-moonveil', electric: 'sig-stormcall', fire: 'sig-caldera',
   grass: 'sig-overgrowth', rock: 'sig-mesa', steel: 'sig-foundry', water: 'sig-riptide',
@@ -121,7 +120,6 @@ function placeholderFamily(types: ElementType[], rarity: FamilyRarity, ci: numbe
     ability: ABILITIES[(TYPES.indexOf(t1) + ri * 3 + ci) % ABILITIES.length],
     affinity: AFFINITIES[(ci + ri) % AFFINITIES.length],
     sig: rarity === 'common' ? SIG[t1] : undefined,
-    move: rarity === 'apex' && stage === 3 ? MOVE[t1] : undefined,
     dex: `Placeholder: the ${comboLabel(types)} ${cap(rarity)} family, stage ${stage} of 3. To be replaced with a real creature.`,
     placeholder: true,
   }));
@@ -140,7 +138,6 @@ function placeholderLegendary(types: ElementType[], ci: number): Def {
     biomes: biomesFor(types),
     ability: ABILITIES[(ci * 5) % ABILITIES.length],
     affinity: AFFINITIES[ci % AFFINITIES.length],
-    move: MOVE[t1],
     dex: `Placeholder: the ${comboLabel(types)} Legendary. To be replaced with a real creature (and given a roaming node on the map).`,
     placeholder: true,
   };

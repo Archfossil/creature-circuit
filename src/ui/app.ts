@@ -23,7 +23,7 @@ import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAI
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
-import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
+import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -1121,7 +1121,9 @@ export class App {
     if (node.kind === 'arena') out.push(btn('🏟️', 'Arena', () => this.arbiter(), { cls: 'hl' }));
     if (node.kind === 'town') out.push(btn('🏘️', 'Town', () => this.townSheet(), { cls: 'hl' }));
     if (node.kind === 'stadium') out.push(btn('🏟️', 'Stadium', () => this.stadiumSheet(), { cls: 'hl' }));
-    if (W.flyTargets(s).length) out.push(btn('🪽', 'Fly', () => this.flySheet(), { cost: 3, disabled: s.initiative < 3 }));
+    // getting around: the Bike (once a turn) and a Taxi Ticket (in a city)
+    if (hasItem(s, 'bike') && !W.travelBlock(s)) out.push(btn('🚲', s.flags.bikeRoll ? `Ride ${s.flags.bikeRoll}` : 'Bike', () => void this.bikeFlow(), { cost: 0, disabled: !!W.bikeBlock(s) }));
+    if (W.taxiTargets(s).length) out.push(btn('🚕', 'Taxi', () => this.taxiFlow()));
     if (activeMatchOf()?.players.includes(s)) out.push(btn('👥', 'Trainers', () => this.trainersSheet()));
     out.push(btn('🐾', 'Team', () => this.teamSheet()));
     out.push(btn('🎒', 'Bag', () => this.bagSheet()));
@@ -1789,7 +1791,7 @@ export class App {
         c.arenaNode === FOREST_FLOOR
           ? tile('🌲', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}’s arena hides on the Forest Floor below. Climb down with a Canopy Rope and follow her trail in the dark.`, '', () => this.floorSheet(), s.merits.includes(id))
           : c.arenaNode
-          ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market, or a creature that can Sail).`, '', () => {}, true)
+          ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market).`, '', () => {}, true)
           : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
     openSheet(c.name, body, { wide: true });
   }
@@ -1904,7 +1906,7 @@ export class App {
           const it = itemInfo(id);
           const owned = s.inventory[id] ?? 0;
           const p = W.priceOf(s, id);
-          const isKey = it.kind === 'key';
+          const isKey = isUnique(it);
           return h('div', { class: `shop-row ${isKey ? 'key' : ''}` },
             h('span', { class: 'shop-ico' }, it.icon),
             h('div', null, h('b', null, it.name), h('small', null, it.text), owned ? h('small', { class: 'muted' }, ` · owned ${isKey ? '✓' : owned}`) : null),
@@ -2004,8 +2006,8 @@ export class App {
       rule('🌀', 'The portal', 'Cloud Island is reached through the portal in Aurora Peak. It opens at ', h('b', null, 'night'), ' (even turns), and stays open ', h('b', null, 'all Winter'), '. By day it’s shut: if dawn finds you on the island, you’re there until nightfall. You can still walk the ring by day.'),
       rule('🔁', 'A lap for Salem', 'Salem only battles trainers who walk a full lap: ', h('b', null, '6 steps in a row around the ring, always the same way round'), '. Turning back starts the count again. A lap can take as many turns as you need.', s.flags.salemWorthy ? ' You’ve done it: Salem will see you any time.' : ''),
       rule('🐌', 'The slog', `Every step onto an island node costs +1 Initiative per Tier (+${W.cloudStepExtra(s)} for you now), up to a whole turn’s 5. Stepping back off the island costs the normal 1. Salem makes stronger trainers work for it.`),
-      rule('👜', 'The Cloud satchel', 'Items you find on the island go into a Cloud satchel, ', h('b', null, 'not your bag'), '. They’re only yours once you ', h('b', null, 'escape'), ': back through the portal, or by Flying away. ', h('b', null, 'Get wiped out and sent home, and the satchel is lost.'), loot.length ? ` In it now: ${loot.map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`).join(', ')}.` : ''),
-      rule('🚪', 'Leaving', 'Leaving the island, by any route, ends a lap in progress. Leaving through the portal or by Flying secures your satchel; being sent home after a wipe doesn’t.'),
+      rule('👜', 'The Cloud satchel', 'Items you find on the island go into a Cloud satchel, ', h('b', null, 'not your bag'), '. They’re only yours once you ', h('b', null, 'escape'), ': back through the portal. ', h('b', null, 'Get wiped out and sent home, and the satchel is lost.'), loot.length ? ` In it now: ${loot.map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`).join(', ')}.` : ''),
+      rule('🚪', 'Leaving', 'Leaving the island ends a lap in progress. Leaving through the portal secures your satchel; being sent home after a wipe doesn’t.'),
       rule('✨', 'What’s here', 'The ring’s six wilds are a rare area: Astral, Electric, Water and Charm creatures (who’s out depends on day or night), and universal offerings that work on any creature: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3). While you’re here, only Cloud Island events happen.'),
       rule('👁️', eye.name, s.merits.includes('aurora')
         ? (W.legendaryHere(s, eye) ? 'You’ve beaten Salem, so the bridges from the ring to the middle are open. A Legendary waits there.' : 'The middle of the ring is quiet now.')
@@ -2080,7 +2082,7 @@ export class App {
       h('p', null, h('b', null, `${g.wins} of ${g.need} beaten.`), ` Next: a Steel-leaning trainer, Lv ${g.nextLevel}${g.wins + 1 >= g.need ? ' (the last and toughest)' : ''}.`),
       h('ul', { class: 'small' },
         h('li', null, 'Take the matches over as many turns as you like, and rest at the Stable in between.'),
-        h('li', null, h('b', null, 'Leaving Iron Coast resets your progress'), ' (travelling, flying, or being sent home after a team wipe).'),
+        h('li', null, h('b', null, 'Leaving Iron Coast resets your progress'), ' (travelling, or being sent home after a team wipe).'),
         h('li', null, 'A loss doesn’t reset it: rest up and try that trainer again. Trainer stakes apply (coins won or lost).'),
         h('li', null, 'Once cleared, Stella will accept your challenge any time you come back.')),
       h('div', { class: 'row end gap' },
@@ -2239,7 +2241,7 @@ export class App {
     const rope = W.keyTownName(s, 'canopy-rope'), whistle = W.keyTownName(s, 'root-whistle');
     const keyTips = [
       `Dahlia waits on the Gloomshade forest floor. This season, ${rope} sells the Canopy Rope to get down.`,
-      `The mangrove roots hide Katy. A Root Whistle opens the way, and ${whistle} has them this season (or bring a creature that can Sail).`,
+      `The mangrove roots hide Katy. A Root Whistle opens the way, and ${whistle} has them this season.`,
     ];
     const tips = [
       'Amber\u2019s Fire Pit is on Kilauea island. Ferries run from Mangrove Port and Kilauea Forge; buy a Ferry Pass at Saltmarsh Landing or the Forge.',
@@ -2248,7 +2250,6 @@ export class App {
       'Salem only battles trainers who have walked a full lap of Cloud Island. Its portal in Aurora Peak opens at night, and all Winter.',
       'Sunspire Summit holds a legend. Tier 3 climbers with a Summit Pick only.',
       'Down the Sinkhole Stair below Houndmouth Canyon lies Shifting Depths. Leave an offering at the edge of the dark and something that craves it climbs up.',
-      'Creatures that learn Fly can whisk you to any city you\'ve visited.',
       'The Research Facility at Quillhaven pays well for released creatures, and best of all for rare ones.',
       'The Battle School at Valor Ridge trains creatures while you travel: a coin per XP.',
       'Be at Circuit Stadium when Turn 100 ends — with all 8 Merits — or the season is over.',
@@ -2260,21 +2261,105 @@ export class App {
     openSheet('Notice Board', h('ul', { class: 'tips' }, [pinned, ...rest].map((t) => h('li', null, '📌 ', t))));
   }
 
+  // ── Getting around: Bike, Taxi Ticket, Homing Feather, Trail Mix ──
+  /** Move the trainer's mini along `path` (first entry = where they start), one hop per node, and follow on the map. */
+  async glide(path: string[]) {
+    this.busy = true;
+    this.selected = null;
+    $('.node-preview')?.remove();
+    this.world.setReach({});
+    for (let i = 1; i < path.length; i++) {
+      sfx.hop();
+      this.feed({ kind: 'hop', from: path[i - 1], to: path[i] });
+      await this.world.hop(path[i - 1], path[i]);
+    }
+    this.busy = false;
+    this.syncWatchers();
+  }
+
+  travelItemFlow(id: string) {
+    const s = this.s;
+    if (id === 'bike') { void this.bikeFlow(); return; }
+    if (id === 'taxi-ticket') { if (W.taxiTargets(s).length) this.taxiFlow(); else toast('Taxis only pick up in cities.', 'info'); return; }
+    if (id === 'trail-mix') {
+      const why = W.trailMixBlock(s);
+      if (why) { toast(why, 'info'); return; }
+      W.eatTrailMix(s); save(s); this.renderHud();
+      toast('🥜 A handful of Trail Mix: +1 Initiative.', 'good');
+      return;
+    }
+    if (id === 'homing-feather') {
+      const why = W.travelBlock(s);
+      const targets = W.featherTargets(s);
+      if (why || !targets.length) { toast(why ?? 'You’re already home.', 'info'); return; }
+      this.cityPicker('🪶 Homing Feather', `It carries you to ${s.trainer.style === 'balanced' ? 'any city you’ve rested at' : 'your home city'}. This uses up the rest of your Initiative this turn.`, targets, async (to) => {
+        const from = s.location;
+        if (!W.useFeather(s, to)) return;
+        save(s); await this.glide([from, to]); this.renderHud();
+        toast(`🪶 The feather sets you down in ${CITIES[to].name}.`, 'good');
+      });
+    }
+  }
+
+  /** A list of cities to pick from (for rides). */
+  cityPicker(title: string, text: string, ids: string[], go: (id: string) => void) {
+    const s = this.s;
+    const close = openSheet(title, h('div', null,
+      h('p', { class: 'small' }, text),
+      h('div', { class: 'list' }, ids.map((id) => h('button', { class: 'choice city', style: `--tc:${TYPE_COLOR[CITIES[id].type]}`, onclick: () => { close(); go(id); } },
+        h('div', { class: 'row gap-s' }, typeIconImg(CITIES[id].type, 22), h('b', null, CITIES[id].name)),
+        h('small', { class: 'muted' }, [`Arbiter ${CITIES[id].arbiter}`, s.merits.includes(id) ? '✓ Merit earned' : '', id === s.trainer.home ? '🏠 Home' : '', s.visited.includes(id) ? '' : 'not visited yet'].filter(Boolean).join(' · ')))))));
+  }
+
+  taxiFlow() {
+    const s = this.s;
+    this.cityPicker('🚕 Taxi', 'Ride to any other city. This uses your Taxi Ticket and the rest of your Initiative this turn.', W.taxiTargets(s), async (to) => {
+      const from = s.location;
+      if (!W.rideTaxi(s, to)) return;
+      save(s); await this.glide([from, to]); this.renderHud();
+      toast(`🚕 The taxi drops you in ${CITIES[to].name}. You’re done travelling for today.`, 'good', 3500);
+    });
+  }
+
+  /** Bike: roll a d6 (once a turn), then pick a node within that many steps. No Initiative, no exploring. */
+  async bikeFlow() {
+    const s = this.s;
+    const why = W.bikeBlock(s);
+    if (why) { toast(why, 'info'); return; }
+    const fresh = !s.flags.bikeRoll;
+    const n = W.rollBike(s)!;
+    save(s);
+    if (fresh) await rollDice('Bike ride', [{ sides: 6, value: n, tone: 'good', label: 'Steps' }], `Ride up to ${n} step${n === 1 ? '' : 's'} for free!`, 700, { read: true });
+    this.renderHud();
+    const reach = W.bikeReach(s, n);
+    const ids = Object.keys(reach).sort((a, b) => reach[a].length - reach[b].length || NODE_BY_ID[a].name.localeCompare(NODE_BY_ID[b].name));
+    const KIND_ICON: Record<string, string> = { city: '🏙️', town: '🏘️', stadium: '🏟️', arena: '🏟️' };
+    const byDist = new Map<number, string[]>();
+    for (const id of ids) { const d = reach[id].length; if (!byDist.has(d)) byDist.set(d, []); byDist.get(d)!.push(id); }
+    const close = openSheet(`🚲 Ride up to ${n} step${n === 1 ? '' : 's'}`, h('div', null,
+      h('p', { class: 'small' }, 'Pick where to stop. The ride costs no Initiative, and you won’t explore anywhere along the way, or where you stop (you can still Explore there after). Rides stay on land and keep to the usual gates.'),
+      ids.length ? [...byDist.entries()].map(([d, list]) => h('section', null, h('h4', null, `${d} step${d === 1 ? '' : 's'}`),
+        h('div', { class: 'list' }, list.map((id) => {
+          const node = NODE_BY_ID[id];
+          return h('button', { class: 'choice', onclick: async () => {
+            close();
+            const from = s.location;
+            const path = W.rideBike(s, id);
+            if (!path) return;
+            save(s); await this.glide([from, ...path]); this.renderHud();
+            toast(`🚲 You coast into ${node.name}.`, 'good');
+          } }, h('b', null, `${KIND_ICON[node.kind] ?? BIOME_INFO[node.biome].icon} ${node.name}`), h('small', { class: 'muted' }, this.nodeSubtitle(id)));
+        })))) : h('p', { class: 'muted' }, 'Nowhere to ride from here.'),
+      h('p', { class: 'small muted' }, 'Close this to decide later: your roll waits on the 🚲 button until the turn ends.')),
+      { wide: true });
+  }
+
   stadiumSheet() {
     const s = this.s;
     openSheet('Circuit Stadium', h('div', null,
       h('p', null, 'The grand tournament of Margos convenes here when the year ends. Be standing in this stadium as Turn 100 ends with all 8 Merits to enter the bracket.'),
       h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Merits: ${s.merits.length}/8`), h('span', { class: 'chip' }, `Turn ${s.turn}/100`)),
       h('p', { class: 'small muted' }, 'Bracket: 8 trainers, 3v3 elimination. Your team is fully restored between matches.')));
-  }
-
-  flySheet() {
-    const s = this.s;
-    const close = openSheet('Fly · 3 Initiative', h('div', { class: 'list' }, W.flyTargets(s).map((id) => h('button', { class: 'choice city', style: `--tc:${TYPE_COLOR[CITIES[id].type]}`, onclick: async () => {
-      close();
-      const from = s.location;
-      if (W.fly(s, id)) { this.busy = true; await this.world.hop(from, id); this.busy = false; save(s); this.renderHud(); }
-    } }, h('div', { class: 'row gap-s' }, typeIconImg(CITIES[id].type, 22), h('b', null, CITIES[id].name))))));
   }
 
   // ════════════════════════════════════════════════════════════
@@ -2345,21 +2430,21 @@ export class App {
   bagSheet(s: GameState = this.s, readOnly = false) {
     const body = h('div');
     const render = () => {
-      const groups: Record<string, string[]> = { restore: [], treat: [], charm: [], totem: [], material: [], key: [] };
+      const groups: Record<string, string[]> = { restore: [], treat: [], charm: [], travel: [], totem: [], material: [], key: [] };
       for (const id of Object.keys(s.inventory)) groups[itemInfo(id).kind]?.push(id);
-      const labels: Record<string, string> = { restore: 'Restoratives', treat: 'Treats', charm: 'Charms', totem: 'Totems', material: 'Offering & Carving Materials', key: 'Key Items' };
+      const labels: Record<string, string> = { restore: 'Restoratives', treat: 'Treats', charm: 'Charms', travel: 'Travel', totem: 'Totems', material: 'Offering & Carving Materials', key: 'Key Items' };
       body.replaceChildren(
         h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '🪙 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure active') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
         ...Object.entries(groups).filter(([, v]) => v.length).map(([k, ids]) => h('section', null, h('h4', null, labels[k]),
           h('div', { class: 'bag-grid' }, ids.map((id) => {
             const it = itemInfo(id);
-            const usable = ['restore', 'treat', 'charm'].includes(it.kind);
+            const usable = ['restore', 'treat', 'charm', 'travel'].includes(it.kind);
             return h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, it.icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', s.inventory[id]), h('small', null, it.text), it.kind === 'material' ? materialDetail(it) : null),
               usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null);
           })))),
         Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
         Object.keys(s.cloudLoot ?? {}).length ? h('section', { class: 'cloud-satchel' }, h('h4', null, '☁️ Cloud satchel (not yet secured)'),
-          h('p', { class: 'small' }, 'Items found on Cloud Island stay in this satchel until you escape the island (through the portal, or by Flying). If your team is wiped out and you’re sent home, they’re lost.'),
+          h('p', { class: 'small' }, 'Items found on Cloud Island stay in this satchel until you escape the island through the portal. If your team is wiped out and you’re sent home, they’re lost.'),
           h('div', { class: 'bag-grid' }, Object.entries(s.cloudLoot!).map(([id, n]) => h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, itemInfo(id).icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', n), h('small', null, itemInfo(id).text)))))) : '',
         readOnly ? h('p', { class: 'small muted' }, 'Items can be used on your turn.') : '');
     };
@@ -2371,6 +2456,7 @@ export class App {
     const s = this.s;
     const it = itemInfo(id);
     if (it.kind === 'charm') { const m = W.useItem(s, id, s.roster[0].uid); if (m) toast(m, 'good'); save(s); after(); return; }
+    if (it.kind === 'travel') { closeAllSheets(); this.travelItemFlow(id); return; }
     const close = openSheet(`Use ${it.name} on…`, h('div', { class: 'list' }, [...s.roster, ...s.reserve].map((c) => miniCard(c, { onClick: () => {
       const m = W.useItem(s, id, c.uid);
       if (m) toast(m, m.includes('must') || m.includes('can\'t') ? 'bad' : 'good', 2800);
@@ -2529,9 +2615,11 @@ export class App {
         { cls: 'event-sheet', onClose: () => { if (!settled) { settled = true; resolve(null); } } });
     });
     if (!answer) { this.renderHud(); return; }
+    const before = s.location;
     const r = E.resolveEvent(s, answer.choice, answer.uid);
     if (!r) { this.renderHud(); return; }
     save(s);
+    if (s.location !== before) await this.glide([before, s.location]); // a ride (balloon, coach): carry the mini there
     this.renderHud();
     toast(r.text, r.tone, 3500);
     if (r.battle) {

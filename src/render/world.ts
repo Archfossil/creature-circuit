@@ -390,7 +390,7 @@ export class WorldView implements SceneView {
     for (const e of MAP_EDGES) {
       const a = NODE_BY_ID[e.a], b = NODE_BY_ID[e.b];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
-      const isSea = e.via === 'sail' || e.via === 'portal' || e.b === 'ironwake';
+      const isSea = e.via === 'sea' || e.via === 'portal' || e.b === 'ironwake';
       const step = isSea ? 1.6 : 0.95;
       for (let d = 0; d <= len; d += step) {
         const t = d / len;

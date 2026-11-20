@@ -199,8 +199,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
         h('button', { class: `chip social ${sp.rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: sp.rarity === 'legendary' ? `${LOYALTY_HELP}
 Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to its grounds at 0.` : LOYALTY_HELP, onclick: () => socialHelp(c) },
           sp.rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), `/${LOYALTY_MAX}`),
-        c.fatigue ? h('span', { class: 'chip bad' }, '😮‍💨 Fatigue ', h('b', null, c.fatigue)) : null,
-        c.movement ? h('span', { class: 'chip good' }, '➶ ', c.movement[0].toUpperCase() + c.movement.slice(1)) : null)),
+        c.fatigue ? h('span', { class: 'chip bad' }, '😮‍💨 Fatigue ', h('b', null, c.fatigue)) : null)),
     h('div', { class: 'ic-stats' }, STAT_KEYS.map((k) => h('div', { class: 'stat' }, h('small', null, STAT_LABEL[k]), h('b', null, st[k])))),
     h('section', { class: 'ic-sec' },
       h('h4', null, 'Energy ', h('span', { class: 'muted' }, `${free}/${energyTotal(e)} free · ${4 - c.playbook.length}/4 slots open`)),

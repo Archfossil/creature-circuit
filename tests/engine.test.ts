@@ -162,7 +162,7 @@ describe('world & turns', () => {
   });
   it('moving costs Initiative and edge requirements are enforced', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
-    expect(W.canMoveTo(s, 'blackSand').ok).toBe(false); // ferry needs a pass or Sail
+    expect(W.canMoveTo(s, 'blackSand').ok).toBe(false); // the ferry needs a pass
     s.inventory['ferry-pass'] = 1;
     expect(W.canMoveTo(s, 'blackSand').ok).toBe(true);
     W.moveTo(s, 'blackSand');
@@ -902,6 +902,157 @@ describe('Quick Step', () => {
   });
 });
 
+describe('getting around: travel items and rides', () => {
+  const fresh = (home = 'thunder', style: Parameters<typeof newGame>[1] = 'balanced') => { const s = newGame('T', style, home, 'cindercub', '#fff'); s.event = undefined; return s; };
+
+  it('the Bike: one d6 roll a turn, a free ride within that many steps, no exploring', () => {
+    const s = fresh();
+    expect(W.bikeBlock(s)).toMatch(/Bike/);
+    s.inventory.bike = 1;
+    const n = W.rollBike(s)!;
+    expect(n).toBeGreaterThanOrEqual(1); expect(n).toBeLessThanOrEqual(6);
+    expect(W.rollBike(s)).toBe(n); // the waiting roll is kept, not re-rolled
+    const reach = W.bikeReach(s, n);
+    const far = Object.keys(reach).sort((a, b) => reach[b].length - reach[a].length)[0];
+    expect(reach[far].length).toBeLessThanOrEqual(n);
+    const explored = s.stats.explored, init = s.initiative;
+    const path = W.rideBike(s, far)!;
+    expect(s.location).toBe(far);
+    expect(s.initiative).toBe(init);
+    expect(s.stats.explored).toBe(explored);
+    expect(s.stats.steps).toBe(path.length);
+    for (const id of path) expect(s.visited).toContain(id);
+    expect(W.bikeBlock(s)).toMatch(/already/); // once a turn
+    W.endTurn(s);
+    expect(W.bikeBlock(s)).toBeNull();
+  });
+
+  it('Bike rides stay on land, keep the gates and skip Legendary grounds', () => {
+    const s = fresh('kilauea');
+    s.inventory.bike = 1;
+    const reach = W.bikeReach(s, 6);
+    expect(reach.blackSand).toBeUndefined(); // the ferry
+    for (const id of Object.keys(reach)) {
+      expect(NODE_BY_ID[id].kind).not.toBe('legendary');
+      expect(isCloudNode(id) || id === FOREST_FLOOR).toBe(false);
+    }
+    // the fog road's last step into Hollow Crest needs a Fog Lantern, by bike too
+    const m = fresh('aurora');
+    m.location = MAP_NODES.find((n) => n.name === 'Lantern Glade')!.id;
+    expect(W.bikeReach(m, 1).hollow).toBeUndefined();
+    m.inventory['fog-lantern'] = 1;
+    expect(W.bikeReach(m, 1).hollow).toBeDefined();
+  });
+
+  it('a Taxi Ticket only works in a city, and spends the rest of the Initiative', () => {
+    const s = fresh();
+    s.inventory['taxi-ticket'] = 1;
+    expect(W.taxiTargets(s)).toHaveLength(Object.keys(CITIES).length - 1);
+    expect(W.rideTaxi(s, 'iron')).toBe(true);
+    expect(s.location).toBe('iron');
+    expect(s.initiative).toBe(0);
+    expect(s.inventory['taxi-ticket'] ?? 0).toBe(0);
+    const w = fresh();
+    w.inventory['taxi-ticket'] = 1;
+    w.location = neighbors('thunder')[0].node.id; // a wild node
+    expect(W.taxiTargets(w)).toEqual([]);
+  });
+
+  it('the Homing Feather goes home (a Wanderer may pick a rested city), not from Cloud Island', () => {
+    const s = fresh('thunder', 'drill');
+    s.inventory['homing-feather'] = 2;
+    s.location = 'iron';
+    W.rest(s, 'iron');
+    expect(W.featherTargets(s)).toEqual(['thunder']);
+    const w = fresh();
+    w.inventory['homing-feather'] = 1;
+    W.rest(w, 'iron'); W.rest(w, 'gloom');
+    w.location = 'aurora';
+    expect(W.featherTargets(w).sort()).toEqual(['gloom', 'iron', 'thunder']);
+    expect(W.useFeather(w, 'gloom')).toBe(true);
+    expect(w.location).toBe('gloom');
+    expect(w.initiative).toBe(0);
+    s.location = CLOUD_RING[0];
+    expect(W.featherTargets(s)).toEqual([]);
+  });
+
+  it('Trail Mix: +1 Initiative, up to 5, once a turn', () => {
+    const s = fresh();
+    s.inventory['trail-mix'] = 3;
+    expect(W.trailMixBlock(s)).toMatch(/full/);
+    s.initiative = 3;
+    expect(W.eatTrailMix(s)).toBe(true);
+    expect(s.initiative).toBe(4);
+    expect(W.eatTrailMix(s)).toBe(false);
+    expect(s.inventory['trail-mix']).toBe(2);
+  });
+
+  it('the Bike is kept once bought and can only be owned once; Taxi Tickets are sold in cities', () => {
+    const s = fresh();
+    s.coins = 100;
+    expect(W.marketStock('lumber')).toContain('bike');
+    expect(W.marketStock('thunder')).toContain('taxi-ticket');
+    expect(W.buy(s, 'bike')).toBe(true);
+    expect(W.buy(s, 'bike')).toBe(false);
+  });
+
+  it('the Hot Air Balloon offers three other cities and sets you down free; the Night Coach charges', () => {
+    const s = fresh();
+    s.turn = 3; // day
+    E.rollEvent(s, 'balloon');
+    const v = E.eventView(s)!;
+    const cities = v.choices.filter((c) => c.id !== 'decline').map((c) => c.id);
+    expect(cities).toHaveLength(3);
+    expect(cities).not.toContain('thunder');
+    const init = s.initiative, coins = s.coins;
+    E.resolveEvent(s, cities[0]);
+    expect(s.location).toBe(cities[0]);
+    expect(s.initiative).toBe(init);
+    expect(s.coins).toBe(coins);
+    const c = fresh();
+    c.turn = 4; // night
+    E.rollEvent(c, 'coach');
+    const to = (c.event!.data.city as string);
+    expect(to).not.toBe('thunder');
+    c.coins = 10;
+    E.resolveEvent(c, 'ride');
+    expect(c.location).toBe(to);
+    expect(c.coins).toBe(6);
+  });
+});
+
+describe('no overworld movements', () => {
+  it('no species learns Fly, Sail, Tunnel or Wayfind, and chart node g (third row, left) is always energy', () => {
+    for (const sp of SPECIES) expect((sp as { movement?: string }).movement, sp.id).toBeUndefined();
+    for (const sp of SPECIES.slice(0, 40)) {
+      const g = progressionTree(createCreature(sp.id, 5)).find((n) => n.id === 'g')!;
+      expect(g.kind, sp.id).toBe('energy');
+    }
+  });
+
+  it('every gated route opens with its item alone (Ironwake Shoals takes the ferry)', () => {
+    for (const e of MAP_EDGES) expect(Object.keys(e.requires ?? {}).every((k) => k === 'item'), `${e.a}-${e.b}`).toBe(true);
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    s.merits = ['thunder', 'iron', 'gloom', 'aurora', 'mistfall', 'dustmere']; // Tier 4
+    s.initiative = 5;
+    expect(W.canMoveTo(s, 'ironwake').ok).toBe(false);
+    s.inventory['ferry-pass'] = 1;
+    expect(W.canMoveTo(s, 'ironwake').ok).toBe(true);
+  });
+
+  it('a saved creature that had learned a movement keeps the chart node as +2 energy of its second type', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    const c = s.roster[0];
+    const sp = speciesOf(c);
+    const k = sp.types[1] ?? sp.types[0];
+    const before = c.extraEnergy[k] ?? 0;
+    (c as unknown as { movement?: string }).movement = 'sail';
+    migrate(s);
+    expect((c as unknown as { movement?: string }).movement).toBeUndefined();
+    expect(c.extraEnergy[k]).toBe(before + 2);
+  });
+});
+
 describe('Clash coin flip', () => {
   it('a tied Clash reports the coin flip winner, and that side acts first', () => {
     // identical creatures both catching their breath: speeds always tie, so every round is a Clash
@@ -1267,15 +1418,6 @@ describe('Cloud Island (Salem)', () => {
     expect(w.location).toBe(w.trainer.home);
     expect(w.inventory['moonbow-prism'] ?? 0).toBe(0);
     expect(w.cloudLoot).toBeUndefined();
-    // Flying away counts as escaping
-    const f = trainer();
-    go(f, CLOUD_RING[0]);
-    f.cloudLoot = undefined;
-    addItem(f, 'cloud-silk', 3);
-    f.visited.push('thunder'); f.roster[0].movement = 'fly';
-    f.initiative = 5;
-    expect(W.fly(f, 'thunder')).toBe(true);
-    expect(f.inventory['cloud-silk']).toBe(3);
   });
   it('in Winter, Aurora Peak is always under Aurora Night', () => {
     const s = trainer(winterDay);
@@ -2262,7 +2404,7 @@ describe('Fire city and Kilauea island', () => {
     s.location = 'thunder';
     expect(W.arbiterHere(s)).toBe('thunder');
   });
-  it('the ferry from Kilauea Forge needs a Ferry Pass (sold at the Forge) or Sail', () => {
+  it('the ferry from Kilauea Forge needs a Ferry Pass (sold at the Forge)', () => {
     const s = newGame('T', 'balanced', 'kilauea', 'puddlit', '#fff');
     expect(W.canMoveTo(s, 'blackSand').ok).toBe(false);
     expect(W.marketStock('kilauea')).toContain('ferry-pass');

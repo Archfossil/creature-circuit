@@ -29,7 +29,6 @@ To add content, add an entry that follows the template below. Nothing else needs
   "ability": "forager",
   "affinity": "slipstream",
   "signature": "sig-caldera",
-  "movement": null,
   "biomes": ["volcanic", "coast", "river"],
   "dex": "Swims where hot springs meet the sea…",
   "look": { "shape": "fish", "primary": "#ff5a1f", "secondary": "#ffd23f", "crest": "flame" }
@@ -47,7 +46,7 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `biomes` | Biomes the species prefers. A wild node offers it when its biome's type pool (`BIOME_TYPES` in `map.ts`) includes the species' first type, and it is preferred over same-type species without that biome. The Creature Codex lists these nodes. |
 | `ability` | An overworld passive (see `ABILITIES`). It is active only while the creature is **Following**. |
 | `affinity` | The swap-in team-up power (see `AFFINITIES`). It triggers when this creature is swapped in as the **Alpha**. |
-| `signature` / `movement` | Unlocked through progression-chart nodes. Movement abilities are `fly`, `sail`, `tunnel`, `portal` and `wayfind`. |
+| `signature` | A Signature Move, unlocked through a progression-chart node. |
 | `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
 ### The roster table (`roster.ts`)
@@ -83,7 +82,7 @@ Each creature the player owns is saved as an instance of a species:
   "level": 3, "xp": 4, "points": 1,
   "nature": "timid", "morale": 6, "loyalty": 2, "perks": 0,
   "bonus": { "speed": 1, "health": 1 }, "extraEnergy": { "fire": 1 },
-  "unlocked": ["a", "c"], "signature": null, "movement": null, "capstone": false,
+  "unlocked": ["a", "c"], "signature": null, "capstone": false,
   "health": 4, "vitality": 3, "stamina": 6, "fatigue": 0, "ko": false,
   "playbook": ["ember", "splash-jet", "quick-jab"],
   "affinity": { "<other uid>": 2 },
@@ -178,13 +177,13 @@ Dual attacks are only learnable by creatures that generate both energy types.
   "x": 8.4, "z": -16.2, "rarity": 0, "level": 3,
   "requires": { "tier": 3, "item": "summit-pick" } }
 
-{ "a": "mangrove", "b": "blackSand", "via": "sail",
-  "requires": { "item": "ferry-pass", "movement": "sail" } }
+{ "a": "mangrove", "b": "blackSand", "via": "sea",
+  "requires": { "item": "ferry-pass" } }
 ```
 
-`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. A requirement on an **edge** is met by the listed item **or** the listed movement. A requirement on a **node** needs everything it lists.
+`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. A requirement on an **edge** is met by carrying the listed item. A requirement on a **node** needs everything it lists. `via` marks special routes: `sea` (a ferry crossing, drawn over water), `portal` (Cloud Island) and `rope` (the Forest Floor).
 
-An `arena` node is an Arbiter's arena that sits away from its city. It names its city in `arenaOf`, and that city's entry in `CITIES` sets `arenaNode` to the arena's id. Amber's Fire Pit on Kilauea island, reached by ferry from Kilauea Forge, works this way. Edges with `"via": "sail"` are sea routes: the 3D map leaves them as open water, so islands stay islands.
+An `arena` node is an Arbiter's arena that sits away from its city. It names its city in `arenaOf`, and that city's entry in `CITIES` sets `arenaNode` to the arena's id. Amber's Fire Pit on Kilauea island, reached by ferry from Kilauea Forge, works this way. Edges with `"via": "sea"` are ferry crossings: the 3D map leaves them as open water, so islands stay islands.
 
 Wild nodes are generated from the `routes` list in `map.ts` and numbered in order (`w1`, `w2`, …). Saves store node ids, so **add new routes at the end of the list**. Keep nodes at least 5 units apart and routes from crossing: `tests/engine.test.ts` checks both.
 

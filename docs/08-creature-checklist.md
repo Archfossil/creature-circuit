@@ -22,7 +22,7 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 - **Design ☐**: the creature has a real name, concept, flavour text and stat direction. Tick ☑ when approved.
 - **Art ☐**: the creature has final art (portrait and model or sprite). Tick ☑ when delivered. No creature has final art yet: every one, hand-made or placeholder, uses the procedural model.
 - Hand-made creatures start with Design ☑ because they already have a real name, look and flavour text.
-- **Types, biomes, Out by, Ability, Affinity, Signature and Movement** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
+- **Types, biomes, Out by, Ability, Affinity and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
 - **Swapping one in (developers):** add the species in `src/data/species.ts`, then point its slot in `HANDMADE_SLOTS` or `HANDMADE_LEGENDARIES` (`src/data/roster.ts`) at it. The placeholder disappears; regenerate this file.
 - A new Legendary also needs a roaming node on the map (`src/data/map.ts`).
 
@@ -77,14 +77,14 @@ Spawns in: Tundra, Mountain.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Twinkit** | `twinkit` | Astral | Nocturnal | Star Seeker | Slipstream | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
 | Common | 2 | **Lumenox** | `lumenox` | Astral | Nocturnal | Star Seeker | Slipstream | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
-| Common | 3 | **Polarion** | `polarion` | Astral / Water | Nocturnal | Star Seeker | Slipstream | Sig: Borealis Lance · Move: Fly | Hand-made | ☑ | ☐ |
+| Common | 3 | **Polarion** | `polarion` | Astral / Water | Nocturnal | Star Seeker | Slipstream | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Stelmite** | `ph-astral-mono-prime-1` | Astral | Nocturnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Stelling** | `ph-astral-mono-prime-2` | Astral | Nocturnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Stelarch** | `ph-astral-mono-prime-3` | Astral | Nocturnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Stelwisp** | `ph-astral-mono-apex-1` | Astral | Nocturnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Stelwyrm** | `ph-astral-mono-apex-2` | Astral | Nocturnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Steltitan** | `ph-astral-mono-apex-3` | Astral | Nocturnal | Quick Step | Slipstream | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Steleon** | `ph-astral-mono-legendary` | Astral | Nocturnal | Sweet Scent | Tag Strike | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Steltitan** | `ph-astral-mono-apex-3` | Astral | Nocturnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Steleon** | `ph-astral-mono-legendary` | Astral | Nocturnal | Sweet Scent | Tag Strike | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Charm
 
@@ -94,14 +94,14 @@ Spawns in: Fey Grove, Forest, Meadow.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Mossprite** | `mossprite` | Charm | Nocturnal | Baby-Doll Eyes | Rally | Sig: Moonveil Kiss | Hand-made | ☑ | ☐ |
 | Common | 2 | **Fernixie** | `fernixie` | Charm | Nocturnal | Baby-Doll Eyes | Rally | Sig: Moonveil Kiss | Hand-made | ☑ | ☐ |
-| Common | 3 | **Glamorwyn** | `glamorwyn` | Charm / Astral | Nocturnal | Baby-Doll Eyes | Rally | Sig: Moonveil Kiss · Move: Wayfind | Hand-made | ☑ | ☐ |
+| Common | 3 | **Glamorwyn** | `glamorwyn` | Charm / Astral | Nocturnal | Baby-Doll Eyes | Rally | Sig: Moonveil Kiss | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Piximite** | `ph-charm-mono-prime-1` | Charm | Nocturnal | Forager | Slipstream | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Pixiling** | `ph-charm-mono-prime-2` | Charm | Nocturnal | Forager | Slipstream | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Pixiarch** | `ph-charm-mono-prime-3` | Charm | Nocturnal | Forager | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Pixiwisp** | `ph-charm-mono-apex-1` | Charm | Nocturnal | Sweet Scent | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Pixiwyrm** | `ph-charm-mono-apex-2` | Charm | Nocturnal | Sweet Scent | Siphon | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pixititan** | `ph-charm-mono-apex-3` | Charm | Nocturnal | Sweet Scent | Siphon | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pixieon** | `ph-charm-mono-legendary` | Charm | Nocturnal | Forager | Shield Pass | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pixititan** | `ph-charm-mono-apex-3` | Charm | Nocturnal | Sweet Scent | Siphon | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pixieon** | `ph-charm-mono-legendary` | Charm | Nocturnal | Forager | Shield Pass | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Electric
 
@@ -111,14 +111,14 @@ Spawns in: Badlands, Road, Desert.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapup** | `zapup` | Electric | Diurnal | Trailblazer | Slipstream | Sig: Stormcall | Hand-made | ☑ | ☐ |
 | Common | 2 | **Voltusk** | `voltusk` | Electric | Diurnal | Trailblazer | Slipstream | Sig: Stormcall | Hand-made | ☑ | ☐ |
-| Common | 3 | **Stormhound** | `stormhound` | Electric / Steel | Diurnal | Trailblazer | Slipstream | Sig: Stormcall · Move: Tunnel | Hand-made | ☑ | ☐ |
+| Common | 3 | **Stormhound** | `stormhound` | Electric / Steel | Diurnal | Trailblazer | Slipstream | Sig: Stormcall | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Zapmite** | `ph-electric-mono-prime-1` | Electric | Diurnal | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Zapling** | `ph-electric-mono-prime-2` | Electric | Diurnal | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Zaparch** | `ph-electric-mono-prime-3` | Electric | Diurnal | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Zapwisp** | `ph-electric-mono-apex-1` | Electric | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Zapwyrm** | `ph-electric-mono-apex-2` | Electric | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zaptitan** | `ph-electric-mono-apex-3` | Electric | Diurnal | Keen Nose | Rally | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapeon** | `ph-electric-mono-legendary` | Electric | Diurnal | Keen Nose | Slipstream | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zaptitan** | `ph-electric-mono-apex-3` | Electric | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapeon** | `ph-electric-mono-legendary` | Electric | Diurnal | Keen Nose | Slipstream | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Fire
 
@@ -128,7 +128,7 @@ Spawns in: Volcanic, Desert.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Cindercub** | `cindercub` | Fire | Diurnal | Forager | Tag Strike | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Common | 2 | **Blazmane** | `blazmane` | Fire | Diurnal | Forager | Tag Strike | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
-| Common | 3 | **Pyrothane** | `pyrothane` | Fire / Rock | Diurnal | Forager | Tag Strike | Sig: Caldera Roar · Move: Tunnel | Hand-made | ☑ | ☐ |
+| Common | 3 | **Pyrothane** | `pyrothane` | Fire / Rock | Diurnal | Forager | Tag Strike | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Pyromite** | `ph-fire-mono-prime-1` | Fire | Diurnal | Baby-Doll Eyes | Rally | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Pyroling** | `ph-fire-mono-prime-2` | Fire | Diurnal | Baby-Doll Eyes | Rally | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Pyroarch** | `ph-fire-mono-prime-3` | Fire | Diurnal | Baby-Doll Eyes | Rally | — | Placeholder | ☐ | ☐ |
@@ -151,8 +151,8 @@ Spawns in: Forest, Meadow, Swamp.
 | Prime | 3 | **Sprigarch** | `ph-grass-mono-prime-3` | Grass | Diurnal | Star Seeker | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Sprigwisp** | `ph-grass-mono-apex-1` | Grass | Diurnal | Quick Step | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Sprigwyrm** | `ph-grass-mono-apex-2` | Grass | Diurnal | Quick Step | Shield Pass | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Sprigtitan** | `ph-grass-mono-apex-3` | Grass | Diurnal | Quick Step | Shield Pass | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Sprigeon** | `ph-grass-mono-legendary` | Grass | Diurnal | Trailblazer | Rally | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Sprigtitan** | `ph-grass-mono-apex-3` | Grass | Diurnal | Quick Step | Shield Pass | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Sprigeon** | `ph-grass-mono-legendary` | Grass | Diurnal | Trailblazer | Rally | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Rock
 
@@ -162,14 +162,14 @@ Spawns in: Canyon, Mountain, Badlands.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pebbark** | `pebbark` | Rock | Day & night | Keen Nose | Shield Pass | Sig: Mesa Breaker | Hand-made | ☑ | ☐ |
 | Common | 2 | **Cragjaw** | `cragjaw` | Rock | Day & night | Keen Nose | Shield Pass | Sig: Mesa Breaker | Hand-made | ☑ | ☐ |
-| Common | 3 | **Mesahound** | `mesahound` | Rock | Day & night | Keen Nose | Shield Pass | Sig: Mesa Breaker · Move: Tunnel | Hand-made | ☑ | ☐ |
+| Common | 3 | **Mesahound** | `mesahound` | Rock | Day & night | Keen Nose | Shield Pass | Sig: Mesa Breaker | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Cragmite** | `ph-rock-mono-prime-1` | Rock | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Cragling** | `ph-rock-mono-prime-2` | Rock | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Cragarch** | `ph-rock-mono-prime-3` | Rock | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Cragwisp** | `ph-rock-mono-apex-1` | Rock | Day & night | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Cragwyrm** | `ph-rock-mono-apex-2` | Rock | Day & night | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Cragtitan** | `ph-rock-mono-apex-3` | Rock | Day & night | Sweet Scent | Slipstream | Move: Tunnel | Placeholder | ☐ | ☐ |
-| Legendary | — | **Crageon** | `ph-rock-mono-legendary` | Rock | Day & night | Baby-Doll Eyes | Tag Strike | Move: Tunnel · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Cragtitan** | `ph-rock-mono-apex-3` | Rock | Day & night | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Crageon** | `ph-rock-mono-legendary` | Rock | Day & night | Baby-Doll Eyes | Tag Strike | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Steel
 
@@ -179,7 +179,7 @@ Spawns in: Coast, Road, Mountain.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Rivetail** | `rivetail` | Steel | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Foundry Hammer | Hand-made | ☑ | ☐ |
 | Common | 2 | **Ferrocrab** | `ferrocrab` | Steel | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Foundry Hammer | Hand-made | ☑ | ☐ |
-| Common | 3 | **Ironclawd** | `ironclawd` | Steel / Water | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Foundry Hammer · Move: Sail | Hand-made | ☑ | ☐ |
+| Common | 3 | **Ironclawd** | `ironclawd` | Steel / Water | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Foundry Hammer | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Ferromite** | `ph-steel-mono-prime-1` | Steel | Day & night | Lucky Charm | Slipstream | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Ferroling** | `ph-steel-mono-prime-2` | Steel | Day & night | Lucky Charm | Slipstream | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Ferroarch** | `ph-steel-mono-prime-3` | Steel | Day & night | Lucky Charm | Slipstream | — | Placeholder | ☐ | ☐ |
@@ -195,15 +195,15 @@ Spawns in: Lake, River, Swamp, Coast.
 | Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Puddlit** | `puddlit` | Water | Day & night | Quick Step | Siphon | Sig: Riptide | Hand-made | ☑ | ☐ |
-| Common | 2 | **Marshfin** | `marshfin` | Water | Day & night | Quick Step | Siphon | Sig: Riptide · Move: Sail | Hand-made | ☑ | ☐ |
-| Common | 3 | **Mangrovore** | `mangrovore` | Water / Grass | Diurnal | Quick Step | Siphon | Sig: Riptide · Move: Sail | Hand-made | ☑ | ☐ |
+| Common | 2 | **Marshfin** | `marshfin` | Water | Day & night | Quick Step | Siphon | Sig: Riptide | Hand-made | ☑ | ☐ |
+| Common | 3 | **Mangrovore** | `mangrovore` | Water / Grass | Diurnal | Quick Step | Siphon | Sig: Riptide | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Aquamite** | `ph-water-mono-prime-1` | Water | Day & night | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Aqualing** | `ph-water-mono-prime-2` | Water | Day & night | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Aquaarch** | `ph-water-mono-prime-3` | Water | Day & night | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Aquawisp** | `ph-water-mono-apex-1` | Water | Day & night | Trailblazer | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Aquawyrm** | `ph-water-mono-apex-2` | Water | Day & night | Trailblazer | Rally | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquatitan** | `ph-water-mono-apex-3` | Water | Day & night | Trailblazer | Rally | Move: Sail | Placeholder | ☐ | ☐ |
-| Legendary | — | **Aquaeon** | `ph-water-mono-legendary` | Water | Day & night | Star Seeker | Slipstream | Move: Sail · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Aquatitan** | `ph-water-mono-apex-3` | Water | Day & night | Trailblazer | Rally | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Aquaeon** | `ph-water-mono-legendary` | Water | Day & night | Star Seeker | Slipstream | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Astral / Charm
 
@@ -219,8 +219,8 @@ Spawns in: Cloud.
 | Prime | 3 | **Stelbloomarch** | `ph-astral-charm-prime-3` | Astral / Charm | Nocturnal | Star Seeker | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Stelbloomwisp** | `ph-astral-charm-apex-1` | Astral / Charm | Nocturnal | Quick Step | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Stelbloomwyrm** | `ph-astral-charm-apex-2` | Astral / Charm | Nocturnal | Quick Step | Tag Strike | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Stelbloomtitan** | `ph-astral-charm-apex-3` | Astral / Charm | Nocturnal | Quick Step | Tag Strike | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Stelbloomeon** | `ph-astral-charm-legendary` | Astral / Charm | Nocturnal | Sweet Scent | Siphon | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Stelbloomtitan** | `ph-astral-charm-apex-3` | Astral / Charm | Nocturnal | Quick Step | Tag Strike | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Stelbloomeon** | `ph-astral-charm-legendary` | Astral / Charm | Nocturnal | Sweet Scent | Siphon | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Astral / Electric
 
@@ -236,8 +236,8 @@ Spawns in: Cloud.
 | Prime | 3 | **Stelvoltarch** | `ph-astral-electric-prime-3` | Astral / Electric | Day & night | Trailblazer | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Stelvoltwisp** | `ph-astral-electric-apex-1` | Astral / Electric | Day & night | Lucky Charm | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Stelvoltwyrm** | `ph-astral-electric-apex-2` | Astral / Electric | Day & night | Lucky Charm | Shield Pass | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Stelvolttitan** | `ph-astral-electric-apex-3` | Astral / Electric | Day & night | Lucky Charm | Shield Pass | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Stelvolteon** | `ph-astral-electric-legendary` | Astral / Electric | Day & night | Forager | Rally | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Stelvolttitan** | `ph-astral-electric-apex-3` | Astral / Electric | Day & night | Lucky Charm | Shield Pass | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Stelvolteon** | `ph-astral-electric-legendary` | Astral / Electric | Day & night | Forager | Rally | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Astral / Fire
 
@@ -253,8 +253,8 @@ Spawns in: Mountain, Tundra, Cloud.
 | Prime | 3 | **Stelflarearch** | `ph-astral-fire-prime-3` | Astral / Fire | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Stelflarewisp** | `ph-astral-fire-apex-1` | Astral / Fire | Day & night | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Stelflarewyrm** | `ph-astral-fire-apex-2` | Astral / Fire | Day & night | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Stelflaretitan** | `ph-astral-fire-apex-3` | Astral / Fire | Day & night | Sweet Scent | Slipstream | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Solstara** | `solstara` | Astral / Fire | Day & night | Star Seeker | Tag Strike | Move: Fly · Map: Sunspire Summit | Hand-made | ☑ | ☐ |
+| Apex | 3 | **Stelflaretitan** | `ph-astral-fire-apex-3` | Astral / Fire | Day & night | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Solstara** | `solstara` | Astral / Fire | Day & night | Star Seeker | Tag Strike | Map: Sunspire Summit | Hand-made | ☑ | ☐ |
 
 ## Astral / Grass
 
@@ -270,8 +270,8 @@ Spawns in: Mountain, Tundra, Cloud.
 | Prime | 3 | **Stelleafarch** | `ph-astral-grass-prime-3` | Astral / Grass | Day & night | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Stelleafwisp** | `ph-astral-grass-apex-1` | Astral / Grass | Day & night | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Stelleafwyrm** | `ph-astral-grass-apex-2` | Astral / Grass | Day & night | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Stelleaftitan** | `ph-astral-grass-apex-3` | Astral / Grass | Day & night | Baby-Doll Eyes | Siphon | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Stelleafeon** | `ph-astral-grass-legendary` | Astral / Grass | Day & night | Lucky Charm | Shield Pass | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Stelleaftitan** | `ph-astral-grass-apex-3` | Astral / Grass | Day & night | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Stelleafeon** | `ph-astral-grass-legendary` | Astral / Grass | Day & night | Lucky Charm | Shield Pass | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Rock / Astral
 
@@ -287,8 +287,8 @@ Spawns in: Mountain.
 | Prime | 3 | **Cragstararch** | `ph-rock-astral-prime-3` | Rock / Astral | Nocturnal | Trailblazer | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Cragstarwisp** | `ph-rock-astral-apex-1` | Rock / Astral | Nocturnal | Lucky Charm | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Cragstarwyrm** | `ph-rock-astral-apex-2` | Rock / Astral | Nocturnal | Lucky Charm | Rally | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Cragstartitan** | `ph-rock-astral-apex-3` | Rock / Astral | Nocturnal | Lucky Charm | Rally | Move: Tunnel | Placeholder | ☐ | ☐ |
-| Legendary | — | **Cragstareon** | `ph-rock-astral-legendary` | Rock / Astral | Nocturnal | Trailblazer | Slipstream | Move: Tunnel · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Cragstartitan** | `ph-rock-astral-apex-3` | Rock / Astral | Nocturnal | Lucky Charm | Rally | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Cragstareon** | `ph-rock-astral-legendary` | Rock / Astral | Nocturnal | Trailblazer | Slipstream | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Steel / Astral
 
@@ -321,8 +321,8 @@ Spawns in: Tundra, Cloud.
 | Prime | 3 | **Aquastararch** | `ph-water-astral-prime-3` | Water / Astral | Nocturnal | Sweet Scent | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Aquastarwisp** | `ph-water-astral-apex-1` | Water / Astral | Nocturnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Aquastarwyrm** | `ph-water-astral-apex-2` | Water / Astral | Nocturnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquastartitan** | `ph-water-astral-apex-3` | Water / Astral | Nocturnal | Star Seeker | Shield Pass | Move: Sail | Placeholder | ☐ | ☐ |
-| Legendary | — | **Nimbalune** | `nimbalune` | Water / Astral | Nocturnal | Sweet Scent | Rally | Move: Fly · Map: Eye of the Sky | Hand-made | ☑ | ☐ |
+| Apex | 3 | **Aquastartitan** | `ph-water-astral-apex-3` | Water / Astral | Nocturnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Nimbalune** | `nimbalune` | Water / Astral | Nocturnal | Sweet Scent | Rally | Map: Eye of the Sky | Hand-made | ☑ | ☐ |
 
 ## Charm / Electric
 
@@ -338,8 +338,8 @@ Spawns in: Meadow, Cloud.
 | Prime | 3 | **Pixivoltarch** | `ph-charm-electric-prime-3` | Charm / Electric | Day & night | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Pixivoltwisp** | `ph-charm-electric-apex-1` | Charm / Electric | Day & night | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Pixivoltwyrm** | `ph-charm-electric-apex-2` | Charm / Electric | Day & night | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pixivolttitan** | `ph-charm-electric-apex-3` | Charm / Electric | Day & night | Quick Step | Slipstream | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pixivolteon** | `ph-charm-electric-legendary` | Charm / Electric | Day & night | Star Seeker | Tag Strike | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pixivolttitan** | `ph-charm-electric-apex-3` | Charm / Electric | Day & night | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pixivolteon** | `ph-charm-electric-legendary` | Charm / Electric | Day & night | Star Seeker | Tag Strike | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Charm / Fire
 
@@ -355,8 +355,8 @@ Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud, Forest Floor.
 | Prime | 3 | **Pixiflarearch** | `ph-charm-fire-prime-3` | Charm / Fire | Day & night | Trailblazer | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Pixiflarewisp** | `ph-charm-fire-apex-1` | Charm / Fire | Day & night | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Pixiflarewyrm** | `ph-charm-fire-apex-2` | Charm / Fire | Day & night | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pixiflaretitan** | `ph-charm-fire-apex-3` | Charm / Fire | Day & night | Lucky Charm | Siphon | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pixiflareeon** | `ph-charm-fire-legendary` | Charm / Fire | Day & night | Sweet Scent | Shield Pass | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pixiflaretitan** | `ph-charm-fire-apex-3` | Charm / Fire | Day & night | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pixiflareeon** | `ph-charm-fire-legendary` | Charm / Fire | Day & night | Sweet Scent | Shield Pass | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Charm / Grass
 
@@ -372,8 +372,8 @@ Spawns in: Forest, Fey Grove, Meadow, Forest Floor.
 | Prime | 3 | **Pixileafarch** | `ph-charm-grass-prime-3` | Charm / Grass | Day & night | Forager | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Pixileafwisp** | `ph-charm-grass-apex-1` | Charm / Grass | Day & night | Sweet Scent | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Pixileafwyrm** | `ph-charm-grass-apex-2` | Charm / Grass | Day & night | Sweet Scent | Rally | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pixileaftitan** | `ph-charm-grass-apex-3` | Charm / Grass | Day & night | Sweet Scent | Rally | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pixileafeon** | `ph-charm-grass-legendary` | Charm / Grass | Day & night | Forager | Slipstream | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pixileaftitan** | `ph-charm-grass-apex-3` | Charm / Grass | Day & night | Sweet Scent | Rally | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pixileafeon** | `ph-charm-grass-legendary` | Charm / Grass | Day & night | Forager | Slipstream | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Charm / Rock
 
@@ -389,8 +389,8 @@ Spawns in: Forest Floor.
 | Prime | 3 | **Pixistonearch** | `ph-charm-rock-prime-3` | Charm / Rock | Nocturnal | Quick Step | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Pixistonewisp** | `ph-charm-rock-apex-1` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Pixistonewyrm** | `ph-charm-rock-apex-2` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Tag Strike | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pixistonetitan** | `ph-charm-rock-apex-3` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Tag Strike | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pixistoneeon** | `ph-charm-rock-legendary` | Charm / Rock | Nocturnal | Keen Nose | Siphon | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pixistonetitan** | `ph-charm-rock-apex-3` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Tag Strike | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pixistoneeon** | `ph-charm-rock-legendary` | Charm / Rock | Nocturnal | Keen Nose | Siphon | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Steel / Charm
 
@@ -423,8 +423,8 @@ Spawns in: Lake, Cloud.
 | Prime | 3 | **Aquabloomarch** | `ph-water-charm-prime-3` | Water / Charm | Nocturnal | Quick Step | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Aquabloomwisp** | `ph-water-charm-apex-1` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Aquabloomwyrm** | `ph-water-charm-apex-2` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquabloomtitan** | `ph-water-charm-apex-3` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | Move: Sail | Placeholder | ☐ | ☐ |
-| Legendary | — | **Aquabloomeon** | `ph-water-charm-legendary` | Water / Charm | Nocturnal | Trailblazer | Tag Strike | Move: Sail · Map: Boglight Hollow | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Aquabloomtitan** | `ph-water-charm-apex-3` | Water / Charm | Nocturnal | Baby-Doll Eyes | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Aquabloomeon** | `ph-water-charm-legendary` | Water / Charm | Nocturnal | Trailblazer | Tag Strike | Map: Boglight Hollow | Placeholder | ☐ | ☐ |
 
 ## Electric / Fire
 
@@ -440,8 +440,8 @@ Spawns in: Desert.
 | Prime | 3 | **Zapflarearch** | `ph-electric-fire-prime-3` | Electric / Fire | Diurnal | Keen Nose | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Zapflarewisp** | `ph-electric-fire-apex-1` | Electric / Fire | Diurnal | Forager | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Zapflarewyrm** | `ph-electric-fire-apex-2` | Electric / Fire | Diurnal | Forager | Siphon | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zapflaretitan** | `ph-electric-fire-apex-3` | Electric / Fire | Diurnal | Forager | Siphon | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapflareeon** | `ph-electric-fire-legendary` | Electric / Fire | Diurnal | Baby-Doll Eyes | Shield Pass | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zapflaretitan** | `ph-electric-fire-apex-3` | Electric / Fire | Diurnal | Forager | Siphon | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapflareeon** | `ph-electric-fire-legendary` | Electric / Fire | Diurnal | Baby-Doll Eyes | Shield Pass | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Electric / Grass
 
@@ -457,8 +457,8 @@ Spawns in: Meadow.
 | Prime | 3 | **Zapleafarch** | `ph-electric-grass-prime-3` | Electric / Grass | Diurnal | Star Seeker | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Zapleafwisp** | `ph-electric-grass-apex-1` | Electric / Grass | Diurnal | Quick Step | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Zapleafwyrm** | `ph-electric-grass-apex-2` | Electric / Grass | Diurnal | Quick Step | Rally | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zapleaftitan** | `ph-electric-grass-apex-3` | Electric / Grass | Diurnal | Quick Step | Rally | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapleafeon** | `ph-electric-grass-legendary` | Electric / Grass | Diurnal | Quick Step | Slipstream | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zapleaftitan** | `ph-electric-grass-apex-3` | Electric / Grass | Diurnal | Quick Step | Rally | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapleafeon** | `ph-electric-grass-legendary` | Electric / Grass | Diurnal | Quick Step | Slipstream | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Electric / Rock
 
@@ -474,8 +474,8 @@ Spawns in: Desert, Badlands.
 | Prime | 3 | **Zapstonearch** | `ph-electric-rock-prime-3` | Electric / Rock | Diurnal | Trailblazer | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Zapstonewisp** | `ph-electric-rock-apex-1` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Zapstonewyrm** | `ph-electric-rock-apex-2` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zapstonetitan** | `ph-electric-rock-apex-3` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapstoneeon** | `ph-electric-rock-legendary` | Electric / Rock | Diurnal | Star Seeker | Siphon | Move: Fly · Map: Dunecrown Mesa | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zapstonetitan** | `ph-electric-rock-apex-3` | Electric / Rock | Diurnal | Lucky Charm | Tag Strike | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapstoneeon** | `ph-electric-rock-legendary` | Electric / Rock | Diurnal | Star Seeker | Siphon | Map: Dunecrown Mesa | Placeholder | ☐ | ☐ |
 
 ## Electric / Steel
 
@@ -491,8 +491,8 @@ Spawns in: Road.
 | Prime | 3 | **Zapgeararch** | `ph-electric-steel-prime-3` | Electric / Steel | Diurnal | Forager | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Zapgearwisp** | `ph-electric-steel-apex-1` | Electric / Steel | Diurnal | Sweet Scent | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Zapgearwyrm** | `ph-electric-steel-apex-2` | Electric / Steel | Diurnal | Sweet Scent | Shield Pass | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zapgeartitan** | `ph-electric-steel-apex-3` | Electric / Steel | Diurnal | Sweet Scent | Shield Pass | Move: Fly | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapgeareon** | `ph-electric-steel-legendary` | Electric / Steel | Diurnal | Sweet Scent | Rally | Move: Fly · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zapgeartitan** | `ph-electric-steel-apex-3` | Electric / Steel | Diurnal | Sweet Scent | Shield Pass | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapgeareon** | `ph-electric-steel-legendary` | Electric / Steel | Diurnal | Sweet Scent | Rally | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Water / Electric
 
@@ -508,8 +508,8 @@ Spawns in: Cloud.
 | Prime | 3 | **Aquavoltarch** | `ph-water-electric-prime-3` | Water / Electric | Diurnal | Star Seeker | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Aquavoltwisp** | `ph-water-electric-apex-1` | Water / Electric | Diurnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Aquavoltwyrm** | `ph-water-electric-apex-2` | Water / Electric | Diurnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquavolttitan** | `ph-water-electric-apex-3` | Water / Electric | Diurnal | Quick Step | Slipstream | Move: Sail | Placeholder | ☐ | ☐ |
-| Legendary | — | **Aquavolteon** | `ph-water-electric-legendary` | Water / Electric | Diurnal | Forager | Tag Strike | Move: Sail · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Aquavolttitan** | `ph-water-electric-apex-3` | Water / Electric | Diurnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Aquavolteon** | `ph-water-electric-legendary` | Water / Electric | Diurnal | Forager | Tag Strike | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Fire / Grass
 
@@ -593,8 +593,8 @@ Spawns in: Forest Floor.
 | Prime | 3 | **Sprigstonearch** | `ph-grass-rock-prime-3` | Grass / Rock | Diurnal | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Sprigstonewisp** | `ph-grass-rock-apex-1` | Grass / Rock | Diurnal | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Sprigstonewyrm** | `ph-grass-rock-apex-2` | Grass / Rock | Diurnal | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Sprigstonetitan** | `ph-grass-rock-apex-3` | Grass / Rock | Diurnal | Sweet Scent | Slipstream | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Sprigstoneeon** | `ph-grass-rock-legendary` | Grass / Rock | Diurnal | Quick Step | Tag Strike | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Sprigstonetitan** | `ph-grass-rock-apex-3` | Grass / Rock | Diurnal | Sweet Scent | Slipstream | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Sprigstoneeon** | `ph-grass-rock-legendary` | Grass / Rock | Diurnal | Quick Step | Tag Strike | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Grass / Steel
 
@@ -610,8 +610,8 @@ Spawns in: Forest, Fey Grove, Meadow, River, Swamp, Forest Floor.
 | Prime | 3 | **Spriggeararch** | `ph-grass-steel-prime-3` | Grass / Steel | Diurnal | Quick Step | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Spriggearwisp** | `ph-grass-steel-apex-1` | Grass / Steel | Diurnal | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Spriggearwyrm** | `ph-grass-steel-apex-2` | Grass / Steel | Diurnal | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Spriggeartitan** | `ph-grass-steel-apex-3` | Grass / Steel | Diurnal | Baby-Doll Eyes | Siphon | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Spriggeareon** | `ph-grass-steel-legendary` | Grass / Steel | Diurnal | Star Seeker | Shield Pass | Move: Wayfind · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Spriggeartitan** | `ph-grass-steel-apex-3` | Grass / Steel | Diurnal | Baby-Doll Eyes | Siphon | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Spriggeareon** | `ph-grass-steel-legendary` | Grass / Steel | Diurnal | Star Seeker | Shield Pass | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Grass / Water
 
@@ -627,8 +627,8 @@ Spawns in: River, Swamp.
 | Prime | 3 | **Sprigtidearch** | `ph-grass-water-prime-3` | Grass / Water | Diurnal | Lucky Charm | Siphon | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Sprigtidewisp** | `ph-grass-water-apex-1` | Grass / Water | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Sprigtidewyrm** | `ph-grass-water-apex-2` | Grass / Water | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Sprigtidetitan** | `ph-grass-water-apex-3` | Grass / Water | Diurnal | Keen Nose | Rally | Move: Wayfind | Placeholder | ☐ | ☐ |
-| Legendary | — | **Sprigtideeon** | `ph-grass-water-legendary` | Grass / Water | Diurnal | Sweet Scent | Slipstream | Move: Wayfind · Map: Willowheart Isle | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Sprigtidetitan** | `ph-grass-water-apex-3` | Grass / Water | Diurnal | Keen Nose | Rally | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Sprigtideeon** | `ph-grass-water-legendary` | Grass / Water | Diurnal | Sweet Scent | Slipstream | Map: Willowheart Isle | Placeholder | ☐ | ☐ |
 
 ## Rock / Steel
 
@@ -644,8 +644,8 @@ Spawns in: Mountain.
 | Prime | 3 | **Craggeararch** | `ph-rock-steel-prime-3` | Rock / Steel | Day & night | Baby-Doll Eyes | Rally | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Craggearwisp** | `ph-rock-steel-apex-1` | Rock / Steel | Day & night | Trailblazer | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Craggearwyrm** | `ph-rock-steel-apex-2` | Rock / Steel | Day & night | Trailblazer | Tag Strike | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Craggeartitan** | `ph-rock-steel-apex-3` | Rock / Steel | Day & night | Trailblazer | Tag Strike | Move: Tunnel | Placeholder | ☐ | ☐ |
-| Legendary | — | **Craggeareon** | `ph-rock-steel-legendary` | Rock / Steel | Day & night | Forager | Siphon | Move: Tunnel · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Craggeartitan** | `ph-rock-steel-apex-3` | Rock / Steel | Day & night | Trailblazer | Tag Strike | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Craggeareon** | `ph-rock-steel-legendary` | Rock / Steel | Day & night | Forager | Siphon | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Rock / Water
 
@@ -661,8 +661,8 @@ Spawns in: Mountain, Desert, Badlands, Volcanic, Canyon, Forest Floor.
 | Prime | 3 | **Cragtidearch** | `ph-rock-water-prime-3` | Rock / Water | Day & night | Keen Nose | Tag Strike | — | Placeholder | ☐ | ☐ |
 | Apex | 1 | **Cragtidewisp** | `ph-rock-water-apex-1` | Rock / Water | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Cragtidewyrm** | `ph-rock-water-apex-2` | Rock / Water | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Cragtidetitan** | `ph-rock-water-apex-3` | Rock / Water | Day & night | Forager | Shield Pass | Move: Tunnel | Placeholder | ☐ | ☐ |
-| Legendary | — | **Cragtideeon** | `ph-rock-water-legendary` | Rock / Water | Day & night | Keen Nose | Rally | Move: Tunnel · Map: not placed | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Cragtidetitan** | `ph-rock-water-apex-3` | Rock / Water | Day & night | Forager | Shield Pass | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Cragtideeon** | `ph-rock-water-legendary` | Rock / Water | Day & night | Keen Nose | Rally | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Steel / Water
 
@@ -679,7 +679,7 @@ Spawns in: Coast.
 | Apex | 1 | **Ferrotidewisp** | `ph-steel-water-apex-1` | Steel / Water | Day & night | Lucky Charm | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 2 | **Ferrotidewyrm** | `ph-steel-water-apex-2` | Steel / Water | Day & night | Lucky Charm | Slipstream | — | Placeholder | ☐ | ☐ |
 | Apex | 3 | **Ferrotidetitan** | `ph-steel-water-apex-3` | Steel / Water | Day & night | Lucky Charm | Slipstream | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Thalassor** | `thalassor` | Water / Steel | Day & night | Lucky Charm | Shield Pass | Move: Sail · Map: Ironwake Shoals | Hand-made | ☑ | ☐ |
+| Legendary | — | **Thalassor** | `thalassor` | Water / Steel | Day & night | Lucky Charm | Shield Pass | Map: Ironwake Shoals | Hand-made | ☑ | ☐ |
 
 ---
 
@@ -691,27 +691,27 @@ The original hand-made Prime and Apex creatures, from before the roster table ex
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Prime | 1 | **Orbuddle** | `orbuddle` | Astral | Nocturnal | Lucky Charm | Shield Pass | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Nebulith** | `nebulith` | Astral / Rock | Nocturnal | Lucky Charm | Shield Pass | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Zenithar** | `zenithar` | Astral | Nocturnal | Star Seeker | Tag Strike | Move: Fly | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Zenithar** | `zenithar` | Astral | Nocturnal | Star Seeker | Tag Strike | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Puffwisp** | `puffwisp` | Charm | Nocturnal | Sweet Scent | Siphon | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Velvetuft** | `velvetuft` | Charm | Nocturnal | Sweet Scent | Siphon | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Mirageon** | `mirageon` | Charm / Water | Nocturnal | Lucky Charm | Tag Strike | Move: Sail | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Mirageon** | `mirageon` | Charm / Water | Nocturnal | Lucky Charm | Tag Strike | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Fizzlet** | `fizzlet` | Electric | Diurnal | Keen Nose | Tag Strike | — | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Arcwing** | `arcwing` | Electric | Diurnal | Keen Nose | Tag Strike | Move: Fly | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Tempestrix** | `tempestrix` | Electric / Astral | Day & night | Star Seeker | Tag Strike | Move: Fly | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Arcwing** | `arcwing` | Electric | Diurnal | Keen Nose | Tag Strike | — | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Tempestrix** | `tempestrix` | Electric / Astral | Day & night | Star Seeker | Tag Strike | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Emberwick** | `emberwick` | Fire | Diurnal | Sweet Scent | Siphon | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Lavalume** | `lavalume` | Fire | Diurnal | Sweet Scent | Siphon | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Calderex** | `calderex` | Fire / Rock | Diurnal | Forager | Shield Pass | Move: Tunnel | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Calderex** | `calderex` | Fire / Rock | Diurnal | Forager | Shield Pass | — | Hand-made | ☑ | ☐ |
 | Common | 1 | **Emberfish** | `emberfish` | Fire / Water | Diurnal | Forager | Slipstream | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Cinderkoi** | `cinderkoi` | Fire / Water | Diurnal | Lucky Charm | Slipstream | Sig: Caldera Roar · Move: Sail | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Cinderkoi** | `cinderkoi` | Fire / Water | Diurnal | Lucky Charm | Slipstream | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Shadeleaf** | `shadeleaf` | Grass | Nocturnal | Keen Nose | Siphon | — | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Gloomoth** | `gloomoth` | Grass / Charm | Nocturnal | Keen Nose | Siphon | Move: Fly | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Gloomoth** | `gloomoth` | Grass / Charm | Nocturnal | Keen Nose | Siphon | — | Hand-made | ☑ | ☐ |
 | Apex | 1 | **Canopyre** | `canopyre` | Grass | Diurnal | Sweet Scent | Rally | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Rubblet** | `rubblet` | Rock | Day & night | Lucky Charm | Rally | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Boulderon** | `boulderon` | Rock | Day & night | Lucky Charm | Rally | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Stratagon** | `stratagon` | Rock / Steel | Day & night | Keen Nose | Shield Pass | Move: Tunnel | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Stratagon** | `stratagon` | Rock / Steel | Day & night | Keen Nose | Shield Pass | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Cogling** | `cogling` | Steel | Day & night | Trailblazer | Rally | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Anvilisk** | `anvilisk` | Steel / Fire | Diurnal | Trailblazer | Rally | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Leviathorn** | `leviathorn` | Steel | Day & night | Quick Step | Shield Pass | Move: Sail | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Leviathorn** | `leviathorn` | Steel | Day & night | Quick Step | Shield Pass | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Bubbloon** | `bubbloon` | Water | Day & night | Sweet Scent | Rally | — | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Tidecall** | `tidecall` | Water | Day & night | Sweet Scent | Rally | Move: Fly | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Gatormaw** | `gatormaw` | Water | Day & night | Quick Step | Tag Strike | Move: Sail | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Tidecall** | `tidecall` | Water | Day & night | Sweet Scent | Rally | — | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Gatormaw** | `gatormaw` | Water | Day & night | Quick Step | Tag Strike | — | Hand-made | ☑ | ☐ |

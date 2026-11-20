@@ -1,4 +1,4 @@
-import type { EnergyMap, ElementType, Movement, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
+import type { EnergyMap, ElementType, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
 import { MOVES, MOVE_BY_ID } from '../data/moves';
 import { NATURES, NATURE_BY_ID } from '../data/content';
@@ -24,7 +24,6 @@ export interface CreatureInst {
   extraEnergy: EnergyMap;
   unlocked: string[];       // progression node ids (current stage chart)
   signature?: string;       // learned signature move id
-  movement?: Movement;      // unlocked movement ability
   capstone?: boolean;
   health: number;
   vitality: number;
@@ -191,7 +190,7 @@ export function autoPlaybook(c: CreatureInst, varied = false): string[] {
 //            /   \                  b  +2 primary energy      c  +1 Health
 //           b     c                 d  Signature (or Focus)   e  +1 second stat (needs b AND c)
 //          / \   / \                f  +1 Speed
-//         d   e     f               g  Movement (or +2 secondary energy)
+//         d   e     f               g  +2 secondary energy
 //         |   |     |               h  +1 Vitality            i  +1 Stamina
 //         g   h     i               Evolve needs h. Final stage instead: p (+2 Prisma, needs g)
 //         |  / \   /                and Capstone (needs h AND i).
@@ -201,7 +200,7 @@ export interface ProgNode {
   /** Nodes that connect into this one. All must be unlocked before it can be bought. */
   requires: string[];
   apply: (c: CreatureInst) => void;
-  kind: 'stat' | 'energy' | 'signature' | 'movement' | 'evolve' | 'capstone' | 'prisma';
+  kind: 'stat' | 'energy' | 'signature' | 'evolve' | 'capstone' | 'prisma';
 }
 
 /** One-line summary of a move for chart nodes, e.g. "d8+1 Astral attack". */
@@ -236,9 +235,7 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
       : statNode({ id: 'd', row: 2, col: 0, requires: ['b'] }, 'focus'),
     statNode({ id: 'e', row: 2, col: 1, requires: ['b', 'c'] }, second),
     statNode({ id: 'f', row: 2, col: 2, requires: ['c'] }, 'speed'),
-    sp.movement
-      ? { id: 'g', row: 3, col: 0, requires: ['d'], label: `Learn ${cap(sp.movement)}`, text: `Unlocks the ${cap(sp.movement)} overworld ability.`, icon: '➶', kind: 'movement', apply: (cc) => { cc.movement = sp.movement; } }
-      : energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
+    energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
     { id: 'h', row: 3, col: 1, requires: ['e'], label: '+1 Vitality', text: 'One more Vitality heart.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
     statNode({ id: 'i', row: 3, col: 2, requires: ['f'] }, 'stamina'),
   ];

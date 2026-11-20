@@ -60,7 +60,7 @@ const added = (b: Biome, name: string, level: number): Leg => [b, name, level, t
 /** A route between two hubs; intermediate wild nodes are laid out along the line with a gentle wiggle. */
 const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; rarity?: number; bend?: number }[] = [
   { a: 'aurora', b: 'mistfall', legs: [['tundra', 'Frostbite Flats', 3], added('tundra', 'Rimeglass Shelf', 3), ['mountain', 'Glacier Stair', 3]], bend: 3 },
-  { a: 'mistfall', b: 'hollow', legs: [added('mountain', 'Misty Switchback', 2), ['grove', 'Fogbank Path', 2], ['forest', 'Fernway', 2], added('grove', 'Lantern Glade', 2)], req: { item: 'fog-lantern', movement: 'wayfind' }, bend: -3 },
+  { a: 'mistfall', b: 'hollow', legs: [added('mountain', 'Misty Switchback', 2), ['grove', 'Fogbank Path', 2], ['forest', 'Fernway', 2], added('grove', 'Lantern Glade', 2)], req: { item: 'fog-lantern' }, bend: -3 },
   { a: 'hollow', b: 'lumber', legs: [added('grove', 'Dewdrop Dell', 2), ['forest', 'Mossy Hollow', 2], ['grove', 'Rainshadow Glen', 3], added('forest', 'Bracken Trail', 3)], bend: 3 },
   { a: 'lumber', b: 'gloom', legs: [['forest', 'Shadeway', 3], added('forest', 'Hollow Log Crossing', 3), ['forest', 'Fallen Giant', 4]], bend: -2 },
   { a: 'gloom', b: 'canyon', legs: [added('forest', 'Fernlight Edge', 3), ['meadow', 'Sunbaked Meadow', 3], added('meadow', 'Thistle Rise', 3), added('canyon', 'Ochre Steps', 4), ['canyon', 'Redrock Pass', 4]], bend: 3 },
@@ -77,7 +77,7 @@ const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; ra
   { a: 'ridgeway', b: 'stadium', legs: [added('mountain', 'Ridgeback Trail', 3), added('road', 'Thunderhead Pass', 3), ['road', 'Stormchaser Road', 3], added('meadow', 'Pennant Fields', 3), added('road', 'Grand Approach', 3)], bend: 2 },
   // the two Legendary approaches stay short: they're climbs, not journeys between towns
   { a: 'aurora', b: 'sunspire', legs: [['mountain', 'Whiteout Col', 6]], bend: -2 },
-  { a: 'iron', b: 'ironwake', legs: [], req: { movement: 'sail' } },
+  { a: 'iron', b: 'ironwake', legs: [], req: { item: 'ferry-pass' } }, // offshore: the ferry from Iron Coast
   // Kilauea island: Amber's Fire Pit and its wilds (reached by ferry from Mangrove Port or Kilauea Forge)
   { a: 'firepit', b: 'blackSand', legs: [added('volcanic', 'Cinder Cone', 6), added('volcanic', 'Ember Flue', 6), ['volcanic', 'Steam Vents', 6]], bend: -1.5 },
   { a: 'firepit', b: 'blackSand', legs: [['volcanic', 'Lava Tubes', 7], added('volcanic', 'Magma Chamber', 7), ['coast', 'Obsidian Shore', 6], added('coast', 'Sulfur Springs', 6)], bend: 6 },
@@ -153,8 +153,8 @@ export const FOREST_FLOOR = 'forestfloor';
 edges.push({ a: 'gloom', b: FOREST_FLOOR, via: 'rope', requires: { item: 'canopy-rope' } });
 
 // The ferries to Kilauea island
-edges.push({ a: 'mangrove', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
-edges.push({ a: 'kilauea', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
+edges.push({ a: 'mangrove', b: 'blackSand', via: 'sea', requires: { item: 'ferry-pass' } });
+edges.push({ a: 'kilauea', b: 'blackSand', via: 'sea', requires: { item: 'ferry-pass' } });
 /** The wild stair leading down to Shifting Depths (its level and rarity set what the Depths turn up). */
 export const DEPTHS_STAIR = nodes.find((n) => n.name === 'Sinkhole Stair')!.id;
 
@@ -209,14 +209,14 @@ export const CITIES: Record<string, City> = {
 };
 
 export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: string; special?: string }> = {
-  mistfall: { blurb: 'A mountain waystation where travelers buy lanterns before braving the fog.', sells: ['salve', 'calm-tea', 'totem', 'sunberry'], key: 'fog-lantern' },
-  lumber: { blurb: 'Loggers and woodcarvers in a hollow among the giant trees.', sells: ['salve', 'totem', 'dewberry', 'pine-resin'] },
-  dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'moonberry', 'energy-tonic', 'totem'] },
-  ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt'], key: 'summit-pick' },
+  mistfall: { blurb: 'A mountain waystation where travelers buy lanterns before braving the fog.', sells: ['salve', 'calm-tea', 'totem', 'sunberry', 'trail-mix'], key: 'fog-lantern' },
+  lumber: { blurb: 'Loggers and woodcarvers in a hollow among the giant trees. A bike-maker’s shed sits by the sawmill.', sells: ['salve', 'totem', 'dewberry', 'pine-resin', 'bike'] },
+  dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'moonberry', 'energy-tonic', 'totem', 'homing-feather'] },
+  ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt', 'trail-mix'], key: 'summit-pick' },
   saltmarsh: { blurb: 'Where the coast turns to marsh. The ferry office is here.', sells: ['salve', 'sea-glass', 'marsh-lotus', 'totem'], key: 'ferry-pass' },
   blackSand: { blurb: 'Ferry landing on Kilauea\'s black sand. Hot springs bubble beside the dock.', sells: ['elixir', 'volcanic-glass', 'ember-charcoal'], },
   valor: { blurb: 'A hill town of training yards and the Margos Battle School. Leave a creature with the drill masters and it comes back stronger.', sells: ['salve', 'energy-tonic', 'totem', 'dewberry'], special: 'school' },
-  quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea'], special: 'research' },
+  quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea', 'homing-feather'], special: 'research' },
   depths: { blurb: 'Lantern-lit ledges at the bottom of the endless canyon. Leave an offering at the edge of the dark, and something that craves it climbs up to meet you.', sells: ['salve', 'totem', 'canyon-ochre', 'ember-charcoal'], special: 'depths' },
 };
 

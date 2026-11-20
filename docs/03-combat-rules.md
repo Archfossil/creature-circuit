@@ -88,7 +88,7 @@ This determines the difficulty of recruiting a defeated Creature. This is compar
 
 ## Level
 
-Determines how many times the creature has already been upgraded. At each new level a node is unlocked in the creatures progression tree. This tree can include increases to attributes, sub-attributes (such as improving Health or Vitality), adding more energy for use in the playbook, adding "Prism" energy (a rare energy type which counts as any energy), or unlocking signature attacks or movement abilities such as Fly, Sail, Tunnel, or Portal.
+Determines how many times the creature has already been upgraded. At each new level a node is unlocked in the creatures progression tree. This tree can include increases to attributes, sub-attributes (such as improving Health or Vitality), adding more energy for use in the playbook, adding "Prism" energy (a rare energy type which counts as any energy), or unlocking signature attacks.
 
 The last node in progression charts for stage 1 and 2 creatures is always to "Evolve" into the next stage. Creatures at their final stage will have a capstone node which, once unlocked, gives the creature more power based on their Loyalty with their trainer.
 

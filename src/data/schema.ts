@@ -11,7 +11,6 @@ export type EnergyMap = Partial<Record<EnergyKey, number>>;
 export type Rarity = 'common' | 'prime' | 'apex' | 'legendary';
 export type StatKey = 'vigor' | 'power' | 'armor' | 'focus' | 'ward' | 'speed' | 'evasion' | 'stamina';
 export type Stats = Record<StatKey, number>;
-export type Movement = 'fly' | 'sail' | 'tunnel' | 'portal' | 'wayfind';
 
 export type BodyShape = 'blob' | 'quad' | 'bird' | 'serpent' | 'golem' | 'sprite' | 'fish';
 
@@ -40,7 +39,6 @@ export interface Species {
   ability: string;        // ability id (overworld passive)
   affinity: string;       // affinity power id (swap-in team-up)
   signature?: string;     // move id unlocked via progression
-  movement?: Movement;    // movement unlocked via progression
   biomes: Biome[];        // where it can be encountered in the wild
   dex: string;            // flavor text for the index card
   look: CreatureLook;
@@ -98,15 +96,15 @@ export interface MapNode {
   legendary?: string;   // species id roaming here
   arenaOf?: string;     // kind 'arena': the city whose Arbiter fights here
   /** merit: only trainers holding that city's Merit may enter (e.g. Salem's for the Eye of the Sky). */
-  requires?: { tier?: number; item?: string; movement?: Movement; merit?: string };
+  requires?: { tier?: number; item?: string; merit?: string };
 }
 
 export interface MapEdge {
   a: string;
   b: string;
-  /** sail: a sea route. portal: the Cloud Island portal, open at night or in Winter. */
-  via?: 'sail' | 'road' | 'portal' | 'rope';
-  requires?: { item?: string; movement?: Movement };
+  /** sea: a ferry crossing. portal: the Cloud Island portal, open at night or in Winter. */
+  via?: 'sea' | 'road' | 'portal' | 'rope';
+  requires?: { item?: string };
 }
 
 export interface City {
@@ -129,8 +127,10 @@ export type ArenaTrick =
 export interface Item {
   id: string;
   name: string;
-  kind: 'restore' | 'treat' | 'material' | 'totem' | 'key' | 'charm';
+  kind: 'restore' | 'treat' | 'material' | 'totem' | 'key' | 'charm' | 'travel';
   price: number;
+  /** Kept once bought and never used up (like key items): only one can be owned. */
+  unique?: boolean;
   text: string;
   /** offering affinity: bonus to recruitment for these types */
   allure?: Partial<Record<ElementType, number>>;

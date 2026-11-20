@@ -14,8 +14,8 @@ export function vnoise(x: number, z: number) {
 export const fbm = (x: number, z: number) => vnoise(x, z) * 0.55 + vnoise(x * 2.1, z * 2.1) * 0.3 + vnoise(x * 4.3, z * 4.3) * 0.15;
 export const smooth = (e0: number, e1: number, x: number) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
-// Land segments (sail routes excluded so islands stay islands)
-export const SEGS: [MapNode, MapNode][] = MAP_EDGES.filter((e) => e.via !== 'sail' && e.via !== 'portal' && e.b !== 'ironwake' && e.a !== 'ironwake').map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]);
+// Land segments (sea routes excluded so islands stay islands)
+export const SEGS: [MapNode, MapNode][] = MAP_EDGES.filter((e) => e.via !== 'sea' && e.via !== 'portal' && e.b !== 'ironwake' && e.a !== 'ironwake').map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]);
 
 export function segDist(px: number, pz: number, a: MapNode, b: MapNode) {
   const dx = b.x - a.x, dz = b.z - a.z;

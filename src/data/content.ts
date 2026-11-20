@@ -58,6 +58,11 @@ export const ITEMS: Record<string, Item> = {
   // charms
   'lure-incense': { id: 'lure-incense', name: 'Lure Incense', kind: 'charm', price: 6, icon: '🕯️', text: 'Your next explore is a guaranteed wild encounter.' },
   'star-charm': { id: 'star-charm', name: 'Star Charm', kind: 'charm', price: 8, icon: '⭐', text: 'Roll +1 rarity die on your next encounter.' },
+  // travel: getting around the big map faster (world.ts → travel items & rides)
+  'bike': { id: 'bike', name: 'Bike', kind: 'travel', unique: true, price: 25, icon: '🚲', text: 'Once a turn, roll a d6 and ride up to that many steps for free, without exploring on the way or where you stop. Not on Cloud Island or the Forest Floor, and not over the sea.' },
+  'taxi-ticket': { id: 'taxi-ticket', name: 'Taxi Ticket', kind: 'travel', price: 10, icon: '🚕', text: 'In a city: ride to any other city. Uses up the rest of your Initiative this turn.' },
+  'homing-feather': { id: 'homing-feather', name: 'Homing Feather', kind: 'travel', price: 8, icon: '🪶', text: 'From anywhere on the mainland, fly back to your home city (a Wanderer may pick any city they’ve rested at). Uses up the rest of your Initiative this turn.' },
+  'trail-mix': { id: 'trail-mix', name: 'Trail Mix', kind: 'travel', price: 6, icon: '🥜', text: '+1 Initiative this turn (up to 5). One handful a turn.' },
   // totems
   'totem': { id: 'totem', name: 'Plain Totem', kind: 'totem', price: 4, icon: '🗿', text: 'A generic carving. +1 to any recruitment.' },
   // offering materials (found by biome)
@@ -93,6 +98,9 @@ export const ITEMS: Record<string, Item> = {
 for (const t of TYPES) {
   ITEMS[`totem:${t}`] = { id: `totem:${t}`, name: `${TYPE_LABEL[t]} Totem`, kind: 'totem', price: 0, icon: '🗿', text: `+3 for ${TYPE_LABEL[t]} creatures, -1 for others.` };
 }
+/** Items you can only own one of: key items, and reusable gear like the Bike. */
+export const isUnique = (it: Item) => it.kind === 'key' || !!it.unique;
+
 export function itemInfo(id: string): Item {
   if (ITEMS[id]) return ITEMS[id];
   if (id.startsWith('effigy:')) return { id, name: 'Effigy', kind: 'totem', price: 0, icon: '🪆', text: '+5 for its creature, -3 for others.' };

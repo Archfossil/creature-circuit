@@ -11,8 +11,8 @@ import type { CreatureInst } from './creature';
 import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, speciesOf, stats, addLoyalty } from './creature';
 import type { Battle } from './battle';
 import { createBattle } from './battle';
-import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather } from './world';
-import { BIOME_TYPES, isCloudNode, FOREST_FLOOR } from '../data/map';
+import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather, travelTo, travelBlock } from './world';
+import { BIOME_TYPES, isCloudNode, FOREST_FLOOR, CITIES } from '../data/map';
 import { pick, roll, weightedPick, uid } from './dice';
 
 /** Chance that a turn ends with an event. 1 = every turn (good for playtesting); lower it to taste. */
@@ -360,7 +360,7 @@ const EVENTS: EventDef[] = [
       title: 'Hidden Hot Spring', icon: '♨️',
       text: 'You find a steaming spring off the trail. A long soak would do everyone good, but it takes time.',
       choices: [
-        { id: 'soak', label: 'Soak · 1 Initiative', detail: 'All creatures (not KO\'d) clear Fatigue, refill Stamina and gain +1 Morale.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+        { id: 'soak', label: 'Soak · 1 Initiative', detail: 'All your partner creatures (in totems too, if not KO\'d) clear Fatigue, refill Stamina and gain +1 Morale.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
         DECLINE,
       ],
     }),
@@ -403,7 +403,7 @@ const EVENTS: EventDef[] = [
       text: 'A bard sets up by your campfire and plays a rousing tune about the Creature Circuit.',
       choices: [
         { id: 'listen', label: 'Listen', detail: 'Your active team gains +1 Morale.' },
-        { id: 'tip', label: `Request a ballad about your team · 🪙 ${d.price}`, detail: 'Every creature you own gains +1 Morale, and your follower +1 Loyalty.', disabled: afford(s, d.price as number) },
+        { id: 'tip', label: `Request a ballad about your team · 🪙 ${d.price}`, detail: 'All your partner creatures (in totems too) gain +1 Morale, and your follower +1 Loyalty.', disabled: afford(s, d.price as number) },
       ],
     }),
     resolve: (s, d, choice) => {
@@ -449,6 +449,53 @@ const EVENTS: EventDef[] = [
       s.coins -= d.price as number;
       s.initiative += 1;
       return { text: 'With a guide leading, you’ll cover more ground today. (+1 Initiative)', tone: 'good' };
+    },
+  },
+  {
+    // getting around the big map: a free ride to one of three cities
+    id: 'balloon', weight: 2, time: 'day',
+    when: (s) => !travelBlock(s),
+    create: (s) => {
+      const options = Object.keys(CITIES).filter((id) => id !== s.location).sort(() => Math.random() - 0.5).slice(0, 3);
+      return { cities: options };
+    },
+    view: (s, d) => ({
+      title: 'Hot Air Balloon', icon: '🎈',
+      text: 'A striped hot air balloon settles in the field beside you. The pilot is heading out on the morning winds and has room for one more, and your creatures.',
+      choices: [
+        ...(d.cities as string[]).map((id) => ({
+          id, label: `Float to ${CITIES[id].name}`,
+          detail: `${TYPE_LABEL[CITIES[id].type]} City · Arbiter ${CITIES[id].arbiter}${s.visited.includes(id) ? ' · visited' : ' · somewhere new'}`,
+        })),
+        { id: 'decline', label: 'Stay on the ground', detail: 'Go on your way.' },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      if (!(d.cities as string[]).includes(choice)) return { text: 'You wave as the balloon drifts away.', tone: 'info' };
+      travelTo(s, choice);
+      log(s, `Rode a hot air balloon to ${CITIES[choice].name}.`);
+      return { text: `The balloon sets you down gently in ${CITIES[choice].name}. What a view!`, tone: 'good' };
+    },
+  },
+  {
+    // getting around the big map: a paid overnight ride to one named city
+    id: 'coach', weight: 2, time: 'night',
+    when: (s) => !travelBlock(s),
+    create: (s) => ({ city: pick(Object.keys(CITIES).filter((id) => id !== s.location)), price: 4 }),
+    view: (s, d) => {
+      const c = CITIES[d.city as string];
+      return {
+        title: 'Night Coach', icon: '🚌',
+        text: `A coach rattles up the road, lanterns swinging. The driver is bound for ${c.name} overnight and offers you a seat. You'd wake up there.`,
+        choices: [{ id: 'ride', label: `Ride to ${c.name} · 🪙 ${d.price}`, detail: `${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}. Your Initiative is untouched.`, disabled: afford(s, d.price as number) }, DECLINE],
+      };
+    },
+    resolve: (s, d, choice) => {
+      if (choice !== 'ride') return { text: 'The coach rolls on into the night without you.', tone: 'info' };
+      s.coins -= d.price as number;
+      travelTo(s, d.city as string);
+      log(s, `Took the Night Coach to ${CITIES[d.city as string].name}.`);
+      return { text: `You doze off to the rocking of the coach and wake in ${CITIES[d.city as string].name}.`, tone: 'good' };
     },
   },
   {
@@ -528,7 +575,7 @@ const EVENTS: EventDef[] = [
       text: 'A star streaks across the sky. Your team looks at you expectantly. Make a wish!',
       choices: [
         { id: 'luck', label: 'Wish for luck', detail: 'Receive a Star Charm (+1 rarity die on an encounter).' },
-        { id: 'team', label: 'Wish for your team', detail: 'Everyone you own gains +1 Morale.' },
+        { id: 'team', label: 'Wish for your team', detail: 'All your partner creatures (in totems too) gain +1 Morale.' },
       ],
     }),
     resolve: (s, _d, choice) => {
@@ -613,7 +660,7 @@ const EVENTS: EventDef[] = [
       text: 'A rainbow arcs across the clouds in silver moonlight. Its end touches the ground right beside you.',
       choices: [
         { id: 'reach', label: 'Reach for its end', detail: 'Roll d6: 5–6 a Moonbow Prism (+3 to recruit any creature), otherwise a Cloud Silk.' },
-        { id: 'watch', label: 'Watch it with your team', detail: 'Every creature you own gets +1 Morale.' },
+        { id: 'watch', label: 'Watch it with your team', detail: 'All your partner creatures (in totems too) gain +1 Morale.' },
       ],
     }),
     resolve: (s, _d, choice) => {

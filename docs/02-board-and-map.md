@@ -8,15 +8,13 @@ The Arbiter of Aurora Peak is **Salem**. Their arena is only open under the ligh
 
 **Cloud Island:** a portal in Aurora Peak opens at night (and all Winter) to Cloud Island, a ring of six cloud nodes (Gatecloud Landing, Nimbus Steps, Starfall Drift, Moonbow Arch, Thunderhead Rise, Stillwind Hollow) floating off the north-west coast. Salem only battles trainers who have walked a full lap of it. The island is cotton candy pinks and purples with a sinister dark purple running through it. Every step there costs +1 Initiative per Tier, and anything found there is only kept once the trainer escapes. In the middle lies the Eye of the Sky, home of the Legendary Nimbalune, open to trainers who have beaten Salem. In Winter, Aurora Peak is always under Aurora Night.
 
-The heights of Aurora Peak provide landing spaces for creatures who have learned to fly.
-
 ## 2. Hollow Crest
 
 Based on Olympic National Park in Washington, Hollow Crest is a city nestled inside a temperate forest which gets seasonally cold and represents our Charm type. The moss covered woodland presents a picturesque fairy-forest type environment. The "city" itself is mostly made of cozy log cabins.
 
 The Arbiter of Hollow Crest is **Fabian**. Their arena is made mostly of illusory terrain obfuscated by fog and glamorous lighting tricks. Fabian himself hides among the population of Hollow Crest in disguise, choosing to prank prospective challenging trainers to see their reaction before allowing them to challenge him to battle.
 
-Navigation in the fog can be difficult in Hollow Crest. Creatures with special sight or wayfinding abilities can make it through perfectly.
+Navigation in the fog can be difficult in Hollow Crest. The fog road from Mistfall needs a Fog Lantern.
 
 ## 3. Thunder Spike
 
@@ -26,7 +24,7 @@ The Arbiter of Thunder Spike is **Watson**. His arena sits directly underneath t
 
 ## 4. Kilauea Forge
 
-Based on the Hawai'i Volcanoes National Park in Hawaii. Kilauea Forge is a forge town on the volcanic southwest coast of the mainland, so Fire trainers can start their journey here like any other type. Offshore lies Kilauea island, the southern-most point of Margos, a tropical paradise where Fire type creatures enjoy the heat of the steam vents and lava tunnels. The island is reached by ferry (or by Sailing) from the Forge's docks or from Mangrove Port, landing at Black Sand Cove.
+Based on the Hawai'i Volcanoes National Park in Hawaii. Kilauea Forge is a forge town on the volcanic southwest coast of the mainland, so Fire trainers can start their journey here like any other type. Offshore lies Kilauea island, the southern-most point of Margos, a tropical paradise where Fire type creatures enjoy the heat of the steam vents and lava tunnels. The island is reached by ferry (with a Ferry Pass) from the Forge's docks or from Mangrove Port, landing at Black Sand Cove.
 
 The Arbiter of Kilauea Forge is **Amber**. Amber's arena rests in a pit of fire and flames, where steam vents and 
 
@@ -52,7 +50,7 @@ The Arbiter is **Stella**. Her arena is a floating fortress which docks only onc
 
 Based on the Everglades National Park in Florida. The city is built on stilts overlooking marshy waters and mangrove trees with roots which shift every few hours, making traversal here through the water nearly impossible for all but the native water creatures. Boardwalks and suspended bridges dominate the area.
 
-The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and can will them open or closed. She uses this to help her city, but also to deny unworthy trainers from ever finding her to issue their challenges. The Root Whistle that opens the roots is sold in a different town each game (a creature that can Sail also works).
+The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and can will them open or closed. She uses this to help her city, but also to deny unworthy trainers from ever finding her to issue their challenges. The Root Whistle that opens the roots is sold in a different town each game.
 
 # Map Design
 

@@ -1,10 +1,10 @@
-import type { Biome, ElementType, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
+import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
-import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, timeOfDay } from '../data/content';
+import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Match, BattleKind } from './state';
-import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf } from './state';
+import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf } from './state';
 import type { CreatureInst } from './creature';
 import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -49,28 +49,140 @@ export function canMoveTo(s: GameState, id: string): MoveCheck {
   const nb = neighbors(s.location).find((n) => n.node.id === id);
   const cost = moveCost(s, id);
   if (!nb) return { ok: false, cost, reason: 'Not adjacent.' };
-  if (nb.edge.via === 'portal' && !portalOpen(s)) return { ok: false, cost, reason: 'The Cloud Island portal only opens at night (even turns), or any time in Winter.' };
-  const req = nb.edge.requires;
-  if (req) {
-    const mv = teamMovements(s);
-    const okItem = req.item ? hasItem(s, req.item) : false;
-    const okMove = req.movement ? mv.has(req.movement) : false;
-    if (!okItem && !okMove) {
-      const parts = [req.item ? itemInfo(req.item).name : null, req.movement ? `a creature that knows ${cap(req.movement)}` : null].filter(Boolean);
-      return { ok: false, cost, reason: `Requires ${parts.join(' or ')}.` };
-    }
-  }
-  const nr = nb.node.requires;
-  if (nr) {
-    if (nr.tier && tierOf(s) < nr.tier) return { ok: false, cost, reason: `Only Tier ${nr.tier}+ trainers may enter.` };
-    if (nr.item && !hasItem(s, nr.item)) return { ok: false, cost, reason: `Requires ${itemInfo(nr.item).name}.` };
-    if (nr.merit && !s.merits.includes(nr.merit)) return { ok: false, cost, reason: `Only trainers who hold ${CITIES[nr.merit]?.accolade ?? 'that Merit'} may cross. Beat Arbiter ${CITIES[nr.merit]?.arbiter ?? ''} first.` };
-  }
+  const why = routeBlock(s, nb);
+  if (why) return { ok: false, cost, reason: why };
   if (s.initiative < cost) return { ok: false, cost, reason: 'Not enough Initiative.' };
   return { ok: true, cost };
 }
 
-const cap = (x: string) => x[0].toUpperCase() + x.slice(1);
+/** Why a step along this route is closed to the trainer (a gate: item, Tier, Merit, the portal), or null if open. Initiative isn't checked. */
+function routeBlock(s: GameState, nb: { node: MapNode; edge: MapEdge }): string | null {
+  if (nb.edge.via === 'portal' && !portalOpen(s)) return 'The Cloud Island portal only opens at night (even turns), or any time in Winter.';
+  const req = nb.edge.requires;
+  if (req?.item && !hasItem(s, req.item)) return `Requires ${itemInfo(req.item).name}.`;
+  const nr = nb.node.requires;
+  if (nr) {
+    if (nr.tier && tierOf(s) < nr.tier) return `Only Tier ${nr.tier}+ trainers may enter.`;
+    if (nr.item && !hasItem(s, nr.item)) return `Requires ${itemInfo(nr.item).name}.`;
+    if (nr.merit && !s.merits.includes(nr.merit)) return `Only trainers who hold ${CITIES[nr.merit]?.accolade ?? 'that Merit'} may cross. Beat Arbiter ${CITIES[nr.merit]?.arbiter ?? ''} first.`;
+  }
+  return null;
+}
+
+// ── Getting around: travel items & rides ────────────────────────
+// The map is big, so a few things move a trainer further than one step at a time: the Bike (a free
+// ride of up to d6 steps once a turn), Taxi Tickets (city to city), the Homing Feather (back home)
+// and Trail Mix (+1 Initiative). Events add the Hot Air Balloon and the Night Coach (events.ts).
+
+/** Why travel items can't be used here (they only work on the mainland), or null. */
+export function travelBlock(s: GameState): string | null {
+  if (isCloudNode(s.location)) return 'Not on Cloud Island: leave through the portal first.';
+  if (s.location === FOREST_FLOOR) return 'Not on the Forest Floor: climb back up first.';
+  return null;
+}
+
+/** Arrive somewhere by a ride: `passed` are the nodes travelled through (counted as visited, and as steps when `steps`). */
+export function travelTo(s: GameState, dest: string, passed: string[] = [dest], steps = false) {
+  moveTrainer(s, dest);
+  for (const id of passed) if (!s.visited.includes(id)) s.visited.push(id);
+  if (steps) s.stats.steps = (s.stats.steps ?? 0) + passed.length;
+}
+
+/**
+ * Bike: every node reachable in up to `steps` steps, with the path there (start excluded). Rides
+ * stay on land (no sea, portal or rope routes) and respect every gate, and never end at, or pass
+ * through, a Legendary's grounds (those are met by walking in).
+ */
+export function bikeReach(s: GameState, steps: number): Record<string, string[]> {
+  const paths: Record<string, string[]> = {};
+  let frontier = [s.location];
+  const seen = new Set([s.location]);
+  for (let d = 0; d < steps; d++) {
+    const next: string[] = [];
+    for (const at of frontier) {
+      for (const nb of neighbors(at)) {
+        const id = nb.node.id;
+        if (seen.has(id) || nb.edge.via === 'sea' || nb.edge.via === 'portal' || nb.edge.via === 'rope') continue;
+        if (isCloudNode(id) || id === FOREST_FLOOR || nb.node.kind === 'legendary' || routeBlock(s, nb)) continue;
+        seen.add(id);
+        paths[id] = [...(paths[at] ?? []), id];
+        next.push(id);
+      }
+    }
+    frontier = next;
+  }
+  return paths;
+}
+/** Why the Bike can't be ridden now, or null. */
+export function bikeBlock(s: GameState): string | null {
+  if (!hasItem(s, 'bike')) return 'You don’t have a Bike.';
+  if (s.flags.bikeRoll) return null; // a roll is waiting to be ridden
+  if (s.flags.bikeUsed) return 'You’ve already ridden this turn.';
+  return travelBlock(s);
+}
+/** Roll the Bike die (once a turn). A roll not yet ridden is kept, so a reload doesn't re-roll. */
+export function rollBike(s: GameState): number | null {
+  if (bikeBlock(s)) return null;
+  if (!s.flags.bikeRoll) { s.flags.bikeUsed = true; s.flags.bikeRoll = roll(6); }
+  return s.flags.bikeRoll;
+}
+/** Ride to `dest` (within the rolled steps): no Initiative, no exploring. Returns the path, or null. */
+export function rideBike(s: GameState, dest: string): string[] | null {
+  const n = s.flags.bikeRoll;
+  if (!n) return null;
+  const path = bikeReach(s, n)[dest];
+  if (!path) return null;
+  s.flags.bikeRoll = 0;
+  travelTo(s, dest, path, true);
+  log(s, `Rode the Bike ${path.length} step${path.length === 1 ? '' : 's'} to ${NODE_BY_ID[dest].name}.`);
+  return path;
+}
+/** Get off without riding: the roll is spent. */
+export function skipBike(s: GameState) { s.flags.bikeRoll = 0; }
+
+/** Taxi Ticket: from a city, every other city. Empty when not in a city or without a ticket. */
+export function taxiTargets(s: GameState): string[] {
+  if (!hasItem(s, 'taxi-ticket') || NODE_BY_ID[s.location].kind !== 'city') return [];
+  return Object.keys(CITIES).filter((id) => id !== s.location);
+}
+export function rideTaxi(s: GameState, id: string): boolean {
+  if (!taxiTargets(s).includes(id)) return false;
+  addItem(s, 'taxi-ticket', -1);
+  travelTo(s, id);
+  s.initiative = 0;
+  log(s, `Took a taxi to ${CITIES[id].name}.`);
+  return true;
+}
+
+/** Homing Feather: back to the home city, or for a Wanderer any city they've rested at. */
+export function featherTargets(s: GameState): string[] {
+  if (!hasItem(s, 'homing-feather') || travelBlock(s)) return [];
+  return wipeOptions(s).filter((id) => id !== s.location);
+}
+export function useFeather(s: GameState, id: string): boolean {
+  if (!featherTargets(s).includes(id)) return false;
+  addItem(s, 'homing-feather', -1);
+  travelTo(s, id);
+  s.initiative = 0;
+  log(s, `A Homing Feather carried you to ${CITIES[id].name}.`);
+  return true;
+}
+
+/** Trail Mix: +1 Initiative (up to 5), once a turn. Returns a message, or null if it can't be eaten. */
+export function trailMixBlock(s: GameState): string | null {
+  if (!hasItem(s, 'trail-mix')) return 'No Trail Mix left.';
+  if (s.flags.trailMix) return 'You’ve already had a handful this turn.';
+  if (s.initiative >= 5) return 'Your Initiative is already full.';
+  return null;
+}
+export function eatTrailMix(s: GameState): boolean {
+  if (trailMixBlock(s)) return false;
+  addItem(s, 'trail-mix', -1);
+  s.flags.trailMix = true;
+  s.initiative += 1;
+  return true;
+}
+
 
 // ── Exploration ─────────────────────────────────────────────────
 /** `die`: the explore die (6, or 8 on the Forest Floor). `dark`: a Forest Floor "nothing" (the team loses Morale). */
@@ -154,7 +266,7 @@ function rollFind(s: GameState, node: MapNode): Find {
   let coins = 0;
   if (ir <= 2) items.push({ id: ir === 1 ? 'sunberry' : (Math.random() < 0.2 ? 'moonberry' : 'dewberry'), n: mult });
   else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: mult });
-  else if (ir === 5) items.push({ id: pick(['salve', 'calm-tea', 'lure-incense', 'totem']), n: 1 });
+  else if (ir === 5) items.push({ id: pick(['salve', 'calm-tea', 'lure-incense', 'totem', 'trail-mix']), n: 1 });
   else { if (Math.random() < 0.5) items.push({ id: 'totem', n: 1 }); coins = roll(6); }
   return { itemRoll: ir, items, coins };
 }
@@ -485,7 +597,7 @@ export function hallBattle(s: GameState): { name: string; battle: Battle } | nul
 
 // ── Cloud Island (Salem) ────────────────────────────────────────
 // The portal from Aurora Peak opens at night (even turns), or any time in Winter. On the island a
-// trainer can walk the ring at any time, but can only leave through the portal (or by Flying).
+// trainer can walk the ring at any time, but can only leave through the portal.
 // Six steps in a row around the ring, the same way round, is a full lap: Salem will battle that
 // trainer from then on. Turning back starts the count again; leaving the island ends the lap.
 
@@ -912,7 +1024,7 @@ export function buy(s: GameState, id: string): boolean {
   const p = priceOf(s, id);
   const it = itemInfo(id);
   if (s.coins < p) return false;
-  if (it.kind === 'key' && hasItem(s, id)) return false;
+  if (isUnique(it) && hasItem(s, id)) return false;
   s.coins -= p;
   addItem(s, id, 1);
   return true;
@@ -926,7 +1038,7 @@ export const keyTownName = (s: GameState, item: string) => NODE_BY_ID[keyTownOf(
 
 export function marketStock(nodeId: string): string[] {
   const n = NODE_BY_ID[nodeId];
-  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'star-charm', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
+  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'star-charm', 'taxi-ticket', 'trail-mix', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
   return TOWNS[nodeId]?.sells ?? [];
 }
 
@@ -1032,7 +1144,7 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
       const g = gauntletProgress(s);
       return { ok: false, gauntlet: true, reason: `Stella only faces trainers who clear the Iron Coast Gauntlet: ${g.wins}/${g.need} trainers beaten. Leaving the city resets it.` };
     }
-    case 'mangrove': return hasItem(s, 'root-whistle') || teamMovements(s).has('sail') ? { ok: true } : { ok: false, reason: `The mangrove roots hide Katy. You need a Root Whistle (sold in ${keyTownName(s, 'root-whistle')} this season) or a creature that can Sail.` };
+    case 'mangrove': return hasItem(s, 'root-whistle') ? { ok: true } : { ok: false, reason: `The mangrove roots hide Katy. You need a Root Whistle (sold in ${keyTownName(s, 'root-whistle')} this season).` };
     default: return { ok: true };
   }
 }
@@ -1188,6 +1300,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   s.initiative = 5;
   s.flags.freeReexploreUsed = false;
   s.flags.rangerRefunds = 0;
+  s.flags.bikeUsed = false; s.flags.bikeRoll = 0; s.flags.trailMix = false;
   s.flags.firstMoveUsed = false;
   s.flags.salemNight = false;
   s.flags.sparred = [];
@@ -1210,13 +1323,3 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   return report;
 }
 
-export function flyTargets(s: GameState): string[] {
-  if (!teamMovements(s).has('fly')) return [];
-  return s.visited.filter((id) => NODE_BY_ID[id].kind === 'city' && id !== s.location);
-}
-export function fly(s: GameState, id: string): boolean {
-  if (s.initiative < 3 || !flyTargets(s).includes(id)) return false;
-  s.initiative -= 3;
-  moveTrainer(s, id);
-  return true;
-}

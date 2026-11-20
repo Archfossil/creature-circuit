@@ -49,7 +49,8 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `action-town`: 🏘️: Open the Town menu.
 - [ ] `action-arena`: 🏟️: Arena (Arbiter's arena node).
 - [ ] `action-stadium`: 🏟️: Circuit Stadium (needs a distinct icon from Arena).
-- [ ] `action-fly`: 🪽: Fly.
+- [ ] `action-bike`: 🚲: Bike ride (shows "Ride N" while a roll waits).
+- [ ] `action-taxi`: 🚕: Taxi (in a city, with a Taxi Ticket).
 - [ ] `action-trainers`: 👥: Trainers (gifts, trades, duels).
 - [ ] `action-team`: 🐾: Team (also "My team" while watching online).
 - [ ] `action-bag`: 🎒: Bag (also "My bag" while watching online).
@@ -146,6 +147,12 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `item-lure-incense`: 🕯️ Lure Incense (also the "Lure active" chip)
 - [ ] `item-star-charm`: ⭐ Star Charm (also the "Star Charm active" chip)
 
+**Travel**
+- [ ] `item-bike`: 🚲 Bike (also the action-bar button)
+- [ ] `item-taxi-ticket`: 🚕 Taxi Ticket (also the action-bar button)
+- [ ] `item-homing-feather`: 🪶 Homing Feather
+- [ ] `item-trail-mix`: 🥜 Trail Mix
+
 **Totems**
 - [ ] `item-totem`: 🗿 Plain Totem
 - [ ] `item-totem-typed`: 🗿 Typed Totem. One base design; ideally 8 variants tinted or marked per type.
@@ -215,6 +222,19 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `die-star-full`: ★ Rarity star (full)
 - [ ] `die-star-half`: ⯪ Rarity star (half)
 - [ ] `die-star-blank`: · Blank rarity die face
+- Weather die faces reuse the weather icons ([section 5](#5-weather-11--seasons-4-)), so they need no separate art.
+
+**Dice bodies** (drawn with CSS for now; the number or face sits on top)
+- [ ] `die-d4`: yellow triangle. Clash die at Lv 1–3, move damage d4.
+- [ ] `die-d6`: white rounded square. Exploring, rarity stars, weather, finds, accuracy, damage, Clash at Lv 4–6, offerings, school and many events.
+- [ ] `die-d8`: blue diamond. Forest Floor exploring, Clash at Lv 7–9, move damage d8.
+- [ ] `die-d10`: purple pentagon. Morale checks, Fatigue checks, Clash at Lv 10–12, move damage d10.
+- [ ] `die-d12`: Clash die from Lv 13. It shares the d10's pentagon for now, so it needs its own shape.
+- [ ] `die-d20`: pink hexagon. A wild Legendary's "Hold attention" roll.
+- Each die also shows a green (good), red (bad) or yellow (info) tint when it lands. Deliver the bodies so the tint can still be applied (e.g. a light fill or separate tint layers).
+
+**Clash coin flip**
+- [ ] `clash-coin`: gold coin (CSS for now). Flipped when a Clash's dice tie, to decide who acts first. One face shows the player's creature name and the other the foe's, so deliver a blank coin face (front and back) with room for a short name.
 
 ## 8. Status effects (8) ★★
 
@@ -237,7 +257,6 @@ Shown as status tags in battle and in ☰ Menu → Status Effects.
 - [ ] `node-health`: ♥ +1 Health
 - [ ] `node-vitality`: ✚ +1 Vitality
 - [ ] `node-signature`: ★ Signature Move
-- [ ] `node-movement`: ➶ Overworld movement (also the movement chip on cards)
 - [ ] `node-evolve`: ⇪ Evolve
 - [ ] `node-prisma`: ✦ +2 Prisma energy
 - [ ] `node-capstone`: ❖ Capstone (also the "Chart complete" box)
@@ -259,7 +278,7 @@ Shown as status tags in battle and in ☰ Menu → Status Effects.
 - [ ] `recommend`: ✨ "Recommend moves?" button
 - [ ] `weak-to`: 🛡️ "Weak to" column header on the type chart
 
-## 10. Start-of-turn events (24) ★★
+## 10. Start-of-turn events (26) ★★
 
 Shown large on each event card.
 
@@ -287,6 +306,8 @@ Shown large on each event card.
 - [ ] `event-shooting-star`: 🌠
 - [ ] `event-bad-berries`: 🤢
 - [ ] `event-eager-apprentice`: 🧒
+- [ ] `event-hot-air-balloon`: 🎈
+- [ ] `event-night-coach`: 🚌
 - [ ] `event-star-shepherd`: 🌟 (Cloud Island)
 - [ ] `event-moonbow`: 🌈 (Cloud Island)
 - [ ] `event-sky-whale`: 🐋 (Cloud Island)

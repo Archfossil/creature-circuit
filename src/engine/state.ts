@@ -1,7 +1,7 @@
-import type { Movement, StatKey } from '../data/schema';
+import type { StatKey } from '../data/schema';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
-import { createCreature } from './creature';
+import { createCreature, speciesOf, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR } from '../data/map';
 import { pick } from './dice';
@@ -87,6 +87,11 @@ export interface GameState {
     cloudDir?: 1 | -1;
     /** A full lap of Cloud Island is done: Salem will battle this trainer from now on. */
     salemWorthy?: boolean;
+    /** Bike: ridden this turn, and the steps rolled for a ride not yet taken (0 = none waiting). */
+    bikeUsed?: boolean;
+    bikeRoll?: number;
+    /** Trail Mix eaten this turn. */
+    trailMix?: boolean;
     /** Forest Floor: Dahlia's Trail results found on this visit (reset on leaving). */
     dahliaTrail?: number;
   };
@@ -95,7 +100,7 @@ export interface GameState {
   stats: TrainerStats;
   /**
    * Cloud satchel: items earned on Cloud Island, held here until the trainer escapes the island
-   * (the portal, or Flying away). Being sent home after a team wipe loses them.
+   * (through the portal). Being sent home after a team wipe loses them.
    */
   cloudLoot?: Record<string, number>;
   /** This game's towns for the roaming key items (Canopy Rope, Root Whistle). Shared by everyone in a match. */
@@ -375,11 +380,21 @@ export function migrate(s: GameState): GameState | null {
     s.version = 2;
   }
   if (s.version === 2) {
-    // v2 charts: e Speed, f Movement/2nd energy, g Vitality, h Prisma. Earned bonuses are kept;
+    // v2 charts: e Speed, f the old movement node / 2nd energy, g Vitality, h Prisma. Earned bonuses are kept;
     // only the ids move so the new tree shows those nodes as bought.
     const rename: Record<string, string> = { e: 'f', f: 'g', g: 'h', h: 'p' };
     for (const c of [...s.roster, ...s.reserve]) c.unlocked = c.unlocked.map((id) => rename[id] ?? id);
     s.version = 3;
+  }
+  // Overworld movements (Fly, Sail, Tunnel, Wayfind) are gone: a creature that had learned one gets
+  // the chart node's replacement instead, +2 energy of its second type (or its only type)
+  for (const c of [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)]) {
+    const legacy = c as CreatureInst & { movement?: string };
+    if (!legacy.movement) continue;
+    delete legacy.movement;
+    const sp = speciesOf(c);
+    const k = sp.types[1] ?? sp.types[0];
+    c.extraEnergy[k] = (c.extraEnergy[k] ?? 0) + NODE_ENERGY;
   }
   // Trainer ID: older saves start their detailed stats from here
   if (s.stats && !s.stats.record) { s.stats.record = {}; if (s.turn > 1) s.stats.trackedFrom = s.turn; }
@@ -389,10 +404,6 @@ export function clearSave() { try { localStorage.removeItem(KEY); } catch { /* i
 
 export const tierOf = (s: GameState) => Math.min(5, 1 + Math.floor(s.merits.length / 2));
 export const season = (s: GameState) => seasonForTurn(s.turn);
-
-export function teamMovements(s: GameState): Set<Movement> {
-  return new Set(s.roster.map((c) => c.movement).filter(Boolean) as Movement[]);
-}
 
 export function follower(s: GameState): CreatureInst | undefined {
   return s.roster.find((c) => c.uid === s.following && !c.ko);

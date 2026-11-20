@@ -52,7 +52,7 @@ Wild creatures at a Tier sit just under the Arbiter's level (wild level band cen
 | 5 | Dahlia | Gloomshade | Grass | Forest Floor Arena | `darkness`: challenger's accuracy down | Accuracy (challenger) | Lily Merit | Follow her trail on the Forest Floor (Canopy Rope to get down) |
 | 6 | Cliff | Houndmouth Canyon | Rock | Crumbling Plateau | `crumble`: the plateau shrinks each round; challenger rung out when it's gone | Timer (challenger) | Plateau Merit | None |
 | 7 | Stella | Iron Coast | Steel | Floating Fortress | `fortress`: Arbiter's creatures +Armor and +Ward | Stat (Arbiter) | Anchor Merit | Clear the Iron Coast Gauntlet |
-| 8 | Katy | Mangrove Port | Water | Root Maze | `roots`: challenger's Speed down | Stat (challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
+| 8 | Katy | Mangrove Port | Water | Root Maze | `roots`: challenger's Speed down | Stat (challenger) | Tidal Merit | Root Whistle |
 
 **Effect kinds:** arena effects are meant to **favour the Arbiter**. A prepared challenger can sometimes turn them around (for example by bringing creatures of the Arbiter's type).
 - **Hazards** deal damage at the end of a round. Creatures of the Arbiter's own type are immune (to the volts, Electric creatures are healed instead).
@@ -103,7 +103,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
   - **Stillwind Hollow**
 
   These are wild nodes (a rare area: +1 rarity) in a ring, with the **Eye of the Sky** in the middle.
-- **A lap** is 6 steps in a row around the ring, always the same way round. Turning back starts the count again. A lap can span several turns: the ring can be walked by day too, but the portal is shut, so a trainer caught there at dawn stays until nightfall. **Leaving the island ends the lap** (the portal, Flying away, or being sent home after a team wipe).
+- **A lap** is 6 steps in a row around the ring, always the same way round. Turning back starts the count again. A lap can span several turns: the ring can be walked by day too, but the portal is shut, so a trainer caught there at dawn stays until nightfall. **Leaving the island ends the lap** (through the portal, or being sent home after a team wipe).
 - **The slog:** every step **onto** an island node (the portal step included) costs **+1 Initiative per Tier**: 2 at Tier 1, up to 6 at Tier 5. A step never costs more than a whole turn (5). Stepping back off the island costs the normal amount. Salem makes stronger trainers work harder, which also makes late-season farming a chore.
 
   | Tier | Initiative per island step | A full trip (portal + 6-step lap) |
@@ -114,7 +114,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
   | 4 | 5 | 35 (7 turns) |
   | 5 | 5 (capped) | 35 (7 turns) |
 
-- **Loot is only secured on escape.** Items found on the island go into a **Cloud satchel**, not the bag. They move to the bag when the trainer **escapes**: back through the portal, or by Flying away. A team wipe that sends the trainer home **loses the satchel**, so you can't grab the loot, lose a fight and keep it. Coins aren't held back. Items spent on the island (offerings, Salves…) come out of the real bag.
+- **Loot is only secured on escape.** Items found on the island go into a **Cloud satchel**, not the bag. They move to the bag when the trainer **escapes**: back through the portal. A team wipe that sends the trainer home **loses the satchel**, so you can't grab the loot, lose a fight and keep it. Coins aren't held back. Items spent on the island (offerings, Salves…) come out of the real bag.
 - **Once a lap is done,** Salem accepts the challenge any time, for the rest of the game.
 - **On the island:** its wilds turn up Astral, Electric, Water and Charm creatures (by the time of day), plus **universal offerings**: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3) work on any creature. Only the [Cloud Island events](./10-events.md#cloud-island-events) happen there.
 - **After beating Salem,** bridges open from the ring to the **Eye of the Sky**, where the Legendary **Nimbalune** (Water/Astral, Lv 10 + 1 per 25 turns) waits.
@@ -168,7 +168,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 **Setting:** a forge town on the black-rock coast. Amber's Fire Pit is offshore on Kilauea island. Inspired by Hawai'i Volcanoes.
 
-**Access:** the arena is a separate node on Kilauea island. Reach it by ferry from Kilauea Forge or Mangrove Port to Black Sand Cove (Ferry Pass, or a creature that can Sail), then on through the island's wilds.
+**Access:** the arena is a separate node on Kilauea island. Reach it by ferry from Kilauea Forge or Mangrove Port to Black Sand Cove (needs a Ferry Pass), then on through the island's wilds.
 
 **Arena effect: Flames.** Every second round, steam vents scald every active creature that isn't Fire. Amber's Fire creatures are immune.
 
@@ -243,7 +243,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 - **The trainers:** Steel-leaning teams, one level above that Tier's Trainer Hall opponents. They bring 2 creatures (3 from Tier 3), or fewer if the challenger has fewer healthy creatures. Normal trainer-battle stakes and XP apply.
 - **Cost and pacing:** each match is a city action (1 Initiative; Ranger 2, Urbanite 0). There's no limit per turn. Matches can be spread across turns, and the challenger can rest at the Stable between them.
-- **Resets:** **leaving Iron Coast resets the count**: travelling, Flying, or being sent home after a team wipe. Losing a match doesn't reset it; that trainer can be fought again.
+- **Resets:** **leaving Iron Coast resets the count**: travelling, or being sent home after a team wipe. Losing a match doesn't reset it; that trainer can be fought again.
 - **Once cleared,** Stella can be challenged at any time, now or on a later visit. The Gauntlet never needs repeating.
 - **Code:** `gauntletBattle`, `gauntletWin` and `gauntletProgress` in `world.ts`; the reset is in `moveTrainer` (`state.ts`).
 
@@ -255,11 +255,11 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 | Type | Arena | Effect | Merit | Access condition |
 |---|---|---|---|---|
-| Water | Root Maze | `roots` (Stat, challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
+| Water | Root Maze | `roots` (Stat, challenger) | Tidal Merit | Root Whistle |
 
 **Setting:** a city on stilts above marsh waters, linked by boardwalks and swaying bridges. Inspired by Everglades.
 
-**Access:** the mangrove roots hide Katy. The challenger needs a **Root Whistle**, a **roaming key item** sold in a different town each game (see [Roaming key items](#roaming-key-items)), or a creature on the active team that can Sail.
+**Access:** the mangrove roots hide Katy. The challenger needs a **Root Whistle**, a **roaming key item** sold in a different town each game (see [Roaming key items](#roaming-key-items)).
 
 **Arena effect: Roots.** Shifting roots slow the challenger's creatures: −1 Speed (−2 at Tier 4+), so Katy's creatures tend to act first.
 
