@@ -2,7 +2,7 @@
 // creature trades (both trainers on the same node), and battle challenges (same node; the challenged
 // trainer must accept). All pure game logic; the UI handles asking each trainer.
 import type { GameState } from './state';
-import { log, stillPlaying } from './state';
+import { log, stillPlaying, moveTrainer } from './state';
 import type { CreatureInst } from './creature';
 import { fullRestore, gainXp, nameOf, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import type { Battle } from './battle';
@@ -129,7 +129,7 @@ export function startChallenge(a: GameState, b: GameState): Battle | null {
 
 /** A duel's loser whose whole team is down is helped home to rest; no coins are lost (that's for the wager). */
 function helpHome(s: GameState) {
-  s.location = s.trainer.home;
+  moveTrainer(s, s.trainer.home, { wiped: true });
   for (const c of s.roster) fullRestore(c);
   log(s, `Your team was knocked out in a duel. You were helped home to ${CITIES[s.trainer.home].name} to rest.`);
 }

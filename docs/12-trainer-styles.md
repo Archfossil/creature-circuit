@@ -43,6 +43,8 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 
 These don't change with any style: town Markets (free), Swap Team (free), Explore the Depths (1), Fly (3) and camping.
 
+**Cloud Island:** every step onto a Cloud Island node costs **+1 Initiative per Tier** on top of the costs above (capped at 5 per step). A Pathfinder's or Trailblazer's free first move still pays the Tier part. See [Arbiters & Arenas](./11-arbiters-and-arenas.md) (Salem).
+
 ---
 
 ## The styles

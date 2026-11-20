@@ -14,8 +14,15 @@ import { hash, fbm, smooth, landField, SEGS, segDist } from './land';
 
 const ELEV: Record<Biome, number> = {
   mountain: 3.2, tundra: 1.6, canyon: 2.2, badlands: 1.3, volcanic: 2.2, forest: 0.9, grove: 0.8, meadow: 0.5,
-  road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25,
+  road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25, cloud: 3.4,
 };
+
+/** How much a point belongs to Cloud Island (0–1), from the nearby nodes' biomes. */
+function cloudWeight(x: number, z: number) {
+  let cloud = 0, all = 0;
+  for (const { n, w } of biomeWeights(x, z)) { all += w; if (n.biome === 'cloud') cloud += w; }
+  return all ? cloud / all : 0;
+}
 
 /** Nearby nodes weighted for biome blending. */
 function biomeWeights(x: number, z: number) {
@@ -226,6 +233,9 @@ export class WorldView implements SceneView {
     const seabed = new THREE.Color('#5fb7b0');
     const rock = new THREE.Color('#8b8378');
     const snow = new THREE.Color('#f4f7fb');
+    // Cloud Island: cotton candy (pink, lilac, blush) veined with a sinister dark purple
+    const candy = [new THREE.Color('#f7a8d8'), new THREE.Color('#d6aef5'), new THREE.Color('#ffd0ea'), new THREE.Color('#b98cf0')];
+    const gloom = new THREE.Color('#3a1550'), gloomEdge = new THREE.Color('#24102f');
     // color per face (flat low-poly look): use face centroid
     for (let f = 0; f < p2.count; f += 3) {
       const cx = (p2.getX(f) + p2.getX(f + 1) + p2.getX(f + 2)) / 3;
@@ -235,6 +245,17 @@ export class WorldView implements SceneView {
       for (const { n, w } of biomeWeights(cx, cz)) { tmp.set(BIOME_INFO[n.biome].color); col.r += tmp.r * w; col.g += tmp.g * w; col.b += tmp.b * w; }
       const jitter = (hash(cx * 3.1, cz * 1.7) - 0.5) * 0.06;
       col.offsetHSL(0, 0, jitter);
+      const cloudW = cloudWeight(cx, cz);
+      if (cloudW > 0.5 && cy > -0.1) {
+        // patches of candy colours, dark purple veins, and dark cliffs dropping to the sea
+        const n = fbm(cx * 0.18, cz * 0.18);
+        col.copy(candy[Math.floor(n * candy.length * 1.6) % candy.length]).lerp(candy[(Math.floor(n * 7) + 1) % candy.length], hash(cx, cz) * 0.5);
+        const vein = Math.abs(fbm(cx * 0.35 + 9, cz * 0.35 - 4) - 0.5);
+        if (vein < 0.045) col.lerp(gloom, 0.75);
+        if (cy < 2.4) col.lerp(gloomEdge, smooth(2.4, 0.4, cy));
+        for (let k = 0; k < 3; k++) { colors[(f + k) * 3] = col.r; colors[(f + k) * 3 + 1] = col.g; colors[(f + k) * 3 + 2] = col.b; }
+        continue;
+      }
       if (cy < 0.35) col.lerp(sand, smooth(0.35, 0.05, cy));
       if (cy < -0.1) col.copy(seabed).lerp(new THREE.Color('#2f7f9a'), smooth(-0.1, -2, cy));
       if (cy > 3.0) col.lerp(rock, smooth(3.0, 3.8, cy));
@@ -296,8 +317,9 @@ export class WorldView implements SceneView {
     const rockGeo = new THREE.DodecahedronGeometry(0.5, 0); rockGeo.translate(0, 0.2, 0);
     const cactusGeo = new THREE.CylinderGeometry(0.14, 0.16, 1.1, 6); cactusGeo.translate(0, 0.55, 0);
     type Spot = { x: number; z: number; y: number; s: number; r: number; c: THREE.Color };
-    const pines: Spot[] = [], rounds: Spot[] = [], rocks: Spot[] = [], cacti: Spot[] = [], trunks: Spot[] = [];
-    const density: Partial<Record<Biome, [number, 'pine' | 'round' | 'rock' | 'cactus'][]>> = {
+    const pines: Spot[] = [], rounds: Spot[] = [], rocks: Spot[] = [], cacti: Spot[] = [], trunks: Spot[] = [], puffs: Spot[] = [], spires: Spot[] = [];
+    const density: Partial<Record<Biome, [number, 'pine' | 'round' | 'rock' | 'cactus' | 'puff' | 'spire'][]>> = {
+      cloud: [[0.3, 'puff'], [0.07, 'spire']],
       forest: [[0.62, 'pine'], [0.15, 'round']], grove: [[0.5, 'round'], [0.12, 'pine']], swamp: [[0.35, 'round']],
       meadow: [[0.1, 'round']], mountain: [[0.18, 'pine'], [0.22, 'rock']], tundra: [[0.12, 'pine'], [0.06, 'rock']],
       desert: [[0.1, 'cactus'], [0.06, 'rock']], badlands: [[0.18, 'rock']], canyon: [[0.25, 'rock']], coast: [[0.06, 'rock']],
@@ -326,6 +348,8 @@ export class WorldView implements SceneView {
             if (kind === 'round') { spot.c.set(n.biome === 'grove' ? '#7fb069' : n.biome === 'swamp' ? '#4f7a3a' : '#5d9b3f').offsetHSL((hash(jx, 2) - 0.5) * 0.04, 0, (hash(jx, 3) - 0.5) * 0.1); rounds.push(spot); trunks.push({ ...spot, c: new THREE.Color('#6b4a2f') }); }
             if (kind === 'rock') { spot.c.set(n.biome === 'canyon' || n.biome === 'badlands' ? '#b8693a' : n.biome === 'volcanic' ? '#3a3230' : '#9a958c').offsetHSL(0, 0, (hash(jx, 4) - 0.5) * 0.1); rocks.push(spot); }
             if (kind === 'cactus') { spot.c.set('#4f8a3c'); cacti.push(spot); }
+            if (kind === 'puff') { spot.c.set(['#ffc2e6', '#e3b8ff', '#ffa6d6', '#cdb2ff'][Math.floor(hash(jx, 5) * 4)]); spot.s *= 1.25; puffs.push(spot); }
+            if (kind === 'spire') { spot.c.set(hash(jx, 6) < 0.5 ? '#3a1550' : '#5a2378'); spot.s *= 1.4; spires.push(spot); }
             break;
           }
         }
@@ -346,6 +370,10 @@ export class WorldView implements SceneView {
       if (seasonal) this.trees.push({ mesh: m, base: spots.map((s) => s.c.clone()) });
     };
     make(pineGeo, pines, true); make(roundGeo, rounds, true); make(trunkGeo, trunks, false); make(rockGeo, rocks, false); make(cactusGeo, cacti, false);
+    // Cloud Island: candy-floss puffs (no seasonal tint) and dark purple spires
+    const puffGeo = new THREE.IcosahedronGeometry(0.75, 1); puffGeo.translate(0, 0.45, 0);
+    const spireGeo = new THREE.ConeGeometry(0.32, 2.2, 5); spireGeo.translate(0, 1.1, 0);
+    make(puffGeo, puffs, false); make(spireGeo, spires, false);
   }
 
   private buildPaths() {
@@ -354,7 +382,7 @@ export class WorldView implements SceneView {
     for (const e of MAP_EDGES) {
       const a = NODE_BY_ID[e.a], b = NODE_BY_ID[e.b];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
-      const isSea = e.via === 'sail' || e.b === 'ironwake';
+      const isSea = e.via === 'sail' || e.via === 'portal' || e.b === 'ironwake';
       const step = isSea ? 1.6 : 0.95;
       for (let d = 0; d <= len; d += step) {
         const t = d / len;
@@ -673,7 +701,8 @@ export class WorldView implements SceneView {
     }
   }
 
-  setWeather(id: string, season: Season) {
+  /** Sky, light and particles for the weather and season; `night` dims everything to moonlight. */
+  setWeather(id: string, season: Season, night = false, cloud = false) {
     const w = WEATHER[id];
     this.fx = w?.fx ?? 'none';
     const skyMat = this.sky.material as THREE.ShaderMaterial;
@@ -686,12 +715,23 @@ export class WorldView implements SceneView {
     if (this.fx === 'fog') { top = '#c6d0d6'; bottom = '#dfe5e8'; sunI = 1.3; fogNear = 25; fogFar = 95; }
     if (this.fx === 'heat') { top = '#5aa6e0'; bottom = '#ffe2b0'; sunI = 3.2; }
     if (this.fx === 'aurora') { top = '#0e1838'; bottom = '#2c3a66'; sunI = 0.7; hemiI = 0.55; }
+    else if (night) {
+      // moonlight: a deep blue sky (cloudier weather stays a little greyer), dimmer light, a shorter view
+      const grey = this.fx === 'rain' || this.fx === 'storm' || this.fx === 'fog' || this.fx === 'snow';
+      top = grey ? '#1e2638' : '#101c3d'; bottom = grey ? '#3a4458' : '#2e3d68';
+      sunI = Math.max(0.55, sunI * 0.35); hemiI = Math.max(0.5, hemiI * 0.55); fogFar = Math.min(fogFar, 170);
+    }
+    if (cloud) {
+      // Cloud Island: a dusky violet sky over cotton candy, deep purple at night
+      top = night ? '#1a0b2e' : '#6a3d9a'; bottom = night ? '#5b2a7a' : '#f6c3e4';
+      sunI = night ? Math.max(0.6, sunI * 0.4) : Math.min(sunI, 2.2); hemiI = night ? Math.max(0.55, hemiI * 0.6) : hemiI;
+    }
     skyMat.uniforms.top.value.set(top);
     skyMat.uniforms.bottom.value.set(bottom);
     fog.color.set(bottom); fog.near = fogNear; fog.far = fogFar;
     this.sun.intensity = sunI; this.hemi.intensity = hemiI;
-    this.sun.color.set(this.fx === 'aurora' ? '#b9c8ff' : this.fx === 'heat' ? '#ffd9a0' : '#fff1d6');
-    this.auroraMat.uniforms.uStrength.value = this.fx === 'aurora' ? 1.1 : season === 'winter' ? 0.35 : 0.12;
+    this.sun.color.set(cloud ? (night ? '#c9a6ff' : '#ffd6f0') : this.fx === 'aurora' || night ? '#b9c8ff' : this.fx === 'heat' ? '#ffd9a0' : '#fff1d6');
+    this.auroraMat.uniforms.uStrength.value = this.fx === 'aurora' ? 1.1 : (season === 'winter' ? 0.35 : 0.12) + (night ? 0.15 : 0);
     const pm = this.particles.material as THREE.PointsMaterial;
     this.particles.visible = ['rain', 'storm', 'snow', 'petals', 'wind'].includes(this.fx);
     if (this.fx === 'rain' || this.fx === 'storm') { pm.color.set('#cfe6ff'); pm.size = 0.14; pm.opacity = 0.75; }
@@ -796,7 +836,7 @@ export class WorldView implements SceneView {
 
   private clampGoal() {
     this.goal.x = THREE.MathUtils.clamp(this.goal.x, -70, 70);
-    this.goal.z = THREE.MathUtils.clamp(this.goal.z, -55, 70);
+    this.goal.z = THREE.MathUtils.clamp(this.goal.z, -72, 70); // north edge reaches Cloud Island
   }
 
   private tap(x: number, y: number, ray: THREE.Raycaster, ndc: (x: number, y: number) => THREE.Vector2) {

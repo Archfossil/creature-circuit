@@ -1,4 +1,4 @@
-import type { Species, ElementType, Rarity, StatKey, Stats, Biome, EnergyMap } from './schema';
+import type { Species, ElementType, Rarity, StatKey, Stats, Biome, EnergyMap, Activity, TimeOfDay } from './schema';
 import { PLACEHOLDER_DEFS, type Def } from './roster';
 
 // Example creature database (placeholder content until the official list lands).
@@ -127,11 +127,36 @@ const HANDMADE: Species[] = [
 
   // ── LEGENDARY ────────────────────────────────────────
   sp({ id: 'solstara', name: 'Solstara', types: ['astral', 'fire'], rarity: 'legendary', stage: 1, bias: ['focus', 'speed'], shape: 'bird', c: ['#ffcf3a', '#9013fe'], crest: 'halo', biomes: ['mountain'], ability: 'starSeeker', affinity: 'tagStrike', move: 'fly', dex: 'The sun and the aurora in one body. Nests on the highest summit of Margos.' }),
+  sp({ id: 'nimbalune', name: 'Nimbalune', types: ['water', 'astral'], rarity: 'legendary', stage: 1, bias: ['focus', 'evasion'], shape: 'serpent', c: ['#e8eeff', '#7a6cff'], crest: 'halo', biomes: ['cloud'], ability: 'sweetScent', affinity: 'rally', move: 'fly', dex: 'A cloud with a moon for a heart. It circles the Eye of the Sky above Cloud Island, and only shows itself to trainers Salem has judged worthy.' }),
   sp({ id: 'thalassor', name: 'Thalassor', types: ['water', 'steel'], rarity: 'legendary', stage: 1, bias: ['vigor', 'armor'], shape: 'serpent', c: ['#0f3d5c', '#c9d3dc'], crest: 'spikes', biomes: ['coast'], ability: 'luckyCharm', affinity: 'shieldPass', move: 'sail', dex: 'The source of the Iron Coast ore. Its scales shed as metal into the tide.' }),
 ];
 
 /** Hand-made creatures first, then the generated placeholders filling the rest of the roster table (roster.ts). */
 export const SPECIES: Species[] = [...HANDMADE, ...PLACEHOLDER_DEFS.map(sp)];
+
+// ── Day & night activity ────────────────────────────────────────
+/**
+ * Each type leans toward day or night (or neither). A species' activity comes from its types:
+ * only night-leaning types → nocturnal, only day-leaning → diurnal, anything else (a mix, or no
+ * leaning) → crepuscular, out at any time. ACTIVITY_OVERRIDE sets a species by hand.
+ */
+export const TYPE_ACTIVITY: Record<ElementType, 'day' | 'night' | null> = {
+  astral: 'night', charm: 'night', electric: 'day', fire: 'day', grass: 'day', rock: null, steel: null, water: null,
+};
+export const ACTIVITY_OVERRIDE: Record<string, Activity> = {
+  shadeleaf: 'nocturnal', // lives in the shade of the forest floor
+  gloomoth: 'nocturnal', // a moth of the dark canopy
+};
+export function activityFromTypes(types: ElementType[]): Activity {
+  const lean = types.map((t) => TYPE_ACTIVITY[t]);
+  if (lean.includes('night') && !lean.includes('day')) return 'nocturnal';
+  if (lean.includes('day') && !lean.includes('night')) return 'diurnal';
+  return 'crepuscular';
+}
+for (const s of SPECIES) s.activity = s.activity ?? ACTIVITY_OVERRIDE[s.id] ?? activityFromTypes(s.types);
+
+/** Is this species out in the wild at this time of day? */
+export const isActive = (s: Species, time: TimeOfDay) => s.activity === 'crepuscular' || s.activity === (time === 'day' ? 'diurnal' : 'nocturnal');
 
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 

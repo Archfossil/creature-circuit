@@ -6,7 +6,7 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/data/map.ts`.
 - **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
 - **Arena effects:** `src/engine/battle.ts` (stat tricks in `eff()`, accuracy in `accuracyMods()`, hazards in `arenaTrick()`).
-- **Challenge screen and special flows** (Salem's wait, finding Fabian): `src/ui/app.ts` (`arbiter`, `findFabian`).
+- **Challenge screen and special flows** (Cloud Island, finding Fabian, the Gauntlet): `src/ui/app.ts` (`arbiter`, `cloudSheet`, `findFabian`, `gauntletSheet`).
 
 ## How Arbiters work
 
@@ -45,13 +45,13 @@ Wild creatures at a Tier sit just under the Arbiter's level (wild level band cen
 
 | # | Arbiter | City | Type | Arena | Arena effect | Kind | Merit | Access condition |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Salem | Aurora Peak | Astral | Ice Floe Arena | `iceFloes`: creatures may slip into the water | Hazard (both sides) | Polaris Merit | Only under the aurora |
+| 1 | Salem | Aurora Peak | Astral | Ice Floe Arena | `iceFloes`: creatures may slip into the water | Hazard (both sides) | Polaris Merit | A full lap of Cloud Island |
 | 2 | Fabian | Hollow Crest | Charm | Glamour Grove | `illusion`: Arbiter's creatures +Evasion | Stat (Arbiter) | Glamour Merit | Find him in disguise |
 | 3 | Watson | Thunder Spike | Electric | Under the Spike | `volts`: random lightning strikes | Hazard (random side) | Bolt Merit | None |
 | 4 | Amber | Kilauea Forge | Fire | Fire Pit | `flames`: steam vents scald | Hazard (both sides) | Caldera Merit | Arena is on Kilauea island |
 | 5 | Dahlia | Gloomshade | Grass | Forest Floor Arena | `darkness`: challenger's accuracy down | Accuracy (challenger) | Lily Merit | Canopy Rope |
 | 6 | Cliff | Houndmouth Canyon | Rock | Crumbling Plateau | `crumble`: edges break away from round 4 | Hazard (both sides) | Plateau Merit | None |
-| 7 | Stella | Iron Coast | Steel | Floating Fortress | `fortress`: Arbiter's creatures +Armor and +Ward | Stat (Arbiter) | Anchor Merit | Tier 2 or higher (2+ Merits) |
+| 7 | Stella | Iron Coast | Steel | Floating Fortress | `fortress`: Arbiter's creatures +Armor and +Ward | Stat (Arbiter) | Anchor Merit | Clear the Iron Coast Gauntlet |
 | 8 | Katy | Mangrove Port | Water | Root Maze | `roots`: challenger's Speed down | Stat (challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
 
 **Effect kinds:**
@@ -86,17 +86,48 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 | Type | Arena | Effect | Merit | Access condition |
 |---|---|---|---|---|
-| Astral | Ice Floe Arena | `iceFloes` (Hazard) | Polaris Merit | Only under the aurora |
+| Astral | Ice Floe Arena | `iceFloes` (Hazard) | Polaris Merit | A full lap of Cloud Island |
 
 **Setting:** low houses half-sunk into the earth for warmth, beneath the aurora. Inspired by Denali.
 
-**Access:** the arena only opens on an **Aurora Night** (weather), during **Winter** (turns 76–100), or if the challenger **waits for nightfall** (2 Initiative, lasting the rest of that turn).
+**Access: a lap of Cloud Island.** Salem only battles trainers who have walked a full lap of **Cloud Island**, a ring of six cloud nodes floating off the north-west coast.
+
+- **The portal** in Aurora Peak (a dotted path to the island) opens at **night** (even turns), and **any time in Winter**.
+- **The island:**
+  - **Gatecloud Landing** (where the portal arrives)
+  - **Nimbus Steps**
+  - **Starfall Drift**
+  - **Moonbow Arch**
+  - **Thunderhead Rise**
+  - **Stillwind Hollow**
+
+  These are wild nodes (a rare area: +1 rarity) in a ring, with the **Eye of the Sky** in the middle.
+- **A lap** is 6 steps in a row around the ring, always the same way round. Turning back starts the count again. A lap can span several turns: the ring can be walked by day too, but the portal is shut, so a trainer caught there at dawn stays until nightfall. **Leaving the island ends the lap** (the portal, Flying away, or being sent home after a team wipe).
+- **The slog:** every step **onto** an island node (the portal step included) costs **+1 Initiative per Tier**: 2 at Tier 1, up to 6 at Tier 5. A step never costs more than a whole turn (5). Stepping back off the island costs the normal amount. Salem makes stronger trainers work harder, which also makes late-season farming a chore.
+
+  | Tier | Initiative per island step | A full trip (portal + 6-step lap) |
+  |---|---|---|
+  | 1 | 2 | 14 (about 3 turns) |
+  | 2 | 3 | 21 (about 5 turns) |
+  | 3 | 4 | 28 (about 6 turns) |
+  | 4 | 5 | 35 (7 turns) |
+  | 5 | 5 (capped) | 35 (7 turns) |
+
+- **Loot is only secured on escape.** Items found on the island go into a **Cloud satchel**, not the bag. They move to the bag when the trainer **escapes**: back through the portal, or by Flying away. A team wipe that sends the trainer home **loses the satchel**, so you can't grab the loot, lose a fight and keep it. Coins aren't held back. Items spent on the island (offerings, Salves…) come out of the real bag.
+- **Once a lap is done,** Salem accepts the challenge any time, for the rest of the game.
+- **On the island:** its wilds turn up Astral, Electric, Water and Charm creatures (by the time of day), plus **universal offerings**: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3) work on any creature. Only the [Cloud Island events](./10-events.md#cloud-island-events) happen there.
+- **After beating Salem,** bridges open from the ring to the **Eye of the Sky**, where the Legendary **Nimbalune** (Water/Astral, Lv 10 + 1 per 25 turns) waits.
+- **Code:** `portalOpen`, `stepCloudLap`, `cloudLapProgress` and `cloudStepExtra` (with `moveCost`) in `world.ts`; the Cloud satchel in `addItem` and `moveTrainer` (`state.ts`); the island in `src/data/map.ts` (`CLOUD_RING`, `CLOUD_EYE`).
+- **Rules on screen:** before stepping through the portal, a prompt shows every rule and the trainer's status (portal, step cost, lap, satchel), with Step through / Not now. On the island, a ☁️ Cloud Island chip on the HUD shows the lap, the satchel and the portal at a glance, and opens the same rules. It disappears once the trainer leaves (`cloudRules`, `cloudPrompt`, `cloudSheet` in `app.ts`).
+- **Look:** cotton candy pinks and purples veined with a sinister dark purple, candy-floss puffs and dark spires, under a dusky violet sky (deep purple at night).
+
+**Winter:** Aurora Peak is always under **Aurora Night** all Winter (turns 76–100), whatever the rolled weather.
 
 **Arena effect: Ice floes.** The floes tip under unprepared creatures. At the end of each round, each active creature that isn't Astral may slip into the water (chance and damage by Tier in the table above). Salem's Astral creatures never slip.
 
 **City Stable hot pot:** Geothermal Miso Nabe, +1 Ward in your next battle.
 
-**Notes:** Aurora Night also boosts Astral attacks (+2), so a challenger who comes on the aurora faces stronger Astral attacks too. Waiting costs 2 Initiative, but keeps the weather as it is.
+**Notes:** Aurora Night boosts Astral attacks (+2). In Winter, every battle at Aurora Peak (Salem's included) is under Aurora Night, so his Astral attacks hit harder then.
 
 ### 2. Fabian · Hollow Crest · `hollow`
 
@@ -173,11 +204,25 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 | Type | Arena | Effect | Merit | Access condition |
 |---|---|---|---|---|
-| Steel | Floating Fortress | `fortress` (Stat, Arbiter) | Anchor Merit | Tier 2 or higher (2+ Merits) |
+| Steel | Floating Fortress | `fortress` (Stat, Arbiter) | Anchor Merit | Clear the Iron Coast Gauntlet |
 
 **Setting:** foggy pebble beaches and colorful houses, where strange ore washes ashore. Inspired by Acadia.
 
-**Access:** Stella's fortress stays beneath the waves until the challenger holds 2 Merits.
+**Access: the Iron Coast Gauntlet.** Stella's fortress stays beneath the waves until the challenger beats a run of local trainers:
+
+| Tier | Trainers to beat | Their level | The last one |
+|---|---|---|---|
+| 1 | 2 | Lv 3 | Lv 4 |
+| 2 | 4 | Lv 5 | Lv 6 |
+| 3 | 6 | Lv 7 | Lv 8 |
+| 4 | 8 | Lv 9 | Lv 10 |
+| 5 | 10 | Lv 11 | Lv 12 |
+
+- **The trainers:** Steel-leaning teams, one level above that Tier's Trainer Hall opponents. They bring 2 creatures (3 from Tier 3), or fewer if the challenger has fewer healthy creatures. Normal trainer-battle stakes and XP apply.
+- **Cost and pacing:** each match is a city action (1 Initiative; Ranger 2, Urbanite 0). There's no limit per turn. Matches can be spread across turns, and the challenger can rest at the Stable between them.
+- **Resets:** **leaving Iron Coast resets the count**: travelling, Flying, or being sent home after a team wipe. Losing a match doesn't reset it; that trainer can be fought again.
+- **Once cleared,** Stella can be challenged at any time, now or on a later visit. The Gauntlet never needs repeating.
+- **Code:** `gauntletBattle`, `gauntletWin` and `gauntletProgress` in `world.ts`; the reset is in `moveTrainer` (`state.ts`).
 
 **Arena effect: Fortress.** Stella's fortress plating gives her creatures +1 Armor and +1 Ward (+2 each at Tier 4+), reducing all damage they take.
 
@@ -209,12 +254,15 @@ Observations from the current code, to review when balancing. Tick them off or m
 - [ ] **Crumble at Tier 5** deals 7 damage per fall, with up to a 4-in-6 chance per creature per round from round 7. It may be the harshest effect late in a season.
 - [ ] **Ice floes at Tier 1–2** (1-in-6 chance) rarely matter.
 - [ ] **Access conditions vary a lot in cost:**
-  - Salem can cost 2 Initiative.
+  - Salem needs a lap of Cloud Island: 7 island steps at +1 Initiative per Tier (14–35 Initiative), only reachable at night or in Winter, with an explore at every step.
   - Fabian can cost Initiative on wrong guesses.
   - Dahlia and Katy need a 12–14 coin key item.
   - Amber needs a Ferry Pass and a trip.
-  - Stella needs 2 Merits first.
+  - Stella needs the Iron Coast Gauntlet: 2 to 10 trainer battles, by Tier, without leaving the city.
   - Watson and Cliff are free.
+- [ ] **A Cloud Island trip takes 14–35 Initiative** (7 island steps at +1 per Tier), so 3–7 turns. A trainer must survive several nights and stranded days on the island. Fine as a pilgrimage, or too long at Tier 3+?
+- [ ] **The Cloud satchel** makes the island all-or-nothing for items. Universal offerings found there can't be used to recruit on the island itself.
+- [ ] **The Gauntlet grows to 10 trainers at Tier 5,** which costs at least 10 Initiative (2 turns or more), plus Stable rests. Leaving Stella for last makes her by far the most expensive Arbiter to reach.
 - [ ] **Losing costs nothing** against Arbiters (except a full wipe). Repeated attempts are cheap apart from the Initiative.
 - [ ] **The prize scales with Tier** (🪙 10–50), so later Merits pay more.
 - [ ] **Placeholder species** are in Arbiter pools until the roster is filled, so Arbiter teams will change as creatures are swapped in (see [the creature checklist](./08-creature-checklist.md)).
@@ -261,7 +309,7 @@ Copy this block into [The Arbiters](#the-arbiters) and add a row to the [Overvie
    - an accuracy change goes in `accuracyMods()`, next to `darkness`;
    - an end-of-round hazard goes in `arenaTrick()`, using its `hurt()` helper, next to `iceFloes` and `flames`.
 2. **An Arbiter or city:** edit `CITIES` in `src/data/map.ts` (name, type, park, Arbiter, Merit, arena name, trick and text, hot pot, blurb). A new city also needs a map node and routes.
-3. **An access condition:** add a case to `arbiterGate()` in `src/engine/world.ts`. Special flows like Salem's wait or finding Fabian are in `src/ui/app.ts` (`arbiter`).
+3. **An access condition:** add a case to `arbiterGate()` in `src/engine/world.ts`. Special flows like Cloud Island, finding Fabian or the Gauntlet are in `src/ui/app.ts` (`arbiter`).
 4. **Then:**
    - Add a test in `tests/engine.test.ts`.
    - Update this doc. **A test fails if an Arbiter or arena effect in the game is missing from this file.**

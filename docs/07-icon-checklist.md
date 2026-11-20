@@ -55,10 +55,13 @@ Every emoji in the game is a placeholder. This list covers each one that needs a
 - [ ] `carving-shrine`: 🔄: Carving Shrine (carve Totems and Effigies).
 - [ ] `swap-team`: 🔄: Swap Team (active team ↔ totems).
 - [ ] `trainer-hall`: 🤺: Trainer Hall.
+- [ ] `gauntlet`: ⚓: Iron Coast Gauntlet (Stella's trainer gauntlet).
 - [ ] `arbiter-arena`: 🏟️: Arbiter challenge tile.
 - [ ] `ferry`: ⛴️: Arbiter reached by ferry (Kilauea).
 - [ ] `battle-school`: 🥋: Battle School (Valor Ridge).
 - [ ] `research-facility`: 🔬: Research Facility (Quillhaven).
+- [ ] `cloud-portal`: 🌀: Cloud Island Portal (Aurora Peak) and the Cloud Island screen.
+- [ ] `cloud-satchel`: ☁️: Cloud satchel (island loot not yet secured, in the Bag).
 - [ ] `explore-depths`: 🕳️: Explore the Depths (Shifting Depths).
 - [ ] `notice-board`: 🗺️: Notice Board (rumors). Also the "Where to look" heading in the Codex.
 - [ ] `enrol`: 📝: Battle School "Enrol a creature" heading.
@@ -87,6 +90,7 @@ Shown on map node previews, Codex pages and filters, and material "found in" lis
 - [ ] `biome-coast`: 🏖️
 - [ ] `biome-volcanic`: 🌋
 - [ ] `biome-canyon`: 🪨
+- [ ] `biome-cloud`: ☁️ (Cloud Island)
 
 ## 5. Weather (11) & seasons (4) ★★★
 
@@ -108,6 +112,9 @@ Shown on the weather pill (every turn), the calendar and the weather dice.
 - [ ] `season-summer`: 🌞
 - [ ] `season-autumn`: 🍂
 - [ ] `season-winter`: ❄️
+- [ ] `time-day`: ☀️ Day (HUD pill, calendar, Codex)
+- [ ] `time-night`: 🌙 Night (HUD pill, calendar, Codex)
+- [ ] `activity-crepuscular`: 🌗 Out by day and night (Codex)
 
 ## 6. Items ★★
 
@@ -148,6 +155,11 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `mat-wildflower`: 🌼 Wildflower
 - [ ] `mat-canyon-ochre`: 🟠 Canyon Ochre
 - [ ] `mat-volcanic-glass`: 🖤 Volcanic Glass
+
+**Universal offerings (Cloud Island)**
+- [ ] `mat-cloud-silk`: ☁️ Cloud Silk
+- [ ] `mat-stardust`: ✨ Stardust
+- [ ] `mat-moonbow-prism`: 🌈 Moonbow Prism
 
 **Key items**
 - [ ] `key-fog-lantern`: 🏮 Fog Lantern
@@ -258,6 +270,11 @@ Shown large on each event card.
 - [ ] `event-shooting-star`: 🌠
 - [ ] `event-bad-berries`: 🤢
 - [ ] `event-eager-apprentice`: 🧒
+- [ ] `event-star-shepherd`: 🌟 (Cloud Island)
+- [ ] `event-moonbow`: 🌈 (Cloud Island)
+- [ ] `event-sky-whale`: 🐋 (Cloud Island)
+- [ ] `event-cloud-bank`: 🌫️ (Cloud Island)
+- [ ] `event-sunlit-clouds`: ☀️ (Cloud Island)
 
 ## 11. Trainer styles (8) ★
 

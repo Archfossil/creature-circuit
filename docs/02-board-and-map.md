@@ -6,6 +6,8 @@ Based on Denali National Park in Alaska, Aurora Peak is a cold climate in the no
 
 The Arbiter of Aurora Peak is **Salem**. Their arena is only open under the light of the aurora borealis and takes place on floating ice floes which run the risk of having unprepared creatures tip and sink into the frigid arctic water below.
 
+**Cloud Island:** a portal in Aurora Peak opens at night (and all Winter) to Cloud Island, a ring of six cloud nodes (Gatecloud Landing, Nimbus Steps, Starfall Drift, Moonbow Arch, Thunderhead Rise, Stillwind Hollow) floating off the north-west coast. Salem only battles trainers who have walked a full lap of it. The island is cotton candy pinks and purples with a sinister dark purple running through it. Every step there costs +1 Initiative per Tier, and anything found there is only kept once the trainer escapes. In the middle lies the Eye of the Sky, home of the Legendary Nimbalune, open to trainers who have beaten Salem. In Winter, Aurora Peak is always under Aurora Night.
+
 The heights of Aurora Peak provide landing spaces for creatures who have learned to fly.
 
 ## 2. Hollow Crest
@@ -44,7 +46,7 @@ The Arbiter of Houndmouth Canyon is **Cliff**. His arena is built out of a tall 
 
 More loosely based on Acadia National Park in Maine than the others, Iron Coast is a series of pebble beaches with foggy Atlantic coast vibes. Colorful houses, lighthouses, a lot of seafaring paraphernalia around the city. The Steel type creatures here seem to share an origin with the mysterious ore which sweeps into the shore from some distant unknown ocean.
 
-The Arbiter is **Stella**. Her arena is a floating fortress which docks only once a trainer has proven themselves worth of Stella's attention. Otherwise, it rests beneath the waves where she hones her skills.
+The Arbiter is **Stella**. Her arena is a floating fortress which docks only once a trainer has proven themselves worth of Stella's attention. Otherwise, it rests beneath the waves where she hones her skills. To prove themselves, trainers run the **Iron Coast Gauntlet**: 2 local trainers per Tier, beaten without leaving the city (see [Arbiters & Arenas](./11-arbiters-and-arenas.md)).
 
 ## 8. Mangrove Port
 

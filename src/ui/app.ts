@@ -10,7 +10,7 @@ import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, 
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle } from '../engine/state';
-import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
@@ -20,10 +20,10 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
-import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
-import { SPECIES, SPECIES_BY_ID, STARTERS } from '../data/species';
+import { NODE_BY_ID, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
+import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
-import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes, seasonForTurn } from '../data/content';
+import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -753,6 +753,7 @@ export class App {
       const w = WEATHER[s.weather];
       await rollDice(`Weather for Turn ${s.turn} · everyone`, [{ sides: 6, value: roll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 900);
     }
+    if (s.turn > 1) toast(timeOfDay(s.turn) === 'night' ? '🌙 Night falls: nocturnal creatures are out.' : '☀️ Dawn breaks: diurnal creatures are out.', 'info', 2600);
     if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
     await this.showInbox();
     // one event per trainer per turn, from the second round, rolled here at the start of the turn
@@ -1026,10 +1027,11 @@ export class App {
   renderHud() {
     const s = this.s;
     const node = NODE_BY_ID[s.location];
-    const w = WEATHER[s.weather];
+    const w = W.weather(s);
     const se = season(s);
     this.world.setSeason(se);
-    this.world.setWeather(s.weather, se);
+    const tod = timeOfDay(s.turn);
+    this.world.setWeather(w.id, se, tod === 'night', isCloudNode(s.location));
     // legendary nodes glow only while their Legendary is there (not beaten, not held by a trainer)
     this.world.setVisited(s.visited, MAP_NODES.filter((n) => n.kind === 'legendary' && !W.legendaryHere(s, n)).map((n) => n.id));
     const f = follower(s);
@@ -1039,6 +1041,8 @@ export class App {
     const top = h('div', { class: 'hud-top' },
       h('button', { class: 'hud-pill turn', onclick: () => this.calendar() },
         h('span', { class: 'season' }, SEASON_INFO[se].icon), h('b', null, `Turn ${s.turn}`), h('small', null, `/100 · ${SEASON_INFO[se].label}`)),
+      h('button', { class: `hud-pill tod ${tod}`, title: tod === 'night' ? 'Night (even turns): nocturnal creatures are out, and night events happen.' : 'Day (odd turns): diurnal creatures are out, and day events happen.', onclick: () => this.calendar() },
+        h('span', null, TIME_INFO[tod].icon), h('small', { class: 'hide-xs' }, TIME_INFO[tod].label)),
       h('button', { class: 'hud-pill', onclick: () => this.calendar() }, h('span', null, w.icon), h('small', { class: 'hide-xs' }, w.name)),
       h('div', { class: 'hud-pill coins' }, '🪙 ', h('b', null, s.coins)),
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
@@ -1066,7 +1070,14 @@ export class App {
       class: `seat ${p === s ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}`,
       title: `Show ${p.trainer.name} on the map (${NODE_BY_ID[p.location]?.name ?? ''})`, onclick: () => this.spotlightTrainer(p),
     }, p.trainer.name, p.phase === 'champion' ? ' 🏆' : ''))) : null;
-    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
+    // on Cloud Island only: lap, satchel and portal at a glance, and the rules on tap
+    const lapNow = W.cloudLapProgress(s);
+    const lootN = Object.values(s.cloudLoot ?? {}).reduce((a, n) => a + n, 0);
+    const cloudChip = isCloudNode(s.location) ? h('button', { class: 'cloud-chip', title: 'Cloud Island rules', onclick: () => this.cloudSheet() },
+      h('b', null, '☁️ Cloud Island'),
+      h('small', null, s.flags.salemWorthy ? 'Lap done' : `Lap ${lapNow.steps}/${lapNow.need}`, ' · ', lootN ? `👜 ${lootN} unsecured` : '👜 empty', ' · ', W.portalOpen(s) ? 'portal open' : 'portal shut'),
+      h('small', { class: 'cloud-chip-link' }, 'Tap for the rules')) : '';
+    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team, cloudChip), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
   }
 
@@ -1188,8 +1199,19 @@ export class App {
     if (this.busy) return;
     const s = this.s;
     const from = s.location;
+    if (!isCloudNode(from) && isCloudNode(id)) {
+      const chk = W.canMoveTo(s, id);
+      if (chk.ok && !(await this.cloudPrompt(chk.cost))) return;
+      if (this.busy) return;
+    }
+    const worthy = !!s.flags.salemWorthy;
+    const held = Object.entries(s.cloudLoot ?? {}).filter(([, n]) => n > 0);
     const out = W.moveTo(s, id);
     if (!out) return;
+    if (held.length && !s.cloudLoot) toast(`☁️ Escaped Cloud Island! Secured: ${held.map(([i, n]) => `${itemInfo(i).icon} ${W.itemDisplayName(i)} ×${n}`).join(', ')}.`, 'good', 5000);
+    if (!worthy && s.flags.salemWorthy) toast('☁️ A full lap of Cloud Island! Salem will accept your challenge at Aurora Peak.', 'good', 5000);
+    else if (!s.flags.salemWorthy && W.cloudLapProgress(s).steps > 0) toast(`☁️ Cloud Island lap: ${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}${s.flags.cloudLap === 1 && W.cloudLapProgress(s).onIsland ? ' (keep going the same way round)' : ''}`, 'info', 2200);
+    else if (from === 'aurora' && id === CLOUD_RING[0]) toast('☁️ Through the portal: walk a full lap of the ring, the same way round, without leaving the island.', 'info', 4500);
     this.busy = true;
     this.selected = null;
     $('.node-preview')?.remove();
@@ -1229,7 +1251,7 @@ export class App {
         const names = out.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`);
         if (out.coins) names.push(`🪙 ${out.coins} coins`);
         sfx.good();
-        toast(`Found ${names.join(', ')}`, 'good', 3200);
+        toast(`Found ${names.join(', ')}${isCloudNode(s.location) ? ' (held in your Cloud satchel until you escape)' : ''}`, 'good', 3200);
         log(s, `Found ${names.join(', ')} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'itemChoice') {
         // Keen Nose: three finds to choose from
@@ -1244,7 +1266,7 @@ export class App {
         });
         const got = W.claimFind(s, pickIt);
         sfx.good();
-        toast(`Found ${label(got)}`, 'good', 3200);
+        toast(`Found ${label(got)}${isCloudNode(s.location) ? ' (held in your Cloud satchel until you escape)' : ''}`, 'good', 3200);
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
         await rollDice('Explore', [{ sides: 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], 'Something rustles nearby…', 300);
@@ -1285,14 +1307,14 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; rivalLook?: TrainerLook; watch?: AsyncQueue<FeedItem>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; watch?: AsyncQueue<FeedItem>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
     this.busy = true;
     const bv = this.battleView;
     const arenaType = ctx.city ? CITIES[ctx.city].type : undefined;
-    bv.setup(b.biome as never, arenaType, s.weather === 'aurora' || ctx.city === 'aurora');
+    bv.setup(b.biome as never, arenaType, W.weather(s).id === 'aurora' || ctx.city === 'aurora' || timeOfDay(s.turn) === 'night');
     // trainer minis: only when the opponent is a trainer of some kind
     const foeSide = b.sides[1];
     const foeLook: TrainerLook | null =
@@ -1557,7 +1579,7 @@ export class App {
     if (result === 'win' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) {
       await this.recruitFlow(wild);
     }
-    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId });
+    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet });
     for (const t of summary.text) toast(t, summary.wiped ? 'bad' : 'good', 3500);
     this.busy = false;
     if (ctx.kind !== 'endgame') {
@@ -1638,6 +1660,13 @@ export class App {
         tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
         tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
         tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
+        id === 'aurora' ? tile('🌀', 'Cloud Island Portal', W.portalOpen(s)
+          ? `Open ${seasonForTurn(s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}).`}`
+          : 'Closed by day. The portal opens at night (even turns), and stays open all Winter.', '', () => this.cloudSheet()) : null,
+        id === GAUNTLET_CITY && !s.flags.stellaOpen && !s.merits.includes(id) ? (() => {
+          const g = W.gauntletProgress(s);
+          return tile('⚓', 'Iron Coast Gauntlet', `Beat ${g.need} local trainers in a row to earn a match with Stella: ${g.wins}/${g.need} so far. Rest at the Stable between matches as often as you like, but leaving the city resets it.`, costTag, () => this.gauntletSheet());
+        })() : null,
         c.arenaNode
           ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market, or a creature that can Sail).`, '', () => {}, true)
           : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
@@ -1808,12 +1837,9 @@ export class App {
     const gate = W.arbiterGate(s, id);
     if (s.merits.includes(id)) { toast(gate.reason ?? '', 'info'); return; }
     if (!gate.ok) {
-      if (gate.wait) {
-        const ok = await confirmSheet('Wait for the aurora?', `${gate.reason} Wait until nightfall for 2 Initiative?`, 'Wait (2⚡)');
-        if (ok) { if (s.initiative < 2) { toast('Not enough Initiative.', 'bad'); return; } s.initiative -= 2; s.flags.salemNight = true; save(s); this.renderHud(); toast('The aurora ignites over the ice floes…', 'good'); this.arbiter(); }
-        return;
-      }
+      if (gate.cloud) { this.cloudSheet(); return; }
       if (gate.findHim) { this.findFabian(); return; }
+      if (gate.gauntlet) { this.gauntletSheet(); return; }
       toast(gate.reason ?? 'Not yet.', 'bad', 3500);
       return;
     }
@@ -1829,6 +1855,85 @@ export class App {
         await this.runBattle(W.arbiterBattle(s, id), { kind: 'arbiter', intro: `Arbiter ${c.arbiter} accepts your challenge!`, city: id });
       } }, `Challenge · ${W.cityActionCost(s)}⚡`)));
     openSheet(`${c.name} Arena`, body);
+  }
+
+  /**
+   * The Cloud Island rules, with the trainer's current status (portal, lap, step cost, satchel).
+   * Shown before stepping through the portal, and from the island's HUD chip while there.
+   */
+  cloudRules(): HTMLElement {
+    const s = this.s;
+    const lap = W.cloudLapProgress(s);
+    const open = W.portalOpen(s);
+    const eye = NODE_BY_ID[CLOUD_EYE];
+    const step = Math.min(5, 1 + W.cloudStepExtra(s));
+    const loot = Object.entries(s.cloudLoot ?? {}).filter(([, n]) => n > 0);
+    const winter = seasonForTurn(s.turn) === 'winter';
+    const rule = (icon: string, title: string, ...body: (string | Node)[]) => h('div', { class: 'cloud-rule' }, h('span', { class: 'cloud-rule-ico' }, icon), h('div', null, h('b', null, title), h('p', null, ...body)));
+    return h('div', { class: 'cloud-rules' },
+      h('p', null, 'Cloud Island works unlike anywhere else in Margos. Here’s how.'),
+      // where you stand right now
+      h('div', { class: 'cloud-status' },
+        h('div', null, h('small', null, 'Portal'), h('b', null, open ? (winter ? '🌀 Open all Winter' : '🌙 Open tonight') : '☀️ Shut until night')),
+        h('div', null, h('small', null, 'Each island step'), h('b', null, `${step}⚡ (Tier ${tierOf(s)})`)),
+        h('div', null, h('small', null, 'Lap for Salem'), h('b', null, s.flags.salemWorthy ? '✓ Done' : `${lap.steps} / ${lap.need} steps`)),
+        h('div', null, h('small', null, 'Cloud satchel'), h('b', null, loot.length ? `${loot.reduce((a, [, n]) => a + n, 0)} item${loot.reduce((a, [, n]) => a + n, 0) === 1 ? '' : 's'} unsecured` : 'Empty'))),
+      s.flags.salemWorthy ? '' : h('div', { class: 'gauntlet-pips', 'aria-label': `${lap.steps} of ${lap.need} steps` }, Array.from({ length: lap.need }, (_, k) => h('span', { class: k < lap.steps ? 'on' : k === lap.steps ? 'next' : '' }))),
+      rule('🌀', 'The portal', 'Cloud Island is reached through the portal in Aurora Peak. It opens at ', h('b', null, 'night'), ' (even turns), and stays open ', h('b', null, 'all Winter'), '. By day it’s shut: if dawn finds you on the island, you’re there until nightfall. You can still walk the ring by day.'),
+      rule('🔁', 'A lap for Salem', 'Salem only battles trainers who walk a full lap: ', h('b', null, '6 steps in a row around the ring, always the same way round'), '. Turning back starts the count again. A lap can take as many turns as you need.', s.flags.salemWorthy ? ' You’ve done it: Salem will see you any time.' : ''),
+      rule('🐌', 'The slog', `Every step onto an island node costs +1 Initiative per Tier (+${W.cloudStepExtra(s)} for you now), up to a whole turn’s 5. Stepping back off the island costs the normal 1. Salem makes stronger trainers work for it.`),
+      rule('👜', 'The Cloud satchel', 'Items you find on the island go into a Cloud satchel, ', h('b', null, 'not your bag'), '. They’re only yours once you ', h('b', null, 'escape'), ': back through the portal, or by Flying away. ', h('b', null, 'Get wiped out and sent home, and the satchel is lost.'), loot.length ? ` In it now: ${loot.map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`).join(', ')}.` : ''),
+      rule('🚪', 'Leaving', 'Leaving the island, by any route, ends a lap in progress. Leaving through the portal or by Flying secures your satchel; being sent home after a wipe doesn’t.'),
+      rule('✨', 'What’s here', 'The ring’s six wilds are a rare area: Astral, Electric, Water and Charm creatures (who’s out depends on day or night), and universal offerings that work on any creature: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3). While you’re here, only Cloud Island events happen.'),
+      rule('👁️', eye.name, s.merits.includes('aurora')
+        ? (W.legendaryHere(s, eye) ? 'You’ve beaten Salem, so the bridges from the ring to the middle are open. A Legendary waits there.' : 'The middle of the ring is quiet now.')
+        : 'In the middle of the ring. Its bridges only open for trainers who have beaten Salem.'));
+  }
+
+  /** The Cloud Island rules, any time (from Aurora Peak's portal tile, Salem's arena, or the island's HUD chip). */
+  cloudSheet() {
+    openSheet(isCloudNode(this.s.location) ? '☁️ Cloud Island rules' : '🌀 Cloud Island', this.cloudRules(), { wide: true });
+  }
+
+  /** Before stepping through the portal: the rules, and a last chance to turn back. */
+  cloudPrompt(cost: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (go: boolean) => { if (done) return; done = true; close(); resolve(go); };
+      const close = openSheet('🌀 Step through to Cloud Island?', h('div', null,
+        this.cloudRules(),
+        h('p', { class: 'small muted' }, 'You can read these rules again any time on the island: tap the ☁️ Cloud Island chip at the top left.'),
+        h('div', { class: 'row end gap sticky-foot' },
+          h('button', { class: 'btn ghost', onclick: () => finish(false) }, 'Not now'),
+          h('button', { class: 'btn primary', onclick: () => finish(true) }, `Step through · ${cost}⚡`))), { wide: true, onClose: () => { if (!done) { done = true; resolve(false); } } });
+    });
+  }
+
+  /** Iron Coast Gauntlet: progress, the next opponent, and the button to face them. */
+  gauntletSheet() {
+    const s = this.s;
+    const g = W.gauntletProgress(s);
+    const why = W.gauntletBlock(s);
+    const close = openSheet('⚓ Iron Coast Gauntlet', h('div', { class: 'gauntlet' },
+      h('p', null, `Stella only faces trainers who prove themselves against the coast’s best. Beat ${g.need} local trainers (2 per Tier) and her fortress rises from the waves, for good.`),
+      h('div', { class: 'gauntlet-pips', 'aria-label': `${g.wins} of ${g.need} beaten` }, Array.from({ length: g.need }, (_, i) => h('span', { class: i < g.wins ? 'on' : i === g.wins ? 'next' : '' }))),
+      h('p', null, h('b', null, `${g.wins} of ${g.need} beaten.`), ` Next: a Steel-leaning trainer, Lv ${g.nextLevel}${g.wins + 1 >= g.need ? ' (the last and toughest)' : ''}.`),
+      h('ul', { class: 'small' },
+        h('li', null, 'Take the matches over as many turns as you like, and rest at the Stable in between.'),
+        h('li', null, h('b', null, 'Leaving Iron Coast resets your progress'), ' (travelling, flying, or being sent home after a team wipe).'),
+        h('li', null, 'A loss doesn’t reset it: rest up and try that trainer again. Trainer stakes apply (coins won or lost).'),
+        h('li', null, 'Once cleared, Stella will accept your challenge any time you come back.')),
+      h('div', { class: 'row end gap' },
+        h('button', { class: 'btn ghost', onclick: () => close() }, 'Not now'),
+        h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: async () => {
+          const r = W.gauntletBattle(s);
+          if (!r) { toast(W.gauntletBlock(s) ?? 'Not now.', 'info'); return; }
+          closeAllSheets();
+          this.renderHud();
+          await this.runBattle(r.battle, { kind: 'trainer', gauntlet: true, intro: `Gauntlet match ${r.match} of ${r.of}: ${r.name} steps up!` });
+          if (s.flags.stellaOpen && !s.merits.includes(GAUNTLET_CITY)) toast('⚓ The Gauntlet is cleared. Stella’s fortress rises from the waves!', 'good', 4500);
+        } }, `Battle the next trainer · ${W.cityActionCost(s)}⚡`)),
+      why ? h('p', { class: 'small muted' }, why) : null));
   }
 
   findFabian() {
@@ -2080,6 +2185,9 @@ export class App {
               usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null);
           })))),
         Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
+        Object.keys(s.cloudLoot ?? {}).length ? h('section', { class: 'cloud-satchel' }, h('h4', null, '☁️ Cloud satchel (not yet secured)'),
+          h('p', { class: 'small' }, 'Items found on Cloud Island stay in this satchel until you escape the island (through the portal, or by Flying). If your team is wiped out and you’re sent home, they’re lost.'),
+          h('div', { class: 'bag-grid' }, Object.entries(s.cloudLoot!).map(([id, n]) => h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, itemInfo(id).icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', n), h('small', null, itemInfo(id).text)))))) : '',
         readOnly ? h('p', { class: 'small muted' }, 'Items can be used on your turn.') : '');
     };
     openSheet('Bag', body, { wide: true });
@@ -2414,8 +2522,8 @@ export class App {
   }
 
   /** Codex filters, kept while the game is open. */
-  private codexView: { q: string; type: ElementType | 'all'; biome: Biome | 'all'; rarity: Rarity | 'all'; status: 'all' | 'seen' | 'caught' | 'unseen'; sort: 'codex' | 'name' | 'rarity' | 'type' } =
-    { q: '', type: 'all', biome: 'all', rarity: 'all', status: 'all', sort: 'codex' };
+  private codexView: { q: string; type: ElementType | 'all'; biome: Biome | 'all'; rarity: Rarity | 'all'; status: 'all' | 'seen' | 'caught' | 'unseen'; time: 'all' | 'day' | 'night'; sort: 'codex' | 'name' | 'rarity' | 'type' } =
+    { q: '', type: 'all', biome: 'all', rarity: 'all', status: 'all', time: 'all', sort: 'codex' };
 
   /**
    * The Creature Codex: every species, filterable by name, type (either half of a dual type), biome
@@ -2438,6 +2546,7 @@ export class App {
       if (v.type !== 'all' && !sp.types.includes(v.type)) return false;
       if (v.rarity !== 'all' && sp.rarity !== v.rarity) return false;
       if (v.biome !== 'all' && !W.speciesBiomes(sp.id).includes(v.biome)) return false;
+      if (v.time !== 'all' && !isActive(sp, v.time)) return false;
       const q = v.q.trim().toLowerCase();
       if (q && (st === 'unseen' || !sp.name.toLowerCase().includes(q))) return false; // unseen names stay secret
       return true;
@@ -2472,16 +2581,17 @@ export class App {
           options.map(([val, text]) => h('option', { value: val, selected: val === value }, text))));
     const search = h('input', { type: 'search', placeholder: '🔎 Search by name…', value: v.q, class: 'dex-search', oninput: (e: Event) => { v.q = (e.target as HTMLInputElement).value; renderGrid(); } }) as HTMLInputElement;
     const renderToolbar = () => {
-      const filtered = v.q || v.type !== 'all' || v.biome !== 'all' || v.rarity !== 'all' || v.status !== 'all';
+      const filtered = v.q || v.type !== 'all' || v.biome !== 'all' || v.rarity !== 'all' || v.status !== 'all' || v.time !== 'all';
       toolbar.replaceChildren(
         h('div', { class: 'row gap-s wrap' }, search,
-          filtered ? h('button', { class: 'link', onclick: () => { Object.assign(v, { q: '', type: 'all', biome: 'all', rarity: 'all', status: 'all' }); search.value = ''; renderToolbar(); renderGrid(); } }, 'Clear filters') : null),
+          filtered ? h('button', { class: 'link', onclick: () => { Object.assign(v, { q: '', type: 'all', biome: 'all', rarity: 'all', status: 'all', time: 'all' }); search.value = ''; renderToolbar(); renderGrid(); } }, 'Clear filters') : null),
         h('div', { class: 'dex-types', role: 'group', 'aria-label': 'Filter by type' },
           h('button', { class: `pick ${v.type === 'all' ? 'sel' : ''}`, onclick: () => { v.type = 'all'; renderToolbar(); renderGrid(); } }, 'All types'),
           TYPES.map((t) => h('button', { class: `pick type-pick ${v.type === t ? 'sel' : ''}`, style: `--tc:${TYPE_COLOR[t]}`, title: TYPE_LABEL[t], onclick: () => { v.type = v.type === t ? 'all' : t; renderToolbar(); renderGrid(); } }, typeIconImg(t, 18), h('span', { class: 'hide-xs' }, TYPE_LABEL[t])))),
         h('div', { class: 'row gap-s wrap' },
           select('Biome', v.biome, [['all', 'Any biome'], ...biomes.map((b) => [b, `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`] as [Biome, string])], (x) => { v.biome = x; }),
           select('Rarity', v.rarity, [['all', 'Any rarity'], ...RARITIES.map((r) => [r, `${'★'.repeat(rank(r) + 1)} ${cap(r)}`] as [Rarity, string])], (x) => { v.rarity = x; }),
+          select('Out by', v.time, [['all', 'Day or night'], ['day', '☀️ Day'], ['night', '🌙 Night']], (x) => { v.time = x; }),
           select('Status', v.status, [['all', 'Everything'], ['seen', 'Seen'], ['caught', 'Recruited'], ['unseen', 'Not seen yet']], (x) => { v.status = x; }),
           select('Sort', v.sort, [['codex', 'Codex order'], ['name', 'Name'], ['rarity', 'Rarity'], ['type', 'Type']], (x) => { v.sort = x; })));
     };
@@ -2524,10 +2634,11 @@ export class App {
         h('img', { src: portrait(sp.id), alt: '' }),
         h('div', null,
           h('h3', null, sp.name, caught ? h('span', { title: 'Recruited' }, ' 🗿') : null),
-          h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'chip' }, `Stage ${sp.stage}`), h('span', { class: 'chip' }, `RT ${sp.rt}`)),
+          h('div', { class: 'row gap-s wrap' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'chip' }, `Stage ${sp.stage}`), h('span', { class: 'chip' }, `RT ${sp.rt}`),
+            sp.activity ? h('span', { class: 'chip', title: ACTIVITY_INFO[sp.activity].text }, `${ACTIVITY_INFO[sp.activity].icon} ${ACTIVITY_INFO[sp.activity].label}`) : null),
           h('p', { class: 'small' }, sp.dex))),
       h('h4', null, '🗺️ Where to look'),
-      h('p', { class: 'small muted' }, 'Explore these wild nodes. Faded ones are places you haven’t visited yet. Rarer creatures need good star rolls, and weather can bring out other types too.'),
+      h('p', { class: 'small muted' }, `Explore these wild nodes${sp.activity && sp.activity !== 'crepuscular' ? ` ${sp.activity === 'nocturnal' ? 'at night (even turns)' : 'by day (odd turns)'}` : ''}. Faded ones are places you haven’t visited yet. Rarer creatures need good star rolls, and weather can bring out other types too.`),
       ...where,
       h('h4', null, '🎁 Best offerings'),
       offers.length ? h('div', { class: 'offer-list' }, offers.map((o) => {
@@ -2551,7 +2662,11 @@ export class App {
     const s = this.s;
     const se = season(s);
     const w = WEATHER[s.weather];
-    openSheet('Season & Weather', h('div', null,
+    const tod = timeOfDay(s.turn);
+    openSheet('Season, Weather & Time', h('div', null,
+      h('div', { class: `tod-banner ${tod}` }, h('span', null, TIME_INFO[tod].icon), h('div', null,
+        h('b', null, `${TIME_INFO[tod].label} · Turn ${s.turn}`),
+        h('small', null, `Odd turns are day, even turns are night. ${tod === 'day' ? 'Diurnal' : 'Nocturnal'} and Day & night creatures are out in the wild now, and ${tod} events can happen. Next turn is ${tod === 'day' ? 'night' : 'day'}.`))),
       h('div', { class: 'calendar' }, (['spring', 'summer', 'autumn', 'winter'] as const).map((k, i) => h('div', { class: `cal ${k === se ? 'now' : ''}` }, h('span', null, SEASON_INFO[k].icon), h('b', null, SEASON_INFO[k].label), h('small', null, `Turns ${i * 25 + 1}–${i * 25 + 25}`)))),
       h('div', { class: 'progress' }, h('i', { style: `width:${s.turn}%` })),
       h('h4', null, `${w.icon} ${w.name}`), h('p', null, w.text),

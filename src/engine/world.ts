@@ -1,10 +1,10 @@
-import type { Biome, ElementType, MapNode, Rarity, Species } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR } from '../data/map';
-import { SPECIES, SPECIES_BY_ID } from '../data/species';
-import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo } from '../data/content';
+import type { Biome, ElementType, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode } from '../data/map';
+import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
+import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, timeOfDay } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Match } from './state';
-import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf } from './state';
+import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY } from './state';
 import type { CreatureInst } from './creature';
 import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -12,7 +12,8 @@ import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
 
 export const ability = (s: GameState) => { const f = follower(s); return f ? speciesOf(f).ability : null; };
-export const weather = (s: GameState) => WEATHER[s.weather] ?? WEATHER.clear;
+/** Today's weather where the trainer stands. In Winter, Aurora Peak is always under Aurora Night. */
+export const weather = (s: GameState) => (s.location === 'aurora' && seasonForTurn(s.turn) === 'winter' ? WEATHER.aurora : WEATHER[s.weather] ?? WEATHER.clear);
 export const here = (s: GameState): MapNode => NODE_BY_ID[s.location];
 
 // ── Costs ───────────────────────────────────────────────────────
@@ -23,9 +24,18 @@ export function reexploreCost(s: GameState) {
   if (s.trainer.style === 'nature' && !s.flags.freeReexploreUsed) return 0;
   return s.trainer.style === 'urban' ? 2 : 1;
 }
-export function moveCost(s: GameState) {
-  return (ability(s) === 'trailblazer' || s.trainer.style === 'pathfinder') && !s.flags.firstMoveUsed ? 0 : 1;
+/**
+ * Initiative to move. Pass the destination: stepping onto a Cloud Island node costs +1 per Tier
+ * (Salem makes stronger trainers slog), never more than a whole turn's 5.
+ */
+export function moveCost(s: GameState, to?: string) {
+  const base = (ability(s) === 'trailblazer' || s.trainer.style === 'pathfinder') && !s.flags.firstMoveUsed ? 0 : 1;
+  return to && isCloudNode(to) ? Math.min(MAX_STEP_COST, base + cloudStepExtra(s)) : base;
 }
+/** No single step can cost more than a full turn's Initiative. */
+const MAX_STEP_COST = 5;
+/** Extra Initiative for each step onto a Cloud Island node: +1 per Tier. */
+export const cloudStepExtra = (s: GameState) => tierOf(s);
 /** Initiative for a stable rest: a city action, +1 for Pathfinders. */
 export function stableCost(s: GameState) {
   return cityActionCost(s) + (s.trainer.style === 'pathfinder' ? 1 : 0);
@@ -38,8 +48,9 @@ export const campPerInitiative = (s: GameState) => (s.trainer.style === 'caretak
 export interface MoveCheck { ok: boolean; cost: number; reason?: string }
 export function canMoveTo(s: GameState, id: string): MoveCheck {
   const nb = neighbors(s.location).find((n) => n.node.id === id);
-  const cost = moveCost(s);
+  const cost = moveCost(s, id);
   if (!nb) return { ok: false, cost, reason: 'Not adjacent.' };
+  if (nb.edge.via === 'portal' && !portalOpen(s)) return { ok: false, cost, reason: 'The Cloud Island portal only opens at night (even turns), or any time in Winter.' };
   const req = nb.edge.requires;
   if (req) {
     const mv = teamMovements(s);
@@ -54,6 +65,7 @@ export function canMoveTo(s: GameState, id: string): MoveCheck {
   if (nr) {
     if (nr.tier && tierOf(s) < nr.tier) return { ok: false, cost, reason: `Only Tier ${nr.tier}+ trainers may enter.` };
     if (nr.item && !hasItem(s, nr.item)) return { ok: false, cost, reason: `Requires ${itemInfo(nr.item).name}.` };
+    if (nr.merit && !s.merits.includes(nr.merit)) return { ok: false, cost, reason: `Only trainers who hold ${CITIES[nr.merit]?.accolade ?? 'that Merit'} may cross. Beat Arbiter ${CITIES[nr.merit]?.arbiter ?? ''} first.` };
   }
   if (s.initiative < cost) return { ok: false, cost, reason: 'Not enough Initiative.' };
   return { ok: true, cost };
@@ -76,7 +88,9 @@ export function moveTo(s: GameState, id: string): Outcome | null {
   if (!chk.ok) return null;
   s.initiative -= chk.cost;
   s.flags.firstMoveUsed = true;
-  s.location = id;
+  const from = s.location;
+  moveTrainer(s, id);
+  stepCloudLap(s, from, id);
   if (!s.visited.includes(id)) s.visited.push(id);
   const node = NODE_BY_ID[id];
   if (node.kind === 'legendary') {
@@ -201,18 +215,30 @@ function rollRarity(s: GameState, node: MapNode): { stars: { face: number; star:
 function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
   const { stars, rarity } = rollRarity(s, node);
   const level = wildLevel(s, node);
-  const sp = pickSpecies(node, rarity, level, weather(s).encounter);
+  const sp = pickSpecies(node, rarity, level, weather(s).encounter, timeOfDay(s.turn));
   const wild = createCreature(sp.id, level);
   if (!s.dex.seen.includes(sp.id)) s.dex.seen.push(sp.id);
   const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: node.biome, quickStep: ability(s) === 'quickStep' });
   return { t: 'encounter', roll: r, stars, rarity, battle };
 }
 
-export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost: ElementType[] = []): Species {
+/**
+ * A wild species for this node. With a `time` of day, only creatures out at that time are picked
+ * (diurnal by day, nocturnal by night, crepuscular always). A type with nobody awake is skipped;
+ * if nobody at all is awake, the time is ignored.
+ */
+export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost: ElementType[] = [], time?: TimeOfDay): Species {
   const pool = BIOME_TYPES[node.biome];
-  const type = weightedPick(TYPES.filter((t) => pool.includes(t) || boost.includes(t)).map((t) => ({ v: t, w: (pool.includes(t) ? 3 : 0) + (boost.includes(t) ? 2 : 0) })));
   const stageCap = stageCapFor(level);
-  const list = speciesPool(node.biome, type, rarity, stageCap);
+  const types = TYPES.filter((t) => pool.includes(t) || boost.includes(t));
+  const weightOf = (t: ElementType) => (pool.includes(t) ? 3 : 0) + (boost.includes(t) ? 2 : 0);
+  const listFor = (t: ElementType) => {
+    const all = speciesPool(node.biome, t, rarity, stageCap);
+    return time ? all.filter((x) => isActive(x, time)) : all;
+  };
+  let options = types.map((t) => ({ t, list: listFor(t) })).filter((o) => o.list.length);
+  if (!options.length) options = types.map((t) => ({ t, list: speciesPool(node.biome, t, rarity, stageCap) }));
+  const { list } = weightedPick(options.map((o) => ({ v: o, w: weightOf(o.t) })));
   // prefer the highest stage allowed, but keep some variety
   return weightedPick(list.map((x) => ({ v: x, w: x.stage === stageCap ? 3 : 1 })));
 }
@@ -378,6 +404,94 @@ export function hallBattle(s: GameState): { name: string; battle: Battle } | nul
   return { name, battle };
 }
 
+// ── Cloud Island (Salem) ────────────────────────────────────────
+// The portal from Aurora Peak opens at night (even turns), or any time in Winter. On the island a
+// trainer can walk the ring at any time, but can only leave through the portal (or by Flying).
+// Six steps in a row around the ring, the same way round, is a full lap: Salem will battle that
+// trainer from then on. Turning back starts the count again; leaving the island ends the lap.
+
+/** Is the Cloud Island portal open this turn? */
+export const portalOpen = (s: GameState) => timeOfDay(s.turn) === 'night' || seasonForTurn(s.turn) === 'winter';
+
+export const CLOUD_LAP = CLOUD_RING.length;
+
+export function cloudLapProgress(s: GameState) {
+  return { steps: Math.min(CLOUD_LAP, s.flags.cloudLap ?? 0), need: CLOUD_LAP, worthy: !!s.flags.salemWorthy, onIsland: isCloudNode(s.location) };
+}
+
+/** Count a move around the ring toward a lap (called after every move). */
+export function stepCloudLap(s: GameState, from: string, to: string) {
+  const a = CLOUD_RING.indexOf(from), b = CLOUD_RING.indexOf(to);
+  if (a < 0 || b < 0) { if (isCloudNode(to)) { s.flags.cloudLap = 0; s.flags.cloudDir = undefined; } return; }
+  const dir: 1 | -1 = (b - a + CLOUD_LAP) % CLOUD_LAP === 1 ? 1 : -1;
+  s.flags.cloudLap = s.flags.cloudDir === dir ? (s.flags.cloudLap ?? 0) + 1 : 1;
+  s.flags.cloudDir = dir;
+  if (s.flags.cloudLap >= CLOUD_LAP && !s.flags.salemWorthy) {
+    s.flags.salemWorthy = true;
+    log(s, 'Walked a full lap of Cloud Island. Salem will accept your challenge.');
+  }
+}
+
+// ── Iron Coast Gauntlet ─────────────────────────────────────────
+// Before Stella will battle, a trainer must beat a run of local trainers in a row without leaving
+// Iron Coast: 2 per Tier (2, 4, 6, 8, 10), each a level above that Tier's Trainer Hall opponents, with
+// the last one a level higher still. Matches can be spread over turns, with Stable rests between
+// them, as long as the trainer stays in the city. Leaving resets the count (see moveTrainer).
+// Once cleared, Stella can be challenged at any time, and the Gauntlet never needs repeating.
+const GAUNTLET_TRAINERS = ['Deckhand Ines', 'Dockworker Bram', 'Smith Oriel', 'Lighthouse Keeper Tove', 'Diver Kaito', 'Riveter Juno', 'Harbor Guard Pell', 'Foundry Hand Mags', 'Net-Mender Sol', 'Sea Captain Ardo'];
+
+/** How many trainers the Gauntlet takes at a Tier: 2, 4, 6, 8, 10. */
+export const gauntletSize = (tier: number) => 2 * tier;
+
+/** Gauntlet level at a Tier: one above Trainer Hall opponents (the final trainer one more). */
+export const gauntletLevel = (tier: number, final: boolean) => Math.max(1, tierBandLevel(tier) + 2 + (final ? 1 : 0));
+
+export function gauntletProgress(s: GameState) {
+  const need = gauntletSize(tierOf(s));
+  const wins = Math.min(need, s.flags.gauntletWins ?? 0);
+  return { wins, need, open: !!s.flags.stellaOpen, nextLevel: gauntletLevel(tierOf(s), wins + 1 >= need) };
+}
+
+/** Why the trainer can't take the next Gauntlet match right now (null = they can). */
+export function gauntletBlock(s: GameState): string | null {
+  if (s.location !== GAUNTLET_CITY) return 'The Gauntlet is at Iron Coast.';
+  if (s.flags.stellaOpen) return 'You’ve cleared the Gauntlet. Stella will see you any time.';
+  if (s.merits.includes(GAUNTLET_CITY)) return 'You already hold Stella’s accolade.';
+  if (!s.roster.some((c) => !c.ko)) return 'Your team needs rest first. The Stable is right here.';
+  if (s.initiative < cityActionCost(s)) return 'Not enough Initiative.';
+  return null;
+}
+
+/** The next Gauntlet match: a Steel-leaning local trainer, for a city action's Initiative. */
+export function gauntletBattle(s: GameState): { name: string; battle: Battle; match: number; of: number } | null {
+  if (gauntletBlock(s)) return null;
+  s.initiative -= cityActionCost(s);
+  const node = here(s);
+  const tier = tierOf(s);
+  const { wins, need } = gauntletProgress(s);
+  const lvl = gauntletLevel(tier, wins + 1 >= need);
+  const size = Math.max(1, Math.min(s.roster.filter((c) => !c.ko).length, tier >= 3 ? 3 : 2));
+  const team = Array.from({ length: size }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl, ['steel']).id, lvl));
+  for (const c of team) autoSpend(c, false);
+  const name = GAUNTLET_TRAINERS[wins % GAUNTLET_TRAINERS.length];
+  const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });
+  return { name, battle, match: wins + 1, of: need };
+}
+
+/** A Gauntlet match was won: count it, and open Stella's arena once enough are beaten. */
+export function gauntletWin(s: GameState): { wins: number; need: number; cleared: boolean } {
+  const need = gauntletSize(tierOf(s));
+  const wins = (s.flags.gauntletWins ?? 0) + 1;
+  if (wins >= need) {
+    s.flags.stellaOpen = true;
+    s.flags.gauntletWins = 0;
+    log(s, `Cleared the Iron Coast Gauntlet (${need} trainers). Stella will accept your challenge.`);
+    return { wins: need, need, cleared: true };
+  }
+  s.flags.gauntletWins = wins;
+  return { wins, need, cleared: false };
+}
+
 // ── Hotseat weather ─────────────────────────────────────────────
 /**
  * Roll a turn's weather once for the whole hotseat table (when the first trainer starts that turn),
@@ -540,7 +654,7 @@ export function playerSide(s: GameState): Side {
 // ── After battle ────────────────────────────────────────────────
 export interface BattleSummary { coins: number; wiped: boolean; text: string[] }
 
-export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string }): BattleSummary {
+export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
   for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
@@ -552,6 +666,10 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
       out.text.push(`${b.sides[1].name} hands over ${out.coins} coins.`);
     }
     if (ctx.kind === 'wild') { out.coins = 1 + Math.floor(b.sides[1].team[0].level / 3); out.text.push(`You found ${out.coins} coins in the grass.`); }
+    if (ctx.gauntlet) {
+      const g = gauntletWin(s);
+      out.text.push(g.cleared ? `Gauntlet cleared! Stella will accept your challenge, now or any time you return.` : `Gauntlet: ${g.wins}/${g.need} trainers beaten. Stay in Iron Coast to keep your progress.`);
+    }
     if (ctx.kind === 'arbiter' && ctx.city) {
       const city = CITIES[ctx.city];
       if (!s.merits.includes(ctx.city)) s.merits.push(ctx.city);
@@ -583,7 +701,7 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
   return out;
 }
 function wipe(s: GameState) {
-  s.location = s.trainer.home;
+  moveTrainer(s, s.trainer.home, { wiped: true });
   for (const c of s.roster) { fullRestore(c); c.morale = Math.max(0, c.morale - 1); }
   s.coins = Math.floor(s.coins / 2);
   s.initiative = 0;
@@ -761,14 +879,22 @@ export function arbiterHere(s: GameState): string | null {
   return null;
 }
 
-export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; wait?: boolean; findHim?: boolean } {
+export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; findHim?: boolean; gauntlet?: boolean; cloud?: boolean } {
   if (s.merits.includes(cityId)) return { ok: false, reason: 'You already hold this Arbiter\'s accolade.' };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
   switch (cityId) {
-    case 'aurora': return s.weather === 'aurora' || seasonForTurn(s.turn) === 'winter' || s.flags.salemNight ? { ok: true } : { ok: false, wait: true, reason: 'Salem\'s arena only opens under the aurora.' };
+    case 'aurora': {
+      if (s.flags.salemWorthy) return { ok: true };
+      const lap = cloudLapProgress(s);
+      return { ok: false, cloud: true, reason: `Salem only faces trainers who have walked a full lap of Cloud Island (${lap.steps}/${lap.need} steps). Its portal opens at night, or any time in Winter.` };
+    }
     case 'hollow': return s.flags.fabianFound ? { ok: true } : { ok: false, findHim: true, reason: 'Fabian is hiding somewhere in town, in disguise.' };
     case 'gloom': return hasItem(s, 'canopy-rope') ? { ok: true } : { ok: false, reason: 'Dahlia\'s arena is on the forest floor. You need a Canopy Rope (Lumber Hollow).' };
-    case 'iron': return tierOf(s) >= 2 ? { ok: true } : { ok: false, reason: 'Stella\'s fortress stays beneath the waves until you hold 2 accolades.' };
+    case 'iron': {
+      if (s.flags.stellaOpen) return { ok: true };
+      const g = gauntletProgress(s);
+      return { ok: false, gauntlet: true, reason: `Stella only faces trainers who clear the Iron Coast Gauntlet: ${g.wins}/${g.need} trainers beaten. Leaving the city resets it.` };
+    }
     case 'mangrove': return hasItem(s, 'root-whistle') || teamMovements(s).has('sail') ? { ok: true } : { ok: false, reason: 'The mangrove roots hide Katy. You need a Root Whistle (Saltmarsh Landing) or a creature that can Sail.' };
     default: return { ok: true };
   }
@@ -953,6 +1079,6 @@ export function flyTargets(s: GameState): string[] {
 export function fly(s: GameState, id: string): boolean {
   if (s.initiative < 3 || !flyTargets(s).includes(id)) return false;
   s.initiative -= 3;
-  s.location = id;
+  moveTrainer(s, id);
   return true;
 }

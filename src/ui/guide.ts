@@ -32,6 +32,12 @@ export const GUIDE: GuideCategory[] = [
         'Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first: the event waits at the bottom of the screen, and you can’t end the turn until you answer it.',
         'Trades and Nature changes show a before → after stat comparison before you confirm.',
       ] },
+      { id: 'daynight', title: 'Day & night', body: [
+        'Day and night alternate: odd turns (1, 3, 5 …) are day, even turns (2, 4, 6 …) are night. The pill next to the turn counter shows which it is, and the map darkens at night.',
+        '- Wild creatures keep their own hours. Diurnal creatures (mostly Fire, Grass and Electric) only come out by day, nocturnal ones (mostly Astral and Charm) only at night, and the rest any time.',
+        '- Each creature’s Codex page says when it’s out, and the Codex can filter by day or night.',
+        '- Some events only happen by day (trainers, trades, errands) and some only at night (campfires, stars, trouble after dark).',
+      ] },
       { id: 'weather', title: 'Weather & seasons', body: [
         'The weather is rolled at the start of each turn. It can boost or weaken attack types, change Speed, and bring out other creature types when exploring.',
         'Tap the weather pill (top left) to see what today’s weather does.',
@@ -103,6 +109,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'trainers', title: 'Trainers & Arbiters', body: [
         'Every city has a Trainer Hall: battle a local trainer once per turn (a city action).',
         'Each city’s Arbiter guards a Merit. Their arenas have tricks (ice floes, fog, falling rocks…) described before you challenge.',
+        'Some Arbiters have conditions. Salem (Aurora Peak) only battles trainers who have walked a full lap of Cloud Island (see Places → Cloud Island). Stella (Iron Coast) only battles trainers who clear the Iron Coast Gauntlet: beat 2 local trainers per Tier without leaving the city. You can rest at the Stable between matches, but leaving resets it. Once cleared, she’ll battle you any time.',
         'Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.',
       ] },
     ],
@@ -122,6 +129,14 @@ export const GUIDE: GuideCategory[] = [
         '- Valor Ridge: the Battle School.',
         '- Quillhaven: the Research Facility.',
         '- Shifting Depths: Explore the Depths.',
+      ] },
+      { id: 'cloud', title: 'Cloud Island', body: [
+        'A portal in Aurora Peak opens at night (even turns), and any time in Winter, to Cloud Island: a ring of six cloud wilds off the north-west coast. Its rules are shown before you step through, and while you’re there the ☁️ Cloud Island chip (top left) shows your lap, your satchel and the portal, and opens the rules again.',
+        '- Salem only battles trainers who have walked a full lap of it: 6 steps in a row around the ring, always the same way round. Turning back starts the count again.',
+        '- Every step onto the island costs +1 Initiative per Tier (Salem makes stronger trainers slog), so a lap takes several turns. You can walk the ring by day, but the portal only opens at night. Leaving the island ends the lap.',
+        '- Items you find there go into a Cloud satchel, and only reach your bag when you escape (through the portal, or by Flying). Get wiped out and sent home, and the satchel is lost.',
+        '- Its wilds turn up universal offerings that work on any creature: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3). The island has its own events too.',
+        '- Beat Salem, then come back: the bridges to the Eye of the Sky, in the middle of the ring, open, and a Legendary waits there.',
       ] },
       { id: 'camping', title: 'Camping', body: [
         'On a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue.',

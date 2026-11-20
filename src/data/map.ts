@@ -95,6 +95,29 @@ for (const r of routes) {
   });
   edges.push({ a: prev, b: B.id, requires: r.req });
 }
+// ── Cloud Island ───────────────────────────────────────────────
+// A ring of six cloud nodes floating off the north-west coast, reached by a portal from Aurora Peak
+// (open at night, or any time in Winter). A full lap of the ring earns a match with Salem; once he's
+// beaten, bridges open to the Eye of the Sky in the middle, where the Legendary Nimbalune waits.
+export const CLOUD_RING = ['cloud1', 'cloud2', 'cloud3', 'cloud4', 'cloud5', 'cloud6'];
+export const CLOUD_EYE = 'cloudeye';
+/** Every Cloud Island node (the ring and the Eye). */
+export const CLOUD_NODES = [...CLOUD_RING, CLOUD_EYE];
+export const isCloudNode = (id: string) => CLOUD_NODES.includes(id);
+{
+  const cx = -58, cz = -66, r = 7.5;
+  const names = ['Gatecloud Landing', 'Nimbus Steps', 'Starfall Drift', 'Moonbow Arch', 'Thunderhead Rise', 'Stillwind Hollow'];
+  const start = Math.atan2(26, 28); // the gate faces Aurora Peak
+  CLOUD_RING.forEach((id, i) => {
+    const a = start + (i * Math.PI) / 3;
+    nodes.push({ id, name: names[i], kind: 'wild', biome: 'cloud', x: +(cx + Math.cos(a) * r).toFixed(2), z: +(cz + Math.sin(a) * r).toFixed(2), rarity: 1, level: 6 });
+  });
+  nodes.push({ id: CLOUD_EYE, name: 'Eye of the Sky', kind: 'legendary', biome: 'cloud', x: cx, z: cz, rarity: 3, level: 10, legendary: 'nimbalune', requires: { merit: 'aurora' } });
+  CLOUD_RING.forEach((id, i) => edges.push({ a: id, b: CLOUD_RING[(i + 1) % CLOUD_RING.length] }));
+  for (const id of [CLOUD_RING[0], CLOUD_RING[2], CLOUD_RING[4]]) edges.push({ a: id, b: CLOUD_EYE });
+  edges.push({ a: 'aurora', b: CLOUD_RING[0], via: 'portal' });
+}
+
 // The ferries to Kilauea island
 edges.push({ a: 'mangrove', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
 edges.push({ a: 'kilauea', b: 'blackSand', via: 'sail', requires: { item: 'ferry-pass', movement: 'sail' } });
@@ -171,4 +194,5 @@ export const BIOME_TYPES: Record<Biome, ElementType[]> = {
   river: ['water', 'grass'], road: ['steel', 'electric'], swamp: ['water', 'grass'],
   desert: ['fire', 'electric', 'rock'], badlands: ['electric', 'rock'], coast: ['water', 'steel'],
   volcanic: ['fire', 'rock'], canyon: ['rock', 'fire'],
+  cloud: ['astral', 'electric', 'water', 'charm'],
 };

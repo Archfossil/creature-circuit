@@ -1,9 +1,9 @@
 // Turn events: something happens on the road between turns. One event is rolled at the end of
 // every turn (see `rollEvent`), stored on the save as `s.event` until the player answers it, then
 // resolved with `resolveEvent`. Everything here is pure game logic; the UI only renders `eventView`.
-import type { ElementType, Rarity } from '../data/schema';
+import type { ElementType, Rarity, TimeOfDay } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
-import { NATURES, NATURE_BY_ID, ITEMS, BIOME_MATERIALS } from '../data/content';
+import { NATURES, NATURE_BY_ID, ITEMS, BIOME_MATERIALS, timeOfDay } from '../data/content';
 import { TYPE_LABEL } from '../data/types';
 import type { GameState } from './state';
 import { addItem, follower, log, tierOf, earnCoins } from './state';
@@ -12,7 +12,7 @@ import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, spe
 import type { Battle } from './battle';
 import { createBattle } from './battle';
 import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather } from './world';
-import { BIOME_TYPES } from '../data/map';
+import { BIOME_TYPES, isCloudNode } from '../data/map';
 import { pick, roll, weightedPick, uid } from './dice';
 
 /** Chance that a turn ends with an event. 1 = every turn (good for playtesting); lower it to taste. */
@@ -50,6 +50,10 @@ interface EventDef {
   weight: number;
   /** Optional: only roll this event when it makes sense. */
   when?: (s: GameState) => boolean;
+  /** Optional: only by day or only at night (odd turns are day, even turns night). Unset = any time. */
+  time?: TimeOfDay;
+  /** 'cloud': only happens on Cloud Island (and while there, only these events happen). */
+  place?: 'cloud';
   create: (s: GameState) => EventData;
   view: (s: GameState, d: EventData) => Omit<EventView, 'id'>;
   resolve: (s: GameState, d: EventData, choice: string, target?: CreatureInst) => EventResult;
@@ -71,8 +75,8 @@ function welcome(s: GameState, c: CreatureInst) {
   if (s.roster.length < 3) s.roster.push(c); else s.reserve.push(c);
   markCaught(s, c.species);
 }
-function wildSpecies(s: GameState, rarity: Rarity, level: number) {
-  return pickSpecies(here(s), rarity, level, weather(s).encounter).id;
+function wildSpecies(s: GameState, rarity: Rarity, level: number, time?: TimeOfDay) {
+  return pickSpecies(here(s), rarity, level, weather(s).encounter, time).id;
 }
 /**
  * The trader's creature at a given level. Fixed by the event (species + Nature) and given with its
@@ -92,7 +96,7 @@ function withNature(c: CreatureInst, natureId: string): CreatureInst {
 // ── The events ──────────────────────────────────────────────────
 const EVENTS: EventDef[] = [
   {
-    id: 'trader', weight: 3,
+    id: 'trader', weight: 3, time: 'day',
     create: (s) => {
       const level = baseWildLevel(s, here(s));
       return { species: wildSpecies(s, Math.random() < 0.3 ? 'prime' : 'common', level), nature: pick(NATURES).id, level };
@@ -122,7 +126,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'caretaker', weight: 3,
+    id: 'caretaker', weight: 3, time: 'night',
     create: () => ({ natures: [...NATURES].sort(() => Math.random() - 0.5).slice(0, 3).map((n) => n.id) }),
     view: (_s, d) => ({
       title: 'Creature Caretaker', icon: '🩺',
@@ -167,10 +171,10 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'lost', weight: 2,
+    id: 'lost', weight: 2, time: 'night',
     create: (s) => {
       const level = Math.max(1, tierBandLevel(tierOf(s)) - 1);
-      return { species: wildSpecies(s, 'common', level), level };
+      return { species: wildSpecies(s, 'common', level, timeOfDay(s.turn)), level };
     },
     view: (_s, d) => {
       const sp = SPECIES_BY_ID[d.species as string];
@@ -196,7 +200,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'caravan', weight: 3,
+    id: 'caravan', weight: 3, time: 'night',
     create: () => {
       const item = pick(['elixir', 'moonberry', 'star-charm', 'lure-incense']);
       return { item, price: Math.max(1, Math.floor(ITEMS[item].price / 2)) };
@@ -234,7 +238,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'sparring', weight: 3,
+    id: 'sparring', weight: 3, time: 'day',
     create: () => ({ price: 5 }),
     view: (s, d) => ({
       title: 'Sparring Master', icon: '🥋',
@@ -265,7 +269,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'windfall', weight: 3,
+    id: 'windfall', weight: 3, time: 'night',
     create: (s) => ({ items: [pick(BIOME_MATERIALS[here(s).biome]), pick(BIOME_MATERIALS[here(s).biome])] }),
     view: (_s, d) => ({
       title: 'Windfall', icon: '🧺',
@@ -278,7 +282,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'rival', weight: 2,
+    id: 'rival', weight: 2, time: 'day',
     when: (s) => s.roster.some((c) => !c.ko),
     create: () => ({ name: pick(['Rival Juniper', 'Rival Ozzie', 'Rival Marisol', 'Rival Dex', 'Rival Calla']) }),
     view: (_s, d) => ({
@@ -337,7 +341,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'pilgrim', weight: 2,
+    id: 'pilgrim', weight: 2, time: 'day',
     create: (s) => ({ type: pick([...new Set(team(s).flatMap((c) => speciesOf(c).types))] as ElementType[]) }),
     view: (_s, d) => ({
       title: 'Passing Pilgrim', icon: '🙏',
@@ -392,7 +396,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'bard', weight: 3,
+    id: 'bard', weight: 3, time: 'night',
     create: () => ({ price: 3 }),
     view: (s, d) => ({
       title: 'Traveling Bard', icon: '🪕',
@@ -415,7 +419,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'mentor', weight: 2,
+    id: 'mentor', weight: 2, time: 'day',
     create: () => ({ xp: 5 }),
     view: (s, d) => ({
       title: 'Old Trainer’s Advice', icon: '🧓',
@@ -433,7 +437,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'guide', weight: 2,
+    id: 'guide', weight: 2, time: 'day',
     create: () => ({ price: 3 }),
     view: (s, d) => ({
       title: 'Local Guide', icon: '🧭',
@@ -448,7 +452,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'squabble', weight: 2,
+    id: 'squabble', weight: 2, time: 'night',
     when: (s) => s.roster.length >= 2,
     create: (s) => {
       const [a, b] = [...s.roster].sort(() => Math.random() - 0.5);
@@ -473,7 +477,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'scholar', weight: 2,
+    id: 'scholar', weight: 2, time: 'day',
     create: (s) => {
       const biome = here(s).biome;
       const unseen = [...new Set(BIOME_TYPES[biome].flatMap((t) => speciesPool(biome, t, 'common', 2).map((x) => x.id)))].filter((id) => !s.dex.seen.includes(id));
@@ -494,7 +498,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'satchel', weight: 2,
+    id: 'satchel', weight: 2, time: 'day',
     create: () => ({ coins: 2 + roll(6) }),
     view: (_s, d) => ({
       title: 'Lost Satchel', icon: '🎒',
@@ -517,7 +521,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'star', weight: 2,
+    id: 'star', weight: 2, time: 'night',
     create: () => ({}),
     view: () => ({
       title: 'Shooting Star', icon: '🌠',
@@ -534,7 +538,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'berries', weight: 2,
+    id: 'berries', weight: 2, time: 'night',
     when: (s) => s.roster.some((c) => !c.ko),
     create: (s) => { const c = pick(s.roster.filter((x) => !x.ko)); return { uid: c.uid, name: nameOf(c) }; },
     view: (s, d) => ({
@@ -557,7 +561,7 @@ const EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'apprentice', weight: 2,
+    id: 'apprentice', weight: 2, time: 'day',
     when: (s) => s.roster.some((c) => !c.ko),
     create: () => ({ xp: 3, tip: 2 }),
     view: (_s, d) => ({
@@ -576,16 +580,133 @@ const EVENTS: EventDef[] = [
       return { text: `${nameOf(c)} shows off: +${d.xp} XP${lv ? `, now Lv ${c.level}` : ''}, and the kid tips you 🪙 ${got}.`, tone: 'good' };
     },
   },
+
+  // ── Cloud Island (only while on the island) ────────────────────
+  {
+    id: 'shepherd', weight: 3, time: 'night', place: 'cloud',
+    create: () => ({}),
+    view: (s) => ({
+      title: 'Star Shepherd', icon: '🌟',
+      text: 'A glowing figure with a crook herds drifting stardust across the clouds. "Lend a hand, and keep what falls."',
+      choices: [
+        { id: 'help', label: 'Help gather · 1 Initiative', detail: 'Get 2 Stardust (+2 to recruit any creature).', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+        { id: 'bless', label: 'Ask for a blessing', detail: 'Your follower gets +1 Loyalty and +1 Morale.' },
+        DECLINE,
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'help') { s.initiative -= 1; addItem(s, 'stardust', 2); return { text: 'You herd the stardust into a glittering pile. (+2 Stardust)', tone: 'good' }; }
+      if (choice === 'bless') {
+        const f = follower(s);
+        if (!f) return { text: 'The shepherd blesses the empty air beside you, smiling.', tone: 'info' };
+        addLoyalty(f, 1); cheer(f, 1);
+        return { text: `The shepherd touches ${nameOf(f)}’s brow. It glows faintly all night. (+1 Loyalty, +1 Morale)`, tone: 'good' };
+      }
+      return { text: 'The shepherd drifts on into the dark.', tone: 'info' };
+    },
+  },
+  {
+    id: 'moonbow', weight: 2, time: 'night', place: 'cloud',
+    create: () => ({}),
+    view: () => ({
+      title: 'Moonbow', icon: '🌈',
+      text: 'A rainbow arcs across the clouds in silver moonlight. Its end touches the ground right beside you.',
+      choices: [
+        { id: 'reach', label: 'Reach for its end', detail: 'Roll d6: 5–6 a Moonbow Prism (+3 to recruit any creature), otherwise a Cloud Silk.' },
+        { id: 'watch', label: 'Watch it with your team', detail: 'Every creature you own gets +1 Morale.' },
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'watch') { for (const c of team(s)) cheer(c, 1); return { text: 'Your team watches until the moonbow fades. (+1 Morale)', tone: 'good' }; }
+      const r = roll(6);
+      if (r >= 5) { addItem(s, 'moonbow-prism'); return { text: 'Your fingers close on a shard of colour: a Moonbow Prism!', tone: 'good', rolls: [r] }; }
+      addItem(s, 'cloud-silk');
+      return { text: 'The moonbow slips away, leaving a wisp of Cloud Silk in your hand.', tone: 'info', rolls: [r] };
+    },
+  },
+  {
+    id: 'skywhale', weight: 2, place: 'cloud',
+    when: (s) => !!follower(s),
+    create: () => ({ xp: 6 }),
+    view: (s, d) => ({
+      title: 'Sky Whale', icon: '🐋',
+      text: 'An enormous whale of cloud glides past, close enough to touch. Your follower stares at it, wide-eyed.',
+      choices: [
+        { id: 'ride', label: 'Let your follower ride along · 1 Initiative', detail: `Your follower gains +${d.xp} XP and +1 Morale.`, disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+        { id: 'wave', label: 'Wave hello', detail: 'It shakes loose 2 Cloud Silk as it passes.' },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      const f = follower(s);
+      if (choice === 'ride' && f) {
+        s.initiative -= 1;
+        const lv = gainXp(f, d.xp as number); cheer(f, 1);
+        return { text: `${nameOf(f)} rides the whale around the island and back: +${d.xp} XP${lv ? `, now Lv ${f.level}` : ''}!`, tone: 'good' };
+      }
+      addItem(s, 'cloud-silk', 2);
+      return { text: 'The whale rumbles a greeting and sheds 2 Cloud Silk.', tone: 'good' };
+    },
+  },
+  {
+    id: 'cloudbank', weight: 2, place: 'cloud',
+    create: () => ({}),
+    view: (s) => {
+      const f = follower(s);
+      const spd = f ? stats(f).speed : 0;
+      return {
+        title: 'Cloud Bank', icon: '🌫️', forced: true,
+        text: 'A thick bank of cloud swallows the path. You can barely see your own feet.',
+        choices: [
+          { id: 'wait', label: 'Wait for it to lift · 1 Initiative', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+          { id: 'feel', label: f ? `Let ${nameOf(f)} lead the way` : 'Feel your way forward', detail: `Roll d6 + Speed ${spd} ≥ 7: you find a Stardust in the fog. Miss: your active team gets −1 Morale.` },
+        ],
+      };
+    },
+    resolve: (s, _d, choice) => {
+      if (choice === 'wait') { s.initiative = Math.max(0, s.initiative - 1); return { text: 'The cloud lifts after a while. (−1 Initiative)', tone: 'info' }; }
+      const f = follower(s);
+      const r = roll(6);
+      if (r + (f ? stats(f).speed : 0) >= 7) { addItem(s, 'stardust'); return { text: 'Sure-footed through the fog, you stumble onto a Stardust!', tone: 'good', rolls: [r] }; }
+      for (const c of s.roster) cheer(c, -1);
+      return { text: 'Lost in the fog for hours, your team comes out grumpy. (−1 Morale)', tone: 'bad', rolls: [r] };
+    },
+  },
+  {
+    id: 'sunlit', weight: 3, time: 'day', place: 'cloud',
+    create: () => ({}),
+    view: () => ({
+      title: 'Sunlit Clouds', icon: '☀️',
+      text: 'Daylight burns the portal shut until night. The clouds glow warm and soft under the sun.',
+      choices: [
+        { id: 'bask', label: 'Bask in the sun', detail: 'Your active team (not KO’d) gets full Vitality and Health, and Fatigue cleared.' },
+        { id: 'comb', label: 'Comb the clouds', detail: 'Find 1 Cloud Silk and 1 Stardust.' },
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'bask') {
+        for (const c of s.roster) if (!c.ko) { c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; }
+        return { text: 'Your team naps on a sunbeam and wakes restored.', tone: 'good' };
+      }
+      addItem(s, 'cloud-silk'); addItem(s, 'stardust');
+      return { text: 'You comb the clouds and find a Cloud Silk and a Stardust.', tone: 'good' };
+    },
+  },
 ];
 
 export const EVENT_IDS = EVENTS.map((e) => e.id);
+/** Where each event can happen: 'cloud' (Cloud Island only) or 'anywhere' (anywhere else). */
+export const EVENT_PLACES: Record<string, 'cloud' | 'anywhere'> = Object.fromEntries(EVENTS.map((e) => [e.id, e.place ?? 'anywhere']));
+/** When each event can happen: 'day', 'night' or 'any'. */
+export const EVENT_TIMES: Record<string, TimeOfDay | 'any'> = Object.fromEntries(EVENTS.map((e) => [e.id, e.time ?? 'any']));
 const BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 
 /** Roll the start-of-turn event. Never repeats the previous event. Returns it (also stored on `s.event`). */
 export function rollEvent(s: GameState, force?: string): PendingEvent | null {
   if (s.phase !== 'map' || s.event) return s.event ?? null;
   if (!force && Math.random() >= EVENT_CHANCE) return null;
-  const pool = force ? [BY_ID[force]] : EVENTS.filter((e) => e.id !== s.lastEvent && (!e.when || e.when(s)));
+  const now = timeOfDay(s.turn);
+  const onCloud = isCloudNode(s.location);
+  const pool = force ? [BY_ID[force]] : EVENTS.filter((e) => e.id !== s.lastEvent && (e.place === 'cloud') === onCloud && (!e.time || e.time === now) && (!e.when || e.when(s)));
   if (!pool.length) return null;
   const def = weightedPick(pool.map((e) => ({ v: e, w: e.weight })));
   s.event = { id: def.id, data: def.create(s) };

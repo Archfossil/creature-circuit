@@ -91,8 +91,8 @@ export class BattleView implements SceneView {
     (this.scene.getObjectByName('ground') as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: bc, roughness: 1, flatShading: true });
     (this.arena.material as THREE.MeshStandardMaterial).color.set(arenaType ? '#f3ead6' : bc.clone().lerp(new THREE.Color('#efe6cf'), 0.65));
     (this.ring.material as THREE.MeshStandardMaterial).color.set(arenaType ? TYPE_COLOR[arenaType] : '#2b2a33');
-    const top = night ? '#0e1838' : biome === 'volcanic' ? '#e07a4a' : biome === 'tundra' ? '#9fc3e0' : '#5fb4e8';
-    const bottom = night ? '#3a4a7a' : biome === 'volcanic' ? '#ffcf9a' : biome === 'swamp' ? '#cfe0c0' : '#f4e8cf';
+    const top = night ? (biome === 'cloud' ? '#1a0b2e' : '#0e1838') : biome === 'volcanic' ? '#e07a4a' : biome === 'tundra' ? '#9fc3e0' : biome === 'cloud' ? '#7a4aa8' : '#5fb4e8';
+    const bottom = night ? (biome === 'cloud' ? '#5b2a7a' : '#3a4a7a') : biome === 'volcanic' ? '#ffcf9a' : biome === 'swamp' ? '#cfe0c0' : biome === 'cloud' ? '#f6c3e4' : '#f4e8cf';
     this.skyMat.uniforms.top.value.set(top);
     this.skyMat.uniforms.bottom.value.set(bottom);
     (this.scene.fog as THREE.Fog).color.set(bottom);

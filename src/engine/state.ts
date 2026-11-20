@@ -3,6 +3,7 @@ import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import { createCreature } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
+import { isCloudNode } from '../data/map';
 import { pick } from './dice';
 
 export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'haggler' | 'drill' | 'caretaker' | 'pathfinder';
@@ -50,10 +51,24 @@ export interface GameState {
     sparred?: string[];
     /** Explore the Depths: the wild creature that already accepted this offering (counts toward recruiting it). */
     depthsOffering?: { uid: string; item: string };
+    /** Iron Coast Gauntlet: trainers beaten so far (cleared when the trainer leaves the city). */
+    gauntletWins?: number;
+    /** The Gauntlet is cleared: Stella can be challenged any time from now on. */
+    stellaOpen?: boolean;
+    /** Cloud Island: consecutive steps around the ring in one direction (6 = a full lap), and which way. */
+    cloudLap?: number;
+    cloudDir?: 1 | -1;
+    /** A full lap of Cloud Island is done: Salem will battle this trainer from now on. */
+    salemWorthy?: boolean;
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };
   stats: { battlesWon: number; recruited: number; explored: number };
+  /**
+   * Cloud satchel: items earned on Cloud Island, held here until the trainer escapes the island
+   * (the portal, or Flying away). Being sent home after a team wipe loses them.
+   */
+  cloudLoot?: Record<string, number>;
   /** Creatures left at a Battle School (see world.ts → enrollTraining). */
   training?: Training[];
   /** Notes from other hotseat trainers (gifts, trades, duels), shown at the start of your next turn. */
@@ -97,6 +112,32 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
   s.dex.seen.push(starter);
   s.dex.caught.push(starter);
   return s;
+}
+
+/** The city that holds the Iron Coast Gauntlet (Stella's). */
+export const GAUNTLET_CITY = 'iron';
+
+/**
+ * Put a trainer on a node. Every location change goes through here, so that leaving Iron Coast
+ * resets an unfinished Gauntlet and leaving Cloud Island ends a lap in progress.
+ */
+export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } = {}) {
+  if (isCloudNode(s.location) && !isCloudNode(id)) {
+    // leaving Cloud Island ends any lap in progress
+    if (s.flags.cloudLap) { s.flags.cloudLap = 0; s.flags.cloudDir = undefined; }
+    // escaping secures the Cloud satchel; being sent home after a wipe loses it
+    const loot = Object.entries(s.cloudLoot ?? {}).filter(([, n]) => n > 0);
+    if (loot.length) {
+      if (opts.wiped) log(s, `Lost the Cloud satchel (${loot.map(([i, n]) => `${n} × ${i}`).join(', ')}) when your team was sent home.`);
+      else { for (const [i, n] of loot) s.inventory[i] = (s.inventory[i] ?? 0) + n; log(s, `Escaped Cloud Island and secured the Cloud satchel.`); }
+    }
+    s.cloudLoot = undefined;
+  }
+  if (s.location === GAUNTLET_CITY && id !== GAUNTLET_CITY && !s.flags.stellaOpen && s.flags.gauntletWins) {
+    log(s, `Left Iron Coast: the Gauntlet resets (${s.flags.gauntletWins} trainer${s.flags.gauntletWins === 1 ? '' : 's'} beaten).`);
+    s.flags.gauntletWins = 0;
+  }
+  s.location = id;
 }
 
 export function save(s: GameState) {
@@ -315,7 +356,9 @@ export function earnCoins(s: GameState, n: number): number {
   return got;
 }
 
+/** Add (or with n < 0, remove) items. Items gained on Cloud Island go to the Cloud satchel instead, until the trainer escapes. */
 export function addItem(s: GameState, id: string, n = 1) {
+  if (n > 0 && isCloudNode(s.location)) { (s.cloudLoot ??= {})[id] = (s.cloudLoot[id] ?? 0) + n; return; }
   s.inventory[id] = (s.inventory[id] ?? 0) + n;
   if (s.inventory[id] <= 0) delete s.inventory[id];
 }

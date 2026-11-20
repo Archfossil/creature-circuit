@@ -1,4 +1,4 @@
-import type { Ability, AffinityPower, Item, Nature, WeatherDef, Biome, ElementType } from './schema';
+import type { Ability, AffinityPower, Item, Nature, WeatherDef, Biome, ElementType, TimeOfDay, Activity } from './schema';
 import { TYPES, TYPE_LABEL } from './types';
 
 export const NATURES: Nature[] = [
@@ -40,6 +40,8 @@ export const AFFINITIES: Record<string, AffinityPower> = {
 // ── Items ────────────────────────────────────────────────
 const material = (id: string, name: string, icon: string, allure: Partial<Record<ElementType, number>>, text: string): Item =>
   ({ id, name, kind: 'material', price: 3, icon, allure, text });
+/** A universal offering: the same bonus for every type, so it works on any creature. */
+const universal = (n: number): Partial<Record<ElementType, number>> => Object.fromEntries(TYPES.map((t) => [t, n]));
 
 export const ITEMS: Record<string, Item> = {
   // restores (overworld only — items are never used in battle)
@@ -70,6 +72,10 @@ export const ITEMS: Record<string, Item> = {
   'wildflower': material('wildflower', 'Wildflower', '🌼', { charm: 2, grass: 1 }, 'A bright meadow bloom.'),
   'canyon-ochre': material('canyon-ochre', 'Canyon Ochre', '🟠', { rock: 2, fire: 1 }, 'Earth pigment for carving paint.'),
   'volcanic-glass': material('volcanic-glass', 'Volcanic Glass', '🖤', { fire: 2, steel: 1 }, 'Obsidian shards.'),
+  // universal offerings (Cloud Island): every creature likes them
+  'cloud-silk': material('cloud-silk', 'Cloud Silk', '☁️', universal(1), 'Threads spun from a passing cloud. Every creature finds it soothing: +1 to recruit any creature.'),
+  'stardust': material('stardust', 'Stardust', '✨', universal(2), 'Glittering dust that drifts down on Cloud Island. +2 to recruit any creature.'),
+  'moonbow-prism': material('moonbow-prism', 'Moonbow Prism', '🌈', universal(3), 'A rare shard of a rainbow seen by moonlight. +3 to recruit any creature.'),
   // key items
   'fog-lantern': { id: 'fog-lantern', name: 'Fog Lantern', kind: 'key', price: 12, icon: '🏮', text: 'Lights the fog road into Hollow Crest.' },
   'canopy-rope': { id: 'canopy-rope', name: 'Canopy Rope', kind: 'key', price: 12, icon: '🪢', text: 'Lets you descend to Dahlia\'s arena on the forest floor.' },
@@ -94,6 +100,8 @@ export const BIOME_MATERIALS: Record<Biome, string[]> = {
   river: ['river-chalk', 'sea-glass'], road: ['iron-filings', 'sage-bundle'], swamp: ['marsh-lotus', 'pine-resin'],
   desert: ['sage-bundle', 'ember-charcoal'], badlands: ['thunder-quartz', 'canyon-ochre'], coast: ['sea-glass', 'iron-filings'],
   volcanic: ['volcanic-glass', 'ember-charcoal'], canyon: ['canyon-ochre', 'thunder-quartz'],
+  // Cloud Island: universal offerings only (the prism is the rare one, 1 in 5)
+  cloud: ['cloud-silk', 'cloud-silk', 'stardust', 'stardust', 'moonbow-prism'],
 };
 
 /** Biomes where exploring can turn up this material. */
@@ -109,6 +117,7 @@ export const BIOME_INFO: Record<Biome, { label: string; color: string; icon: str
   swamp: { label: 'Swamp', color: '#557a4a', icon: '🐊' }, desert: { label: 'Desert', color: '#e2c27a', icon: '🌵' },
   badlands: { label: 'Badlands', color: '#c98f5a', icon: '🏜️' }, coast: { label: 'Coast', color: '#d9cfb0', icon: '🏖️' },
   volcanic: { label: 'Volcanic', color: '#4a3a38', icon: '🌋' }, canyon: { label: 'Canyon', color: '#c4703a', icon: '🪨' },
+  cloud: { label: 'Cloud', color: '#f4a9d8', icon: '☁️' },
 };
 
 // ── Weather ─────────────────────────────────────────────
@@ -133,6 +142,19 @@ export const SEASON_INFO: Record<Season, { label: string; icon: string; dice: st
   summer: { label: 'Summer', icon: '🌞', dice: ['clear', 'clear', 'heat', 'storm', 'drought', 'rain'] },
   autumn: { label: 'Autumn', icon: '🍂', dice: ['clear', 'fog', 'windy', 'rain', 'overcast', 'aurora'] },
   winter: { label: 'Winter', icon: '❄️', dice: ['clear', 'snow', 'blizzard', 'aurora', 'fog', 'overcast'] },
+};
+
+// ── Day & night ─────────────────────────────────────────
+/** Day and night alternate: odd turns (1, 3, 5 …) are day, even turns (2, 4, 6 …) are night. */
+export const timeOfDay = (turn: number): TimeOfDay => (turn % 2 === 1 ? 'day' : 'night');
+export const TIME_INFO: Record<TimeOfDay, { label: string; icon: string }> = {
+  day: { label: 'Day', icon: '☀️' },
+  night: { label: 'Night', icon: '🌙' },
+};
+export const ACTIVITY_INFO: Record<Activity, { label: string; icon: string; text: string }> = {
+  diurnal: { label: 'Diurnal', icon: '☀️', text: 'Out in the wild by day only.' },
+  nocturnal: { label: 'Nocturnal', icon: '🌙', text: 'Out in the wild by night only.' },
+  crepuscular: { label: 'Day & night', icon: '🌗', text: 'Out in the wild by day and by night.' },
 };
 
 export function seasonForTurn(turn: number): Season {

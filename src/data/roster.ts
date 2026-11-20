@@ -51,6 +51,7 @@ export const HANDMADE_SLOTS: Record<string, [string, string, string]> = {
 export const HANDMADE_LEGENDARIES: Record<string, string> = {
   'astral+fire': 'solstara',
   'steel+water': 'thalassor',
+  'water+astral': 'nimbalune',
 };
 
 /** Look up a slot whichever order the two types are given in. */

@@ -46,7 +46,14 @@ export interface Species {
   look: CreatureLook;
   /** A generated stand-in filling a roster slot until the real creature is designed (see roster.ts). */
   placeholder?: boolean;
+  /** When it's out in the wild: by day, by night, or both (see species.ts → activity rules). */
+  activity?: Activity;
 }
+
+/** Odd turns are day, even turns are night (see content.ts → timeOfDay). */
+export type TimeOfDay = 'day' | 'night';
+/** Diurnal creatures roam by day, nocturnal ones by night, crepuscular ones at any time. */
+export type Activity = 'diurnal' | 'nocturnal' | 'crepuscular';
 
 export type MoveKind = 'physical' | 'elemental' | 'support';
 export type StatusId = 'burn' | 'soak' | 'shock' | 'snare' | 'stagger' | 'sunder' | 'beguile' | 'daze';
@@ -73,7 +80,7 @@ export interface Move {
 
 export type Biome =
   | 'forest' | 'mountain' | 'tundra' | 'lake' | 'river' | 'road' | 'swamp'
-  | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove';
+  | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove' | 'cloud';
 
 export type NodeKind = 'wild' | 'town' | 'city' | 'legendary' | 'stadium' | 'arena';
 
@@ -90,13 +97,15 @@ export interface MapNode {
   cityType?: ElementType;
   legendary?: string;   // species id roaming here
   arenaOf?: string;     // kind 'arena': the city whose Arbiter fights here
-  requires?: { tier?: number; item?: string; movement?: Movement };
+  /** merit: only trainers holding that city's Merit may enter (e.g. Salem's for the Eye of the Sky). */
+  requires?: { tier?: number; item?: string; movement?: Movement; merit?: string };
 }
 
 export interface MapEdge {
   a: string;
   b: string;
-  via?: 'sail' | 'road';
+  /** sail: a sea route. portal: the Cloud Island portal, open at night or in Winter. */
+  via?: 'sail' | 'road' | 'portal';
   requires?: { item?: string; movement?: Movement };
 }
 
