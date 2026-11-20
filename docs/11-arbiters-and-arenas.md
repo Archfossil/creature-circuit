@@ -1,0 +1,281 @@
+# Arbiters & Arena Effects
+
+Every Arbiter in the game, their arena's special effect (the "arena trick"), how they scale, and how to change or add them.
+
+**Code:**
+- **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/data/map.ts`.
+- **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
+- **Arena effects:** `src/engine/battle.ts` (stat tricks in `eff()`, accuracy in `accuracyMods()`, hazards in `arenaTrick()`).
+- **Challenge screen and special flows** (Salem's wait, finding Fabian): `src/ui/app.ts` (`arbiter`, `findFabian`).
+
+## How Arbiters work
+
+- **Goal:** each of the 8 cities has an Arbiter. Beating one earns their **Merit**. A trainer needs all 8 Merits and must be standing in Circuit Stadium when Turn 100 ends.
+- **Any order:** Arbiters scale to the challenger's **Tier**, not to a fixed level, so they can be fought in any order.
+- **Tier:** 1 + (Merits ÷ 2, rounded down), up to 5. 0–1 Merits is Tier 1, 2–3 is Tier 2, 4–5 is Tier 3, 6–7 is Tier 4, and 8 is Tier 5.
+- **Challenging:** a city action from the arena (in the city itself, except Amber's, which is on Kilauea island). It costs **1 Initiative** (Ranger 2, Urbanite 0). The team needs at least one creature that isn't KO'd. Some Arbiters have an extra **access condition** (see each card).
+- **The battle:** a trainer battle against 2–3 creatures of the Arbiter's type, with the arena effect active all battle. The Arbiter's AI is sharper than wild creatures' and trainers' (only the Champions are sharper), so it rarely picks a poor move.
+- **Winning:** the Merit, **🪙 10 × Tier** (Merchant style adds its 25%), and trainer-battle XP (+3 for every creature that fought, on top of the usual XP).
+- **Losing:** no coins lost and no penalty beyond the battle itself (unlike roaming trainers). If the whole team is knocked out, the usual wipe applies: back home, half your coins, Initiative gone. You can try again on a later turn.
+- **Already beaten:** an Arbiter whose Merit you hold won't battle again.
+
+### Tier scaling (every Arbiter)
+
+| Tier | Merits held | Team size | Levels | Highest stage | Apex creatures | Prize |
+|---|---|---|---|---|---|---|
+| 1 | 0–1 | 2 | Lv 3, last Lv 4 | Stage 1 | No | 🪙 10 |
+| 2 | 2–3 | 3 | Lv 5, last Lv 6 | Stage 2 | No | 🪙 20 |
+| 3 | 4–5 | 3 | Lv 7, last Lv 8 | Stage 2 | Last creature only | 🪙 30 |
+| 4 | 6–7 | 3 | Lv 9, last Lv 10 | Stage 3 | Yes | 🪙 40 |
+| 5 | 8 | 3 | Lv 11, last Lv 12 | Stage 3 | Yes | 🪙 50 |
+
+**Team building:**
+- **Pool:** every species with the Arbiter's type, either half of a dual type, excluding Legendaries.
+- **Order of preference:** the highest stage allowed first, then Apex creatures, with some randomness. No species appears twice.
+- **Last creature:** always one level higher (the "ace").
+- **Chart points:** spent automatically.
+- **Moves:** each creature gets a varied playbook.
+- **Note:** placeholder species are in the pool too, until they're replaced.
+
+Wild creatures at a Tier sit just under the Arbiter's level (wild level band centre: Lv 1, 3, 5, 7, 9).
+
+---
+
+## Overview
+
+| # | Arbiter | City | Type | Arena | Arena effect | Kind | Merit | Access condition |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Salem | Aurora Peak | Astral | Ice Floe Arena | `iceFloes`: creatures may slip into the water | Hazard (both sides) | Polaris Merit | Only under the aurora |
+| 2 | Fabian | Hollow Crest | Charm | Glamour Grove | `illusion`: Arbiter's creatures +Evasion | Stat (Arbiter) | Glamour Merit | Find him in disguise |
+| 3 | Watson | Thunder Spike | Electric | Under the Spike | `volts`: random lightning strikes | Hazard (random side) | Bolt Merit | None |
+| 4 | Amber | Kilauea Forge | Fire | Fire Pit | `flames`: steam vents scald | Hazard (both sides) | Caldera Merit | Arena is on Kilauea island |
+| 5 | Dahlia | Gloomshade | Grass | Forest Floor Arena | `darkness`: challenger's accuracy down | Accuracy (challenger) | Lily Merit | Canopy Rope |
+| 6 | Cliff | Houndmouth Canyon | Rock | Crumbling Plateau | `crumble`: edges break away from round 4 | Hazard (both sides) | Plateau Merit | None |
+| 7 | Stella | Iron Coast | Steel | Floating Fortress | `fortress`: Arbiter's creatures +Armor and +Ward | Stat (Arbiter) | Anchor Merit | Tier 2 or higher (2+ Merits) |
+| 8 | Katy | Mangrove Port | Water | Root Maze | `roots`: challenger's Speed down | Stat (challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
+
+**Effect kinds:**
+- **Hazards** deal damage at the end of a round. Creatures of the Arbiter's own type are immune, except to the volts.
+- **Stat** effects add or subtract a stat for one side all battle.
+- **Accuracy** effects change accuracy rolls.
+
+Every effect gets stronger at higher Tiers.
+
+### Arena effects by Tier (exact numbers)
+
+| Effect | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 |
+|---|---|---|---|---|---|
+| **Ice floes**: chance per non-Astral creature, each round | 1 in 6, 1 dmg | 1 in 6, 2 dmg | 2 in 6, 2 dmg | 2 in 6, 3 dmg | 2 in 6, 3 dmg |
+| **Illusion**: Arbiter's Evasion | +1 | +1 | +1 | +2 | +2 |
+| **Volts**: chance each round (hits one random side) | 2 in 6, 1 dmg | 3 in 6, 2 dmg | 3 in 6, 2 dmg | 4 in 6, 3 dmg | 4 in 6, 3 dmg |
+| **Flames**: every 2nd round, each non-Fire creature | 1 dmg | 1 dmg | 2 dmg | 2 dmg | 2 dmg |
+| **Darkness**: challenger's accuracy rolls | −1 | −1 | −1 | −2 | −2 |
+| **Crumble**: from round 4, each non-Rock creature | 3 dmg | 4 dmg | 5 dmg | 6 dmg | 7 dmg |
+| **Fortress**: Arbiter's Armor and Ward | +1 | +1 | +1 | +2 | +2 |
+| **Roots**: challenger's Speed | −1 | −1 | −1 | −2 | −2 |
+
+**Crumble's chance rises each round:** 1 in 6 on round 4, 2 in 6 on round 5, 3 in 6 on round 6, and 4 in 6 from round 7.
+
+---
+
+## The Arbiters
+
+Each card uses the same layout. Copy the [template](#template-for-a-new-or-changed-arbiter) to add one.
+
+### 1. Salem · Aurora Peak · `aurora`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Astral | Ice Floe Arena | `iceFloes` (Hazard) | Polaris Merit | Only under the aurora |
+
+**Setting:** low houses half-sunk into the earth for warmth, beneath the aurora. Inspired by Denali.
+
+**Access:** the arena only opens on an **Aurora Night** (weather), during **Winter** (turns 76–100), or if the challenger **waits for nightfall** (2 Initiative, lasting the rest of that turn).
+
+**Arena effect: Ice floes.** The floes tip under unprepared creatures. At the end of each round, each active creature that isn't Astral may slip into the water (chance and damage by Tier in the table above). Salem's Astral creatures never slip.
+
+**City Stable hot pot:** Geothermal Miso Nabe, +1 Ward in your next battle.
+
+**Notes:** Aurora Night also boosts Astral attacks (+2), so a challenger who comes on the aurora faces stronger Astral attacks too. Waiting costs 2 Initiative, but keeps the weather as it is.
+
+### 2. Fabian · Hollow Crest · `hollow`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Charm | Glamour Grove | `illusion` (Stat, Arbiter) | Glamour Merit | Find him in disguise |
+
+**Setting:** cozy log cabins in a moss-draped rainforest. Inspired by Olympic.
+
+**Access:** Fabian hides among the townsfolk. The challenger picks one of 3 villagers. A wrong guess costs 1 Initiative ("a bucket of glitter falls on you"). Once found, he stays found for the rest of the game.
+
+**Arena effect: Illusion.** Fog and glamorous lighting: Fabian's creatures get +1 Evasion (+2 at Tier 4+), so they're harder to hit. Sure-hit moves ignore it.
+
+**City Stable hot pot:** Mushroom Moss Nabe, +1 Evasion in your next battle.
+
+### 3. Watson · Thunder Spike · `thunder`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Electric | Under the Spike | `volts` (Hazard, random side) | Bolt Merit | None |
+
+**Setting:** a town on rugged badlands, shielded from the roving storm by a colossal lightning rod. Inspired by Badlands.
+
+**Arena effect: Volts.** At the end of each round there's a chance the great rod discharges into one active creature, either side, at random. The damage uses the Electric type chart:
+- double against Steel and Water,
+- half against Astral and Rock,
+- normal against Electric (so Watson's creatures are hit as hard as anyone's).
+
+**City Stable hot pot:** Prairie Chili Nabe, +1 Speed in your next battle.
+
+### 4. Amber · Kilauea Forge · `kilauea`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Fire | Fire Pit | `flames` (Hazard) | Caldera Merit | Arena is on Kilauea island |
+
+**Setting:** a forge town on the black-rock coast. Amber's Fire Pit is offshore on Kilauea island. Inspired by Hawai'i Volcanoes.
+
+**Access:** the arena is a separate node on Kilauea island. Reach it by ferry from Kilauea Forge or Mangrove Port to Black Sand Cove (Ferry Pass, or a creature that can Sail), then on through the island's wilds.
+
+**Arena effect: Flames.** Every second round, steam vents scald every active creature that isn't Fire. Amber's Fire creatures are immune.
+
+**City Stable hot pot:** Volcanic Shoyu Nabe, +1 Power in your next battle.
+
+### 5. Dahlia · Gloomshade · `gloom`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Grass | Forest Floor Arena | `darkness` (Accuracy, challenger) | Lily Merit | Canopy Rope |
+
+**Setting:** boardwalks and ring platforms built into towering redwoods. Inspired by Redwood.
+
+**Access:** the arena is on the forest floor. The challenger needs a **Canopy Rope** (sold at Lumber Hollow).
+
+**Arena effect: Darkness.** In the lightless forest floor, the challenger's accuracy rolls are 1 lower (2 lower at Tier 4+). Sure-hit moves ignore it.
+
+**City Stable hot pot:** Canopy Herb Nabe, +1 Vigor in your next battle.
+
+### 6. Cliff · Houndmouth Canyon · `canyon`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Rock | Crumbling Plateau | `crumble` (Hazard) | Plateau Merit | None |
+
+**Setting:** an unfathomable canyon whose walls shift as Rock creatures carve new tunnels. Inspired by Grand Canyon.
+
+**Arena effect: Crumble.** The plateau edges break away. From round 4, each active creature that isn't Rock risks falling at the end of every round, with the chance rising each round (see above). A fall deals heavy damage (2 + Tier). Cliff's Rock creatures are immune.
+
+**City Stable hot pot:** Red Clay Nabe, +1 Armor in your next battle.
+
+**Notes:** this effect rewards finishing fast. Long battles get dangerous.
+
+### 7. Stella · Iron Coast · `iron`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Steel | Floating Fortress | `fortress` (Stat, Arbiter) | Anchor Merit | Tier 2 or higher (2+ Merits) |
+
+**Setting:** foggy pebble beaches and colorful houses, where strange ore washes ashore. Inspired by Acadia.
+
+**Access:** Stella's fortress stays beneath the waves until the challenger holds 2 Merits.
+
+**Arena effect: Fortress.** Stella's fortress plating gives her creatures +1 Armor and +1 Ward (+2 each at Tier 4+), reducing all damage they take.
+
+**City Stable hot pot:** Lobster Bisque Nabe, +1 Armor and +1 Ward in your next battle.
+
+### 8. Katy · Mangrove Port · `mangrove`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| Water | Root Maze | `roots` (Stat, challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
+
+**Setting:** a city on stilts above marsh waters, linked by boardwalks and swaying bridges. Inspired by Everglades.
+
+**Access:** the mangrove roots hide Katy. The challenger needs a **Root Whistle** (sold at Saltmarsh Landing) or a creature on the active team that can Sail.
+
+**Arena effect: Roots.** Shifting roots slow the challenger's creatures: −1 Speed (−2 at Tier 4+), so Katy's creatures tend to act first.
+
+**City Stable hot pot:** Swamp Gumbo Nabe, +1 Focus in your next battle.
+
+---
+
+## Balance notes
+
+Observations from the current code, to review when balancing. Tick them off or move them into a card's **Notes** once they're decided.
+
+- [ ] **In-game arena text understates the effects.** The challenge screen's arena descriptions (`CITIES[…].arena.text`) give Tier 1 numbers only. They don't mention that stat effects double at Tier 4+, or that hazard chance and damage grow with Tier.
+- [ ] **Volts is the only hazard the Arbiter isn't immune to.** It picks a side at random and Watson's Electric creatures take normal damage, so it's the most neutral arena. That's either intended or Watson needs an edge.
+- [ ] **Stat and accuracy arenas only ever help the Arbiter** (Illusion, Fortress, Roots, Darkness). Hazard arenas hurt both sides, but the Arbiter's type is immune. Challengers of the Arbiter's type are immune too, which rewards bringing a matching creature.
+- [ ] **Crumble at Tier 5** deals 7 damage per fall, with up to a 4-in-6 chance per creature per round from round 7. It may be the harshest effect late in a season.
+- [ ] **Ice floes at Tier 1–2** (1-in-6 chance) rarely matter.
+- [ ] **Access conditions vary a lot in cost:**
+  - Salem can cost 2 Initiative.
+  - Fabian can cost Initiative on wrong guesses.
+  - Dahlia and Katy need a 12–14 coin key item.
+  - Amber needs a Ferry Pass and a trip.
+  - Stella needs 2 Merits first.
+  - Watson and Cliff are free.
+- [ ] **Losing costs nothing** against Arbiters (except a full wipe). Repeated attempts are cheap apart from the Initiative.
+- [ ] **The prize scales with Tier** (🪙 10–50), so later Merits pay more.
+- [ ] **Placeholder species** are in Arbiter pools until the roster is filled, so Arbiter teams will change as creatures are swapped in (see [the creature checklist](./08-creature-checklist.md)).
+
+---
+
+## Changing or adding an Arbiter or arena effect
+
+### Template for a new or changed Arbiter
+
+Copy this block into [The Arbiters](#the-arbiters) and add a row to the [Overview](#overview).
+
+```markdown
+### N. (Name) · (City) · `city-id`
+
+| Type | Arena | Effect | Merit | Access condition |
+|---|---|---|---|---|
+| (Type) | (Arena name) | `trickId` (Hazard / Stat / Accuracy, which side) | (Merit name) | (None, or the condition) |
+
+**Setting:** one or two sentences about the city. Inspired by (park).
+
+**Access:** how the challenger gets in (or "None").
+
+**Arena effect: (Name).** What happens, when it happens, who it affects, and who is immune. Exact numbers per Tier go in the Tier table above.
+
+**City Stable hot pot:** (name), (buff) in your next battle.
+
+**Notes:** balance thoughts and counters.
+```
+
+### Design checklist for an arena effect
+
+- [ ] Says **who** it affects: the challenger, the Arbiter, or both.
+- [ ] Says **when**: all battle, every round, every Nth round, or from round N.
+- [ ] Gives **numbers for each Tier**. Add a row to the [Tier table](#arena-effects-by-tier-exact-numbers).
+- [ ] Has a **counter** the player can plan for (a type that's immune, sure-hit moves, a hot pot buff, a key item…).
+- [ ] Fits the Arbiter's type and city theme.
+- [ ] The in-game arena text says the same thing (`CITIES[…].arena.text`).
+
+### Build it (developers)
+
+1. **A new effect:** add its id to `ArenaTrick` in `src/data/schema.ts`, then implement it in `src/engine/battle.ts`:
+   - a stat change for one side goes in `eff()`, next to `illusion` and `fortress`;
+   - an accuracy change goes in `accuracyMods()`, next to `darkness`;
+   - an end-of-round hazard goes in `arenaTrick()`, using its `hurt()` helper, next to `iceFloes` and `flames`.
+2. **An Arbiter or city:** edit `CITIES` in `src/data/map.ts` (name, type, park, Arbiter, Merit, arena name, trick and text, hot pot, blurb). A new city also needs a map node and routes.
+3. **An access condition:** add a case to `arbiterGate()` in `src/engine/world.ts`. Special flows like Salem's wait or finding Fabian are in `src/ui/app.ts` (`arbiter`).
+4. **Then:**
+   - Add a test in `tests/engine.test.ts`.
+   - Update this doc. **A test fails if an Arbiter or arena effect in the game is missing from this file.**
+   - Update the How to Play guide if needed (`src/ui/guide.ts`).
+   - Add any new icon to [the icon checklist](./07-icon-checklist.md).
+
+---
+
+## Ideas backlog
+
+Arbiter and arena ideas to design and build. Add yours here, then move them up once they're in the game.
+
+| Idea | For | Sketch | Status |
+|---|---|---|---|
+| *(example)* Rising tide | Katy (Water) | The arena floods a little each round: non-Water creatures lose 1 Speed per 2 rounds (up to −3). | Idea |
+| *(example)* Second phase | Any | At half the team KO'd, the Arbiter's ace gets +1 to every stat. | Idea |
+| | | | |

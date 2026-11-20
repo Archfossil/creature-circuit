@@ -16,6 +16,8 @@ npm run dev        # http://localhost:5173. Also served on your LAN, so you can 
 npm test           # engine unit tests (Vitest)
 npm run build      # type-check, then a production build to dist/ (static files, host anywhere)
 npm run preview    # serve the production build
+npm run docs:creatures  # regenerate docs/08-creature-checklist.md from the game data
+npm run docs:moves      # regenerate docs/09-move-checklist.md from the game data
 ```
 
 The game runs in any modern desktop or mobile browser that supports WebGL. It saves to `localStorage` automatically. It can be installed as a PWA ("Add to Home Screen"), and the production build works offline.
@@ -46,8 +48,9 @@ src/
              creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · events.ts (start-of-turn events) · state.ts (save)
   render/    engine.ts (WebGL renderer) · world.ts (3D map) · land.ts (coastline math) · battle.ts (3D arena) · creatureModel.ts (procedural creatures) · trainerModel.ts (trainer minis)
   ui/        app.ts (screens & flows) · cards.ts (index cards) · dom.ts (sheets, dice, toasts) · guide.ts (How to Play guide & welcome tour) · sound.ts · settings.ts
-docs/        design documents (rules source of truth)
-tests/       engine tests · server tests (online protocol) · guide tests (How to Play content)
+docs/        design documents (rules source of truth) · checklists for design & art (icons, creatures, moves) · editable references (events, Arbiters, trainer styles, creature traits)
+scripts/     doc generators (creature-checklist.ts, move-checklist.ts)
+tests/       engine tests · server tests (online protocol) · guide tests (How to Play content) · docs tests (every event, Arbiter, arena effect, trainer style, Nature, Ability and Affinity Power documented)
 ```
 
 ### How the design docs map to code
@@ -201,6 +204,13 @@ To build out this game, please review the core design documents located in the `
 4. **[Trainer Progression (`/docs/04-trainer-progression.md`)](./docs/04-trainer-progression.md):** Seasonal 100-turn cycle, weather changing with seasons. Creature experience points and node-based leveling, Arbiter tiers, Accolades, and the Turns 101+ Endgame Gauntlet.
 5. **[Data Schemas (`/docs/05-data-schemas.md`)](./docs/05-data-schemas.md):** JSON templates for creatures, creature instances, moves, map nodes and items, matching `src/data/schema.ts`. The example content lives in `src/data/`.
 6. **[Assets (`/docs/06-assets.md`)](./docs/06-assets.md):** Dumping art assets for future use. Maps, creatures, etc.
+7. **[Icon Checklist (`/docs/07-icon-checklist.md`)](./docs/07-icon-checklist.md):** Every emoji placeholder in the game, grouped by where it appears, as a checklist for the art team to replace with custom icons (241 items, plus emoji that need splitting into separate icons).
+8. **[Creature Checklist (`/docs/08-creature-checklist.md`)](./docs/08-creature-checklist.md):** Every creature in the game, slot by slot (type combination → Common, Prime and Apex families plus a Legendary), marking the 334 generated placeholders still to design and draw, with Design and Art checkboxes for each. Generated from the game data: regenerate with `npm run docs:creatures`.
+9. **[Move Checklist (`/docs/09-move-checklist.md`)](./docs/09-move-checklist.md):** Every move in the game (401) with its cost, damage, average damage, accuracy, speed, effort, status and effects. It marks the 352 generated attack-grid placeholders still to design, has Design and Balance checkboxes for each move, and gives the placeholder formula as a balance baseline, plus a watch list of hand-made moves that stand out from it. Generated from the game data: regenerate with `npm run docs:moves`.
+10. **[Events (`/docs/10-events.md`)](./docs/10-events.md):** Every start-of-turn event: an overview table (weight, odds, conditions, forced or not, cost), a card per event with each choice and its exact outcome, step-by-step instructions and a template for adding new events, and an ideas backlog. A test fails if an event in the game is missing from this doc.
+11. **[Arbiters & Arenas (`/docs/11-arbiters-and-arenas.md`)](./docs/11-arbiters-and-arenas.md):** All 8 Arbiters and their arena effects: how challenges, Tier scaling, teams and rewards work, exact numbers for every arena effect at each Tier, a card per Arbiter (type, arena, access condition, effect, hot pot), balance notes to review, templates for changing or adding Arbiters and arena effects, and an ideas backlog. A test fails if an Arbiter or arena effect is missing from this doc.
+12. **[Trainer Styles (`/docs/12-trainer-styles.md`)](./docs/12-trainer-styles.md):** The 8 trainer abilities picked at the start of a game: overview tables (what each style touches, Initiative costs at a glance), a card per style with its exact rules, interactions and balance notes, where each rule lives in the code, a template for new styles, and an ideas backlog. A test fails if a style is missing from this doc.
+13. **[Natures, Abilities & Affinity Powers (`/docs/13-natures-and-abilities.md`)](./docs/13-natures-and-abilities.md):** The traits on every creature card. Natures (up and down stats, perks unlocked at 3, 6 and 10 Loyalty), overworld Abilities (exact rules, interactions with trainer styles and items, how many creatures have each) and swap-in Affinity Powers (exact effects and the bond bonus). Includes balance notes, templates for new traits, build steps and an ideas backlog. A test fails if a trait is missing from this doc.
 ---
 
 ## 🚀 Development Roadmap & Scope

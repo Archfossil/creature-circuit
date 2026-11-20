@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node server/index.mjs",
-    "server": "node server/index.mjs"
+    "server": "node server/index.mjs",
+    "docs:creatures": "vite-node scripts/creature-checklist.ts",
+    "docs:moves": "vite-node scripts/move-checklist.ts"
   },
   "dependencies": {
     "three": "^0.170.0",

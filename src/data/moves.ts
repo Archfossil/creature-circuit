@@ -138,8 +138,8 @@ const SINGLE_NOUN = ['', 'Flick', 'Shot', 'Lance', 'Storm', 'Nova'];
 const DUAL_NOUN = (major: number, minor: number) =>
   ({ '1-1': 'Pulse', '2-1': 'Strike', '2-2': 'Wave', '3-1': 'Crash', '3-2': 'Barrage', '4-1': 'Cataclysm' } as Record<string, string>)[`${major}-${minor}`];
 
-/** Attack numbers by total cost: bigger costs hit harder, tire more and act later. */
-const BY_TOTAL: Record<number, Pick<Move, 'dmgDie' | 'dmgFlat' | 'effort' | 'speed'>> = {
+/** Attack numbers by total cost: bigger costs hit harder, tire more and act later (the placeholder formula, also the balance baseline). */
+export const BY_TOTAL: Record<number, Pick<Move, 'dmgDie' | 'dmgFlat' | 'effort' | 'speed'>> = {
   1: { dmgDie: 4, dmgFlat: 0, effort: 1, speed: 0 },
   2: { dmgDie: 6, dmgFlat: 0, effort: 1, speed: 0 },
   3: { dmgDie: 6, dmgFlat: 1, effort: 2, speed: 0 },
