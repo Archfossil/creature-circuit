@@ -1,10 +1,10 @@
 import type { Biome, ElementType, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, timeOfDay } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Match } from './state';
-import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY } from './state';
+import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf } from './state';
 import type { CreatureInst } from './creature';
 import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -796,6 +796,13 @@ export function buy(s: GameState, id: string): boolean {
   addItem(s, id, 1);
   return true;
 }
+/** Key items a town sells in this game: its own (Fog Lantern, Summit Pick, Ferry Pass) plus any roaming one rolled here. */
+export function townKeyItems(s: GameState, townId: string): string[] {
+  return [...(TOWNS[townId]?.key ? [TOWNS[townId].key!] : []), ...ROAMING_KEY_ITEMS.filter((id) => keyTownOf(s, id) === townId)];
+}
+/** "Lumber Hollow": where this game's copy of a roaming key item is sold. */
+export const keyTownName = (s: GameState, item: string) => NODE_BY_ID[keyTownOf(s, item)]?.name ?? 'a town';
+
 export function marketStock(nodeId: string): string[] {
   const n = NODE_BY_ID[nodeId];
   if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'star-charm', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
@@ -889,13 +896,13 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
       return { ok: false, cloud: true, reason: `Salem only faces trainers who have walked a full lap of Cloud Island (${lap.steps}/${lap.need} steps). Its portal opens at night, or any time in Winter.` };
     }
     case 'hollow': return s.flags.fabianFound ? { ok: true } : { ok: false, findHim: true, reason: 'Fabian is hiding somewhere in town, in disguise.' };
-    case 'gloom': return hasItem(s, 'canopy-rope') ? { ok: true } : { ok: false, reason: 'Dahlia\'s arena is on the forest floor. You need a Canopy Rope (Lumber Hollow).' };
+    case 'gloom': return hasItem(s, 'canopy-rope') ? { ok: true } : { ok: false, reason: `Dahlia's arena is on the forest floor. You need a Canopy Rope (sold in ${keyTownName(s, 'canopy-rope')} this season).` };
     case 'iron': {
       if (s.flags.stellaOpen) return { ok: true };
       const g = gauntletProgress(s);
       return { ok: false, gauntlet: true, reason: `Stella only faces trainers who clear the Iron Coast Gauntlet: ${g.wins}/${g.need} trainers beaten. Leaving the city resets it.` };
     }
-    case 'mangrove': return hasItem(s, 'root-whistle') || teamMovements(s).has('sail') ? { ok: true } : { ok: false, reason: 'The mangrove roots hide Katy. You need a Root Whistle (Saltmarsh Landing) or a creature that can Sail.' };
+    case 'mangrove': return hasItem(s, 'root-whistle') || teamMovements(s).has('sail') ? { ok: true } : { ok: false, reason: `The mangrove roots hide Katy. You need a Root Whistle (sold in ${keyTownName(s, 'root-whistle')} this season) or a creature that can Sail.` };
     default: return { ok: true };
   }
 }

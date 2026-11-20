@@ -3,7 +3,7 @@ import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import { createCreature } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
-import { isCloudNode } from '../data/map';
+import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS } from '../data/map';
 import { pick } from './dice';
 
 export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'haggler' | 'drill' | 'caretaker' | 'pathfinder';
@@ -69,6 +69,8 @@ export interface GameState {
    * (the portal, or Flying away). Being sent home after a team wipe loses them.
    */
   cloudLoot?: Record<string, number>;
+  /** This game's towns for the roaming key items (Canopy Rope, Root Whistle). Shared by everyone in a match. */
+  keyTowns?: Record<string, string>;
   /** Creatures left at a Battle School (see world.ts → enrollTraining). */
   training?: Training[];
   /** Notes from other hotseat trainers (gifts, trades, duels), shown at the start of your next turn. */
@@ -111,6 +113,7 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
   s.following = c.uid;
   s.dex.seen.push(starter);
   s.dex.caught.push(starter);
+  s.keyTowns = rollKeyTowns();
   return s;
 }
 
@@ -166,8 +169,19 @@ export const activeMatchOf = () => activeMatch;
 export function setActiveMatch(m: Match | null) { activeMatch = m; }
 
 export function newMatch(players: GameState[]): Match {
+  // one shared world: everyone finds the roaming key items in the same towns
+  const keyTowns = players[0]?.keyTowns ?? rollKeyTowns();
+  for (const p of players) p.keyTowns = { ...keyTowns };
   return { version: 1, players, current: 0, rolls: {} };
 }
+
+/** Roll a town for each roaming key item: all different, from the eligible towns. */
+export function rollKeyTowns(): Record<string, string> {
+  const towns = [...KEY_ITEM_TOWNS].sort(() => Math.random() - 0.5);
+  return Object.fromEntries(ROAMING_KEY_ITEMS.map((id, i) => [id, towns[i % towns.length]]));
+}
+/** The town that sells a roaming key item in this game (older saves: where it always was). */
+export const keyTownOf = (s: GameState, item: string): string => s.keyTowns?.[item] ?? CLASSIC_KEY_TOWNS[item];
 /** A trainer still taking turns (not finished: season over or crowned Champion). */
 export const stillPlaying = (s: GameState) => s.phase === 'map' || s.phase === 'endgame';
 /** Seat index of the next trainer still playing after the current one, or -1 when everyone is done. */

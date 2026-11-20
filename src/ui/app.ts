@@ -10,14 +10,14 @@ import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, 
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle } from '../engine/state';
-import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
-import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { NODE_BY_ID, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
@@ -1173,7 +1173,7 @@ export class App {
       const c = CITIES[id];
       extra.push(h('p', { class: 'small' }, c.blurb));
       extra.push(h('p', { class: 'small' }, h('b', null, c.arena.name), ' — ', c.arena.text));
-    } else if (n.kind === 'town') extra.push(h('p', { class: 'small' }, TOWNS[id].blurb, TOWNS[id].key ? h('b', null, ` Sells: ${itemInfo(TOWNS[id].key!).name}.`) : null));
+    } else if (n.kind === 'town') { const keys = W.townKeyItems(this.s, id); extra.push(h('p', { class: 'small' }, TOWNS[id].blurb, keys.length ? h('b', null, ` Sells: ${keys.map((k) => itemInfo(k).name).join(', ')}.`) : null)); }
     else if (n.kind === 'wild') {
       extra.push(h('p', { class: 'small row gap-s' }, 'Wild types:', ...BIOME_TYPES[n.biome].map((t: ElementType) => typeIconImg(t, 18))));
     } else if (n.kind === 'arena') {
@@ -1314,6 +1314,15 @@ export class App {
     this.busy = true;
     const bv = this.battleView;
     const arenaType = ctx.city ? CITIES[ctx.city].type : undefined;
+    // Cliff's crumbling plateau: a countdown chip, updated by 'ring' events
+    const ringTimer = b.arena?.trick === 'crumble' ? h('span', { class: 'chip ring-timer', title: 'Beat Cliff before the plateau is gone, or you’re rung out and lose.' }) : null;
+    const showRing = (left: number, total: number) => {
+      if (!ringTimer) return;
+      ringTimer.textContent = left > 0 ? `⏳ Plateau: ${left} round${left === 1 ? '' : 's'} left` : '⏳ Rung out!';
+      ringTimer.classList.toggle('urgent', left <= 2);
+      ringTimer.title = `${left} of ${total} rounds left before the plateau is gone`;
+    };
+    if (b.arena?.trick === 'crumble') showRing(ringLeft(b) ?? 0, ringRounds(b.arena.tier));
     bv.setup(b.biome as never, arenaType, W.weather(s).id === 'aurora' || ctx.city === 'aurora' || timeOfDay(s.turn) === 'night');
     // trainer minis: only when the opponent is a trainer of some kind
     const foeSide = b.sides[1];
@@ -1335,6 +1344,7 @@ export class App {
     const header = h('div', { class: 'battle-head' },
       h('span', { class: 'chip' }, WEATHER[s.weather].icon, ' ', WEATHER[s.weather].name),
       b.arena ? h('span', { class: 'chip arena', style: `--tc:${TYPE_COLOR[arenaType!]}` }, '🏟 ', CITIES[ctx.city!].arena.name, ` · Tier ${b.arena.tier}`) : null,
+      ringTimer,
       h('span', { class: 'chip' }, `Round `, h('b', { class: 'rnd' }, '1')));
     panel.append(header, plates[1], h('div', { class: 'battle-stack' }, plates[0], h('div', { class: 'battle-bottom' }, logLine, controls)));
     this.ui.replaceChildren(panel);
@@ -1385,6 +1395,7 @@ export class App {
         switch (e.t) {
           case 'say': say(e.text, e.tone); await wait(pace(650)); break;
           case 'arena': say(e.text, 'bad'); await bv.arenaFlash(arenaType ? TYPE_COLOR[arenaType] : '#ffffff'); break;
+          case 'ring': showRing(e.left, e.total); await bv.shrinkRing(1 - e.left / e.total); break;
           case 'use': {
             const who = nameOf(b.sides[e.side].team.find((x) => x.uid === disp[e.side].uid)!);
             say(e.kind === 'affinity' ? `${who} swaps in with ${e.name}!` : `${who} used ${e.name}!`);
@@ -1773,7 +1784,7 @@ export class App {
     const s = this.s;
     const stock = [...W.marketStock(s.location)];
     const town = TOWNS[s.location];
-    if (town?.key && !stock.includes(town.key)) stock.unshift(town.key);
+    if (town) for (const k of W.townKeyItems(s, s.location).reverse()) if (!stock.includes(k)) stock.unshift(k);
     const body = h('div');
     const render = () => {
       body.replaceChildren(
@@ -1959,7 +1970,7 @@ export class App {
       h('div', { class: 'tiles' },
         tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', `${W.stableCost(s)}⚡`, () => this.stable()),
         this.swapTile(),
-        tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', '0⚡', () => this.market(true)),
+        (() => { const keys = W.townKeyItems(s, s.location); return tile('🛒', 'Market', keys.length ? `Sells the ${keys.map((k) => itemInfo(k).name).join(' and the ')}. ${keys.map((k) => itemInfo(k).text).join(' ')}` : 'Local goods.', '0⚡', () => this.market(true)); })(),
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
         t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
@@ -2070,13 +2081,22 @@ export class App {
     openSheet('Research Facility', body, { wide: true });
   }
 
+  /**
+   * Notice Board tips. Some always point to where this season's roaming key items are sold (the
+   * Canopy Rope and the Root Whistle change towns every game), so trainers can find them.
+   */
   rumors() {
+    const s = this.s;
+    const rope = W.keyTownName(s, 'canopy-rope'), whistle = W.keyTownName(s, 'root-whistle');
+    const keyTips = [
+      `Dahlia waits on the Gloomshade forest floor. This season, ${rope} sells the Canopy Rope to get down.`,
+      `The mangrove roots hide Katy. A Root Whistle opens the way, and ${whistle} has them this season (or bring a creature that can Sail).`,
+    ];
     const tips = [
       'Amber\u2019s Fire Pit is on Kilauea island. Ferries run from Mangrove Port and Kilauea Forge; buy a Ferry Pass at Saltmarsh Landing or the Forge.',
-      'Stella only surfaces her fortress for trainers with 2 or more accolades.',
-      'Dahlia waits on the Gloomshade forest floor. Lumber Hollow sells the rope to get down.',
+      'Stella only surfaces her fortress for trainers who clear the Iron Coast Gauntlet: a run of local trainers, without leaving the city.',
       'They say Fabian always hides as a villager. Look closely.',
-      'Salem\'s arena only opens under the aurora — come in winter, or be ready to wait for nightfall.',
+      'Salem only battles trainers who have walked a full lap of Cloud Island. Its portal in Aurora Peak opens at night, and all Winter.',
       'Sunspire Summit holds a legend. Tier 3 climbers with a Summit Pick only.',
       'Down the Sinkhole Stair below Houndmouth Canyon lies Shifting Depths. Leave an offering at the edge of the dark and something that craves it climbs up.',
       'Creatures that learn Fly can whisk you to any city you\'ve visited.',
@@ -2084,7 +2104,11 @@ export class App {
       'The Battle School at Valor Ridge trains creatures while you travel: a coin per XP.',
       'Be at Circuit Stadium when Turn 100 ends — with all 8 Merits — or the season is over.',
     ];
-    openSheet('Notice Board', h('ul', { class: 'tips' }, tips.sort(() => Math.random() - 0.5).slice(0, 4).map((t) => h('li', null, '📌 ', t))));
+    // one key-item hint is always posted (the rope or the whistle, whichever you still lack), plus three others
+    const need = keyTips.filter((_, i) => !hasItem(s, ['canopy-rope', 'root-whistle'][i]));
+    const pinned = (need.length ? need : keyTips)[Math.floor(Math.random() * (need.length || keyTips.length))];
+    const rest = [...tips, ...keyTips.filter((t) => t !== pinned)].sort(() => Math.random() - 0.5).slice(0, 3);
+    openSheet('Notice Board', h('ul', { class: 'tips' }, [pinned, ...rest].map((t) => h('li', null, '📌 ', t))));
   }
 
   stadiumSheet() {

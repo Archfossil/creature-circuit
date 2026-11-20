@@ -19,6 +19,14 @@ Every emoji in the game is a placeholder. This list covers each one that needs a
 
 ---
 
+## 0. Game logo & app icon ★★★
+
+The game has no logo yet. The title screen spells out "Creature Circuit" in plain text over a row of the 8 type icons, and the browser tab and phone home-screen icon borrow the Astral type icon.
+
+- [ ] `logo`: **The Creature Circuit logo.** The game's main logo or wordmark for the title screen, replacing the text and type-icon row. Deliver a full-colour version on transparent, plus a one-colour version.
+- [ ] `app-icon`: **App icon** (512×512). A square mark from the logo for the phone home screen and the installed app (`public/manifest.webmanifest`, `apple-touch-icon` in `index.html`). Currently the Astral type icon.
+- [ ] `favicon`: **Browser tab icon** (32×32 and 16×16). The app icon, simplified to stay readable at tiny sizes.
+
 ## 1. HUD & resources ★★★
 
 - [ ] `coin`: 🪙: Coins. HUD coin pill, every price, reward and wager.

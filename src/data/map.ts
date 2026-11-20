@@ -147,7 +147,7 @@ export const CITIES: Record<string, City> = {
     hotpot: { name: 'Mushroom Moss Nabe', buff: { evasion: 1 }, text: '+1 Evasion in your next battle.' },
     blurb: 'Cozy log cabins in a moss-draped rainforest. Somewhere in town, the Arbiter is in disguise.' },
   thunder: { nodeId: 'thunder', name: 'Thunder Spike', type: 'electric', park: 'Badlands', arbiter: 'Watson', accolade: 'Bolt Merit',
-    arena: { name: 'Under the Spike', trick: 'volts', text: 'The great lightning rod discharges volts onto random creatures each round.' },
+    arena: { name: 'Under the Spike', trick: 'volts', text: 'The great lightning rod discharges across the arena: Electric creatures (dual types too) are healed by it, everyone else is shocked. Bring Electric creatures to turn it in your favor.' },
     hotpot: { name: 'Prairie Chili Nabe', buff: { speed: 1 }, text: '+1 Speed in your next battle.' },
     blurb: 'A town on rugged badlands, named for the colossal lightning rod that shields it from the roving storm.' },
   kilauea: { nodeId: 'kilauea', name: 'Kilauea Forge', type: 'fire', park: 'Hawai\'i Volcanoes', arbiter: 'Amber', accolade: 'Caldera Merit',
@@ -160,7 +160,7 @@ export const CITIES: Record<string, City> = {
     hotpot: { name: 'Canopy Herb Nabe', buff: { vigor: 1 }, text: '+1 Vigor in your next battle.' },
     blurb: 'Boardwalks and ring platforms built into towering redwoods, high above a bottomless dark.' },
   canyon: { nodeId: 'canyon', name: 'Houndmouth Canyon', type: 'rock', park: 'Grand Canyon', arbiter: 'Cliff', accolade: 'Plateau Merit',
-    arena: { name: 'Crumbling Plateau', trick: 'crumble', text: 'The plateau edges break away; from round 4, creatures risk falling for heavy damage.' },
+    arena: { name: 'Crumbling Plateau', trick: 'crumble', text: 'The plateau shrinks every round. Beat Cliff before it’s gone, or you’re rung out and lose (10 rounds at Tier 1–2, 9 at Tier 3–4, 8 at Tier 5).' },
     hotpot: { name: 'Red Clay Nabe', buff: { armor: 1 }, text: '+1 Armor in your next battle.' },
     blurb: 'An unfathomable canyon whose walls shift as Rock creatures carve new tunnels. It never ends.' },
   iron: { nodeId: 'iron', name: 'Iron Coast', type: 'steel', park: 'Acadia', arbiter: 'Stella', accolade: 'Anchor Merit',
@@ -175,17 +175,31 @@ export const CITIES: Record<string, City> = {
 
 export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: string; special?: string }> = {
   mistfall: { blurb: 'A mountain waystation where travelers buy lanterns before braving the fog.', sells: ['salve', 'calm-tea', 'totem', 'sunberry'], key: 'fog-lantern' },
-  lumber: { blurb: 'Loggers and rope-makers. They know the way down to the Gloomshade floor.', sells: ['salve', 'totem', 'dewberry', 'pine-resin'], key: 'canopy-rope' },
-  dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'moonberry', 'energy-tonic', 'totem'], special: 'trade' },
+  lumber: { blurb: 'Loggers and woodcarvers in a hollow among the giant trees.', sells: ['salve', 'totem', 'dewberry', 'pine-resin'] },
+  dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'moonberry', 'energy-tonic', 'totem'] },
   ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt'], key: 'summit-pick' },
-  saltmarsh: { blurb: 'Where the coast turns to marsh. The ferry office and the root-keepers are here.', sells: ['salve', 'sea-glass', 'marsh-lotus', 'totem'], key: 'ferry-pass' },
+  saltmarsh: { blurb: 'Where the coast turns to marsh. The ferry office is here.', sells: ['salve', 'sea-glass', 'marsh-lotus', 'totem'], key: 'ferry-pass' },
   blackSand: { blurb: 'Ferry landing on Kilauea\'s black sand. Hot springs bubble beside the dock.', sells: ['elixir', 'volcanic-glass', 'ember-charcoal'], },
   valor: { blurb: 'A hill town of training yards and the Margos Battle School. Leave a creature with the drill masters and it comes back stronger.', sells: ['salve', 'energy-tonic', 'totem', 'dewberry'], special: 'school' },
   quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea'], special: 'research' },
   depths: { blurb: 'Lantern-lit ledges at the bottom of the endless canyon. Leave an offering at the edge of the dark, and something that craves it climbs up to meet you.', sells: ['salve', 'totem', 'canyon-ochre', 'ember-charcoal'], special: 'depths' },
 };
-// The Root Whistle (Katy's arena) is sold at Saltmarsh too
-TOWNS.saltmarsh.sells.push('root-whistle');
+
+// ── Roaming key items ───────────────────────────────────────────
+/**
+ * Key items whose town is rolled at random for every new game (state.ts → rollKeyTowns): the Canopy
+ * Rope (Dahlia, Gloomshade) and the Root Whistle (Katy, Mangrove Port). The Fog Lantern, Summit Pick
+ * and Ferry Pass stay where they are.
+ */
+export const ROAMING_KEY_ITEMS = ['canopy-rope', 'root-whistle'];
+/** Where they were before they roamed (used for older saves). */
+export const CLASSIC_KEY_TOWNS: Record<string, string> = { 'canopy-rope': 'lumber', 'root-whistle': 'saltmarsh' };
+/**
+ * Towns that can stock a roaming key item: every town without a special facility (Battle School,
+ * Research Facility, Shifting Depths, and any added later), except Black Sand Cove, which is only
+ * reachable by ferry, so it would lock a key item behind another one.
+ */
+export const KEY_ITEM_TOWNS = Object.keys(TOWNS).filter((id) => !TOWNS[id].special && id !== 'blackSand');
 
 /** Which types live near each biome — the wild type pool. */
 export const BIOME_TYPES: Record<Biome, ElementType[]> = {

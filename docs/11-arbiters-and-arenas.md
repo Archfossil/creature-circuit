@@ -47,15 +47,16 @@ Wild creatures at a Tier sit just under the Arbiter's level (wild level band cen
 |---|---|---|---|---|---|---|---|---|
 | 1 | Salem | Aurora Peak | Astral | Ice Floe Arena | `iceFloes`: creatures may slip into the water | Hazard (both sides) | Polaris Merit | A full lap of Cloud Island |
 | 2 | Fabian | Hollow Crest | Charm | Glamour Grove | `illusion`: Arbiter's creatures +Evasion | Stat (Arbiter) | Glamour Merit | Find him in disguise |
-| 3 | Watson | Thunder Spike | Electric | Under the Spike | `volts`: random lightning strikes | Hazard (random side) | Bolt Merit | None |
+| 3 | Watson | Thunder Spike | Electric | Under the Spike | `volts`: lightning heals Electric creatures, shocks the rest | Hazard / heal (both sides) | Bolt Merit | None |
 | 4 | Amber | Kilauea Forge | Fire | Fire Pit | `flames`: steam vents scald | Hazard (both sides) | Caldera Merit | Arena is on Kilauea island |
 | 5 | Dahlia | Gloomshade | Grass | Forest Floor Arena | `darkness`: challenger's accuracy down | Accuracy (challenger) | Lily Merit | Canopy Rope |
-| 6 | Cliff | Houndmouth Canyon | Rock | Crumbling Plateau | `crumble`: edges break away from round 4 | Hazard (both sides) | Plateau Merit | None |
+| 6 | Cliff | Houndmouth Canyon | Rock | Crumbling Plateau | `crumble`: the plateau shrinks each round; challenger rung out when it's gone | Timer (challenger) | Plateau Merit | None |
 | 7 | Stella | Iron Coast | Steel | Floating Fortress | `fortress`: Arbiter's creatures +Armor and +Ward | Stat (Arbiter) | Anchor Merit | Clear the Iron Coast Gauntlet |
 | 8 | Katy | Mangrove Port | Water | Root Maze | `roots`: challenger's Speed down | Stat (challenger) | Tidal Merit | Root Whistle or a creature that can Sail |
 
-**Effect kinds:**
-- **Hazards** deal damage at the end of a round. Creatures of the Arbiter's own type are immune, except to the volts.
+**Effect kinds:** arena effects are meant to **favour the Arbiter**. A prepared challenger can sometimes turn them around (for example by bringing creatures of the Arbiter's type).
+- **Hazards** deal damage at the end of a round. Creatures of the Arbiter's own type are immune (to the volts, Electric creatures are healed instead).
+- **The timer** (Cliff) doesn't deal damage: it limits how many rounds the challenger has to win.
 - **Stat** effects add or subtract a stat for one side all battle.
 - **Accuracy** effects change accuracy rolls.
 
@@ -67,14 +68,14 @@ Every effect gets stronger at higher Tiers.
 |---|---|---|---|---|---|
 | **Ice floes**: chance per non-Astral creature, each round | 1 in 6, 1 dmg | 1 in 6, 2 dmg | 2 in 6, 2 dmg | 2 in 6, 3 dmg | 2 in 6, 3 dmg |
 | **Illusion**: Arbiter's Evasion | +1 | +1 | +1 | +2 | +2 |
-| **Volts**: chance each round (hits one random side) | 2 in 6, 1 dmg | 3 in 6, 2 dmg | 3 in 6, 2 dmg | 4 in 6, 3 dmg | 4 in 6, 3 dmg |
+| **Volts**: chance each round; Electric creatures heal, others take damage (both sides) | 2 in 6, 1 | 3 in 6, 2 | 3 in 6, 2 | 4 in 6, 3 | 4 in 6, 3 |
 | **Flames**: every 2nd round, each non-Fire creature | 1 dmg | 1 dmg | 2 dmg | 2 dmg | 2 dmg |
 | **Darkness**: challenger's accuracy rolls | −1 | −1 | −1 | −2 | −2 |
-| **Crumble**: from round 4, each non-Rock creature | 3 dmg | 4 dmg | 5 dmg | 6 dmg | 7 dmg |
+| **Crumble**: rounds before the challenger is rung out | 10 rounds | 10 rounds | 9 rounds | 9 rounds | 8 rounds |
 | **Fortress**: Arbiter's Armor and Ward | +1 | +1 | +1 | +2 | +2 |
 | **Roots**: challenger's Speed | −1 | −1 | −1 | −2 | −2 |
 
-**Crumble's chance rises each round:** 1 in 6 on round 4, 2 in 6 on round 5, 3 in 6 on round 6, and 4 in 6 from round 7.
+**Crumble** counts down at the end of every round. When it reaches 0 and Cliff still has a creature standing, the challenger loses (rung out). Winning before then is a normal win.
 
 ---
 
@@ -147,14 +148,15 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 | Type | Arena | Effect | Merit | Access condition |
 |---|---|---|---|---|
-| Electric | Under the Spike | `volts` (Hazard, random side) | Bolt Merit | None |
+| Electric | Under the Spike | `volts` (Hazard / heal, both sides) | Bolt Merit | None |
 
 **Setting:** a town on rugged badlands, shielded from the roving storm by a colossal lightning rod. Inspired by Badlands.
 
-**Arena effect: Volts.** At the end of each round there's a chance the great rod discharges into one active creature, either side, at random. The damage uses the Electric type chart:
-- double against Steel and Water,
-- half against Astral and Rock,
-- normal against Electric (so Watson's creatures are hit as hard as anyone's).
+**Arena effect: Volts.** At the end of each round there's a chance (by Tier, above) that the great rod discharges across the arena, hitting **both** active creatures:
+- **Electric creatures, dual types included, are healed** by the current (Health within their current heart). Watson's team is all Electric, so his creatures always heal.
+- **Everyone else is shocked.** The damage uses the Electric type chart: double against Steel and Water, half against Astral and Rock.
+
+**Counter:** bring your own Electric creatures, and the lightning heals them too.
 
 **City Stable hot pot:** Prairie Chili Nabe, +1 Speed in your next battle.
 
@@ -180,7 +182,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 **Setting:** boardwalks and ring platforms built into towering redwoods. Inspired by Redwood.
 
-**Access:** the arena is on the forest floor. The challenger needs a **Canopy Rope** (sold at Lumber Hollow).
+**Access:** the arena is on the forest floor. The challenger needs a **Canopy Rope**. It's a **roaming key item**: each game it's sold in a different town (see [Roaming key items](#roaming-key-items)). The arena's hint and the Notice Boards name this season's town.
 
 **Arena effect: Darkness.** In the lightless forest floor, the challenger's accuracy rolls are 1 lower (2 lower at Tier 4+). Sure-hit moves ignore it.
 
@@ -190,15 +192,19 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 | Type | Arena | Effect | Merit | Access condition |
 |---|---|---|---|---|
-| Rock | Crumbling Plateau | `crumble` (Hazard) | Plateau Merit | None |
+| Rock | Crumbling Plateau | `crumble` (Timer, challenger) | Plateau Merit | None |
 
 **Setting:** an unfathomable canyon whose walls shift as Rock creatures carve new tunnels. Inspired by Grand Canyon.
 
-**Arena effect: Crumble.** The plateau edges break away. From round 4, each active creature that isn't Rock risks falling at the end of every round, with the chance rising each round (see above). A fall deals heavy damage (2 + Tier). Cliff's Rock creatures are immune.
+**Arena effect: Crumble (a ring-out timer).** The plateau shrinks at the end of every round. The challenger has **10 rounds** (Tier 1–2), **9** (Tier 3–4) or **8** (Tier 5) to beat Cliff. If the plateau is gone while Cliff still has a creature standing, the challenger is **rung out** and loses. It deals no damage.
+
+- **On screen:** a "⏳ Plateau: N rounds left" chip in the battle header, red and pulsing for the last 2 rounds. The arena floor visibly shrinks toward the creatures as rounds pass, with chunks breaking off the edge.
+- **Losing by ring-out** is a normal Arbiter loss: no coins lost, and creatures still earn their battle XP.
+- **Code:** `ringRounds`, `ringLeft` and the `crumble` case of `arenaTrick()` in `battle.ts`; the `ring` battle event; `shrinkRing` in `render/battle.ts`.
 
 **City Stable hot pot:** Red Clay Nabe, +1 Armor in your next battle.
 
-**Notes:** this effect rewards finishing fast. Long battles get dangerous.
+**Notes:** this effect rewards hitting hard and fast. Stalling tactics (healing, Catch Breath, swapping a lot) run the clock down.
 
 ### 7. Stella · Iron Coast · `iron`
 
@@ -236,11 +242,33 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 **Setting:** a city on stilts above marsh waters, linked by boardwalks and swaying bridges. Inspired by Everglades.
 
-**Access:** the mangrove roots hide Katy. The challenger needs a **Root Whistle** (sold at Saltmarsh Landing) or a creature on the active team that can Sail.
+**Access:** the mangrove roots hide Katy. The challenger needs a **Root Whistle**, a **roaming key item** sold in a different town each game (see [Roaming key items](#roaming-key-items)), or a creature on the active team that can Sail.
 
 **Arena effect: Roots.** Shifting roots slow the challenger's creatures: −1 Speed (−2 at Tier 4+), so Katy's creatures tend to act first.
 
 **City Stable hot pot:** Swamp Gumbo Nabe, +1 Focus in your next battle.
+
+---
+
+## Roaming key items
+
+Two Arbiter keys move each game, so every run sends trainers somewhere new:
+
+| Key item | Opens | Sold in |
+|---|---|---|
+| Canopy Rope | Dahlia (Gloomshade) | A random eligible town, rolled each game |
+| Root Whistle | Katy (Mangrove Port) | A different random eligible town, rolled each game |
+
+- **Eligible towns:** every town without a special facility: Mistfall, Lumber Hollow, Dustmere Trading Post, Ridgeway and Saltmarsh Landing. Valor Ridge (Battle School), Quillhaven (Research Facility), Shifting Depths, and any future facility town are left out. So is Black Sand Cove, because it's only reachable by ferry, which would lock a key item behind another one.
+- **The two items always land in different towns.** A town can still sell its own fixed key item as well, e.g. Mistfall's Fog Lantern alongside a rolled Root Whistle.
+- **Fixed key items stay put:** the Fog Lantern (Mistfall), the Summit Pick (Ridgeway) and the Ferry Pass (Saltmarsh Landing and Kilauea Forge, two spots, since the island is a long way).
+- **Finding them:**
+  - the town's Market tile and map preview list what it sells;
+  - Dahlia's and Katy's arena hints name the town ("sold in Ridgeway this season");
+  - every Notice Board pins a hint for whichever of the two you still lack.
+- **Hotseat and online:** everyone in a match shares the same placement.
+- **Saves:** older saves keep the classic towns (Lumber Hollow, Saltmarsh Landing).
+- **Code:** `ROAMING_KEY_ITEMS`, `KEY_ITEM_TOWNS` (`map.ts`); `rollKeyTowns`, `keyTownOf` (`state.ts`); `townKeyItems`, `keyTownName` (`world.ts`).
 
 ---
 
@@ -249,9 +277,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 Observations from the current code, to review when balancing. Tick them off or move them into a card's **Notes** once they're decided.
 
 - [ ] **In-game arena text understates the effects.** The challenge screen's arena descriptions (`CITIES[…].arena.text`) give Tier 1 numbers only. They don't mention that stat effects double at Tier 4+, or that hazard chance and damage grow with Tier.
-- [ ] **Volts is the only hazard the Arbiter isn't immune to.** It picks a side at random and Watson's Electric creatures take normal damage, so it's the most neutral arena. That's either intended or Watson needs an edge.
-- [ ] **Stat and accuracy arenas only ever help the Arbiter** (Illusion, Fortress, Roots, Darkness). Hazard arenas hurt both sides, but the Arbiter's type is immune. Challengers of the Arbiter's type are immune too, which rewards bringing a matching creature.
-- [ ] **Crumble at Tier 5** deals 7 damage per fall, with up to a 4-in-6 chance per creature per round from round 7. It may be the harshest effect late in a season.
+- [ ] **Cliff's ring-out timer** (10 / 10 / 9 / 9 / 8 rounds) against 2–3 Rock creatures: tight enough to force aggression, loose enough for a fair team?
 - [ ] **Ice floes at Tier 1–2** (1-in-6 chance) rarely matter.
 - [ ] **Access conditions vary a lot in cost:**
   - Salem needs a lap of Cloud Island: 7 island steps at +1 Initiative per Tier (14–35 Initiative), only reachable at night or in Winter, with an explore at every step.

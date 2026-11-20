@@ -87,6 +87,7 @@ export class BattleView implements SceneView {
 
   setup(biome: Biome, arenaType?: ElementType, night = false) {
     this.props.clear();
+    this.arena.scale.set(1, 1, 1); this.ring.scale.set(1, 1, 1); this.ringShrink = 0;
     const bc = new THREE.Color(BIOME_INFO[biome].color);
     (this.scene.getObjectByName('ground') as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: bc, roughness: 1, flatShading: true });
     (this.arena.material as THREE.MeshStandardMaterial).color.set(arenaType ? '#f3ead6' : bc.clone().lerp(new THREE.Color('#efe6cf'), 0.65));
@@ -128,6 +129,37 @@ export class BattleView implements SceneView {
         this.props.add(pillar, flame);
       }
     }
+  }
+
+  private ringShrink = 0;
+  /**
+   * Cliff's crumbling plateau: shrink the arena floor and its rim toward the creatures. `gone` is how
+   * much of the plateau has crumbled (0 = whole, 1 = rung out). Animates over half a second, with a
+   * few chunks breaking off the edge.
+   */
+  shrinkRing(gone: number): Promise<void> {
+    const from = this.ringShrink, to = Math.max(0, Math.min(1, gone));
+    this.ringShrink = to;
+    const scaleOf = (g: number) => 1 - g * 0.55; // at 1 the floor reaches the creatures' feet
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2, r = 6.2 * scaleOf(from) - 0.2;
+      const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25 + Math.random() * 0.25, 0), new THREE.MeshStandardMaterial({ color: '#c98a5a', flatShading: true }));
+      chunk.position.set(Math.cos(a) * r, 0.2, Math.sin(a) * r);
+      this.props.add(chunk);
+      const t0 = performance.now();
+      const fall = () => { const k = (performance.now() - t0) / 900; chunk.position.y = 0.2 - k * k * 6; chunk.rotation.x += 0.15; if (k < 1) requestAnimationFrame(fall); else this.props.remove(chunk); };
+      requestAnimationFrame(fall);
+    }
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      const step = () => {
+        const k = Math.min(1, (performance.now() - t0) / 500);
+        const s = scaleOf(from + (to - from) * k);
+        this.arena.scale.set(s, 1, s); this.ring.scale.set(s, s, 1);
+        if (k < 1) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
   }
 
   /** Show (or clear, with null) the trainer minis for a battle. Only trainer battles have them. */

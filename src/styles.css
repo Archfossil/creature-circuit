@@ -902,3 +902,8 @@ button.seat:hover, button.seat:focus-visible { background: var(--tc); color: #ff
   background: linear-gradient(135deg, #ffd0ea, #d6aef5); border: 2px solid #3a1550; color: #2a0f3a; box-shadow: 0 3px 0 #3a1550; max-width: 230px; }
 .cloud-chip small { font-size: 11px; }
 .cloud-chip-link { text-decoration: underline; opacity: 0.8; }
+
+/* Cliff's crumbling plateau countdown */
+.chip.ring-timer { font-weight: 800; background: #fff1e4; border-color: #c4703a; }
+.chip.ring-timer.urgent { background: #c4462a; color: #fff; border-color: #7a2410; animation: ring-pulse 0.9s ease-in-out infinite; }
+@keyframes ring-pulse { 50% { transform: scale(1.08); } }

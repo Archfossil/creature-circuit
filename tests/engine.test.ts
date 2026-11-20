@@ -3,14 +3,14 @@ import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES } from '../src/data/roster';
 import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from '../src/data/moves';
-import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE } from '../src/data/map';
+import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS } from '../src/data/content';
 import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit } from '../src/engine/edits';
-import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, type Side } from '../src/engine/battle';
-import { newGame, addItem, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
+import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
+import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
@@ -994,6 +994,100 @@ describe('Cloud Island (Salem)', () => {
     const spring = trainer(day);
     spring.weather = 'clear';
     expect(W.weather(spring).id).toBe('clear');
+  });
+});
+
+describe('roaming key items', () => {
+  it('the Canopy Rope and Root Whistle go to two different eligible towns each game', () => {
+    expect(KEY_ITEM_TOWNS.sort()).toEqual(['dustmere', 'lumber', 'mistfall', 'ridgeway', 'saltmarsh']);
+    const seen = { 'canopy-rope': new Set<string>(), 'root-whistle': new Set<string>() };
+    for (let i = 0; i < 200; i++) {
+      const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+      const rope = keyTownOf(s, 'canopy-rope'), whistle = keyTownOf(s, 'root-whistle');
+      expect(rope).not.toBe(whistle);
+      for (const t of [rope, whistle]) expect(['valor', 'quillhaven', 'depths', 'blackSand']).not.toContain(t);
+      seen['canopy-rope'].add(rope); seen['root-whistle'].add(whistle);
+      // the market there sells it, and only there
+      for (const town of KEY_ITEM_TOWNS) {
+        expect(W.townKeyItems(s, town).includes('canopy-rope')).toBe(town === rope);
+        expect(W.townKeyItems(s, town).includes('root-whistle')).toBe(town === whistle);
+      }
+    }
+    expect(seen['canopy-rope'].size).toBeGreaterThan(2);
+    expect(seen['root-whistle'].size).toBeGreaterThan(2);
+  });
+  it('the arena hints name this game’s town; fixed key items stay put; old saves keep the classic towns', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    s.keyTowns = { 'canopy-rope': 'ridgeway', 'root-whistle': 'mistfall' };
+    s.roster.push(createCreature('zapup', 3));
+    expect(W.arbiterGate(s, 'gloom').reason).toMatch(/Ridgeway/);
+    expect(W.arbiterGate(s, 'mangrove').reason).toMatch(/Mistfall/);
+    expect(W.townKeyItems(s, 'mistfall')).toEqual(['fog-lantern', 'root-whistle']);
+    expect(W.townKeyItems(s, 'saltmarsh')).toEqual(['ferry-pass']);
+    delete s.keyTowns; // a save from before roaming key items
+    expect(keyTownOf(s, 'canopy-rope')).toBe('lumber');
+    expect(keyTownOf(s, 'root-whistle')).toBe('saltmarsh');
+  });
+  it('everyone in a hotseat or online match shares one placement', () => {
+    const m = newMatch([newGame('A', 'balanced', 'thunder', 'puddlit', '#f00'), newGame('B', 'balanced', 'thunder', 'zapup', '#00f'), newGame('C', 'balanced', 'gloom', 'sproutle', '#0f0')]);
+    for (const p of m.players) expect(p.keyTowns).toEqual(m.players[0].keyTowns);
+  });
+});
+
+describe('arena effects', () => {
+  /** An Arbiter battle with a sturdy challenger, so the arena effect has time to show. */
+  const arena = (city: string, starter: string) => {
+    const s = newGame('T', 'balanced', 'thunder', starter, '#fff');
+    s.location = city;
+    const b = W.arbiterBattle(s, city);
+    for (const side of b.sides) for (const c of side.team) { c.health = 999; c.vitality = 9; }
+    return b;
+  };
+  /** What the arena did to each side: 'heal' or 'damage' right after an arena line. */
+  const arenaHits = (events: BEvent[]) => {
+    const out: { side: 0 | 1; t: string }[] = [];
+    events.forEach((e, i) => {
+      const next = events[i + 1];
+      if (e.t === 'arena' && next && (next.t === 'heal' || next.t === 'damage')) out.push({ side: next.side, t: next.t });
+    });
+    return out;
+  };
+  it('Watson’s volts heal Electric creatures (his, and yours) and shock everyone else', () => {
+    const seen = { elecHeal: 0, elecHurt: 0, otherHeal: 0, otherHurt: 0, watsonHeal: 0, watsonHurt: 0 };
+    for (const starter of ['zapup', 'pebbark']) {
+      for (let k = 0; k < 20; k++) {
+        const b = arena('thunder', starter);
+        for (let r = 0; r < 6 && !b.over; r++) {
+          for (const hit of arenaHits(resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }))) {
+            if (hit.side === 1) seen[hit.t === 'heal' ? 'watsonHeal' : 'watsonHurt']++;
+            else if (starter === 'zapup') seen[hit.t === 'heal' ? 'elecHeal' : 'elecHurt']++;
+            else seen[hit.t === 'heal' ? 'otherHeal' : 'otherHurt']++;
+          }
+        }
+      }
+    }
+    expect(seen.watsonHurt).toBe(0);
+    expect(seen.elecHurt).toBe(0);
+    expect(seen.otherHeal).toBe(0);
+    expect(seen.watsonHeal).toBeGreaterThan(0);
+    expect(seen.elecHeal).toBeGreaterThan(0);
+    expect(seen.otherHurt).toBeGreaterThan(0);
+  });
+  it('Cliff’s plateau counts down each round and rings the challenger out when it’s gone, without dealing damage', () => {
+    const b = arena('canyon', 'puddlit');
+    const total = ringRounds(b.arena!.tier);
+    expect(total).toBe(10);
+    expect(ringLeft(b)).toBe(total);
+    const lefts: number[] = [];
+    for (let r = 0; r < 20 && !b.over; r++) {
+      const ev = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id });
+      for (const e of ev) if (e.t === 'ring') lefts.push(e.left);
+      expect(arenaHits(ev).length).toBe(0); // no crumble damage any more
+    }
+    expect(b.over).toBe('lose');
+    expect(b.round).toBe(total);
+    expect(lefts).toEqual(Array.from({ length: total }, (_, i) => total - 1 - i));
+    expect([1, 2, 3, 4, 5].map(ringRounds)).toEqual([10, 10, 9, 9, 8]);
   });
 });
 

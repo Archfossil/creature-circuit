@@ -108,7 +108,8 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'trainers', title: 'Trainers & Arbiters', body: [
         'Every city has a Trainer Hall: battle a local trainer once per turn (a city action).',
-        'Each city’s Arbiter guards a Merit. Their arenas have tricks (ice floes, fog, falling rocks…) described before you challenge.',
+        'Each city’s Arbiter guards a Merit. Their arenas have tricks that favour the Arbiter (ice floes, fog, lightning…), described before you challenge. A prepared trainer can use some of them: Watson’s lightning heals Electric creatures, yours included.',
+        'Cliff’s Crumbling Plateau is a timer: it shrinks every round (watch the ⏳ counter), and if it’s gone before you beat him, you’re rung out and lose.',
         'Some Arbiters have conditions. Salem (Aurora Peak) only battles trainers who have walked a full lap of Cloud Island (see Places → Cloud Island). Stella (Iron Coast) only battles trainers who clear the Iron Coast Gauntlet: beat 2 local trainers per Tier without leaving the city. You can rest at the Stable between matches, but leaving resets it. Once cleared, she’ll battle you any time.',
         'Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.',
       ] },
@@ -126,6 +127,7 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'towns', title: 'Towns', body: [
         'Town Stables also fully recover your team, but serve no Chanko Nabe buff. Town markets cost no Initiative and often sell key items (lanterns, ropes, passes…).',
+        'The Canopy Rope (for Dahlia) and the Root Whistle (for Katy) are sold in different towns every game. Check the Notice Boards: they always say where.',
         '- Valor Ridge: the Battle School.',
         '- Quillhaven: the Research Facility.',
         '- Shifting Depths: Explore the Depths.',

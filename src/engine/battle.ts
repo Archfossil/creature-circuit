@@ -5,7 +5,7 @@ import { effectiveness, TYPE_LABEL } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
 import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
-import { roll, clashDie, pick } from './dice';
+import { roll, clashDie } from './dice';
 
 export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
 
@@ -62,6 +62,8 @@ export type BEvent =
   | { t: 'send'; side: 0 | 1; idx: number; snap: Snap }
   | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string; bonus?: number }
   | { t: 'arena'; text: string }
+  /** Cliff's crumbling plateau: rounds left before the challenger is rung out (of `total`). */
+  | { t: 'ring'; left: number; total: number }
   | { t: 'end'; result: NonNullable<Battle['over']> };
 
 /** One labelled number in a roll or damage formula, e.g. { label: 'Power', value: 3 }. */
@@ -795,6 +797,14 @@ function endOfRound(b: Battle, ev: BEvent[]) {
   }
 }
 
+/**
+ * Cliff's Crumbling Plateau is a timer: it shrinks every round, and when it's gone the challenger is
+ * rung out (loses) if Cliff still has a creature standing. Rounds allowed by Tier: 10, 10, 9, 9, 8.
+ */
+export const ringRounds = (tier: number) => [10, 10, 9, 9, 8][Math.max(1, Math.min(5, tier)) - 1];
+/** Rounds left on the plateau before the ring-out (counts down as rounds end). */
+export const ringLeft = (b: Battle) => (b.arena?.trick === 'crumble' ? Math.max(0, ringRounds(b.arena.tier) - b.round) : null);
+
 function arenaTrick(b: Battle, ev: BEvent[]) {
   const a = b.arena!;
   const t = a.tier;
@@ -810,19 +820,43 @@ function arenaTrick(b: Battle, ev: BEvent[]) {
     if (c.ko) handleKO(b, si, ev);
   };
   const hasType = (si: 0 | 1, ty: ElementType) => speciesOf(activeOf(b.sides[si])).types.includes(ty);
+  /** Restore Health (within the current heart) to a side's active creature. */
+  const mend = (si: 0 | 1, amount: number, text: string) => {
+    const c = activeOf(b.sides[si]);
+    if (c.ko || b.over) return;
+    const healed = Math.max(0, Math.min(amount, maxHealth(c) - c.health));
+    c.health += healed;
+    ev.push({ t: 'arena', text: text.replace('{n}', nameOf(c)) });
+    ev.push({ t: 'heal', side: si, amount: healed, snap: snap(b, c) });
+  };
   switch (a.trick) {
     case 'iceFloes':
       for (const si of [0, 1] as const) if (!hasType(si, 'astral') && roll(6) <= (t >= 3 ? 2 : 1)) hurt(si, 1 + Math.floor(t / 2), '{n} slipped off the ice floe into the frigid water!');
       break;
     case 'volts':
-      if (roll(6) <= 2 + Math.floor(t / 2)) { const si = pick([0, 1] as const); hurt(si, 1 + Math.floor(t / 2), 'The Thunder Spike discharges into {n}!', 'electric'); }
+      // the great rod discharges across the arena: Electric creatures (dual types too) drink it in, everyone else is shocked
+      if (roll(6) <= 2 + Math.floor(t / 2)) {
+        const n = 1 + Math.floor(t / 2);
+        for (const si of [0, 1] as const) {
+          if (hasType(si, 'electric')) mend(si, n, 'The Thunder Spike discharges, and {n} soaks up the current!');
+          else hurt(si, n, 'The Thunder Spike discharges into {n}!', 'electric');
+        }
+      }
       break;
     case 'flames':
       if (b.round % 2 === 0) for (const si of [0, 1] as const) if (!hasType(si, 'fire')) hurt(si, 1 + Math.floor(t / 3), 'Scalding steam vents blast {n}!');
       break;
-    case 'crumble':
-      if (b.round >= 4) for (const si of [0, 1] as const) if (!hasType(si, 'rock') && roll(6) <= Math.min(4, b.round - 3)) hurt(si, 2 + t, 'The plateau edge crumbles under {n}!');
+    case 'crumble': {
+      const total = ringRounds(t), left = Math.max(0, total - b.round);
+      ev.push({ t: 'ring', left, total });
+      if (left === 0) {
+        ev.push({ t: 'arena', text: 'The last of the plateau crumbles away. You’re rung out!' });
+        b.over = 'lose';
+        awardBattleXp(b, ev);
+        ev.push({ t: 'end', result: 'lose' });
+      } else if (left <= 2) ev.push({ t: 'arena', text: left === 1 ? 'The plateau is almost gone: one round left!' : 'The plateau edges fall away: two rounds left!' });
       break;
+    }
     default: break;
   }
 }

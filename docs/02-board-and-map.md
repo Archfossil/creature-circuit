@@ -22,7 +22,7 @@ Navigation in the fog can be difficult in Hollow Crest. Creatures with special s
 
 Based on the Badlands National Park in South Dakota, Thunder Spike is a rolling and rugged stony desert environment. The static in the air raises the hair on the arms of passing travelers, and a massive storm is constantly rolling through the area somewhere. The electricity in the air attracts all types of Electric creatures and trainers looking to make offerings to them. Thunder Spike city is named so for the massive lightning rod which protects the city when the local storm moves through.
 
-The Arbiter of Thunder Spike is **Watson**. His arena sits directly underneath the eponymous thunder spike and throughout battle will unleash charged volts upon the creatures fighting within.
+The Arbiter of Thunder Spike is **Watson**. His arena sits directly underneath the eponymous thunder spike and throughout battle will unleash charged volts upon the creatures fighting within. In play, the volts heal Electric creatures (dual types too) and shock everyone else.
 
 ## 4. Kilauea Forge
 
@@ -34,13 +34,13 @@ The Arbiter of Kilauea Forge is **Amber**. Amber's arena rests in a pit of fire 
 
 Based on the Redwood National Parks in California and representing our Grass type. Gloomshade is a city built into massive towering trees where the people live on elevated boardwalks and ringed platforms, high off the forest floor. The trees are so tall, and the canopy so thick, that sunlight doesn't manage to reach the forest floor. In most places in Gloomshade, looking over the edge of one of the boardwalks is like looking into a bottomless black pit. The creatures which occupy the forest floor are quite ferocious indeed, but for trainers brave enough to descend, they can find some of the most powerful Grass types in the world. For the less daring, there are plenty which occupy the areas surrounding the Gloomshade forest, or who live among the people up near the canopy.
 
-The Arbiter of Gloomshade is **Dahlia**. Her arena is built somewhere in the Gloomshade forest floor, where only trainers brave and strong enough to dare to descend from the canopy can challenge her and earn her accolade, the Lily Badge.
+The Arbiter of Gloomshade is **Dahlia**. Her arena is built somewhere in the Gloomshade forest floor, where only trainers brave and strong enough to dare to descend from the canopy can challenge her and earn her accolade, the Lily Badge. The Canopy Rope needed to descend is sold in a different town each game.
 
 ## 6. Houndmouth Canyon
 
 Based on the Grand Canyon in Arizona, Houndmouth Canyon is an unfathomably massive canyon which acts as a sort of "endless rogue-like dungeon" for our game. It can be explored endlessly as the walls shift and move from all the Rock creatures living there making various tunnels.
 
-The Arbiter of Houndmouth Canyon is **Cliff**. His arena is built out of a tall standing plateau and designed to have the edges carve off, making the standing space smaller and much more limited before a creature falls in and is defeated.
+The Arbiter of Houndmouth Canyon is **Cliff**. His arena is built out of a tall standing plateau and designed to have the edges carve off, making the standing space smaller and much more limited before a creature falls in and is defeated. In play, the plateau is a ring-out timer: it shrinks every round, and a challenger who hasn't beaten Cliff when it's gone loses.
 
 ## 7 Iron Coast
 
@@ -52,7 +52,7 @@ The Arbiter is **Stella**. Her arena is a floating fortress which docks only onc
 
 Based on the Everglades National Park in Florida. The city is built on stilts overlooking marshy waters and mangrove trees with roots which shift every few hours, making traversal here through the water nearly impossible for all but the native water creatures. Boardwalks and suspended bridges dominate the area.
 
-The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and can will them open or closed. She uses this to help her city, but also to deny unworthy trainers from ever finding her to issue their challenges.
+The Arbiter is **Katy**. She has a mystical connection to the mangrove roots and can will them open or closed. She uses this to help her city, but also to deny unworthy trainers from ever finding her to issue their challenges. The Root Whistle that opens the roots is sold in a different town each game (a creature that can Sail also works).
 
 # Map Design
 
