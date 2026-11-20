@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES } from '../src/data/roster';
@@ -10,7 +10,7 @@ import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content'
 import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit } from '../src/engine/edits';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, type Side } from '../src/engine/battle';
-import { newGame, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile } from '../src/engine/state';
+import { newGame, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
@@ -672,6 +672,16 @@ describe('hotseat interactions', () => {
     b.location = 'iron';
     expect(I.exchange(a, { coins: 0, items: {}, creature: a.roster[1].uid }, b)).toMatch(/same spot/);
   });
+  it('coin and item trades work across the map; asking for a creature or challenging does not', () => {
+    const { a, b } = pair();
+    b.location = 'iron';
+    expect(I.sameSpot(a, b)).toBe(false);
+    expect(I.exchange(a, { coins: 5, items: {} }, b, { coins: 0, items: { salve: 1 } })).toBeNull(); // by courier
+    expect([a.coins, b.coins]).toEqual([25, 25]);
+    expect(I.exchange(a, { coins: 5, items: {} }, b, { coins: 0, items: {}, creature: b.roster[1].uid })).toMatch(/same spot/);
+    expect(I.challengeProblem(a, b)).toMatch(/same spot/);
+    expect(I.startChallenge(a, b)).toBeNull();
+  });
   it('trades swap creatures between trainers on the same spot', () => {
     const { a, b } = pair();
     const mine = a.roster[1], theirs = b.roster[1];
@@ -721,6 +731,57 @@ describe('online creature edits (tending your team while someone else plays)', (
     expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves: ['not-a-move'] })).toBe(false);
     expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves: [moves[0], moves[0]] })).toBe(false);
     expect(applyEdit(s, { uid: 'someone-else', op: 'playbook', moves })).toBe(false);
+  });
+});
+
+describe('saved copies (save library)', () => {
+  const store = new Map<string, string>();
+  const g = globalThis as unknown as { localStorage?: unknown };
+  let prev: unknown;
+  beforeEach(() => {
+    store.clear(); prev = g.localStorage;
+    g.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+  });
+  afterEach(() => { g.localStorage = prev; setActiveMatch(null); });
+
+  it('keeps named snapshots of solo, hotseat and online games and loads them back into their slot', () => {
+    const solo = newGame('Rowan', 'balanced', 'thunder', 'puddlit', '#fff');
+    solo.turn = 12;
+    const copy = saveCopy('solo', solo);
+    expect(typeof copy).toBe('object');
+    if (typeof copy === 'string') return;
+    expect(copy.name).toBe('Rowan · Turn 12');
+    solo.turn = 40; // the copy is a snapshot, not a live reference
+    expect(restoreCopy(copy.id)?.kind).toBe('solo');
+    expect(load()?.turn).toBe(12);
+
+    const m = newMatch([newGame('A', 'balanced', 'thunder', 'puddlit', '#f00'), newGame('B', 'balanced', 'thunder', 'zapup', '#00f')]);
+    const hot = saveCopy('hotseat', m, 'Friday night') as { id: string };
+    expect(restoreCopy(hot.id)?.kind).toBe('hotseat');
+    expect(loadMatch()?.players.map((p) => p.trainer.name)).toEqual(['A', 'B']);
+
+    const on = { ...m, owners: ['x', 'y'], code: 'ABCDE', turnSeconds: 120 };
+    const oc = saveCopy('online', on) as { id: string };
+    expect(restoreCopy(oc.id)?.kind).toBe('online');
+    expect(loadOnlineMatch()).toMatchObject({ owners: ['x', 'y'], code: 'ABCDE', turnSeconds: 120 });
+
+    expect(listCopies().map((c) => c.name)).toEqual(['Online · Turn 1', 'Friday night', 'Rowan · Turn 12']); // newest first
+    renameCopy(copy.id, 'Before the Arbiter');
+    expect(listCopies().find((c) => c.id === copy.id)?.name).toBe('Before the Arbiter');
+    deleteCopy(copy.id);
+    expect(listCopies().length).toBe(2);
+    expect(readCopy(listCopies()[0])).not.toBeNull();
+  });
+
+  it('caps the library and recognises exported files by kind', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    for (let i = 0; i < LIBRARY_MAX; i++) saveCopy('solo', s);
+    expect(saveCopy('solo', s)).toMatch(/up to/);
+    const m = newMatch([s, newGame('U', 'balanced', 'thunder', 'zapup', '#00f')]);
+    expect(saveKindOf(JSON.stringify(s))).toBe('solo');
+    expect(saveKindOf(JSON.stringify(m))).toBe('hotseat');
+    expect(saveKindOf(JSON.stringify({ ...m, owners: ['a', 'b'] }))).toBe('online');
+    expect(saveKindOf('{"nope":1}')).toBeNull();
   });
 });
 

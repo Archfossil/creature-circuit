@@ -9,7 +9,7 @@ import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, 
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle } from '../engine/state';
-import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, parseSaveFile, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, type Match } from '../engine/state';
+import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
@@ -113,11 +113,11 @@ export class App {
           saved && saved.phase !== 'over' ? h('button', { class: 'btn primary big', onclick: () => this.start(saved) }, `Continue · ${saved.trainer.name}, Turn ${saved.turn}`) : null,
           matchLive ? h('button', { class: 'btn primary big', onclick: () => this.startMatch(match!) }, `Continue hotseat · ${match!.players.length} trainers, Turn ${match!.players[match!.current].turn}`) : null,
           h('button', { class: `btn ${saved || matchLive ? 'ghost' : 'primary'} big`, onclick: async () => {
-            if (saved && saved.phase !== 'over' && !(await confirmSheet('Start a new journey?', `Your solo journey with ${saved.trainer.name} (Turn ${saved.turn}) will be replaced once the new one starts. Export it from Saves first to keep a copy.`, 'Start anyway'))) return;
+            if (saved && saved.phase !== 'over' && !(await confirmSheet('Start a new journey?', `Your solo journey with ${saved.trainer.name} (Turn ${saved.turn}) will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
             setActiveMatch(null); this.newGameWizard();
           } }, 'New Journey'),
           h('button', { class: 'btn ghost big', onclick: async () => {
-            if (matchLive && !(await confirmSheet('Start a new hotseat game?', `Your hotseat game with ${match!.players.map((p) => p.trainer.name).join(', ')} will be replaced once the new one starts. Export it from Saves first to keep a copy.`, 'Start anyway'))) return;
+            if (matchLive && !(await confirmSheet('Start a new hotseat game?', `Your hotseat game with ${match!.players.map((p) => p.trainer.name).join(', ')} will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
             this.hotseatSetup();
           } }, `👥 Hotseat (2–${MAX_PLAYERS} trainers)`),
           h('div', { class: 'row gap-s center' },
@@ -213,11 +213,15 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Save management (title screen)
   // ════════════════════════════════════════════════════════════
-  /** The solo journey and the hotseat game on this device: continue, export, import or delete each one. */
+  /**
+   * Save management: the three live autosaves (solo, hotseat, online) with Continue / Save a copy /
+   * Export / Delete, and the library of saved copies with Load / Export / Rename / Delete. Imported
+   * files go into the library.
+   */
   savesSheet() {
     const body = h('div', { class: 'saves' });
     const download = (name: string, data: unknown) => {
-      const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })), download: name });
+      const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })), download: name.replace(/[^\w.-]+/g, '-') });
       document.body.append(a); a.click(); a.remove();
     };
     const importFile = () => {
@@ -225,48 +229,115 @@ export class App {
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!file) return;
-        const parsed = parseSaveFile(await file.text());
-        if (!parsed) { toast('That file isn’t a Creature Circuit save.', 'bad'); return; }
-        const existing = parsed.kind === 'solo' ? load() : loadMatch();
-        if (existing && !(await confirmSheet('Replace your save?', parsed.kind === 'solo' ? 'This replaces your current solo journey.' : 'This replaces your current hotseat game.', 'Replace'))) return;
-        if (parsed.kind === 'solo') { setActiveMatch(null); save(parsed.save); } else saveMatch(parsed.match);
-        toast(parsed.kind === 'solo' ? `Imported ${parsed.save.trainer.name}’s journey.` : `Imported a hotseat game with ${parsed.match.players.length} trainers.`, 'good');
+        const text = await file.text();
+        const kind = saveKindOf(text);
+        if (!kind) { toast('That file isn’t a Creature Circuit save.', 'bad'); return; }
+        const r = saveCopy(kind, JSON.parse(text), file.name.replace(/\.json$/i, ''));
+        if (typeof r === 'string') { toast(r, 'bad', 5000); return; }
+        toast(`Imported “${r.name}” into your saved copies. Load it from the list.`, 'good', 4000);
         render();
-        this.title();
       };
       input.click();
+    };
+    const keepCopy = async (kind: SaveKind, data: GameState | Match) => {
+      const name = await this.askName('📌 Save a copy', defaultCopyName(kind, data));
+      if (name === null) return;
+      const r = saveCopy(kind, data, name);
+      if (typeof r === 'string') { toast(r, 'bad', 5000); return; }
+      toast(`Saved “${r.name}”.`, 'good');
+      render();
+    };
+    const loadCopy = async (c: SavedCopy) => {
+      const live = c.kind === 'solo' ? load() : c.kind === 'hotseat' ? loadMatch() : loadOnlineMatch();
+      const what = c.kind === 'solo' ? 'solo journey' : c.kind === 'hotseat' ? 'hotseat game' : 'saved online game';
+      if (live && !(await confirmSheet(`Load “${c.name}”?`, `This replaces your current ${what} (${describeSave(c.kind, live)}). Save a copy of it first if you want to keep it.`, 'Load'))) return;
+      const g = restoreCopy(c.id);
+      if (!g) { toast('That copy can’t be loaded (it may be from an older version, or storage is full).', 'bad', 5000); return; }
+      closeAllSheets();
+      if (g.kind === 'solo') { setActiveMatch(null); this.start(g.save); }
+      else if (g.kind === 'hotseat') void this.startMatch(g.match);
+      else { this.title(); this.onlineSheet(); toast('Loaded. Reopen it as host and share the new room code.', 'good', 5000); }
     };
     const render = () => {
       const solo = load();
       const match = loadMatch();
+      const online = loadOnlineMatch();
+      const copies = listCopies();
       const status = (p: GameState) => (p.phase === 'champion' ? '🏆 Champion' : p.phase === 'over' ? 'Season over' : p.phase === 'endgame' ? 'In the Circuit bracket' : `Turn ${p.turn}/100`);
       const card = (title: string, lines: (string | HTMLElement)[], actions: (HTMLElement | null)[]) =>
         h('div', { class: 'save-card' }, h('b', null, title), ...lines.map((l) => (typeof l === 'string' ? h('small', null, l) : l)), h('div', { class: 'row gap-s wrap' }, actions));
+      const seatsOf = (m: Match) => h('div', { class: 'seats' }, m.players.map((p, i) => h('span', { class: `seat ${i === m.current && stillPlaying(p) ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}` }, p.trainer.name)));
+      const kindIcon: Record<SaveKind, string> = { solo: '🧭 Solo', hotseat: '👥 Hotseat', online: '🌐 Online' };
       body.replaceChildren(
-        h('p', { class: 'small muted' }, 'Saves live in this browser. Export one to keep a backup or move it to another device; import it again from here.'),
+        h('p', { class: 'small muted' }, 'Your games autosave as you play. 📌 Save a copy keeps a snapshot you can load again later (also from ☰ Menu in game). Saves live in this browser: export one to back it up or move it to another device.'),
         h('h4', null, '🧭 Solo journey'),
         solo
           ? card(solo.trainer.name, [`${status(solo)} · ${NODE_BY_ID[solo.location]?.name ?? ''} · ${solo.merits.length}/8 Merits · ${solo.roster.length + solo.reserve.length} creatures`], [
             solo.phase !== 'over' && solo.phase !== 'champion' ? h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); this.start(solo); } }, 'Continue') : null,
+            h('button', { class: 'btn ghost sm', onclick: () => void keepCopy('solo', solo) }, '📌 Save a copy'),
             h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-${solo.trainer.name}-turn${solo.turn}.json`, solo) }, '⬇ Export'),
-            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete solo journey?', `${solo.trainer.name}’s journey (${status(solo)}) will be deleted permanently. Your hotseat game is not affected.`, 'Delete')) { clearSave(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
+            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete solo journey?', `${solo.trainer.name}’s journey (${status(solo)}) will be deleted. Saved copies and your other games are not affected.`, 'Delete')) { clearSave(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
           ])
-          : h('p', { class: 'small muted' }, 'No solo journey saved.'),
+          : h('p', { class: 'small muted' }, 'No solo journey in progress.'),
         h('h4', null, '👥 Hotseat game'),
         match
-          ? card(`${match.players.length} trainers`, [
-            h('div', { class: 'seats' }, match.players.map((p, i) => h('span', { class: `seat ${i === match.current && stillPlaying(p) ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}` }, p.trainer.name))),
-            match.players.map((p) => `${p.trainer.name}: ${status(p)}, ${p.merits.length}/8 Merits`).join(' · '),
-          ], [
+          ? card(`${match.players.length} trainers`, [seatsOf(match), match.players.map((p) => `${p.trainer.name}: ${status(p)}, ${p.merits.length}/8 Merits`).join(' · ')], [
             match.players.some(stillPlaying) ? h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); void this.startMatch(match); } }, 'Continue') : null,
+            h('button', { class: 'btn ghost sm', onclick: () => void keepCopy('hotseat', match) }, '📌 Save a copy'),
             h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-hotseat-${match.players.length}p-turn${match.players[match.current].turn}.json`, match) }, '⬇ Export'),
-            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete hotseat game?', `The game with ${match.players.map((p) => p.trainer.name).join(', ')} will be deleted permanently for every trainer. Your solo journey is not affected.`, 'Delete')) { clearMatch(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
+            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete hotseat game?', `The game with ${match.players.map((p) => p.trainer.name).join(', ')} will be deleted for every trainer. Saved copies and your other games are not affected.`, 'Delete')) { clearMatch(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
           ])
-          : h('p', { class: 'small muted' }, 'No hotseat game saved.'),
+          : h('p', { class: 'small muted' }, 'No hotseat game in progress.'),
+        h('h4', null, '🌐 Online game'),
+        online
+          ? card(`${online.players.length} trainers${online.code ? ` · room ${online.code}` : ''}`, [seatsOf(online), 'The last state this browser saw. Reopen it as host from 🌐 Online if its room has closed.'], [
+            h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); this.onlineSheet(); } }, '🌐 Online…'),
+            h('button', { class: 'btn ghost sm', onclick: () => void keepCopy('online', online) }, '📌 Save a copy'),
+            h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-online-${online.players.length}p-turn${online.players[online.current].turn}.json`, online) }, '⬇ Export'),
+            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Forget online game?', 'This browser forgets its copy of the online game. The room itself (and everyone else’s copy) is not affected.', 'Forget')) { clearOnlineMatch(); render(); } } }, '🗑 Forget'),
+          ])
+          : h('p', { class: 'small muted' }, 'No online game on this device.'),
+        h('h4', null, `🗂 Saved copies (${copies.length}/${LIBRARY_MAX})`),
+        copies.length ? h('div', { class: 'list' }, copies.map((c) => card(c.name, [
+          h('small', { class: 'muted' }, `${kindIcon[c.kind]} · saved ${new Date(c.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`), c.summary,
+        ], [
+          h('button', { class: 'btn primary sm', onclick: () => void loadCopy(c) }, '↺ Load'),
+          h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-${c.name}.json`, c.data) }, '⬇ Export'),
+          h('button', { class: 'btn ghost sm', onclick: async () => { const n = await this.askName('✏️ Rename', c.name); if (n) { renameCopy(c.id, n); render(); } } }, '✏️ Rename'),
+          h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet(`Delete “${c.name}”?`, 'This saved copy will be deleted permanently. Your games in progress are not affected.', 'Delete')) { deleteCopy(c.id); render(); } } }, '🗑 Delete'),
+        ]))) : h('p', { class: 'small muted' }, 'No saved copies yet. Use 📌 Save a copy above, or ☰ Menu → Save a copy while playing.'),
         h('div', { class: 'row end' }, h('button', { class: 'btn ghost', onclick: importFile }, '⬆ Import a save file…')));
     };
     render();
     openSheet('💾 Saves', body, { wide: true });
+  }
+
+  /** Ask for a short name (saved copies). Resolves null if cancelled. */
+  askName(title: string, initial: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      let done = false;
+      const input = h('input', { value: initial, maxlength: 40, style: 'width:100%;font-size:16px' }) as HTMLInputElement;
+      const finish = (v: string | null) => { if (done) return; done = true; close(); resolve(v); };
+      const close = openSheet(title, h('div', { class: 'stack gap-s' },
+        h('label', { class: 'field' }, h('span', null, 'Name'), input),
+        h('div', { class: 'row end gap-s' },
+          h('button', { class: 'btn ghost', onclick: () => finish(null) }, 'Cancel'),
+          h('button', { class: 'btn primary', onclick: () => finish(input.value.trim() || initial) }, 'Save'))), { onClose: () => { if (!done) { done = true; resolve(null); } } });
+      input.onkeydown = (e) => { if (e.key === 'Enter') finish(input.value.trim() || initial); };
+      setTimeout(() => { input.focus(); input.select(); }, 50);
+    });
+  }
+
+  /** ☰ Menu → Save a copy: snapshot the game being played (solo, hotseat or online). */
+  async saveCopyNow() {
+    const m = activeMatchOf();
+    const kind: SaveKind = this.online ? 'online' : m?.players.includes(this.s) ? 'hotseat' : 'solo';
+    const data = kind === 'solo' ? this.s : m;
+    if (!data) return;
+    const name = await this.askName('📌 Save a copy', defaultCopyName(kind, data));
+    if (name === null) return;
+    const r = saveCopy(kind, data, name);
+    if (typeof r === 'string') toast(r, 'bad', 5000); else toast(`Saved “${r.name}”. Load it any time from 💾 Saves on the title screen.`, 'good', 4000);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -699,7 +770,7 @@ export class App {
     if (!m) return;
     const others = m.players.filter((p) => p !== a);
     const close = openSheet('👥 Trainers', h('div', { class: 'list' },
-      h('p', { class: 'small muted' }, 'Send coins and items to anyone, anywhere (a courier carries them). Trading creatures and challenging to a duel need you both on the same spot.'),
+      h('p', { class: 'small muted' }, 'Gifts and coin or item trades reach anyone, anywhere (a courier carries them). Trading creatures and challenging to a duel need you both on the same spot.'),
       others.map((b) => {
         const here = I.sameSpot(a, b);
         const why = I.challengeProblem(a, b);
@@ -710,9 +781,9 @@ export class App {
             h('small', null, `${here ? '📍 Here with you' : `At ${NODE_BY_ID[b.location].name}`} · 🪙 ${b.coins} · ${b.merits.length}/8 Merits · ${b.roster.length + b.reserve.length} creatures`),
             h('div', { class: 'row gap-s wrap' },
               h('button', { class: 'btn ghost sm', onclick: () => { close(); this.giftSheet(b); } }, '📦 Send a gift'),
-              h('button', { class: 'btn ghost sm', disabled: !here, title: here ? '' : 'Meet on the same spot to trade', onclick: () => { close(); this.tradeSheet(b); } }, '🤝 Trade'),
+              h('button', { class: 'btn ghost sm', title: here ? 'Trade coins, items and creatures' : 'Trade coins and items by courier (meet on the same spot to trade creatures)', onclick: () => { close(); this.tradeSheet(b); } }, here ? '🤝 Trade' : '🤝 Trade items'),
               h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => { close(); this.challengeSheet(b); } }, '⚔️ Challenge · 1⚡')),
-            why && here ? h('small', { class: 'muted' }, why) : null));
+            why ? h('small', { class: 'muted' }, here ? why : `⚔️ Challenges and creature trades need you both on the same spot (${b.trainer.name} is at ${NODE_BY_ID[b.location].name}).`) : null));
       })), { wide: true });
   }
 
@@ -756,17 +827,22 @@ export class App {
     render();
   }
 
-  /** Propose a trade; the other trainer accepts or declines on the same device. */
+  /**
+   * Propose a trade; the other trainer accepts or declines. Coins and items trade at any distance (by
+   * courier); creatures only change hands when both trainers are on the same spot.
+   */
   tradeSheet(b: GameState) {
     const a = this.s;
     const give = I.emptyOffer(), want = I.emptyOffer();
+    const here = I.sameSpot(a, b);
     const body = h('div', { class: 'trade' });
     const render = () => {
       const err = I.offerIsEmpty(give) && I.offerIsEmpty(want) ? 'Add something to the trade.' : I.offerProblem(a, give, b, want) ?? I.offerProblem(b, want, a, give);
       body.replaceChildren(
+        here ? '' : h('p', { class: 'small muted' }, `${b.trainer.name} is at ${NODE_BY_ID[b.location].name}, so this trade goes by courier: coins and items only. Meet on the same spot to trade creatures.`),
         h('div', { class: 'trade-cols' },
-          h('div', null, h('h4', null, `You give ${b.trainer.name}`), this.offerEditor(a, give, render, true)),
-          h('div', null, h('h4', null, `You ask from ${b.trainer.name}`), this.offerEditor(b, want, render, true))),
+          h('div', null, h('h4', null, `You give ${b.trainer.name}`), this.offerEditor(a, give, render, here)),
+          h('div', null, h('h4', null, `You ask from ${b.trainer.name}`), this.offerEditor(b, want, render, here))),
         h('div', { class: 'row end gap' }, h('button', { class: 'btn primary', disabled: !!err, title: err ?? '', onclick: async () => {
           close();
           const summary = h('div', null, h('p', null, `${a.trainer.name} offers a trade:`), this.offerSummary(a, give, 'You get'), this.offerSummary(b, want, 'You give'));
@@ -1399,10 +1475,12 @@ export class App {
             h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name} (Enter)`))));
         (controls.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
       };
+      // the creatures on screen (a spectator's copy of the battle only tracks them through the events)
+      const shown = (si: 0 | 1) => b.sides[si].team.find((x) => x.uid === disp[si].uid) ?? activeOf(b.sides[si]);
       const showTypes = () => {
-        const me = activeOf(b.sides[0]), foe = activeOf(b.sides[1]);
+        const me = shown(0), foe = shown(1);
         const attack = [...new Set(me.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m.kind === 'elemental' && m.type).map((m) => m.type!))];
-        typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe) });
+        typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe), attackerName: ctx.watch ? nameOf(me) : undefined });
       };
       const onKey = (ev: KeyboardEvent) => {
         if (document.querySelector('.sheet-wrap')) return;
@@ -1411,6 +1489,7 @@ export class App {
           else if (ev.key === 'Enter') { ev.preventDefault(); const id = readoutFor; readoutFor = null; act({ kind: 'move', move: id }); }
           return;
         }
+        if (ctx.watch) { if (ev.key.toLowerCase() === 't') showTypes(); return; } // spectators: the type chart only
         if (!controls.querySelector('.move-grid')) return;
         const me = activeOf(b.sides[0]);
         const n = Number(ev.key);
@@ -1454,7 +1533,9 @@ export class App {
       if (ctx.watch) {
         // watching someone else's battle: play their rounds as they arrive
         say(ctx.intro);
-        controls.replaceChildren(h('div', { class: 'waiting' }, `👀 Watching ${s.trainer.name}’s battle`));
+        controls.replaceChildren(h('div', { class: 'row gap-s center wrap' },
+          h('div', { class: 'waiting' }, `👀 Watching ${s.trainer.name}’s battle`),
+          h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types')));
         void (async () => {
           for (;;) {
             const it = await ctx.watch!.next();
@@ -2271,6 +2352,7 @@ export class App {
       this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'Rules summary.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
+      tile('📌', 'Save a copy', 'Keep a named snapshot of this game to load later (💾 Saves on the title screen).', '', () => { close(); void this.saveCopyNow(); }),
       tile('🏠', 'Title Screen', 'Your game is autosaved.', '', () => { close(); this.title(); }),
       this.online ? tile('🚪', 'Leave online game', 'Go back to the title screen. You can rejoin with the room code.', '', () => { close(); this.leaveOnline(); })
         : tile('🗑️', 'Abandon Journey', activeMatchOf()?.players.includes(this.s) ? 'Delete this hotseat game (every trainer’s progress).' : 'Delete this save.', '', async () => { close(); await this.abandon(); })));
@@ -2383,9 +2465,10 @@ export class App {
   howToPlay(welcome = false) {
     openSheet(welcome ? `Welcome, ${this.s.trainer.name}!` : 'How to Play', h('div', { class: 'howto' },
       h('ol', null,
+        h('li', null, h('b', null, 'Saving: '), 'games autosave as you play. ☰ Menu → 📌 Save a copy keeps a named snapshot (solo, hotseat or online) that you can load again from 💾 Saves on the title screen, export or rename.'),
         h('li', null, h('b', null, 'Online: '), 'title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts. You watch other trainers’ turns live (moves, dice and battles), and a ping tells you when it’s your turn. While you wait you can unlock chart nodes and edit playbooks (🐾 My team) and look through your bag (🎒 My bag). Duels: you pick your own moves and your next creature after a knockout. The host can set a turn timer, skip a turn, or play one for someone who stepped away.'),
         h('li', null, h('b', null, 'Hotseat: '), 'up to six trainers can share this device (title screen → Hotseat). Each picks a unique colour; turns go in seat order with a pass-the-device screen between them. Everyone shares the map, the weather and the Legendaries, and you can see the other trainers’ minis on the map.'),
-        h('li', null, h('b', null, 'Trainers (hotseat): '), 'tap 👥 Trainers to send coins or items to anyone, or, when you share a spot, trade creatures or challenge them to a duel (they accept on the same device, and both of you pick your own moves each round, and who goes in after a knockout). Notes about gifts, trades and duels wait for each trainer at the start of their turn. Tap a name in the turn-order strip (top left) to find that trainer on the map.'),
+        h('li', null, h('b', null, 'Trainers (hotseat): '), 'tap 👥 Trainers to send or trade coins and items with anyone, anywhere, or, when you share a spot, trade creatures or challenge them to a duel (they accept on the same device, and both of you pick your own moves each round, and who goes in after a knockout). Notes about gifts, trades and duels wait for each trainer at the start of their turn. Tap a name in the turn-order strip (top left) to find that trainer on the map.'),
         h('li', null, h('b', null, 'Trainer style: '), 'chosen when you start: eight styles, each with a perk and a drawback (Wanderer, Ranger, Urbanite, Beast Whisperer, Merchant, Battle Master, Caretaker, Pathfinder). They change Initiative costs, stables, coins, recruiting, battle XP, camping or Morale.'),
         h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel, or just double-tap it (you can turn this off in Settings).'),
         h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),

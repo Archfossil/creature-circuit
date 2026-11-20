@@ -1,6 +1,6 @@
-// Hotseat trainer interactions: gifts (coins and items, sent by courier from anywhere), creature
-// trades (both trainers on the same node), and battle challenges (same node; the challenged trainer
-// must accept). All pure game logic; the UI handles asking each trainer.
+// Trainer interactions (hotseat and online): gifts and coin/item trades (sent by courier from anywhere),
+// creature trades (both trainers on the same node), and battle challenges (same node; the challenged
+// trainer must accept). All pure game logic; the UI handles asking each trainer.
 import type { GameState } from './state';
 import { log, stillPlaying } from './state';
 import type { CreatureInst } from './creature';

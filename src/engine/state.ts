@@ -185,6 +185,85 @@ export function parseSaveFile(text: string): { kind: 'solo'; save: GameState } |
 }
 
 export function clearMatch() { try { localStorage.removeItem(MATCH_KEY); } catch { /* ignore */ } activeMatch = null; }
+
+// ── Saved copies (the save library) ─────────────────────────────
+// Besides the three live autosave slots (solo, hotseat, online), any number of named snapshots can be
+// kept in this browser and loaded back into their slot later.
+export type SaveKind = 'solo' | 'hotseat' | 'online';
+export interface SavedCopy { id: string; name: string; kind: SaveKind; savedAt: number; summary: string; data: GameState | Match }
+const LIBRARY_KEY = 'creature-circuit-library-v1';
+/** How many saved copies one browser keeps (localStorage holds about 5 MB). */
+export const LIBRARY_MAX = 30;
+
+export function listCopies(): SavedCopy[] {
+  try { const raw = localStorage.getItem(LIBRARY_KEY); return raw ? (JSON.parse(raw) as SavedCopy[]) : []; } catch { return []; }
+}
+function writeCopies(list: SavedCopy[]): string | null {
+  try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(list)); return null; } catch { return 'This browser’s storage is full. Delete or export some saved copies first.'; }
+}
+
+/** A one-line description of a game, for save lists. */
+export function describeSave(kind: SaveKind, data: GameState | Match): string {
+  if (kind === 'solo') {
+    const s = data as GameState;
+    return `${s.trainer.name} · Turn ${s.turn}/100 · ${s.merits.length}/8 Merits · ${s.roster.length + s.reserve.length} creatures`;
+  }
+  const m = data as Match;
+  return `${m.players.map((p) => p.trainer.name).join(', ')} · Turn ${m.players[m.current]?.turn ?? 1} · ${m.players[m.current]?.trainer.name ?? ''} to play`;
+}
+
+/** Keep a named copy of a game. Returns the copy, or an error message (library full, storage full). */
+export function saveCopy(kind: SaveKind, data: GameState | Match, name?: string): SavedCopy | string {
+  const list = listCopies();
+  if (list.length >= LIBRARY_MAX) return `You can keep up to ${LIBRARY_MAX} saved copies. Delete one first.`;
+  const copy: SavedCopy = {
+    id: Math.random().toString(36).slice(2) + Date.now().toString(36), kind, savedAt: Date.now(),
+    name: (name ?? '').trim().slice(0, 40) || defaultCopyName(kind, data),
+    summary: describeSave(kind, data), data: JSON.parse(JSON.stringify(data)),
+  };
+  return writeCopies([copy, ...list]) ?? copy;
+}
+export function defaultCopyName(kind: SaveKind, data: GameState | Match) {
+  const label = kind === 'solo' ? (data as GameState).trainer.name : kind === 'hotseat' ? 'Hotseat' : 'Online';
+  const turn = kind === 'solo' ? (data as GameState).turn : (data as Match).players[(data as Match).current]?.turn ?? 1;
+  return `${label} · Turn ${turn}`;
+}
+export function renameCopy(id: string, name: string) {
+  const list = listCopies();
+  const c = list.find((x) => x.id === id);
+  if (c && name.trim()) { c.name = name.trim().slice(0, 40); writeCopies(list); }
+}
+export function deleteCopy(id: string) { writeCopies(listCopies().filter((x) => x.id !== id)); }
+
+/** The game in a saved copy, migrated to the current version (null if it can't be read any more). */
+export function readCopy(c: SavedCopy): { kind: 'solo'; save: GameState } | { kind: 'hotseat' | 'online'; match: Match } | null {
+  const parsed = parseSaveFile(JSON.stringify(c.data));
+  if (!parsed) return null;
+  if (parsed.kind === 'solo') return c.kind === 'solo' ? parsed : null;
+  if (c.kind === 'solo') return null;
+  const extra = c.data as Match; // online copies keep their seat owners, room code and timer
+  return { kind: c.kind, match: { ...parsed.match, owners: extra.owners, code: extra.code, turnSeconds: extra.turnSeconds } };
+}
+
+/** Load a saved copy into its live slot (replacing what's there). Returns what was loaded, or null. */
+export function restoreCopy(id: string) {
+  const c = listCopies().find((x) => x.id === id);
+  const g = c ? readCopy(c) : null;
+  if (!g) return null;
+  try {
+    if (g.kind === 'solo') localStorage.setItem(KEY, JSON.stringify(g.save));
+    else localStorage.setItem(g.kind === 'online' ? 'creature-circuit-online-v1' : MATCH_KEY, JSON.stringify(g.match));
+  } catch { return null; }
+  return g;
+}
+
+/** What kind of game an exported file holds: online matches carry their seat owners. */
+export function saveKindOf(text: string): SaveKind | null {
+  const parsed = parseSaveFile(text);
+  if (!parsed) return null;
+  if (parsed.kind === 'solo') return 'solo';
+  try { return Array.isArray(JSON.parse(text).owners) ? 'online' : 'hotseat'; } catch { return 'hotseat'; }
+}
 export function load(): GameState | null {
   try {
     const raw = localStorage.getItem(KEY);
