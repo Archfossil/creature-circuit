@@ -10,12 +10,13 @@ import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle } from '../engine/state';
 import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, parseSaveFile, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, type Match } from '../engine/state';
+import { applyEdit, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
-import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
@@ -360,6 +361,7 @@ export class App {
       case 'feed': await this.onFeed(m.item); break;
       case 'ask': this.answerAsk(m); break;
       case 'do-skip': await this.skipFor(m.seat, m.reason); break;
+      case 'edit': this.applyRemoteEdit(m.seat, m.edit); break;
       case 'do-play': toast(`You’re playing ${activeMatchOf()?.players[m.seat]?.trainer.name ?? 'their'}’s turn for them.`, 'info', 4000); break;
       case 'error':
         toast(m.text, 'bad', 5000);
@@ -510,9 +512,45 @@ export class App {
   }
   stopTitleFlash() { if (this.titleFlash) { clearInterval(this.titleFlash); this.titleFlash = null; document.title = document.title.replace(/^🔔 Your turn! · /, ''); } }
 
+  /** We run the current turn: another trainer tended their creatures from their own browser. */
+  applyRemoteEdit(seat: number, edit: CreatureEdit) {
+    const m = activeMatchOf();
+    const s = m?.players[seat];
+    if (!m || !s || !applyEdit(s, edit)) return;
+    saveMatch(m); // and pushed to everyone if we're playing
+    if (s === this.s) this.renderHud();
+  }
+
+  /** My seat in an online match (or -1). */
+  mySeat(): number { const m = activeMatchOf(); return this.online && m?.owners ? m.owners.indexOf(this.online.id) : -1; }
+
+  /** While watching: tend my own creatures. The change shows here at once and is sent to the trainer playing. */
+  showMyCreature(c: CreatureInst) {
+    const seat = this.mySeat();
+    const net = this.online;
+    if (seat < 0 || !net) { this.showCreature(c, true); return; }
+    openSheet(nameOf(c), creatureCard(c, { editable: true, onEdit: (edit) => net.send({ type: 'edit', seat, edit }) }), { wide: true, cls: 'card-sheet' });
+  }
+
   /** Another trainer's trade or duel offer, answered from this browser. */
   answerAsk(m: Extract<ServerMsg, { type: 'ask' }>) {
     const net = this.online!;
+    const pick = m.pick as ({ kind: 'duel'; round: number } & FoeOptions) | undefined;
+    const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
+    if (send?.kind === 'duel-send') {
+      if (document.hidden && settings().turnPing) sfx.ping();
+      const close = openSheet(`⚔️ Your next creature against ${m.from}`, h('div', null,
+        h('p', { class: 'small muted' }, 'Choose within a minute, or the next in line goes in.'),
+        this.duelSendPicker(send.down, send.vs, send.options, (i) => { close(); net.send({ type: 'answer', id: m.id, yes: true, value: i }); })), { noClose: true, wide: true });
+      return;
+    }
+    if (pick?.kind === 'duel') {
+      if (document.hidden && settings().turnPing) sfx.ping();
+      const close = openSheet(`⚔️ Your move against ${m.from}`, h('div', null,
+        h('p', { class: 'small muted' }, 'Choose within a minute, or your creature acts on its own instincts.'),
+        this.duelPicker(pick, pick.round, (act) => { close(); net.send({ type: 'answer', id: m.id, yes: true, value: act }); })), { noClose: true, wide: true });
+      return;
+    }
     if (document.hidden && settings().turnPing) sfx.ping();
     const close = openSheet(m.title, h('div', null, h('p', null, m.text),
       h('div', { class: 'row gap center' },
@@ -758,21 +796,76 @@ export class App {
     const max = I.maxWager(a, b);
     const wagers = [0, 5, 10, 20].filter((w) => w <= max);
     const close = openSheet(`⚔️ Challenge ${b.trainer.name}`, h('div', null,
-      h('p', null, `Duel ${b.trainer.name} here at ${NODE_BY_ID[a.location].name}. You command your team; ${b.trainer.name}’s creatures fight on their own instincts. Every creature that fights earns trainer-battle XP. Costs 1 Initiative.`),
+      h('p', null, `Duel ${b.trainer.name} here at ${NODE_BY_ID[a.location].name}. You each command your own creatures: every round you pick your move, then ${b.trainer.name} picks theirs in secret. Every creature that fights earns trainer-battle XP. Costs 1 Initiative.`),
       h('p', { class: 'small muted' }, 'Choose a wager (the winner takes it). A team that’s fully knocked out is helped home to rest, without losing coins.'),
       h('div', { class: 'row gap-s wrap' }, wagers.map((w) => h('button', { class: 'btn primary', onclick: async () => {
         close();
-        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 🪙 ${w}` : ', just for honour'}. Your active team will fight on its own instincts.`), 'Accept the duel', 'Decline');
+        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 🪙 ${w}` : ', just for honour'}. You’ll pick your creatures’ moves each round.`), 'Accept the duel', 'Decline');
         await this.backTo(a);
         if (!ok) { toast(`${b.trainer.name} declined the challenge.`, 'info'); return; }
         const battle = I.startChallenge(a, b);
         if (!battle) { toast(I.challengeProblem(a, b) ?? 'The duel can’t start.', 'bad'); return; }
-        await this.runBattle(battle, { kind: 'rival', intro: `${b.trainer.name} accepts your challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look) });
+        await this.runBattle(battle, { kind: 'rival', intro: `${b.trainer.name} accepts your challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
         for (const t of I.settleChallenge(a, b, battle, w)) toast(t, 'info', 4000);
         save(a);
         this.world.setPawnAt(a.location); this.world.focus(a.location, true);
         this.showRivals(); this.renderHud();
       } }, w ? `Wager 🪙 ${w}` : 'No wager')))));
+  }
+
+  /**
+   * Two-player duels: the challenged trainer chooses their creature's action each round. Hotseat:
+   * the device is passed to them (choices stay secret) and back. Online: they pick in their own
+   * browser; if they don't answer within a minute, their creature acts on its own instincts.
+   */
+  async duelPick(a: GameState, b: GameState, battle: Battle): Promise<Action | undefined> {
+    const opts = foeOptions(battle);
+    const m = activeMatchOf();
+    if (this.online && m) {
+      return this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts });
+    }
+    const pickIt = await new Promise<Action>((resolve) => {
+      const close = openSheet(`⚔️ ${b.trainer.name}’s move`, h('div', { class: 'handoff', style: `--tc:${b.trainer.color}` },
+        h('p', { class: 'small muted' }, `Pass the device to ${b.trainer.name}. ${a.trainer.name}, no peeking: your move is locked in.`),
+        this.duelPicker(opts, battle.round + 1, (act) => { close(); resolve(act); })), { noClose: true, wide: true });
+    });
+    await this.backTo(a);
+    return pickIt;
+  }
+
+  /** Duels: after a KO, the challenged trainer picks their next creature (hotseat hand-off or their own browser). */
+  async duelSendPick(a: GameState, b: GameState, battle: Battle): Promise<number | undefined> {
+    const team = battle.sides[1].team;
+    const options = foeReplacements(battle).map((i) => ({ i, c: JSON.parse(JSON.stringify(team[i])) as CreatureInst }));
+    const vs = nameOf(activeOf(battle.sides[0]));
+    const m = activeMatchOf();
+    if (this.online && m) {
+      return this.online.pick<number>(m.players.indexOf(b), a.trainer.name, { kind: 'duel-send', down: nameOf(activeOf(battle.sides[1])), vs, options });
+    }
+    const idx = await new Promise<number>((resolve) => {
+      const close = openSheet(`⚔️ ${b.trainer.name}’s next creature`, h('div', { class: 'handoff', style: `--tc:${b.trainer.color}` },
+        h('p', { class: 'small muted' }, `Pass the device to ${b.trainer.name}. ${a.trainer.name}, no peeking.`),
+        this.duelSendPicker(nameOf(activeOf(battle.sides[1])), vs, options, (i) => { close(); resolve(i); })), { noClose: true, wide: true });
+    });
+    await this.backTo(a);
+    return idx;
+  }
+
+  /** The defender's healthy creatures to send in after a KO. */
+  duelSendPicker(down: string, vs: string, options: { i: number; c: CreatureInst }[], done: (i: number) => void): HTMLElement {
+    return h('div', { class: 'duel-picker' },
+      h('p', null, h('b', null, down), ` is knocked out! Who faces `, h('b', null, vs), ' next?'),
+      h('div', { class: 'list' }, options.map((o) => miniCard(o.c, { onClick: () => done(o.i) }))));
+  }
+
+  /** The defender's choices in a duel round: their moves, Catch Breath, and swaps. */
+  duelPicker(o: FoeOptions, round: number, done: (a: Action) => void): HTMLElement {
+    return h('div', { class: 'duel-picker' },
+      h('p', null, `Round ${round}: what will `, h('b', null, o.name), ' do?'),
+      h('div', { class: 'move-grid' }, o.moves.map((id) => moveCard(MOVE_BY_ID[id], { compact: true, vs: o.vs, onClick: () => done({ kind: 'move', move: id }) }))),
+      h('div', { class: 'row gap-s wrap center' },
+        h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
+        o.swaps.map((sw) => h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'swap', to: sw.i }) }, `🔁 Swap to ${sw.name}`))));
   }
 
   /** Hand the device to another trainer for a yes/no answer (a trade or a challenge). */
@@ -819,7 +912,7 @@ export class App {
   /** Other hotseat trainers still on the board, drawn as minis on the map. */
   showRivals() {
     const m = activeMatchOf();
-    this.world.setRivals(m ? m.players.filter((p) => p !== this.s && stillPlaying(p)).map((p) => ({ look: playerLook(p.trainer.name, p.trainer.color, p.trainer.look), nodeId: p.location })) : []);
+    this.world.setRivals(m ? m.players.filter((p) => p !== this.s && stillPlaying(p)).map((p) => ({ look: playerLook(p.trainer.name, p.trainer.color, p.trainer.look), nodeId: p.location, id: p.trainer.name })) : []);
   }
 
   /** Everyone has finished: final standings for the hotseat season. */
@@ -843,6 +936,16 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // HUD
   // ════════════════════════════════════════════════════════════
+  /** Turn-order chip tapped: glide the map to that trainer and light them up in their colour. */
+  spotlightTrainer(p: GameState) {
+    if (this.engine.view !== this.world) return; // not while a battle is on screen
+    const pos = p === this.s ? this.world.trainerPos() : this.world.trainerPos(p.trainer.name) ?? this.world.pawnPos(p.location);
+    if (!pos) return;
+    this.world.focusPos(pos);
+    this.world.spotlight(pos, p.trainer.color);
+    toast(`${p.trainer.name}${p === this.s ? ' (now playing)' : ''} · ${NODE_BY_ID[p.location]?.name ?? ''}`, 'info', 2000);
+  }
+
   renderHud() {
     const s = this.s;
     const node = NODE_BY_ID[s.location];
@@ -882,8 +985,9 @@ export class App {
     const eventPill = ev ? h('button', { class: 'event-pill', onclick: () => this.eventFlow(), title: 'Answer this event before ending your turn' },
       h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('small', null, 'Event waiting'), h('b', null, ev.title))) : null;
     const m = activeMatchOf();
-    const seats = m ? h('div', { class: 'seats', title: 'Turn order' }, m.players.map((p) => h('span', {
+    const seats = m ? h('div', { class: 'seats', title: 'Turn order: tap a trainer to find them on the map' }, m.players.map((p) => h('button', {
       class: `seat ${p === s ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}`,
+      title: `Show ${p.trainer.name} on the map (${NODE_BY_ID[p.location]?.name ?? ''})`, onclick: () => this.spotlightTrainer(p),
     }, p.trainer.name, p.phase === 'champion' ? ' 🏆' : ''))) : null;
     this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
@@ -932,8 +1036,12 @@ export class App {
     const mySeat = m?.owners?.indexOf(net.id) ?? -1;
     const me = mySeat >= 0 ? m!.players[mySeat] : null;
     const out: HTMLElement[] = [h('div', { class: 'watch-label', style: `--tc:${cur?.trainer.color ?? '#999'}` }, h('span', null, '👀 ', h('b', null, cur?.trainer.name ?? '…'), '’s turn'))];
-    if (me) out.push(h('button', { class: 'act', onclick: () => openSheet('Your team', h('div', { class: 'list' }, [...me.roster, ...me.reserve].map((c) => miniCard(c, { onClick: () => this.showCreature(c, true) })))) },
+    if (me) out.push(h('button', { class: 'act', title: 'Unlock chart nodes and edit playbooks while you wait', onclick: () => openSheet('Your team', h('div', null,
+        h('p', { class: 'small muted' }, 'While you wait you can unlock chart nodes and edit playbooks. Changes go to the shared game right away.'),
+        h('div', { class: 'list' }, [...me.roster, ...me.reserve].map((c) => miniCard(c, { onClick: () => this.showMyCreature(c) }))))) },
       h('span', { class: 'act-ico' }, '🐾'), h('span', { class: 'act-lbl' }, 'My team')));
+    if (me) out.push(h('button', { class: 'act', title: 'Look through your bag (items can be used on your turn)', onclick: () => this.bagSheet(me, true) },
+      h('span', { class: 'act-ico' }, '🎒'), h('span', { class: 'act-lbl' }, 'My bag')));
     if (net.isHost && cur) {
       out.push(h('button', { class: 'act', title: `End ${cur.trainer.name}’s turn now`, onclick: async () => { if (await confirmSheet('Skip this turn?', `${cur.trainer.name}’s turn ends now, as if they pressed End Turn.`, 'Skip turn')) net.send({ type: 'host-skip' }); } },
         h('span', { class: 'act-ico' }, '⏭️'), h('span', { class: 'act-lbl' }, 'Skip turn')));
@@ -1100,7 +1208,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; rivalLook?: TrainerLook; watch?: AsyncQueue<FeedItem> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; rivalLook?: TrainerLook; watch?: AsyncQueue<FeedItem>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -1246,6 +1354,7 @@ export class App {
       }
     };
 
+    if (ctx.duelSend) b.foeChooses = true;
     say(ctx.intro);
     await wait(700);
     // round loop
@@ -1253,6 +1362,7 @@ export class App {
       const showControls = () => {
         $('.rnd', header).textContent = String(b.round + 1);
         if (b.over) { finish(b.over); return; }
+        if (b.foeNeedSwap) { void foeReplace(); return; }
         if (b.needSwap) { forcedSwap(); return; }
         const me = activeOf(b.sides[0]);
         say(`What will ${nameOf(me)} do?`);
@@ -1313,8 +1423,10 @@ export class App {
       addEventListener('keydown', onKey);
       const finish = (r: Battle['over']) => { removeEventListener('keydown', onKey); resolve(r); };
       const act = async (a: Parameters<typeof resolveRound>[1]) => {
-        controls.replaceChildren(h('div', { class: 'waiting' }, '…'));
-        const ev = resolveRound(b, a);
+        controls.replaceChildren(h('div', { class: 'waiting' }, ctx.duel ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
+        // two-player duel: the other trainer picks their creature's action too
+        const foe = ctx.duel ? await ctx.duel(b) : undefined;
+        const ev = resolveRound(b, a, foe);
         await play(ev);
         showControls();
       };
@@ -1325,6 +1437,15 @@ export class App {
           h('div', { class: 'list' }, b.sides[0].team.map((c, i) => c.ko || c === cur ? null : h('div', { class: 'swap-row' },
             miniCard(c, { onClick: () => { close(); act({ kind: 'swap', to: i }); } }),
             h('small', null, '🔁 ', speciesOf(c).affinity && h('b', null, AFFINITY_NAME(speciesOf(c).affinity)), ` · bond ${c.affinity[cur.uid] ?? 0}`))))));
+      };
+      // two-player duel: the defender picks who replaces their knocked-out creature
+      const foeReplace = async () => {
+        const many = foeReplacements(b).length > 1;
+        say(`${b.sides[1].name} is choosing their next creature…`, 'info');
+        controls.replaceChildren(h('div', { class: 'waiting' }, many ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
+        const idx = many && ctx.duelSend ? await ctx.duelSend(b) : undefined;
+        await play(foeSendIn(b, idx ?? -1));
+        showControls();
       };
       const forcedSwap = () => {
         say('Choose your next creature!', 'bad');
@@ -1403,7 +1524,7 @@ export class App {
               done = true; close();
               const r = W.attemptRecruit(s, wild, totem, chosen);
               await rollDice('Offering', r.dice.map((v) => ({ sides: 6, value: v, tone: r.success ? 'good' : 'bad' })), `${r.dice[0]} + ${r.dice[1]} ${fmt(r.mods)} = ${r.total} vs ${r.need}`, 700);
-              if (r.success) { toast(`${sp.name} embraced your totem and joined you!`, 'good', 3500); if (s.roster.length >= 3 && !s.roster.includes(wild)) toast('Your active team is full — it rests in its totem (swap at a stable).', 'info', 4000); }
+              if (r.success) { toast(`${sp.name} embraced your totem and joined you!`, 'good', 3500); if (s.roster.length >= 3 && !s.roster.includes(wild)) toast('Your active team is full — it rests in its totem (swap it in for free at any city or town).', 'info', 4000); }
               else toast(`${sp.name} refused the offering and slipped away.`, 'bad', 3000);
               resolve();
             } }, 'Make offering')));
@@ -1429,8 +1550,9 @@ export class App {
         h('div', null, h('h3', null, c.name), h('small', null, `Inspired by ${c.park} · ${TYPE_LABEL[c.type]} City${s.trainer.home === id ? ' · 🏠 Home' : ''}`), h('p', { class: 'small' }, c.blurb))),
       h('div', { class: 'tiles' },
         tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.trainer.style === 'balanced' ? ' (doubled — a Wanderer is at home anywhere)' : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
+        this.swapTile(),
         tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
-        tile('🪵', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
+        tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
         tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
         c.arenaNode
           ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market, or a creature that can Sail).`, '', () => {}, true)
@@ -1468,9 +1590,18 @@ export class App {
     toast(city ? `Your team devours the ${city.hotpot.name}${r.advanced ? ' (home special!)' : ''}. Fully restored!` : 'Your team rests up at the town stable. Fully restored!', 'good', 3500);
     save(this.s);
     this.renderHud();
-    if (this.s.reserve.length) this.rosterManager();
   }
 
+  /** City / town menu tile: swap creatures in and out of totems. Free, any time you're in a city or town. */
+  swapTile(): HTMLElement {
+    const s = this.s;
+    const none = !s.reserve.length && s.roster.length <= 1;
+    return tile('🔄', 'Swap Team', s.reserve.length
+      ? `Swap creatures between your active team and your totems (${s.reserve.length} resting). Free, any time you’re in a city or town.`
+      : 'No creatures resting in totems yet. You can still send active ones to rest here.', '0⚡', () => this.rosterManager(), none);
+  }
+
+  /** Swap creatures between the active team and totems. Free in any city or town (no Stable visit needed). */
   rosterManager() {
     const s = this.s;
     let pick: string | null = null;
@@ -1489,7 +1620,7 @@ export class App {
         } }))),
         s.roster.length > 1 ? h('div', { class: 'row end' }, h('button', { class: 'btn ghost sm', disabled: !pick, onclick: () => { const c = s.roster.find((x) => x.uid === pick); if (c) { s.roster = s.roster.filter((x) => x !== c); s.reserve.push(c); if (s.following === c.uid) s.following = s.roster[0].uid; pick = null; save(s); this.renderHud(); render(); } } }, 'Send selected to rest')) : '');
     };
-    openSheet('Stable · Manage Team', body, { wide: true });
+    openSheet('🔄 Swap Team', body, { wide: true });
     render();
   }
 
@@ -1608,6 +1739,7 @@ export class App {
       h('p', null, t.blurb),
       h('div', { class: 'tiles' },
         tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', `${W.stableCost(s)}⚡`, () => this.stable()),
+        this.swapTile(),
         tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', '0⚡', () => this.market(true)),
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
@@ -1759,7 +1891,7 @@ export class App {
     const s = this.s;
     const body = h('div', null,
       h('div', { class: 'list' }, s.roster.map((c) => miniCard(c, { badge: c.uid === s.following ? 'Following' : undefined, onClick: () => this.showCreature(c) }))),
-      s.reserve.length ? [h('h4', null, `Resting in totems (${s.reserve.length})`), h('div', { class: 'list' }, s.reserve.map((c) => miniCard(c, { onClick: () => this.showCreature(c) }))), h('p', { class: 'small muted' }, 'Swap your active team at any city Stable.')] : null);
+      s.reserve.length ? [h('h4', null, `Resting in totems (${s.reserve.length})`), h('div', { class: 'list' }, s.reserve.map((c) => miniCard(c, { onClick: () => this.showCreature(c) }))), h('p', { class: 'small muted' }, 'Swap your active team for free in any city or town (🔄 Swap Team).')] : null);
     if (s.training?.length) body.append(h('h4', null, `🥋 At Battle School (${s.training.length})`),
       h('p', { class: 'small muted' }, s.training.map((t) => { const p = W.trainingProgress(s, t); return `${nameOf(t.creature)} at ${NODE_BY_ID[t.school].name}: ${p.done ? 'finished, ready to pick up' : `${p.xp}/${t.xp} XP, ${t.turns - p.elapsed} turns to go`}`; }).join(' · ')));
     openSheet('Your Team', body, { wide: true });
@@ -1816,8 +1948,8 @@ export class App {
     });
   }
 
-  bagSheet() {
-    const s = this.s;
+  /** The bag. `readOnly` (online, while someone else plays): look but don't use. */
+  bagSheet(s: GameState = this.s, readOnly = false) {
     const body = h('div');
     const render = () => {
       const groups: Record<string, string[]> = { restore: [], treat: [], charm: [], totem: [], material: [], key: [] };
@@ -1830,9 +1962,10 @@ export class App {
             const it = itemInfo(id);
             const usable = ['restore', 'treat', 'charm'].includes(it.kind);
             return h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, it.icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', s.inventory[id]), h('small', null, it.text), it.kind === 'material' ? materialDetail(it) : null),
-              usable ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null);
+              usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null);
           })))),
-        Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '');
+        Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
+        readOnly ? h('p', { class: 'small muted' }, 'Items can be used on your turn.') : '');
     };
     openSheet('Bag', body, { wide: true });
     render();
@@ -2250,9 +2383,9 @@ export class App {
   howToPlay(welcome = false) {
     openSheet(welcome ? `Welcome, ${this.s.trainer.name}!` : 'How to Play', h('div', { class: 'howto' },
       h('ol', null,
-        h('li', null, h('b', null, 'Online: '), 'title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts. You watch other trainers’ turns live (moves, dice and battles), and a ping tells you when it’s your turn. The host can set a turn timer, skip a turn, or play one for someone who stepped away.'),
+        h('li', null, h('b', null, 'Online: '), 'title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts. You watch other trainers’ turns live (moves, dice and battles), and a ping tells you when it’s your turn. While you wait you can unlock chart nodes and edit playbooks (🐾 My team) and look through your bag (🎒 My bag). Duels: you pick your own moves and your next creature after a knockout. The host can set a turn timer, skip a turn, or play one for someone who stepped away.'),
         h('li', null, h('b', null, 'Hotseat: '), 'up to six trainers can share this device (title screen → Hotseat). Each picks a unique colour; turns go in seat order with a pass-the-device screen between them. Everyone shares the map, the weather and the Legendaries, and you can see the other trainers’ minis on the map.'),
-        h('li', null, h('b', null, 'Trainers (hotseat): '), 'tap 👥 Trainers to send coins or items to anyone, or, when you share a spot, trade creatures or challenge them to a duel (they accept on the same device). Notes about gifts, trades and duels wait for each trainer at the start of their turn.'),
+        h('li', null, h('b', null, 'Trainers (hotseat): '), 'tap 👥 Trainers to send coins or items to anyone, or, when you share a spot, trade creatures or challenge them to a duel (they accept on the same device, and both of you pick your own moves each round, and who goes in after a knockout). Notes about gifts, trades and duels wait for each trainer at the start of their turn. Tap a name in the turn-order strip (top left) to find that trainer on the map.'),
         h('li', null, h('b', null, 'Trainer style: '), 'chosen when you start: eight styles, each with a perk and a drawback (Wanderer, Ranger, Urbanite, Beast Whisperer, Merchant, Battle Master, Caretaker, Pathfinder). They change Initiative costs, stables, coins, recruiting, battle XP, camping or Morale.'),
         h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel, or just double-tap it (you can turn this off in Settings).'),
         h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),
@@ -2264,7 +2397,7 @@ export class App {
         h('li', null, h('b', null, 'Recruit: '), 'defeat a wild creature, then offer a totem plus up to 2 offerings. Roll 2d6 + bonuses vs its Recruitment Threshold. Each material appeals to certain types (shown in your Bag).'),
         h('li', null, h('b', null, 'Creature Codex: '), 'every creature you meet in the wild or in a trainer\u2019s team is recorded. Its page lists the nodes to explore for it (or its earlier stages) and its favorite offerings. You can carve an Effigy of any creature in your Codex.'),
         h('li', null, h('b', null, 'Grow: '), 'every creature that fights earns XP when the battle ends, win or lose, and knocking out a foe earns a bonus (running away earns nothing). Every 10 XP is a level and a point to spend on the skill tree on the back of the creature\'s index card. A node opens once every node linked above it is bought. Evolving needs the whole center path; side branches are optional but are left behind when it evolves.'),
-        h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit.'),
+        h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit. 🔄 Swap Team (free, in any city or town) trades creatures between your active team and your totems.'),
         h('li', null, h('b', null, 'Events: '), 'from the second turn on, each turn starts with something happening on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
         h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets cost no Initiative.'),
         h('li', null, h('b', null, 'Morale & Loyalty: '), 'happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good. Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty. Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0, so release them at the Research Facility before then for coins. Tap Morale or Loyalty on a card for details.'),

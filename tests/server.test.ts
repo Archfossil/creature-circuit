@@ -77,6 +77,14 @@ describe('online server', () => {
     expect(started.controller).toBe('host-a'); // seat 0 belongs to the host
     await b.wait((m) => m.type === 'state');
 
+    // a waiting trainer tends their own creatures: the edit goes to whoever runs the turn
+    b.send({ type: 'edit', seat: 1, edit: { uid: 'x1', op: 'unlock', node: 'a' } });
+    expect((await a.wait((m) => m.type === 'edit')).edit).toEqual({ uid: 'x1', op: 'unlock', node: 'a' });
+    b.send({ type: 'edit', seat: 0, edit: { uid: 'x1', op: 'unlock', node: 'a' } }); // not b's seat: ignored
+    a.send({ type: 'feed', item: { kind: 'toast', text: 'marker' } });
+    await b.wait((m) => m.type === 'feed' && (m.item as { text: string }).text === 'marker');
+    expect(a.inbox.some((m) => m.type === 'edit')).toBe(false);
+
     // only the controller's pushes count; a push that moves the turn hands control to seat 1
     b.send({ type: 'state', match: match(1) });
     a.send({ type: 'feed', item: { kind: 'toast', text: 'hello' } });
@@ -91,6 +99,13 @@ describe('online server', () => {
     expect(asked.title).toBe('Trade?');
     a.send({ type: 'answer', id: 'q1', yes: true });
     expect((await b.wait((m) => m.type === 'answer')).yes).toBe(true);
+
+    // a duel pick: the defender's chosen action comes back as the answer's value
+    b.send({ type: 'ask', id: 'q2', seat: 0, from: 'Bo', title: '', text: '', yes: '', no: '', pick: { kind: 'duel', round: 1, moves: ['tackle'] } });
+    const pickAsk = await a.wait((m) => m.type === 'ask' && m.id === 'q2');
+    expect(pickAsk.pick).toMatchObject({ kind: 'duel' });
+    a.send({ type: 'answer', id: 'q2', yes: true, value: { kind: 'move', move: 'tackle' } });
+    expect((await b.wait((m) => m.type === 'answer' && m.id === 'q2')).value).toEqual({ kind: 'move', move: 'tackle' });
 
     // host skips Bo's turn: the host gets "do-skip" and control
     a.send({ type: 'host-skip' });

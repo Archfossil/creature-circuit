@@ -771,7 +771,7 @@ div.perk { cursor: default; }
 .swatch.taken { opacity: 0.25; cursor: not-allowed; box-shadow: 0 0 0 2px var(--line); position: relative; }
 .swatch.taken::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: #2b2a33; font-weight: 800; }
 .handoff { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 8px; }
-.handoff img { width: 150px; height: 150px; border-radius: 50%; background: color-mix(in srgb, var(--tc) 18%, white); border: 3px solid var(--tc); }
+.handoff > img { width: 150px; height: 150px; border-radius: 50%; background: color-mix(in srgb, var(--tc) 18%, white); border: 3px solid var(--tc); }
 .handoff h3 { margin: 0; }
 .seats { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; }
 .seat { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--paper); border: 2px solid var(--tc); color: var(--ink); }
@@ -808,3 +808,14 @@ div.perk { cursor: default; }
 .watch-label { display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--tc); background: color-mix(in srgb, var(--tc) 14%, white); font-size: 14px; }
 .turn-timer { position: fixed; top: calc(var(--sat) + 62px); left: 50%; transform: translateX(-50%); z-index: 40; font-family: var(--font-head); font-size: 18px; padding: 4px 14px; border-radius: 999px; background: var(--paper); border: 2px solid var(--ink); box-shadow: var(--shadow); }
 .turn-timer.low { background: #ffe1e1; color: #b3261e; }
+
+/* Two-player duel picker */
+.duel-picker { display: grid; gap: 10px; width: 100%; }
+.duel-picker .move-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+/* Finished progression chart: spare level-up points train stats */
+.mastery { border: 2px dashed var(--tc, #888); border-radius: 12px; padding: 8px 10px; display: grid; gap: 6px; text-align: center; }
+
+/* Turn-order chips are buttons: tap one to find that trainer on the map */
+button.seat { cursor: pointer; font-family: inherit; line-height: 1.3; }
+button.seat:hover, button.seat:focus-visible { background: var(--tc); color: #fff; }

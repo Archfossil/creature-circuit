@@ -1,6 +1,7 @@
 import { h, openSheet } from './dom';
+import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
-import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
+import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR } from '../data/moves';
 import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
@@ -156,17 +157,21 @@ export function socialHelp(c: CreatureInst) {
     nat ? h('p', { class: 'small' }, h('b', null, `${nat.name} perks: `), nat.perks.map((p, i) => `${i < c.perks ? '✓' : '○'} ${p.name} (${p.cost})`).join(' · '), next ? ` · next at ${next.cost} Loyalty` : ' · all unlocked') : null));
 }
 
-export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node } = {}) {
+/**
+ * A creature's index card (front: stats, playbook, nature; back: progression chart). `editable` allows
+ * playbook edits and chart unlocks; `onEdit` hears about each change (online: sent to the server).
+ */
+export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void } = {}) {
   const wrap = h('div', { class: 'card-flip' });
   let back = false;
   const render = () => {
-    wrap.replaceChildren(back ? cardBack(c, () => { back = false; render(); }, () => { render(); opts.onChange?.(); }) : cardFront(c, () => { back = true; render(); }, opts, () => { render(); opts.onChange?.(); }));
+    wrap.replaceChildren(back ? cardBack(c, () => { back = false; render(); }, () => { render(); opts.onChange?.(); }, opts.editable !== false, opts.onEdit) : cardFront(c, () => { back = true; render(); }, opts, () => { render(); opts.onChange?.(); }));
   };
   render();
   return wrap;
 }
 
-function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node }, changed: () => void) {
+function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void }, changed: () => void) {
   const sp = speciesOf(c);
   const st = stats(c);
   const e = energy(c);
@@ -201,7 +206,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('h4', null, 'Energy ', h('span', { class: 'muted' }, `${free}/${energyTotal(e)} free · ${4 - c.playbook.length}/4 slots open`)),
       energyPips(e, false, spent)),
     h('section', { class: 'ic-sec' },
-      h('h4', null, 'Playbook', opts.editable ? h('button', { class: 'link', onclick: () => editPlaybook(c, changed) }, 'Edit moves') : null),
+      h('h4', null, 'Playbook', opts.editable ? h('button', { class: 'link', onclick: () => editPlaybook(c, changed, opts.onEdit) }, 'Edit moves') : null),
       h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
       h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.')),
@@ -221,7 +226,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('button', { class: `btn ${c.points > 0 ? 'primary pulse' : 'ghost'}`, onclick: flip }, c.points > 0 ? `▲ Level-up chart (${c.points})` : 'Progression chart ↺')));
 }
 
-function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
+function cardBack(c: CreatureInst, flip: () => void, changed: () => void, editable = true, onEdit?: (e: CreatureEdit) => void) {
   const tree = progressionTree(c);
   const av = new Set(availableNodes(c).map((n) => n.id));
   const rows = Math.max(...tree.map((n) => n.row)) + 1;
@@ -235,12 +240,12 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
       const n = tree.find((x) => x.row === r && x.col === col);
       if (!n) return h('div', { class: 'node empty' });
       const have = c.unlocked.includes(n.id);
-      const can = av.has(n.id) && c.points > 0;
+      const can = editable && av.has(n.id) && c.points > 0;
       const missing = n.requires.filter((id) => !c.unlocked.includes(id));
       return h('button', {
         class: `node ${n.kind} ${have ? 'have' : can ? 'can' : av.has(n.id) ? 'avail' : 'locked'}`, disabled: !can, 'data-node': n.id,
         title: n.requires.length ? `Needs: ${n.requires.map(label).join(' + ')}` : 'Starting node',
-        onclick: () => { if (unlockNode(c, n.id)) changed(); },
+        onclick: () => { if (unlockNode(c, n.id)) { onEdit?.({ uid: c.uid, op: 'unlock', node: n.id }); changed(); } },
       }, h('span', { class: 'node-ico' }, n.icon), h('b', null, n.label), h('small', null, n.text),
         !have && missing.length ? h('small', { class: 'node-req' }, `Needs ${missing.map(label).join(' + ')}`) : null);
     }))));
@@ -251,9 +256,21 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void) {
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(chart);
   return h('article', { class: 'index-card back', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
     h('header', { class: 'ic-head' },
-      h('div', null, h('h3', null, `${nameOf(c)} · Chart`), h('div', { class: 'ic-sub' }, h('span', null, `${c.points} node${c.points === 1 ? '' : 's'} to unlock · every 10 XP earns one`))),
+      h('div', null, h('h3', null, `${nameOf(c)} · Chart`), h('div', { class: 'ic-sub' }, h('span', null, chartComplete(c)
+        ? `Chart complete · ${c.points} point${c.points === 1 ? '' : 's'} to train · every 10 XP earns one`
+        : `${c.points} node${c.points === 1 ? '' : 's'} to unlock · every 10 XP earns one`))),
       h('div', { class: 'lv-badge' }, h('small', null, 'LV'), c.level)),
     chart,
+    // a finished chart: further level-ups each train +1 to a stat of your choice
+    chartComplete(c) ? h('div', { class: 'mastery' },
+      h('p', { class: 'small' }, h('b', null, '❖ Chart complete. '), c.points > 0
+        ? `Each further level-up trains +1 to a stat of your choice (${c.points} to spend).`
+        : 'Each further level-up trains +1 to a stat of your choice.'),
+      h('div', { class: 'row gap-s wrap center' }, TRAINABLE.map((k) => h('button', {
+        class: `btn ${c.points > 0 && editable ? 'primary' : 'ghost'} sm`, disabled: c.points <= 0 || !editable,
+        title: `${STAT_LABEL[k]} ${stats(c)[k]} → ${stats(c)[k] + 1}`,
+        onclick: () => { if (trainStat(c, k)) { onEdit?.({ uid: c.uid, op: 'train', stat: k }); changed(); } },
+      }, `+1 ${STAT_LABEL[k]}`)))) : null,
     // what the Signature Move node would teach, so it can be judged before spending a point on it
     sp.signature && c.signature !== sp.signature ? h('div', { class: 'sig-preview' },
       h('small', null, '★ Signature Move preview (unlocked by its node on this chart)'),
@@ -302,7 +319,8 @@ function drawChartLinks(chart: HTMLElement, svg: SVGSVGElement, tree: ReturnType
   svg.replaceChildren(...paths.sort((p, q) => rank(p) - rank(q)));
 }
 
-export function editPlaybook(c: CreatureInst, changed: () => void) {
+export function editPlaybook(c: CreatureInst, changed: () => void, onEdit?: (e: CreatureEdit) => void) {
+  const setPlaybook = (ids: string[]) => { c.playbook = ids; onEdit?.({ uid: c.uid, op: 'playbook', moves: [...ids] }); };
   {
     const e = energy(c);
     let sel = [...c.playbook];
@@ -376,9 +394,9 @@ export function editPlaybook(c: CreatureInst, changed: () => void) {
         h('p', { class: 'small' }, 'Energy is a requirement, not a cost per use. A move fits if your creature generates enough of each type; Neutral slots take any energy and Prisma counts as any type.'),
         usage, controls, list,
         h('div', { class: 'row end gap sticky-foot' },
-          h('button', { class: 'btn ghost', onclick: () => recommendSheet(c, (ids) => { c.playbook = ids; close(); changed(); }) }, '✨ Recommend moves?'),
+          h('button', { class: 'btn ghost', onclick: () => recommendSheet(c, (ids) => { setPlaybook(ids); close(); changed(); }) }, '✨ Recommend moves?'),
           h('button', { class: 'btn ghost', onclick: () => { sel = []; render(); } }, 'Clear'),
-          h('button', { class: 'btn primary', disabled: sel.length === 0, onclick: () => { c.playbook = sel; close(); changed(); } }, 'Save playbook')));
+          h('button', { class: 'btn primary', disabled: sel.length === 0, onclick: () => { setPlaybook(sel); close(); changed(); } }, 'Save playbook')));
     };
     const close = openSheet(`${nameOf(c)} · Playbook`, body, { wide: true });
     render();

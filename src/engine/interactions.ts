@@ -114,8 +114,9 @@ export function challengeProblem(a: GameState, b: GameState): string | null {
 export const maxWager = (a: GameState, b: GameState) => Math.min(a.coins, b.coins);
 
 /**
- * Start an accepted challenge: `a` plays their own team against `b`'s active team (which acts on
- * its own instincts, like any trainer's). Costs `a` 1 Initiative; once per opponent per turn.
+ * Start an accepted challenge: `a` plays their own team against `b`'s active team. In the app,
+ * `b` picks their creatures' actions too (resolveRound's foe action); left to itself, side 1 uses the
+ * AI. Costs `a` 1 Initiative; once per opponent per turn.
  */
 export function startChallenge(a: GameState, b: GameState): Battle | null {
   if (challengeProblem(a, b)) return null;

@@ -150,6 +150,9 @@ export class WorldView implements SceneView {
   private pawn!: THREE.Group;
   private pawnRig: TrainerRig | null = null;
   private rivalRigs: TrainerRig[] = [];
+  /** Who each rival mini belongs to (same order as rivalRigs), for spotlighting a trainer. */
+  private rivalIds: (string | undefined)[] = [];
+  private spot: { group: THREE.Group; ring: THREE.Mesh; beam: THREE.Mesh; age: number; life: number } | null = null;
   private follower: CreatureRig | null = null;
   private followerSpecies = '';
   private particles!: THREE.Points;
@@ -589,9 +592,10 @@ export class WorldView implements SceneView {
    * Other hotseat trainers' minis, standing at their nodes (a little smaller, spread around the node so
    * several trainers on one spot stay visible). Pass [] to clear.
    */
-  setRivals(rivals: { look: TrainerLook; nodeId: string }[]) {
+  setRivals(rivals: { look: TrainerLook; nodeId: string; id?: string }[]) {
     for (const r of this.rivalRigs) this.scene.remove(r.root);
     this.rivalRigs = [];
+    this.rivalIds = rivals.map((r) => r.id);
     const perNode = new Map<string, number>();
     for (const r of rivals) {
       const k = perNode.get(r.nodeId) ?? 0;
@@ -694,6 +698,32 @@ export class WorldView implements SceneView {
     if (this.fx === 'snow') { pm.color.set('#ffffff'); pm.size = 0.3; pm.opacity = 0.9; }
     if (this.fx === 'petals') { pm.color.set('#ffb3d9'); pm.size = 0.3; pm.opacity = 0.9; }
     if (this.fx === 'wind') { pm.color.set('#e9f5e0'); pm.size = 0.12; pm.opacity = 0.5; }
+  }
+
+  /** Where a trainer's mini stands: the player's pawn (no id) or a rival's mini; null if that rival has none. */
+  trainerPos(id?: string): THREE.Vector3 | null {
+    if (id === undefined) return this.pawn.position.clone();
+    const i = this.rivalIds.indexOf(id);
+    return i >= 0 ? this.rivalRigs[i].root.position.clone() : null;
+  }
+
+  /** Glide the camera to a spot (keeping the usual framing). */
+  focusPos(p: THREE.Vector3) { this.goal.set(p.x, p.y - 0.4, p.z + 3); }
+
+  /** A pulsing ring and a beam of light in a trainer's colour, fading out after a few seconds. */
+  spotlight(p: THREE.Vector3, color: string, life = 3.5) {
+    if (this.spot) this.scene.remove(this.spot.group);
+    const group = new THREE.Group();
+    const mat = (o: number) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: o, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.35, 48), mat(0.9));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.08;
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.95, 9, 32, 1, true), mat(0.28));
+    beam.position.y = 4.5;
+    group.add(ring, beam);
+    group.position.copy(p).add(new THREE.Vector3(0, -0.35, 0));
+    this.scene.add(group);
+    this.spot = { group, ring, beam, age: 0, life };
   }
 
   focus(id: string, instant = false) {
@@ -814,6 +844,16 @@ export class WorldView implements SceneView {
     this.pawn.rotation.y = Math.sin(t * 0.8) * 0.2;
     this.pawnRig?.update(t);
     for (const r of this.rivalRigs) r.update(t);
+    if (this.spot) {
+      const sp = this.spot;
+      sp.age += dt;
+      const fade = Math.max(0, Math.min(1, (sp.life - sp.age) / 0.8)); // fade over the last 0.8 s
+      const k = (sp.age * 1.4) % 1; // the ring ripples outward, over and over
+      sp.ring.scale.setScalar(0.8 + k * 1.2);
+      (sp.ring.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.9 * fade;
+      (sp.beam.material as THREE.MeshBasicMaterial).opacity = (0.22 + Math.sin(t * 6) * 0.06) * fade;
+      if (sp.age >= sp.life) { this.scene.remove(sp.group); this.spot = null; }
+    }
     if (this.follower) {
       const fp = this.follower.root.position;
       const want = this.pawn.position.clone().add(new THREE.Vector3(-1.3, -0.4, 0.6));

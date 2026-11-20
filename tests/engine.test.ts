@@ -7,8 +7,9 @@ import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
-import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
-import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, type Side } from '../src/engine/battle';
+import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { applyEdit } from '../src/engine/edits';
+import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, type Side } from '../src/engine/battle';
 import { newGame, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -291,14 +292,14 @@ describe('move readout', () => {
             const bt = createBattle(side('player', [createCreature(id, 6)]), side('wild', [createCreature('sproutle', 6)]), WEATHER.clear);
             const range = /Deals (\d+)(?:–(\d+))? damage/.exec(movePreview(bt, moveId).find((x) => x.title.startsWith('Damage'))!.text)!;
             const lo = Number(range[1]), hi = Number(range[2] ?? range[1]);
-            activeOf(bt.sides[1]).health = 999;
+            activeOf(bt.sides[1]).health = 999; activeOf(bt.sides[1]).playbook = ['tackle']; // no Brace-style buffs before we hit
             bt.sides[1].mods.speed = -20; // act first, so the foe's move can't shift stats before we hit
             const hit = resolveRound(bt, { kind: 'move', move: moveId }).find((e) => e.t === 'damage' && e.side === 1 && e.calc);
             if (hit && hit.t === 'damage' && hit.calc) {
               expect(hit.calc.raw).toBe(Math.max(1, hit.calc.roll + hit.calc.parts.reduce((a2, x) => a2 + x.value, 0)));
               expect(hit.amount).toBe(hit.calc.total);
               const base = hit.calc.crit ? hit.amount / 2 : hit.amount;
-              expect(base).toBeGreaterThanOrEqual(lo);
+              expect(base, `${id} ${moveId} ${JSON.stringify(hit.calc)}`).toBeGreaterThanOrEqual(lo);
               expect(base).toBeLessThanOrEqual(hi);
             }
           }
@@ -704,6 +705,144 @@ describe('hotseat interactions', () => {
   });
 });
 
+describe('online creature edits (tending your team while someone else plays)', () => {
+  it('applies unlocks, training and playbooks with the usual rules', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    const c = s.roster[0];
+    c.points = 1;
+    const node = availableNodes(c)[0].id;
+    expect(applyEdit(s, { uid: c.uid, op: 'unlock', node })).toBe(true);
+    expect(c.unlocked).toContain(node);
+    expect(applyEdit(s, { uid: c.uid, op: 'unlock', node: availableNodes(c)[0].id })).toBe(false); // no points left
+    expect(applyEdit(s, { uid: c.uid, op: 'train', stat: 'power' })).toBe(false); // chart not complete
+    const moves = c.playbook.slice(0, 1);
+    expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves })).toBe(true);
+    expect(c.playbook).toEqual(moves);
+    expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves: ['not-a-move'] })).toBe(false);
+    expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves: [moves[0], moves[0]] })).toBe(false);
+    expect(applyEdit(s, { uid: 'someone-else', op: 'playbook', moves })).toBe(false);
+  });
+});
+
+describe('AI move variety', () => {
+  it('opponents mix up their moves instead of spamming one', () => {
+    const me = createCreature('puddlit', 8), foe = createCreature('zapup', 8);
+    foe.playbook = ['quick-jab', ...foe.playbook.filter((id) => id !== 'quick-jab')].slice(0, 4);
+    const b = createBattle(side('player', [me]), { kind: 'trainer', name: 'Kai', team: [foe], active: 0, mods: {} }, WEATHER.clear);
+    const used: string[] = [];
+    for (let i = 0; i < 300; i++) used.push((chooseAI(b, 1) as { move: string }).move);
+    let streak = 1, longest = 1;
+    for (let i = 1; i < used.length; i++) { streak = used[i] === used[i - 1] ? streak + 1 : 1; longest = Math.max(longest, streak); }
+    expect(longest).toBeLessThanOrEqual(6);
+    expect(new Set(used).size).toBeGreaterThanOrEqual(Math.min(3, foe.playbook.length));
+    const top = Math.max(...[...new Set(used)].map((id) => used.filter((x) => x === id).length));
+    expect(top / used.length).toBeLessThan(0.75);
+  });
+  // AI (side 1) zapup vs player (side 0) pebbark; effectValue is deterministic, so compare situations directly
+  const setup = (fn: (b: ReturnType<typeof createBattle>) => void = () => {}) => {
+    const ai = createCreature('zapup', 8), pl = createCreature('pebbark', 8);
+    pl.playbook = ['tackle', 'ember', 'claw'];
+    const b = createBattle(side('player', [pl]), { kind: 'trainer', name: 'Kai', team: [ai], active: 0, mods: {} }, WEATHER.clear);
+    b.round = 1;
+    fn(b);
+    return (id: string) => effectValue(b, 1, MOVE_BY_ID[id].effect);
+  };
+  it('speed buffs are worth more when the foe is faster', () => {
+    expect(setup((b) => { b.sides[0].mods.speed = 3; })('static-field')).toBeGreaterThan(setup((b) => { b.sides[1].mods.speed = 3; })('static-field'));
+  });
+  it('armor matters against a physical bruiser, ward against an elemental attacker', () => {
+    const bruiser = setup((b) => { activeOf(b.sides[0]).playbook = ['tackle', 'claw', 'headbutt']; });
+    const caster = setup((b) => { activeOf(b.sides[0]).playbook = ['ember']; });
+    expect(bruiser('bulwark')).toBeGreaterThan(caster('bulwark'));
+    expect(caster('aurora-veil')).toBeGreaterThan(bruiser('aurora-veil'));
+  });
+  it('against sure hits, defense beats evasion; evasion pays off against hit-or-miss attacks', () => {
+    const sure = setup((b) => { activeOf(b.sides[0]).playbook = ['quick-jab']; });
+    const wild = setup((b) => { activeOf(b.sides[0]).playbook = ['rampage']; });
+    expect(sure('mist-cloak')).toBe(0);
+    expect(sure('bulwark')).toBeGreaterThan(sure('mist-cloak'));
+    expect(wild('mist-cloak')).toBeGreaterThan(sure('mist-cloak'));
+  });
+  it('a stat at its +3 cap is worth nothing more; heals only help when hurt', () => {
+    expect(setup((b) => { b.sides[1].mods.armor = 3; })('bulwark')).toBe(0);
+    expect(setup()('photosynth')).toBeLessThan(setup((b) => { activeOf(b.sides[1]).health = 1; activeOf(b.sides[1]).vitality = 0; })('photosynth'));
+  });
+  it('the AI uses a well-placed buff often, and rarely when it could finish the foe instead', () => {
+    const picks = (fn: (b: ReturnType<typeof createBattle>) => void) => {
+      let n = 0;
+      for (let i = 0; i < 300; i++) {
+        const ai = createCreature('zapup', 8), pl = createCreature('pebbark', 8);
+        ai.playbook = ['tackle', 'claw', 'static-field'];
+        const b = createBattle(side('player', [pl]), { kind: 'trainer', name: 'Kai', team: [ai], active: 0, mods: {} }, WEATHER.clear);
+        b.round = 1; fn(b);
+        if ((chooseAI(b, 1) as { move: string }).move === 'static-field') n++;
+      }
+      return n / 300;
+    };
+    const outpaced = picks((b) => { b.sides[0].mods.speed = 3; });
+    expect(outpaced).toBeGreaterThan(0.3);
+    expect(picks((b) => { b.sides[0].mods.speed = 3; activeOf(b.sides[0]).vitality = 0; activeOf(b.sides[0]).health = 2; })).toBeLessThan(outpaced / 2);
+  });
+  it('wild and NPC creatures carry varied playbooks; starters get the standard one', () => {
+    const sets = new Set(Array.from({ length: 20 }, () => createCreature('zapup', 8).playbook.slice().sort().join()));
+    expect(sets.size).toBeGreaterThan(1);
+    for (const c of Array.from({ length: 10 }, () => createCreature('zapup', 8))) expect(fits(energy(c), c.playbook)).toBe(true);
+  });
+});
+
+describe('two-player duels', () => {
+  const duel = () => {
+    const me = createCreature('puddlit', 5), foe = createCreature('zapup', 5), bench = createCreature('pebbark', 5);
+    me.vitality = 9; foe.vitality = 9;
+    return createBattle(side('player', [me]), { kind: 'trainer', name: 'Kai', team: [foe, bench], active: 0, mods: {} }, WEATHER.clear);
+  };
+  it('the defender’s chosen action is used instead of the AI’s', () => {
+    for (let i = 0; i < 10; i++) {
+      const b = duel();
+      const ev = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+      expect(ev.some((e) => e.t === 'use' && e.side === 1 && e.move === CATCH_BREATH.id)).toBe(true);
+    }
+  });
+  it('an illegal pick falls back to the AI; swaps open up from round 2', () => {
+    const b = duel();
+    expect(foeOptions(b).swaps).toEqual([]); // no swapping in round 1
+    const ev = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: 'not-a-move' });
+    expect(ev.some((e) => e.t === 'use' && e.side === 1)).toBe(true);
+    const o = foeOptions(b);
+    expect(o.moves).toEqual(activeOf(b.sides[1]).playbook);
+    expect(o.swaps.map((x) => x.name)).toContain('Pebbark');
+    const ev2 = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'swap', to: o.swaps[0].i });
+    expect(ev2.some((e) => e.t === 'send' && e.side === 1)).toBe(true);
+  });
+  it('after a KO the defender picks the replacement (or the next in line goes in)', () => {
+    const koed = () => {
+      for (let i = 0; i < 500; i++) {
+        const me = createCreature('puddlit', 9), foe = createCreature('zapup', 3);
+        const b = createBattle(side('player', [me]), { kind: 'trainer', name: 'Kai', team: [foe, createCreature('pebbark', 3), createCreature('cindercub', 3)], active: 0, mods: {} }, WEATHER.clear);
+        b.foeChooses = true;
+        foe.health = 1; foe.vitality = 0;
+        const ev = resolveRound(b, { kind: 'move', move: me.playbook[0] }, { kind: 'move', move: CATCH_BREATH.id });
+        if (b.foeNeedSwap) { expect(ev.some((e) => e.t === 'send' && e.side === 1)).toBe(false); return b; }
+      }
+      throw new Error('no KO');
+    };
+    const b = koed();
+    expect(foeReplacements(b)).toEqual([1, 2]);
+    const ev = foeSendIn(b, 2);
+    expect(ev[0]).toMatchObject({ t: 'send', side: 1, idx: 2 });
+    expect(b.sides[1].active).toBe(2);
+    expect(b.foeNeedSwap).toBe(false);
+    expect(b.foeParticipants).toContain(b.sides[1].team[2].uid);
+    // an illegal pick (the knocked-out creature) sends the next in line; so does skipping the pick
+    const b2 = koed();
+    foeSendIn(b2, 0);
+    expect(b2.sides[1].active).toBe(1);
+    const b3 = koed();
+    const ev3 = resolveRound(b3, { kind: 'move', move: CATCH_BREATH.id });
+    expect(ev3[0]).toMatchObject({ t: 'send', side: 1, idx: 1 });
+  });
+});
+
 describe('Keen Nose', () => {
   it('turns an item find into a choice of three different finds; the pick goes in the bag', () => {
     const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
@@ -1062,6 +1201,24 @@ describe('Creature Codex', () => {
 });
 
 describe('progression skill tree', () => {
+  it('a finished chart turns spare level-up points into +1 stats (so the ▲ can always be cleared)', () => {
+    const c = createCreature('zapup', 1); // pick a final stage below
+    let sp = c.species;
+    while (SPECIES_BY_ID[sp].evolvesTo) sp = SPECIES_BY_ID[sp].evolvesTo!;
+    const apex = createCreature(sp, 1);
+    expect(trainStat(apex, 'power')).toBe(false); // not while nodes remain
+    apex.points = 30;
+    for (let i = 0; i < 30 && !chartComplete(apex); i++) unlockNode(apex, availableNodes(apex)[0].id);
+    expect(chartComplete(apex)).toBe(true);
+    const left = apex.points, before = stats(apex).power;
+    expect(left).toBeGreaterThan(0);
+    expect(trainStat(apex, 'power')).toBe(true);
+    expect(stats(apex).power).toBe(before + 1);
+    expect(apex.points).toBe(left - 1);
+    while (apex.points) trainStat(apex, 'vigor');
+    expect(trainStat(apex, 'vigor')).toBe(false);
+    expect(apex.health).toBe(maxHealth(apex));
+  });
   const fresh = (id: string) => { const c = createCreature(id, 1, { auto: false }); c.unlocked = []; c.points = 20; return c; };
   const avail = (c: ReturnType<typeof createCreature>) => availableNodes(c).map((n) => n.id).sort();
 

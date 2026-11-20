@@ -1,6 +1,7 @@
 // Browser side of online play: one WebSocket to the game server (same origin, /ws). The App drives
 // game logic; this just sends and receives messages and remembers who we are.
 import type { GameState, Match } from '../engine/state';
+import type { CreatureEdit } from '../engine/edits';
 
 export interface SeatInfo { clientId: string; name: string; trainer: GameState | null; online: boolean }
 export interface RoomInfo { code: string; host: string; started: boolean; controller: string | null; turnSeconds: number; deadline: number | null; seats: SeatInfo[] }
@@ -19,10 +20,11 @@ export type ServerMsg =
   | { type: 'created'; code: string }
   | { type: 'state'; match: Match }
   | { type: 'feed'; item: FeedItem }
-  | { type: 'ask'; id: string; from: string; title: string; text: string; yes: string; no: string }
-  | { type: 'answer'; id: string; yes: boolean; offline?: boolean }
+  | { type: 'ask'; id: string; from: string; title: string; text: string; yes: string; no: string; pick?: unknown }
+  | { type: 'answer'; id: string; yes: boolean; offline?: boolean; value?: unknown }
   | { type: 'do-skip'; seat: number; reason: 'timeout' | 'host' }
   | { type: 'do-play'; seat: number; reason: 'host' }
+  | { type: 'edit'; seat: number; edit: CreatureEdit }
   | { type: 'error'; text: string };
 
 const ID_KEY = 'creature-circuit-client-id';
@@ -46,7 +48,7 @@ export class Online {
   room: RoomInfo | null = null;
   code: string | null = null;
   private handlers = new Set<(m: ServerMsg) => void>();
-  private pending = new Map<string, (yes: boolean) => void>();
+  private pending = new Map<string, (yes: boolean, value?: unknown) => void>();
   private queue: string[] = [];
 
   connect(): Promise<void> {
@@ -62,7 +64,7 @@ export class Online {
         try { msg = JSON.parse(String(e.data)); } catch { return; }
         if (msg.type === 'room') this.room = msg;
         if (msg.type === 'created') { this.code = msg.code; rememberRoom(msg.code); }
-        if (msg.type === 'answer') { this.pending.get(msg.id)?.(msg.yes); this.pending.delete(msg.id); return; }
+        if (msg.type === 'answer') { this.pending.get(msg.id)?.(msg.yes, msg.value); this.pending.delete(msg.id); return; }
         for (const h of this.handlers) h(msg);
       };
     });
@@ -81,6 +83,16 @@ export class Online {
   get isController() { return !!this.room && this.room.controller === this.id; }
   /** Seat indexes this browser owns. */
   get mySeats(): number[] { return (this.room?.seats ?? []).map((s, i) => (s.clientId === this.id ? i : -1)).filter((i) => i >= 0); }
+
+  /** Ask another seat's owner to pick something (a duel move). Resolves undefined if they're offline or take longer than `ms`. */
+  pick<T>(seat: number, from: string, pick: unknown, ms = 60_000): Promise<T | undefined> {
+    const id = Math.random().toString(36).slice(2);
+    return new Promise((resolve) => {
+      this.pending.set(id, (_yes, value) => resolve(value as T | undefined));
+      this.send({ type: 'ask', id, seat, from, title: '', text: '', yes: '', no: '', pick });
+      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); resolve(undefined); } }, ms);
+    });
+  }
 
   /** Ask another seat's owner a yes/no question (trade or duel). Resolves false if they're offline or don't answer in 2 minutes. */
   ask(seat: number, from: string, title: string, text: string, yes: string, no: string): Promise<boolean> {

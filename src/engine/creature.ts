@@ -131,7 +131,13 @@ export function learnable(c: CreatureInst): string[] {
 }
 
 /** Pick a sensible default playbook: depth-first search over affordable sets for a strong, varied mix. */
-export function autoPlaybook(c: CreatureInst): string[] {
+/**
+ * Pick a playbook that fits the creature's energy. `varied` (wild and NPC creatures) shakes up the
+ * choice a lot, so opponents of the same species don't all carry the same four moves.
+ */
+/** Varied (NPC) playbooks lean toward carrying one buff / debuff / heal, so opponents have something to set up with. */
+const SUPPORT_PULL = 1;
+export function autoPlaybook(c: CreatureInst, varied = false): string[] {
   const e = energy(c);
   const prim = speciesOf(c).types[0];
   const val = (id: string) => {
@@ -151,14 +157,17 @@ export function autoPlaybook(c: CreatureInst): string[] {
     ...bestWhere((m) => m.kind === 'physical', 2),
     ...bestWhere((m) => m.kind === 'support', 2),
     ...byEff.slice(0, 6), ...byVal.slice(0, 6),
+    ...(varied ? [...all].sort(() => Math.random() - 0.5).slice(0, 4) : []), // a few wildcards
   ])];
+  // varied: every move gets its own random appeal for this pick
+  const whim: Record<string, number> = varied ? Object.fromEntries(opts.map((id) => [id, Math.random() * 3])) : {};
   let best: string[] = [];
   let bestScore = -1;
   const score = (set: string[]) => {
     const own = set.some((id) => MOVE_BY_ID[id].type === prim && MOVE_BY_ID[id].kind === 'elemental');
     const phys = set.some((id) => MOVE_BY_ID[id].kind === 'physical');
     const sup = set.filter((id) => MOVE_BY_ID[id].kind === 'support').length;
-    return set.reduce((a, id) => a + val(id), 0) + set.length * 2 + (own ? 4 : 0) + (phys ? 1.5 : 0) - (sup > 1 ? 5 : 0) + Math.random() * 0.4;
+    return set.reduce((a, id) => a + val(id) + (whim[id] ?? 0), 0) + set.length * 2 + (own ? 4 : 0) + (phys ? 1.5 : 0) - (sup > 1 ? 5 : 0) + (varied && sup === 1 ? SUPPORT_PULL : 0) + Math.random() * 0.4;
   };
   const dfs = (start: number, set: string[]) => {
     if (set.length) { const sc = score(set); if (sc > bestScore) { bestScore = sc; best = [...set]; } }
@@ -270,6 +279,22 @@ export function unlockNode(c: CreatureInst, nodeId: string): boolean {
   return true;
 }
 
+/** Stats a level-up point can train once the chart is complete. */
+export const TRAINABLE: StatKey[] = ['vigor', 'power', 'focus', 'armor', 'ward', 'speed'];
+
+/** Every node on the chart is unlocked (only possible at the final stage), so spare points train stats instead. */
+export const chartComplete = (c: CreatureInst) => availableNodes(c).length === 0;
+
+/** Spend a level-up point on +1 to a stat. Only once the chart is complete; returns false otherwise. */
+export function trainStat(c: CreatureInst, k: StatKey): boolean {
+  if (c.points <= 0 || !chartComplete(c) || !TRAINABLE.includes(k)) return false;
+  const hpBefore = maxHealth(c);
+  c.points--;
+  c.bonus[k] = (c.bonus[k] ?? 0) + 1;
+  c.health += Math.max(0, maxHealth(c) - hpBefore);
+  return true;
+}
+
 export function evolve(c: CreatureInst) {
   const sp = speciesOf(c);
   if (!sp.evolvesTo) return;
@@ -325,7 +350,11 @@ export function addLoyalty(c: CreatureInst, n: number) {
   syncPerks(c);
 }
 
-export function createCreature(speciesId: string, level = 1, opts: { nature?: string; auto?: boolean } = {}): CreatureInst {
+/**
+ * A new creature. Above Lv 1 its chart points are spent at random (unless `auto: false`). `varied`
+ * playbooks (default: above Lv 1, i.e. wild and NPC creatures) mix up its moves; starters get the standard pick.
+ */
+export function createCreature(speciesId: string, level = 1, opts: { nature?: string; auto?: boolean; varied?: boolean } = {}): CreatureInst {
   const c: CreatureInst = {
     uid: uid(), species: speciesId, level: 1, xp: 0, points: 0,
     nature: opts.nature ?? pick(NATURES).id, morale: 5, loyalty: 0, perks: 0,
@@ -338,7 +367,7 @@ export function createCreature(speciesId: string, level = 1, opts: { nature?: st
     if (opts.auto !== false) autoSpend(c, false);
   }
   fullRestore(c);
-  c.playbook = autoPlaybook(c);
+  c.playbook = autoPlaybook(c, opts.varied ?? level > 1);
   return c;
 }
 
@@ -348,9 +377,9 @@ export function autoSpend(c: CreatureInst, allowEvolve: boolean) {
   while (c.points > 0 && guard-- > 0) {
     const av = availableNodes(c).filter((n) => allowEvolve || n.kind !== 'evolve');
     if (av.length === 0) {
-      // chart exhausted: generic growth
+      // chart exhausted (or only Evolve left, which wild creatures skip): generic growth
       c.points--;
-      const k = pick<StatKey>(['vigor', 'power', 'focus', 'armor', 'ward', 'speed']);
+      const k = pick(TRAINABLE);
       c.bonus[k] = (c.bonus[k] ?? 0) + 1;
       continue;
     }

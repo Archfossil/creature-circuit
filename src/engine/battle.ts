@@ -37,6 +37,12 @@ export interface Battle {
   seenFoes: string[];
   /** Opposing creatures that took the field (uids), e.g. to reward a hotseat duel's defender. */
   foeParticipants?: string[];
+  /** Two-player duels: a human picks side 1's replacement after a KO (instead of the next in line). */
+  foeChooses?: boolean;
+  /** The AI's last move per creature and how many times in a row it used it (to keep it from spamming one move). */
+  aiLast?: Record<string, { move: string; streak: number }>;
+  /** Side 1's active creature is knocked out and waiting for foeSendIn. */
+  foeNeedSwap?: boolean;
 }
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
@@ -134,39 +140,173 @@ function applyDamage(c: CreatureInst, dmg: number) {
 }
 
 // ── AI ──────────────────────────────────────────────────────────
+/** A human-chosen action for side 1, if it's legal right now. */
+function validFoeAction(b: Battle, a?: Action): Action | null {
+  if (!a) return null;
+  const side = b.sides[1];
+  if (a.kind === 'move') return a.move === CATCH_BREATH.id || activeOf(side).playbook.includes(a.move) ? a : null;
+  if (a.kind === 'swap') return b.round >= 1 && side.team[a.to] && !side.team[a.to].ko && a.to !== side.active ? a : null;
+  return null;
+}
+
+/** What side 1's human player may choose this round (for the duel picker). */
+export function foeOptions(b: Battle) {
+  const side = b.sides[1];
+  const me = activeOf(side);
+  return {
+    name: nameOf(me),
+    moves: [...me.playbook],
+    swaps: b.round >= 1 ? side.team.map((c, i) => ({ i, name: nameOf(c), ko: c.ko })).filter((x) => !x.ko && x.i !== side.active).map(({ i, name }) => ({ i, name })) : [],
+    vs: speciesOf(activeOf(b.sides[0])).types,
+  };
+}
+export type FoeOptions = ReturnType<typeof foeOptions>;
+
 export function chooseAI(b: Battle, si: 0 | 1): Action {
   const side = b.sides[si];
   const c = activeOf(side);
   const foe = activeOf(b.sides[si === 0 ? 1 : 0]);
   const fi: 0 | 1 = si === 0 ? 1 : 0;
   if (c.fatigue >= 3 && c.stamina <= 2) return { kind: 'move', move: CATCH_BREATH.id };
-  let best = { id: c.playbook[0] ?? CATCH_BREATH.id, score: -1 };
+  const last = (b.aiLast ??= {})[c.uid];
+  // the foe is nearly down: go for the knockout. Nearly down ourselves: no time to set up (heals still count).
+  const finishingBlow = foe.vitality === 0 && foe.health <= 3;
+  const desperate = c.vitality === 0 && c.health <= 2;
+  const scored: { id: string; score: number }[] = [];
   for (const id of c.playbook) {
     const m = MOVE_BY_ID[id];
     let score = 0;
+    const hit = m.accuracy === 'sure' ? 1 : hitChance(m.accuracy, eff(b, fi, 'evasion'));
     if (m.kind === 'support') {
-      const buffed = Object.values(side.mods).reduce((a, v) => a + (v ?? 0), 0);
-      score = buffed >= 2 ? 0.5 : 2.5;
-      if (m.effect?.heal && c.vitality <= 1) score = 4;
+      // buffs, debuffs and heals are worth what the situation makes them worth (see effectValue)
+      score = hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * (finishingBlow ? 0.35 : 1) * (desperate && !m.effect?.heal ? 0.4 : 1);
     } else {
-      const hit = m.accuracy === 'sure' ? 1 : Math.max(0, (m.accuracy - eff(b, fi, 'evasion') + 1) / m.accuracy);
       const atk = m.kind === 'physical' ? eff(b, si, 'power') - eff(b, fi, 'armor') : eff(b, si, 'focus') - eff(b, fi, 'ward');
       const mult = m.kind === 'elemental' && m.type ? effectiveness(m.type, speciesOf(foe).types) : 1;
       score = hit * Math.max(1, (m.dmgDie + 1) / 2 + m.dmgFlat + atk) * mult;
-      if (m.effort > c.stamina) score *= 0.7;
+      if (m.effect) score += hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * 0.5; // a rider on a hit
     }
-    score *= 0.85 + Math.random() * 0.3;
-    if (score > best.score) best = { id, score };
+    if (m.effort > c.stamina) score *= 0.7;
+    // the same move again gets less and less appealing (Quick Jab, Quick Jab, Quick Jab…)
+    if (last?.move === id) score *= Math.pow(AI_REPEAT_PENALTY, last.streak);
+    scored.push({ id, score: Math.max(0, score) });
   }
-  return { kind: 'move', move: best.id };
+  const id = weightedPick(scored, AI_SHARPNESS[side.kind] ?? 2) ?? c.playbook[0] ?? CATCH_BREATH.id;
+  b.aiLast[c.uid] = { move: id, streak: last?.move === id ? last.streak + 1 : 1 };
+  return { kind: 'move', move: id };
+}
+
+const hitChance = (die: number, need: number) => Math.max(0, Math.min(1, (die - need + 1) / die));
+
+/** Scales a support move's situational value (effectValue) against an attack's expected damage. */
+export const SUPPORT_WEIGHT = 1.0;
+
+/**
+ * How useful a set of stat changes / heals is right now, for side `si`, in rough "damage-equivalent"
+ * points. The AI reads the matchup:
+ *  - the foe is faster → Speed for us (or Speed off them) is worth a lot, more if it flips the order;
+ *  - the foe hits hard physically / elementally → Armor / Ward (or Power / Focus off them);
+ *  - the foe's attacks land reliably (or never miss) → Armor / Ward, since Evasion can't stop them;
+ *  - the foe's attacks are hit-or-miss → Evasion, pushing them further toward missing;
+ *  - our attacks keep missing → their Evasion down; our attacks are physical / elemental → Power / Focus;
+ *  - hurt → heals; winded → Stamina.
+ * Stats already raised (or lowered) a lot are worth less, and nothing past the ±3 cap.
+ */
+export function effectValue(b: Battle, si: 0 | 1, e: Move['effect']): number {
+  if (!e) return 0;
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const me = activeOf(b.sides[si]), foe = activeOf(b.sides[fi]);
+  const attacks = (c: CreatureInst) => c.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m && m.kind !== 'support');
+  const share = (c: CreatureInst, kind: Move['kind']) => { const a = attacks(c); return a.length ? a.filter((m) => m.kind === kind).length / a.length : 0; };
+  const accuracyOf = (c: CreatureInst, vsEvasion: number) => {
+    const a = attacks(c);
+    return a.length ? a.reduce((t, m) => t + (m.accuracy === 'sure' ? 1 : hitChance(m.accuracy, vsEvasion)), 0) / a.length : 0.5;
+  };
+  // how much one point of Evasion changes c's hits: nothing against sure hits, 1/die per point otherwise
+  const dodgeable = (c: CreatureInst, vsEvasion: number) => {
+    const a = attacks(c);
+    return a.length ? a.reduce((t, m) => t + (m.accuracy === 'sure' || hitChance(m.accuracy, vsEvasion) <= 0 ? 0 : 1 / m.accuracy), 0) / a.length : 0;
+  };
+  // how much the foe threatens us with each kind of attack (its stat edge, never below a little)
+  const threat = (kind: 'physical' | 'elemental') => share(foe, kind) * Math.max(0.5, kind === 'physical' ? eff(b, fi, 'power') - eff(b, si, 'armor') + 2 : eff(b, fi, 'focus') - eff(b, si, 'ward') + 2) / 3;
+  const speedGap = eff(b, fi, 'speed') - eff(b, si, 'speed'); // > 0: the foe is faster
+  const speedWorth = (n: number) => (speedGap >= 0 ? (speedGap - n < 0 ? 1.3 : 0.7) : 0.2);
+  const foeLands = accuracyOf(foe, eff(b, si, 'evasion'));
+  const guard = 0.5 + 0.7 * foeLands; // Armor / Ward matter most against a foe that keeps landing hits
+  // value of one point of each stat on our side (a debuff on the foe mirrors its effect on us)
+  const mine: Partial<Record<StatKey, (n: number) => number>> = {
+    speed: speedWorth,
+    power: () => share(me, 'physical') * 0.9,
+    focus: () => share(me, 'elemental') * 0.9,
+    armor: () => threat('physical') * guard,
+    ward: () => threat('elemental') * guard,
+    evasion: () => dodgeable(foe, eff(b, si, 'evasion')) * 6,
+    vigor: () => 0.4,
+    stamina: () => (me.stamina <= 2 ? 0.5 : 0.15),
+  };
+  const theirs: Partial<Record<StatKey, (n: number) => number>> = {
+    speed: speedWorth,
+    power: () => threat('physical') * 0.9,
+    focus: () => threat('elemental') * 0.9,
+    armor: () => share(me, 'physical') * 0.7,
+    ward: () => share(me, 'elemental') * 0.7,
+    evasion: () => dodgeable(me, eff(b, fi, 'evasion')) * 6,
+    vigor: () => 0.2,
+    stamina: () => 0.2,
+  };
+  // stacking: each point already applied makes the next worth less; nothing past the cap
+  const room = (cur: number, n: number) => (n > 0 ? Math.max(0, Math.min(n, 3 - cur)) : Math.max(0, Math.min(-n, 3 + cur)));
+  const fade = (cur: number) => Math.max(0.2, 1 - Math.abs(cur) * 0.3);
+  let v = 0;
+  for (const [k, n] of Object.entries(e.self ?? {}) as [StatKey, number][]) {
+    if (n <= 0) continue;
+    const cur = b.sides[si].mods[k] ?? 0;
+    v += room(cur, n) * fade(cur) * (mine[k]?.(n) ?? 0.3);
+  }
+  for (const [k, n] of Object.entries(e.foe ?? {}) as [StatKey, number][]) {
+    if (n >= 0) continue;
+    const cur = b.sides[fi].mods[k] ?? 0;
+    v += room(cur, n) * fade(cur) * (theirs[k]?.(-n) ?? 0.3);
+  }
+  if (e.heal) {
+    const missing = maxHealth(me) - me.health;
+    v += Math.min(e.heal, missing) * (me.vitality <= 1 ? 1.2 : 0.6);
+  }
+  if (e.staminaGain) v += Math.min(e.staminaGain, maxStamina(me) - me.stamina) * (me.fatigue > 0 ? 0.35 : 0.15);
+  // set-up pays off over the rounds to come; less so once the battle is well along
+  return v * (b.round <= 2 ? 1.2 : b.round >= 6 ? 0.8 : 1);
+}
+
+/** Each consecutive use of the same move multiplies its appeal by this. */
+export const AI_REPEAT_PENALTY = 0.5;
+/**
+ * How strongly each kind of opponent favours its best-scoring move. Moves are picked at random,
+ * weighted by score ^ sharpness: wild creatures are playful and unpredictable, trainers fairly
+ * sensible, Arbiters and the Champion sharp (but never fully predictable).
+ */
+export const AI_SHARPNESS: Partial<Record<SideKind, number>> = { wild: 1.2, trainer: 2, player: 2, arbiter: 3, champion: 3.5 };
+
+/** Pick one option at random, weighted by score ^ sharpness. */
+function weightedPick(opts: { id: string; score: number }[], sharp: number): string | undefined {
+  const w = opts.map((o) => Math.pow(o.score, sharp));
+  const total = w.reduce((a, v) => a + v, 0);
+  if (!(total > 0)) return undefined;
+  let r = Math.random() * total;
+  for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) return opts[i].id; }
+  return opts[opts.length - 1].id;
 }
 
 // ── Round resolution ────────────────────────────────────────────
-export function resolveRound(b: Battle, pa: Action): BEvent[] {
+/**
+ * Resolve one round. `foeAction` lets a second human choose side 1's action (hotseat/online duels);
+ * without it the side-1 AI picks. An invalid foe action (e.g. a move not in the playbook) falls back to the AI.
+ */
+export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[] {
   const ev: BEvent[] = [];
   if (b.over) return ev;
+  if (b.foeNeedSwap) ev.push(...foeSendIn(b, -1)); // nobody picked a replacement: the next in line goes
   b.round++;
-  let ea: Action | { kind: 'flee' } = b.legendary && b.fleeWarned ? { kind: 'flee' } : chooseAI(b, 1);
+  let ea: Action | { kind: 'flee' } = b.legendary && b.fleeWarned ? { kind: 'flee' } : validFoeAction(b, foeAction) ?? chooseAI(b, 1);
   const startUids = [activeOf(b.sides[0]).uid, activeOf(b.sides[1]).uid];
 
   if (pa.kind === 'run') {
@@ -574,7 +714,9 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
     ev.push({ t: 'end', result: b.over });
     return;
   }
-  if (loser === 1) {
+  if (loser === 1 && b.foeChooses) {
+    b.foeNeedSwap = true;
+  } else if (loser === 1) {
     ls.active = next;
     noteFoe(b);
     ls.mods = {};
@@ -593,6 +735,28 @@ export function chooseLead(b: Battle, idx: number) {
   s.active = idx;
   b.participants = b.participants.filter((u) => u !== prev);
   if (!b.participants.includes(s.team[idx].uid)) b.participants.push(s.team[idx].uid);
+}
+
+/** Side 1's creatures that could replace a knocked-out active one (team indexes). */
+export function foeReplacements(b: Battle): number[] {
+  return b.sides[1].team.map((c, i) => (c.ko ? -1 : i)).filter((i) => i >= 0);
+}
+
+/** A human picks side 1's replacement after a KO (duels). An illegal index sends the next in line. */
+export function foeSendIn(b: Battle, idx: number): BEvent[] {
+  const s = b.sides[1];
+  if (!b.foeNeedSwap) return [];
+  const ok = foeReplacements(b);
+  if (!ok.length) return [];
+  const i = ok.includes(idx) ? idx : ok[0];
+  s.active = i;
+  s.mods = {};
+  b.foeNeedSwap = false;
+  noteFoe(b);
+  return [
+    { t: 'send', side: 1, idx: i, snap: snap(b, s.team[i]) },
+    { t: 'say', text: `${s.name} sends out ${nameOf(s.team[i])}!`, tone: 'info' },
+  ];
 }
 
 /** Player picks a replacement after a KO (no affinity trigger). */

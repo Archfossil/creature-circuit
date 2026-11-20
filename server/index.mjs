@@ -65,6 +65,17 @@ function resetControl(room) {
   const seat = room.match ? room.seats[room.match.current] : null;
   room.controller = seat && connected(room, seat.clientId) ? seat.clientId : null;
   armTimer(room);
+  flushEdits(room);
+}
+
+/**
+ * Creature edits from trainers who aren't playing (progression, playbooks) go to whoever runs the
+ * current turn, who applies them to the match. With nobody in control they wait here.
+ */
+function flushEdits(room) {
+  if (!room.controller || !connected(room, room.controller) || !room.edits?.length) return;
+  const ws = room.sockets.get(room.controller);
+  for (const e of room.edits.splice(0)) send(ws, { type: 'edit', seat: e.seat, edit: e.edit });
 }
 
 function armTimer(room) {
@@ -83,6 +94,7 @@ function timeUp(room) {
   // tell the executor first, so it ends the turn instead of starting to play it
   send(room.sockets.get(executor), { type: 'do-skip', seat: room.match.current, reason: 'timeout' });
   broadcast(room, roomInfo(room));
+  flushEdits(room);
 }
 
 function handle(ws, clientId, msg) {
@@ -114,6 +126,7 @@ function handle(ws, clientId, msg) {
         if (seat?.clientId === clientId && !room.controller) room.controller = clientId;
       }
       broadcast(room, roomInfo(room));
+      flushEdits(room);
       return room;
     }
     default:
@@ -170,11 +183,19 @@ function handle(ws, clientId, msg) {
       const seat = room.seats[msg.seat];
       if (clientId !== room.controller || !seat) return room;
       if (!connected(room, seat.clientId)) { send(ws, { type: 'answer', id: msg.id, yes: false, offline: true }); return room; }
-      send(room.sockets.get(seat.clientId), { type: 'ask', id: msg.id, from: msg.from, title: msg.title, text: msg.text, yes: msg.yes, no: msg.no });
+      send(room.sockets.get(seat.clientId), { type: 'ask', id: msg.id, from: msg.from, title: msg.title, text: msg.text, yes: msg.yes, no: msg.no, pick: msg.pick });
       return room;
     }
     case 'answer': {
-      if (room.controller) send(room.sockets.get(room.controller), { type: 'answer', id: msg.id, yes: !!msg.yes });
+      if (room.controller) send(room.sockets.get(room.controller), { type: 'answer', id: msg.id, yes: !!msg.yes, value: msg.value });
+      return room;
+    }
+    case 'edit': { // a seat owner tends their own creatures while someone else plays
+      const seat = Number(msg.seat);
+      if (!room.started || room.seats[seat]?.clientId !== clientId || !msg.edit || typeof msg.edit !== 'object') return room;
+      (room.edits ??= []).push({ seat, edit: msg.edit });
+      if (room.edits.length > 200) room.edits.shift();
+      flushEdits(room);
       return room;
     }
     case 'host-skip':
@@ -184,6 +205,7 @@ function handle(ws, clientId, msg) {
       if (msg.type === 'host-skip') room.deadline = null;
       send(ws, { type: msg.type === 'host-skip' ? 'do-skip' : 'do-play', seat: room.match.current, reason: 'host' });
       broadcast(room, roomInfo(room));
+      flushEdits(room);
       return room;
     }
     default:
