@@ -96,6 +96,26 @@ const mat = (color: string, rough = 0.7) => {
   if (!m) { m = new THREE.MeshStandardMaterial({ color, roughness: rough, flatShading: true }); mats.set(k, m); }
   return m;
 };
+/** A curved lock of hair laid over the head sphere: it starts thin along the parting near the crown, sweeps
+ *  sideways and down across the brow, dips lowest over one eye, then tapers up towards the temple. The band
+ *  is a sphere patch whose top and bottom edges (polar angle) vary along its width (azimuth). */
+function swoopGeometry(r: number): THREE.BufferGeometry {
+  // (a slice clear of the poles: three.js drops half the triangles in a pole row, which would leave teeth)
+  const geo = new THREE.SphereGeometry(r, 14, 6, 0, Math.PI * 2, 0.5, 1);
+  const pos = geo.attributes.position, uv = geo.attributes.uv;
+  const phi0 = Math.PI / 2 - 0.22, phiLen = 1.25;                            // from just across the centre parting out to the temple
+  const smooth = (x: number) => x * x * (3 - 2 * x);
+  for (let i = 0; i < pos.count; i++) {
+    const u = uv.getX(i), v = 1 - uv.getY(i);
+    const top = Math.PI * (0.06 + 0.22 * smooth(Math.max(0, (u - 0.4) / 0.6)));   // starts at the crown, drops to meet the bottom edge at the temple
+    const bottom = Math.PI * (0.28 + 0.27 * Math.sin(Math.PI * u));                // lowest midway across, over the eye; a tapered tip at the temple
+    const phi = phi0 + u * phiLen, theta = top + v * (bottom - top);
+    pos.setXYZ(i, -r * Math.cos(phi) * Math.sin(theta), r * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta));
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
 function part(geo: THREE.BufferGeometry, color: string, pos: [number, number, number], rot?: [number, number, number], rough?: number) {
   const m = new THREE.Mesh(geo, mat(color, rough));
   m.position.set(...pos);
@@ -164,8 +184,9 @@ export function buildTrainer(look: TrainerLook): TrainerRig {
     figure.add(part(new THREE.CylinderGeometry(0.09, 0.095, 0.08, 10), tie, [0, headY - 0.01, -0.29], [-0.9, 0, 0]));           // hair tie
     figure.add(part(new THREE.CylinderGeometry(0.075, 0.035, 0.34, 8), look.hair, [0, headY - 0.17, -0.36], [-0.35, 0, 0]));   // tail
   } else if (style === 'streak') {
-    // a stripe of the trainer's colour from the crown down the middle of the fringe
-    figure.add(part(new THREE.SphereGeometry(0.243, 4, 8, Math.PI / 2 - 0.2, 0.4, 0, Math.PI * 0.53), tie, [0, headY + 0.01, -0.02]));
+    // a side-swept streak of the trainer's colour: a band over one side of the crown that sweeps
+    // down into a lock of fringe angled across the brow and over one eye
+    figure.add(part(swoopGeometry(0.243), tie, [0, headY + 0.01, -0.02]));
   } else if (style === 'spiky' && !hatOn) {
     for (const [x, z, tilt] of [[0, 0, 0], [0.11, -0.03, -0.45], [-0.11, -0.03, 0.45], [0.05, -0.12, -0.2], [-0.05, -0.12, 0.2]]) {
       figure.add(part(new THREE.ConeGeometry(0.06, 0.16, 6), look.hair, [x, headY + 0.24, z], [-0.25, 0, tilt]));

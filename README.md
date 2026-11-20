@@ -111,7 +111,7 @@ The docs leave a few points open. The prototype makes these calls:
   | Style | Perk | Drawback |
   | --- | --- | --- |
   | ⚖️ Wanderer | Every city's stable counts as home: the doubled home Chanko Nabe anywhere | None |
-  | 🌲 Ranger | First re-explore each turn costs no Initiative (only the first, so re-exploring can't repeat endlessly) | City actions cost +1 Initiative |
+  | 🌲 Ranger | Up to Tier times a turn, an explore that finds Nothing refunds 1 Initiative (once at Tier 1, twice at Tier 2 …) | City actions cost +1 Initiative |
   | 🏙️ Urbanite | City actions cost no Initiative | Re-exploring costs 2 Initiative |
   | 🤝 Beast Whisperer | +1 to every recruitment roll | Trainer battles pay half the coins (Arbiters pay in full) |
   | 💰 Merchant | Markets 25% off (stacks with Baby Eyes), and +25% on every coin earned: prizes, finds, sales, events (at least +1) | −1 to every recruitment roll |
@@ -152,7 +152,7 @@ The docs leave a few points open. The prototype makes these calls:
 - **Follower prompt**: at the start of each turn (after the weather and any event), a sheet shows who is following you, with Ability, Affinity, Morale and Loyalty. It lists the other creatures you could switch to. It appears when there's a choice: more than one healthy creature, or nobody following. Turn it off in Settings → "Choose a follower each turn". The HUD's Following chip opens the same sheet any time.
 - **Battle lead**: your Following creature always leads. If nobody healthy is Following and more than one creature can fight, you choose the lead before round 1 (`world.ts` → `needsLeadChoice`, `battle.ts` → `chooseLead`).
 - **Keen Nose** (overworld ability): when an explore turns up an item, the follower sniffs out three different finds and you keep one (`world.ts` → `discoverItem`, `claimFind`).
-- **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape.
+- **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape, and an escape with Quick Step gives back 1 Initiative (up to 5; `QUICK_STEP_REFUND`, `finishBattle`). On the Forest Floor running needs 7+ instead of 4+.
 - **Trainer encounters**: on road and meadow nodes, a 3–4 explore roll may be a wandering trainer instead of a wild creature (prize: d6 coins).
 - **Statuses**, one per type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. A creature holds one status at a time. It lasts 3 rounds, counted only while that creature is in battle, and ends on a KO or when the battle ends. The in-game Menu → Status Effects lists exactly what each does (`moves.ts` → `STATUS_INFO`, `STATUS_FOR`).
 - **Creature Codex** (the docs' creature catalogue): a species is "seen" once it takes the field against you, whether wild, trainer, Arbiter or legendary. Bench creatures that never come out stay unseen. Effigies can only be carved for seen species. Each Codex page lists the wild nodes whose biome pool can produce the species or its earlier stages (weather boosts aside), and its best offering materials.

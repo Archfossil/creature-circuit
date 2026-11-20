@@ -21,7 +21,6 @@ export function cityActionCost(s: GameState) {
   return s.trainer.style === 'nature' ? 2 : s.trainer.style === 'urban' ? 0 : 1;
 }
 export function reexploreCost(s: GameState) {
-  if (s.trainer.style === 'nature' && !s.flags.freeReexploreUsed) return 0;
   return s.trainer.style === 'urban' ? 2 : 1;
 }
 /**
@@ -76,7 +75,7 @@ const cap = (x: string) => x[0].toUpperCase() + x.slice(1);
 // ── Exploration ─────────────────────────────────────────────────
 /** `die`: the explore die (6, or 8 on the Forest Floor). `dark`: a Forest Floor "nothing" (the team loses Morale). */
 export type Outcome =
-  | { t: 'nothing'; roll: number; die?: number; dark?: boolean }
+  | { t: 'nothing'; roll: number; die?: number; dark?: boolean; refund?: boolean }
   | { t: 'encounter'; roll: number; stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle; die?: number }
   | { t: 'trainer'; roll: number; name: string; battle: Battle }
   | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number; die?: number }
@@ -108,11 +107,27 @@ export function reexplore(s: GameState): Outcome | null {
   const cost = reexploreCost(s);
   if (s.initiative < cost) return null;
   s.initiative -= cost;
-  if (s.trainer.style === 'nature') s.flags.freeReexploreUsed = true;
   return explore(s);
 }
 
+/**
+ * Ranger: up to Tier times a turn, an explore that finds Nothing gives back 1 Initiative (never
+ * above 5). Counts arrival explores (moving onto a wild node) and re-explores alike.
+ */
+export const rangerRefundsLeft = (s: GameState) => (s.trainer.style === 'nature' ? Math.max(0, tierOf(s) - (s.flags.rangerRefunds ?? 0)) : 0);
+
 function explore(s: GameState): Outcome {
+  const out = exploreRoll(s);
+  // (a refund only counts when it gives something back: not at a full 5)
+  if (out.t === 'nothing' && out.roll && rangerRefundsLeft(s) > 0 && s.initiative < 5) {
+    s.flags.rangerRefunds = (s.flags.rangerRefunds ?? 0) + 1;
+    s.initiative += 1;
+    return { ...out, refund: true };
+  }
+  return out;
+}
+
+function exploreRoll(s: GameState): Outcome {
   if (s.location === FOREST_FLOOR) return exploreFloor(s);
   const node = here(s);
   s.stats.explored++;
@@ -716,6 +731,10 @@ export function playerSide(s: GameState): Side {
 // ── After battle ────────────────────────────────────────────────
 export interface BattleSummary { coins: number; wiped: boolean; text: string[] }
 
+/** Quick Step refunds this much Initiative after escaping a wild battle (never above a full turn's 5). */
+export const QUICK_STEP_REFUND = 1;
+const QUICK_STEP_MAX = 5;
+
 export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
@@ -747,6 +766,10 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     const lost = Math.min(s.coins, roll(6));
     s.coins -= lost;
     out.text.push(`You hand ${lost} coins to ${b.sides[1].name}.`);
+  } else if (b.over === 'escaped' && b.quickStep && s.initiative < QUICK_STEP_MAX) {
+    // Quick Step: a clean getaway also wins back a little time
+    s.initiative = Math.min(QUICK_STEP_MAX, s.initiative + QUICK_STEP_REFUND);
+    out.text.push(`Quick Step: a clean getaway. +${QUICK_STEP_REFUND} Initiative back.`);
   }
   // morale for participants
   for (const uid of b.participants) {
@@ -1128,6 +1151,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   s.turn++;
   s.initiative = 5;
   s.flags.freeReexploreUsed = false;
+  s.flags.rangerRefunds = 0;
   s.flags.firstMoveUsed = false;
   s.flags.salemNight = false;
   s.flags.sparred = [];

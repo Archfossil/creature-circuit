@@ -852,6 +852,56 @@ describe('day & night', () => {
   });
 });
 
+describe('Ranger', () => {
+  it('up to Tier times a turn, a Nothing explore refunds 1 Initiative', () => {
+    for (const [merits, tier] of [[[], 1], [['aurora', 'hollow'], 2], [['aurora', 'hollow', 'thunder', 'gloom'], 3]] as const) {
+      const s = newGame('T', 'nature', 'thunder', 'puddlit', '#fff');
+      s.merits = [...merits];
+      s.location = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === 'meadow')!.id;
+      expect(W.reexploreCost(s)).toBe(1); // no free re-explore any more
+      let refunds = 0, nothings = 0;
+      for (let i = 0; i < 200; i++) {
+        s.initiative = 3;
+        const o = W.reexplore(s)!;
+        if (o.t === 'nothing') { nothings++; if (o.refund) { refunds++; expect(s.initiative).toBe(3); } else expect(s.initiative).toBe(2); }
+      }
+      expect(nothings).toBeGreaterThan(tier);
+      expect(refunds).toBe(tier); // only Tier times this turn
+      W.endTurn(s);
+      expect(W.rangerRefundsLeft(s)).toBe(tier); // fresh next turn
+    }
+    // other styles never refund
+    const o = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    o.location = MAP_NODES.find((n) => n.kind === 'wild')!.id;
+    for (let i = 0; i < 60; i++) { o.initiative = 3; const r = W.reexplore(o)!; if (r.t === 'nothing') expect(r.refund).toBeFalsy(); }
+  });
+});
+
+describe('Quick Step', () => {
+  it('always escapes a wild battle and refunds 1 Initiative (not above 5)', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff'); // Puddlit has Quick Step
+    expect(W.ability(s)).toBe('quickStep');
+    s.initiative = 2;
+    const b = createBattle(W.playerSide(s), side('wild', [createCreature('zapup', 3)]), WEATHER.clear, { quickStep: true });
+    expect(resolveRound(b, { kind: 'run' }).some((e) => e.t === 'end' && e.result === 'escaped')).toBe(true);
+    const sum = W.finishBattle(s, b, { kind: 'wild' });
+    expect(s.initiative).toBe(3);
+    expect(sum.text.join(' ')).toMatch(/Quick Step/);
+    s.initiative = 5;
+    const b2 = createBattle(W.playerSide(s), side('wild', [createCreature('zapup', 3)]), WEATHER.clear, { quickStep: true });
+    resolveRound(b2, { kind: 'run' });
+    W.finishBattle(s, b2, { kind: 'wild' });
+    expect(s.initiative).toBe(5);
+    // without Quick Step, an escape refunds nothing
+    const o = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    o.initiative = 2;
+    const b3 = createBattle(W.playerSide(o), side('wild', [createCreature('zapup', 3)]), WEATHER.clear);
+    b3.over = 'escaped';
+    W.finishBattle(o, b3, { kind: 'wild' });
+    expect(o.initiative).toBe(2);
+  });
+});
+
 describe('the Forest Floor (Dahlia)', () => {
   const atGloom = (merits: string[] = []) => {
     const s = newGame('T', 'balanced', 'gloom', 'sproutle', '#fff');

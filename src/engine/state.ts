@@ -11,7 +11,7 @@ export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'hagg
 /** Trainer styles: each has a perk and (except the Wanderer) a drawback. The rules live in world.ts / battle.ts. */
 export const TRAINER_STYLES: { id: TrainerStyle; icon: string; name: string; perk: string; drawback: string }[] = [
   { id: 'balanced', icon: '⚖️', name: 'Wanderer', perk: 'Every city’s stable treats you like home: the doubled home Chanko Nabe, anywhere.', drawback: 'None. You have no real home, and no special rules.' },
-  { id: 'nature', icon: '🌲', name: 'Ranger', perk: 'Your first re-explore each turn costs no Initiative.', drawback: 'City actions cost +1 Initiative.' },
+  { id: 'nature', icon: '🌲', name: 'Ranger', perk: 'Up to Tier times a turn, exploring and finding Nothing gives back 1 Initiative (once at Tier 1, twice at Tier 2, and so on).', drawback: 'City actions cost +1 Initiative.' },
   { id: 'urban', icon: '🏙️', name: 'Urbanite', perk: 'City actions cost no Initiative.', drawback: 'Re-exploring costs 2 Initiative.' },
   { id: 'whisperer', icon: '🤝', name: 'Beast Whisperer', perk: '+1 to every recruitment roll.', drawback: 'Trainer battles pay half the coins (Arbiters still pay in full).' },
   { id: 'haggler', icon: '💰', name: 'Merchant', perk: 'Markets sell at 25% off, and you earn 25% more coins whenever you earn coins (at least +1).', drawback: '−1 to every recruitment roll.' },
@@ -39,6 +39,8 @@ export interface GameState {
   dex: { seen: string[]; caught: string[] };
   flags: {
     freeReexploreUsed: boolean;
+    /** Ranger: Nothing refunds used this turn (up to Tier). */
+    rangerRefunds?: number;
     firstMoveUsed: boolean;
     lure: boolean;
     starCharm: boolean;

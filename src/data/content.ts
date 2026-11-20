@@ -25,7 +25,7 @@ export const ABILITIES: Record<string, Ability> = {
   starSeeker: { id: 'starSeeker', name: 'Star Seeker', text: 'Roll one extra rarity die on encounters.' },
   trailblazer: { id: 'trailblazer', name: 'Trailblazer', text: 'Your first move each turn costs no Initiative.' },
   forager: { id: 'forager', name: 'Forager', text: 'Found berries and materials come in pairs.' },
-  quickStep: { id: 'quickStep', name: 'Quick Step', text: 'Always escape from wild battles.' },
+  quickStep: { id: 'quickStep', name: 'Quick Step', text: 'Always escape from wild battles, and get 1 Initiative back when you do.' },
   luckyCharm: { id: 'luckyCharm', name: 'Lucky Charm', text: '+1 to recruitment rolls.' },
 };
 

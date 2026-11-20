@@ -11,7 +11,7 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 | # | Style | ID | Perk | Drawback | Best for |
 |---|---|---|---|---|---|
 | 1 | ⚖️ Wanderer | `balanced` | Every city Stable serves the doubled "home" hot pot | None | New players, flexible routes |
-| 2 | 🌲 Ranger | `nature` | First re-explore each turn is free | City actions cost +1 Initiative | Living in the wilds, hunting creatures |
+| 2 | 🌲 Ranger | `nature` | Up to Tier times a turn, finding Nothing refunds 1 Initiative | City actions cost +1 Initiative | Living in the wilds, hunting creatures |
 | 3 | 🏙️ Urbanite | `urban` | City actions are free | Re-exploring costs 2 Initiative | City-hopping, shopping, Arbiters |
 | 4 | 🤝 Beast Whisperer | `whisperer` | +1 to every recruitment roll | Trainer battles pay half the coins | Collecting creatures |
 | 5 | 💰 Merchant | `haggler` | Markets 25% off, +25% coins earned | −1 to every recruitment roll | Coins and items |
@@ -24,7 +24,7 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 | Style | Moving | Exploring | City actions | Stables | Camping | Recruiting | Coins earned | Shop prices | Battle XP | Morale |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Wanderer | | | | ⬆ doubled hot pot everywhere | | | | | | |
-| Ranger | | ⬆ 1st re-explore free | ⬇ +1 | ⬇ +1 (Stables count as a city action) | | | | | | |
+| Ranger | | ⬆ Nothing refunds 1 (Tier times a turn) | ⬇ +1 | ⬇ +1 (Stables count as a city action) | | | | | | |
 | Urbanite | | ⬇ re-explore costs 2 | ⬆ free | ⬆ free | | | | | | |
 | Beast Whisperer | | | | | | ⬆ +1 | ⬇ trainer battles halved | | | |
 | Merchant | | | | | | ⬇ −1 | ⬆ +25% | ⬆ −25% | | |
@@ -37,7 +37,7 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 | Action | Normal | Ranger | Urbanite | Pathfinder |
 |---|---|---|---|---|
 | Move to an adjacent node | 1 | 1 | 1 | **0** for the first move, then 1 |
-| Re-explore a wild node | 1 | **0** for the first, then 1 | **2** | 1 |
+| Re-explore a wild node | 1 | 1 (a Nothing refunds 1, up to Tier times a turn) | **2** | 1 |
 | City action (city Market, Carving Shrine, Trainer Hall, Arbiter challenge) | 1 | **2** | **0** | 1 |
 | Stable (city or town) | 1 | **2** | **0** | **2** |
 
@@ -71,12 +71,12 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
 
 | Perk | Drawback |
 |---|---|
-| First re-explore each turn is free | City actions cost +1 Initiative |
+| Up to Tier times a turn, finding Nothing refunds 1 Initiative | City actions cost +1 Initiative |
 
-**In game:** "Your first re-explore each turn costs no Initiative." / "City actions cost +1 Initiative."
+**In game:** "Up to Tier times a turn, exploring and finding Nothing gives back 1 Initiative (once at Tier 1, twice at Tier 2, and so on)." / "City actions cost +1 Initiative."
 
 **Exact rules**
-- **Perk:** the first re-explore of a wild node each turn costs **0** Initiative. Later ones cost 1. Re-exploring is the 🔍 Explore button on a wild node you're already standing on.
+- **Perk:** when an explore turns up **Nothing**, the Ranger gets **1 Initiative back** (never above 5), up to **Tier** times per turn: once at Tier 1, twice at Tier 2 … five times at Tier 5. It counts explores from moving onto a wild node and from re-exploring (🔍 Explore), including the Forest Floor's dark Nothing (the Morale loss still happens). A refund only counts when it gives something back, so a Nothing at a full 5 Initiative doesn't use one up. The count resets every turn.
 - **Drawback:** city actions cost **2** Initiative instead of 1:
   - the city Market,
   - the Carving Shrine,
@@ -186,14 +186,16 @@ To review when balancing. Tick them off or move them into a card's **Notes** onc
 - [ ] **Battle Master vs Caretaker XP:** that's +2 vs −1 per creature per battle. Over a season with roughly 40 battles and 3 creatures each, that's a gap of about 360 XP: around 12 levels for the Battle Master, and about 4 lost for the Caretaker.
 - [ ] **Beast Whisperer's coin penalty** halves Trainer Hall and Rival coins, but not Arbiter prizes (the biggest source late in the season), so it softens as the season goes on.
 - [ ] **Merchant's recruitment penalty** is the same size as the Whisperer's bonus, so the two are mirror images on recruiting.
-- [ ] **Re-explore costs** (Ranger 0 first, Urbanite 2) matter most to players who farm one node for a specific creature.
+- [ ] **Ranger's refund grows with Tier** (1 to 5 per turn), while Pathfinder's free first move stays at 1. Late in the season a Ranger gets back most of the Initiative lost to empty explores. Compare the two in play.
+- [ ] **Re-explore costs** (Urbanite 2) matter most to players who farm one node for a specific creature.
 
 ### Where each rule lives
 
 | Rule | Code |
 |---|---|
 | City action cost (Ranger 2, Urbanite 0) | `cityActionCost` in `world.ts` |
-| Re-explore cost (Ranger first free, Urbanite 2) | `reexploreCost` in `world.ts` |
+| Re-explore cost (Urbanite 2) | `reexploreCost` in `world.ts` |
+| Nothing refund (Ranger, Tier times a turn) | `explore` / `rangerRefundsLeft` in `world.ts` (reset in `endTurn`) |
 | Free first move (Pathfinder, Trailblazer) | `moveCost` in `world.ts` |
 | Stable cost (city action + 1 for Pathfinder) | `stableCost` in `world.ts` |
 | Recruitment modifier (Whisperer +1, Merchant −1) | `styleRecruitMod` in `world.ts` |

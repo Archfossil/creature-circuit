@@ -1258,6 +1258,7 @@ export class App {
         if (n.kind === 'city' || n.kind === 'town') save(s);
       } else if (out.t === 'nothing') {
         if (out.roll) await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: out.dark ? 'bad' : 'info', label: '1–2 Nothing' }], out.dark ? 'Nothing but the dark. Your team shivers. (−1 Morale)' : 'Nothing but wind and birdsong.', 600);
+        if (out.refund) { toast(`🌲 Ranger’s instinct: +1 Initiative back (${W.rangerRefundsLeft(s)} more this turn).`, 'good', 2600); this.renderHud(); }
         if (out.dark) this.renderHud();
       } else if (out.t === 'trail') {
         await rollDice('Explore', [{ sides: out.die, value: out.roll, tone: 'good', label: '7–8 Dahlia’s Trail' }], out.found ? 'The trail ends at a ring of lanterns: Dahlia’s arena!' : `A sign of Dahlia’s Trail: ${out.steps}/${out.need}.`, 700);

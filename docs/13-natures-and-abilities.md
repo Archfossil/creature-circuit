@@ -127,7 +127,7 @@ To review when balancing. Tick them off or move them into a card once decided.
 | 4 | Star Seeker | `starSeeker` | "Roll one extra rarity die on encounters." | Wild encounters | 52 (6 hand-made) |
 | 5 | Trailblazer | `trailblazer` | "Your first move each turn costs no Initiative." | Moving | 42 (5 hand-made) |
 | 6 | Forager | `forager` | "Found berries and materials come in pairs." | Exploring (item finds) | 46 (8 hand-made) |
-| 7 | Quick Step | `quickStep` | "Always escape from wild battles." | Running from wild battles | 51 (5 hand-made) |
+| 7 | Quick Step | `quickStep` | "Always escape from wild battles, and get 1 Initiative back when you do." | Running from wild battles | 51 (5 hand-made) |
 | 8 | Lucky Charm | `luckyCharm` | "+1 to recruitment rolls." | Recruiting | 47 (7 hand-made) |
 
 *Counts include placeholder species, so they'll change as the roster is filled in (see [the creature checklist](./08-creature-checklist.md)).*
@@ -174,7 +174,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 #### 7. Quick Step · `quickStep`
 
-**Exact rule:** running from a **wild** battle always succeeds (no Speed roll). That includes wild creatures from Explore the Depths.
+**Exact rule:** running from a **wild** battle always succeeds (no Speed roll). That includes wild creatures from Explore the Depths, and the Forest Floor, where running otherwise needs a 7+. **After a successful escape, you get 1 Initiative back** (never above 5), so running doesn't cost the turn's progress.
 
 **Interactions:** doesn't apply to Legendary battles: you can run from those, but it takes the normal Speed roll. You can't run from trainer battles at all.
 
@@ -189,7 +189,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 - [ ] **Two Abilities copy a trainer style:** Trailblazer (Pathfinder) and Lucky Charm (Beast Whisperer). Trailblazer doesn't stack with Pathfinder, but Lucky Charm does stack with Beast Whisperer. Make these consistent?
 - [ ] **Sweet Scent trades items for encounters:** it turns a 5 (an item find) into an encounter, so it's a downside for item-hunting.
 - [ ] **Keen Nose and Forager overlap** (both improve item finds), and both are useless with Sweet Scent's extra encounters.
-- [ ] **Quick Step is situational:** it only matters when the player wants to leave a wild battle.
+- [ ] **Quick Step** was situational (it only mattered when leaving a wild battle). It now also refunds 1 Initiative per escape, which makes it a strong pick for hunting a specific creature: run from everything else for nearly free. Watch for abuse with Lure Incense or Sweet Scent.
 - [ ] **Most Abilities are economy or exploration;** none affects battle. Deliberate, so the follower choice is about the map, not fights.
 - [ ] **Distribution is fairly even** (42–55 species each). Trailblazer and Keen Nose are the rarest.
 
