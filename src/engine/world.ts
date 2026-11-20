@@ -3,8 +3,8 @@ import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES } from '..
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
-import type { GameState, Training } from './state';
-import { tierOf, teamMovements, follower, addItem, hasItem, log } from './state';
+import type { GameState, Training, Match } from './state';
+import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf } from './state';
 import type { CreatureInst } from './creature';
 import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -24,8 +24,16 @@ export function reexploreCost(s: GameState) {
   return s.trainer.style === 'urban' ? 2 : 1;
 }
 export function moveCost(s: GameState) {
-  return ability(s) === 'trailblazer' && !s.flags.firstMoveUsed ? 0 : 1;
+  return (ability(s) === 'trailblazer' || s.trainer.style === 'pathfinder') && !s.flags.firstMoveUsed ? 0 : 1;
 }
+/** Initiative for a stable rest: a city action, +1 for Pathfinders. */
+export function stableCost(s: GameState) {
+  return cityActionCost(s) + (s.trainer.style === 'pathfinder' ? 1 : 0);
+}
+/** Recruitment roll modifier from the trainer's style. */
+export const styleRecruitMod = (s: GameState) => (s.trainer.style === 'whisperer' ? 1 : s.trainer.style === 'haggler' ? -1 : 0);
+/** Creatures tended per Initiative when camping. */
+export const campPerInitiative = (s: GameState) => (s.trainer.style === 'caretaker' ? 2 : 1);
 
 export interface MoveCheck { ok: boolean; cost: number; reason?: string }
 export function canMoveTo(s: GameState, id: string): MoveCheck {
@@ -59,6 +67,7 @@ export type Outcome =
   | { t: 'encounter'; roll: number; stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle }
   | { t: 'trainer'; roll: number; name: string; battle: Battle }
   | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number }
+  | { t: 'itemChoice'; roll: number; options: Find[] }
   | { t: 'legendary'; battle: Battle }
   | { t: 'arrive'; node: MapNode };
 
@@ -92,7 +101,7 @@ function explore(s: GameState): Outcome {
   let r = roll(6);
   const ab = ability(s);
   if (s.flags.lure) { s.flags.lure = false; r = 3 + (r % 2); }
-  const encounterRange = ab === 'sweetScent' ? [3, 5] : ab === 'keenNose' ? [3, 3] : [3, 4];
+  const encounterRange = ab === 'sweetScent' ? [3, 5] : [3, 4];
   if (r < encounterRange[0]) return { t: 'nothing', roll: r };
   if (r <= encounterRange[1]) {
     if ((node.biome === 'road' || node.biome === 'meadow') && Math.random() < 0.4) return trainerEncounter(s, node, r);
@@ -101,7 +110,10 @@ function explore(s: GameState): Outcome {
   return discoverItem(s, node, r);
 }
 
-function discoverItem(s: GameState, node: MapNode, r: number): Outcome {
+/** One possible find from an explore: its find roll, the items, and any coins. Nothing is applied yet. */
+export interface Find { itemRoll: number; items: { id: string; n: number }[]; coins: number }
+
+function rollFind(s: GameState, node: MapNode): Find {
   const ir = roll(6);
   const mult = ability(s) === 'forager' ? 2 : 1;
   const items: { id: string; n: number }[] = [];
@@ -110,9 +122,29 @@ function discoverItem(s: GameState, node: MapNode, r: number): Outcome {
   else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: mult });
   else if (ir === 5) items.push({ id: pick(['salve', 'calm-tea', 'lure-incense', 'totem']), n: 1 });
   else { if (Math.random() < 0.5) items.push({ id: 'totem', n: 1 }); coins = roll(6); }
-  for (const it of items) addItem(s, it.id, it.n);
-  s.coins += coins;
-  return { t: 'item', roll: r, itemRoll: ir, items, coins };
+  return { itemRoll: ir, items, coins };
+}
+
+/** Put a find in the bag (coins through earnCoins); returns it with the coins actually received. */
+export function claimFind(s: GameState, f: Find): Find {
+  for (const it of f.items) addItem(s, it.id, it.n);
+  return { ...f, coins: earnCoins(s, f.coins) };
+}
+
+const findKey = (f: Find) => f.items.map((i) => `${i.id}×${i.n}`).join('+') + `|${f.coins}`;
+
+function discoverItem(s: GameState, node: MapNode, r: number): Outcome {
+  // Keen Nose: sniff out three different finds and let the trainer keep one
+  if (ability(s) === 'keenNose') {
+    const options: Find[] = [];
+    for (let tries = 0; options.length < 3 && tries < 30; tries++) {
+      const f = rollFind(s, node);
+      if (!options.some((o) => findKey(o) === findKey(f))) options.push(f);
+    }
+    return { t: 'itemChoice', roll: r, options };
+  }
+  const f = claimFind(s, rollFind(s, node));
+  return { t: 'item', roll: r, itemRoll: f.itemRoll, items: f.items, coins: f.coins };
 }
 
 // ── Encounter scaling by Trainer Tier ───────────────────────────
@@ -275,6 +307,19 @@ export function hallBattle(s: GameState): { name: string; battle: Battle } | nul
   return { name, battle };
 }
 
+// ── Hotseat weather ─────────────────────────────────────────────
+/**
+ * Roll a turn's weather once for the whole hotseat table (when the first trainer starts that turn),
+ * record it on the match and apply it to every trainer on that turn. Returns the roll.
+ */
+export function rollRoundWeather(m: Match, turn: number): number {
+  const r = roll(6);
+  m.rolls[turn] = r;
+  const w = SEASON_INFO[seasonForTurn(turn)].dice[r - 1];
+  for (const p of m.players) if (p.turn === turn) p.weather = w;
+  return r;
+}
+
 // ── Legendaries: one of each per game ───────────────────────────
 /**
  * Each Legendary exists once per game. It waits at its node until it is beaten (recruited or driven
@@ -283,8 +328,16 @@ export function hallBattle(s: GameState): { name: string; battle: Battle } | nul
  */
 export function legendaryHere(s: GameState, node: MapNode): boolean {
   if (node.kind !== 'legendary' || !node.legendary) return false;
-  if (s.flags.beaten.includes(node.id)) return false;
-  return ![...s.roster, ...s.reserve].some((c) => c.species === node.legendary);
+  // in hotseat, every trainer shares the board: anyone beating or holding it takes it off the map
+  const trainers = allTrainers(s);
+  if (trainers.some((t) => t.flags.beaten.includes(node.id))) return false;
+  return !trainers.some((t) => [...t.roster, ...t.reserve, ...(t.training ?? []).map((x) => x.creature)].some((c) => c.species === node.legendary));
+}
+
+/** This trainer plus everyone else in the hotseat match (just this trainer in a solo journey). */
+export function allTrainers(s: GameState): GameState[] {
+  const m = activeMatchOf();
+  return m && m.players.includes(s) ? m.players : [s];
 }
 
 // ── Research Facility (Quillhaven) ──────────────────────────────
@@ -309,10 +362,9 @@ export function releaseToResearch(s: GameState, uid: string): { coins: number; t
   if (releaseBlock(s, uid)) return null;
   const list = s.roster.some((c) => c.uid === uid) ? s.roster : s.reserve;
   const c = list.find((x) => x.uid === uid)!;
-  const coins = researchPayout(c);
   list.splice(list.indexOf(c), 1);
   if (s.following === uid) s.following = s.roster[0]?.uid ?? null;
-  s.coins += coins;
+  const coins = earnCoins(s, researchPayout(c));
   let text = `${nameOf(c)} is in the researchers’ care now. You receive 🪙 ${coins}.`;
   const home = returnLegendary(s, c);
   if (home) text += ` The researchers return it to ${home}, where it waits for its next challenger.`;
@@ -411,19 +463,23 @@ export function playerSide(s: GameState): Side {
   const team = s.roster;
   let active = team.findIndex((c) => c.uid === s.following && !c.ko);
   if (active < 0) active = team.findIndex((c) => !c.ko);
-  return { kind: 'player', name: s.trainer.name, team, active: Math.max(0, active), mods: {}, buff: s.hotpot?.buff };
+  return { kind: 'player', name: s.trainer.name, team, active: Math.max(0, active), mods: {}, buff: s.hotpot?.buff, xpBonus: s.trainer.style === 'drill' ? 2 : s.trainer.style === 'caretaker' ? -1 : 0 };
 }
 
 // ── After battle ────────────────────────────────────────────────
 export interface BattleSummary { coins: number; wiped: boolean; text: string[] }
 
-export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame'; city?: string; nodeId?: string }): BattleSummary {
+export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
   for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
   if (b.over === 'win') {
     s.stats.battlesWon++;
-    if (ctx.kind === 'trainer') { out.coins = roll(6) + Math.floor(b.sides[1].team[0].level / 2); out.text.push(`${b.sides[1].name} hands over ${out.coins} coins.`); }
+    if (ctx.kind === 'trainer') {
+      out.coins = roll(6) + Math.floor(b.sides[1].team[0].level / 2);
+      if (s.trainer.style === 'whisperer') out.coins = Math.max(1, Math.floor(out.coins / 2));
+      out.text.push(`${b.sides[1].name} hands over ${out.coins} coins.`);
+    }
     if (ctx.kind === 'wild') { out.coins = 1 + Math.floor(b.sides[1].team[0].level / 3); out.text.push(`You found ${out.coins} coins in the grass.`); }
     if (ctx.kind === 'arbiter' && ctx.city) {
       const city = CITIES[ctx.city];
@@ -433,7 +489,9 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
       log(s, `Earned the ${city.accolade} from ${city.arbiter}.`);
     }
     if (ctx.kind === 'legendary' && ctx.nodeId) s.flags.beaten.push(ctx.nodeId);
-    s.coins += out.coins;
+    const base = out.coins;
+    out.coins = earnCoins(s, base);
+    if (out.coins > base) out.text.push(`Merchant’s cut: +${out.coins - base} coins.`);
   } else if (b.over === 'lose' && ctx.kind === 'trainer') {
     const lost = Math.min(s.coins, roll(6));
     s.coins -= lost;
@@ -444,7 +502,7 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     const c = s.roster.find((x) => x.uid === uid);
     if (c && b.over === 'win') c.morale = Math.min(10, c.morale + 1);
   }
-  if (s.roster.every((c) => c.ko)) {
+  if (s.roster.every((c) => c.ko) && ctx.kind !== 'rival') { // hotseat duels settle their own losses (interactions.ts)
     out.wiped = true;
     wipe(s);
     out.text.push(`Your team was wiped out. You rush back to ${CITIES[s.trainer.home].name}…`);
@@ -484,7 +542,7 @@ export function recruitTarget(c: CreatureInst) { return speciesOf(c).rt + Math.f
 
 export function attemptRecruit(s: GameState, wild: CreatureInst, totem: string, offerings: string[]) {
   const dice = [roll(6), roll(6)];
-  const mods = totemBonus(totem, wild) + offeringBonus(offerings, wild) + (ability(s) === 'luckyCharm' ? 1 : 0);
+  const mods = totemBonus(totem, wild) + offeringBonus(offerings, wild) + (ability(s) === 'luckyCharm' ? 1 : 0) + styleRecruitMod(s);
   const total = dice[0] + dice[1] + mods;
   const need = recruitTarget(wild);
   addItem(s, totem, -1);
@@ -517,10 +575,10 @@ export function spendCityAction(s: GameState): boolean {
  */
 export function rest(s: GameState, nodeId: string) {
   for (const c of [...s.roster, ...s.reserve]) fullRestore(c);
-  for (const c of s.roster) c.morale = Math.min(10, c.morale + 1);
+  for (const c of s.roster) c.morale = Math.min(10, c.morale + (s.trainer.style === 'caretaker' ? 2 : 1));
   const ci = CITIES[nodeId];
   if (!ci) return { advanced: false, buff: {} as Record<string, number> };
-  const advanced = s.trainer.home === nodeId;
+  const advanced = s.trainer.home === nodeId || s.trainer.style === 'balanced'; // Wanderers are at home anywhere
   const buff = Object.fromEntries(Object.entries(ci.hotpot.buff).map(([k, v]) => [k, v! * (advanced ? 2 : 1)]));
   s.hotpot = { city: nodeId, buff };
   return { advanced, buff };
@@ -528,7 +586,9 @@ export function rest(s: GameState, nodeId: string) {
 
 export function priceOf(s: GameState, id: string) {
   const p = itemInfo(id).price;
-  return ability(s) === 'babyEyes' ? Math.max(1, Math.ceil(p * 0.75)) : p;
+  // Baby Eyes and the Merchant style each take 25% off, and stack
+  const off = (ability(s) === 'babyEyes' ? 1 : 0) + (s.trainer.style === 'haggler' ? 1 : 0);
+  return off ? Math.max(1, Math.ceil(p * Math.pow(0.75, off))) : p;
 }
 export function buy(s: GameState, id: string): boolean {
   const p = priceOf(s, id);
@@ -688,10 +748,9 @@ export function campNeeds(s: GameState): CreatureInst[] {
 export function campTargets(s: GameState, chosen?: string[]): CreatureInst[] {
   const needs = campNeeds(s);
   const pool = chosen ? chosen.map((uid) => needs.find((c) => c.uid === uid)).filter((c): c is CreatureInst => !!c) : needs;
-  return [...new Set(pool)].slice(0, Math.max(0, s.initiative));
+  return [...new Set(pool)].slice(0, Math.max(0, s.initiative) * campPerInitiative(s));
 }
 
-/** End the turn. `camping`: true tends the most wounded, or pass the uids the trainer chose to tend. */
 /**
  * End-of-turn Morale & Loyalty:
  * - the Following creature gains +1 Morale every other turn; creatures waiting in totems lose 1 every 10 turns;
@@ -709,7 +768,7 @@ function returnLegendary(s: GameState, c: CreatureInst): string | null {
   if (sp.rarity !== 'legendary') return null;
   const home = MAP_NODES.find((n) => n.kind === 'legendary' && n.legendary === sp.id);
   if (!home) return null;
-  s.flags.beaten = s.flags.beaten.filter((id) => id !== home.id);
+  for (const t of allTrainers(s)) t.flags.beaten = t.flags.beaten.filter((id) => id !== home.id);
   return home.name;
 }
 
@@ -724,7 +783,7 @@ function depart(s: GameState, list: CreatureInst[], i: number) {
 export function moraleAndLoyalty(s: GameState, report: TurnReport) {
   const f = follower(s);
   if (f && s.turn % 2 === 0) f.morale = Math.min(10, f.morale + 1);
-  if (s.turn % 10 === 0) for (const c of s.reserve) c.morale = Math.max(0, c.morale - 1);
+  if (s.turn % (s.trainer.style === 'drill' ? 5 : 10) === 0) for (const c of s.reserve) c.morale = Math.max(0, c.morale - 1);
   for (const list of [s.roster, s.reserve]) {
     for (let i = list.length - 1; i >= 0; i--) {
       const c = list[i];
@@ -767,7 +826,8 @@ export function moraleAndLoyalty(s: GameState, report: TurnReport) {
   }
 }
 
-export function endTurn(s: GameState, camping: boolean | string[] = false): TurnReport {
+/** End the turn. `camping`: true tends the most wounded, or the uids the trainer chose to tend. `weatherRoll` (hotseat) reuses the roll another trainer already made for the coming turn. */
+export function endTurn(s: GameState, camping: boolean | string[] = false, weatherRoll?: number | null): TurnReport {
   const report: TurnReport = { weatherRoll: 0, seasonChanged: false, left: [], warned: [], checks: [], legendsReturned: [], trainingDone: [] };
   if (camping) {
     const tended = campTargets(s, Array.isArray(camping) ? camping : undefined);
@@ -788,10 +848,14 @@ export function endTurn(s: GameState, camping: boolean | string[] = false): Turn
   s.flags.firstMoveUsed = false;
   s.flags.salemNight = false;
   s.flags.sparred = [];
+  s.flags.challenged = [];
   const season = seasonForTurn(s.turn);
   report.seasonChanged = season !== prevSeason;
-  report.weatherRoll = roll(6);
-  s.weather = SEASON_INFO[season].dice[report.weatherRoll - 1];
+  // hotseat passes null: the coming turn's weather is rolled once, when the first trainer starts it (rollRoundWeather)
+  if (weatherRoll !== null) {
+    report.weatherRoll = weatherRoll ?? roll(6);
+    s.weather = SEASON_INFO[season].dice[report.weatherRoll - 1];
+  }
   if (!s.roster.some((c) => c.uid === s.following)) s.following = s.roster[0]?.uid ?? null;
   for (const t of s.training ?? []) {
     if (!t.notified && trainingProgress(s, t).done) {

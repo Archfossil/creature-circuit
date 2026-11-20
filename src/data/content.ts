@@ -21,7 +21,7 @@ export const NATURE_BY_ID = Object.fromEntries(NATURES.map((n) => [n.id, n]));
 export const ABILITIES: Record<string, Ability> = {
   sweetScent: { id: 'sweetScent', name: 'Sweet Scent', text: 'Explore rolls of 3–5 become wild encounters.' },
   babyEyes: { id: 'babyEyes', name: 'Baby-Doll Eyes', text: 'Market prices are 25% cheaper.' },
-  keenNose: { id: 'keenNose', name: 'Keen Nose', text: 'Explore rolls of 4–6 discover items.' },
+  keenNose: { id: 'keenNose', name: 'Keen Nose', text: 'When you discover an item, sniff out three finds and keep the one you like.' },
   starSeeker: { id: 'starSeeker', name: 'Star Seeker', text: 'Roll one extra rarity die on encounters.' },
   trailblazer: { id: 'trailblazer', name: 'Trailblazer', text: 'Your first move each turn costs no Initiative.' },
   forager: { id: 'forager', name: 'Forager', text: 'Found berries and materials come in pairs.' },

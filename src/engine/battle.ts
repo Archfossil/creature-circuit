@@ -16,6 +16,8 @@ export interface Side {
   active: number;
   mods: Partial<Stats>;
   buff?: Partial<Record<StatKey, number>>; // hot pot (player) / arena (arbiter)
+  /** Extra XP per participant from the trainer's style (Battle Master +2, Caretaker −1). */
+  xpBonus?: number;
 }
 
 export interface Battle {
@@ -33,6 +35,8 @@ export interface Battle {
   quickStep: boolean;
   /** Species ids of every opposing creature that has taken the field (for the Creature Codex). */
   seenFoes: string[];
+  /** Opposing creatures that took the field (uids), e.g. to reward a hotseat duel's defender. */
+  foeParticipants?: string[];
 }
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
@@ -72,8 +76,10 @@ export function typeMatchup(m: Move, defender: ElementType[]): number | null {
 
 /** Record the opposing side's active creature as seen. */
 function noteFoe(b: Battle) {
-  const sp = activeOf(b.sides[1])?.species;
+  const foe = activeOf(b.sides[1]);
+  const sp = foe?.species;
   if (sp && !b.seenFoes.includes(sp)) b.seenFoes.push(sp);
+  if (foe && !(b.foeParticipants ??= []).includes(foe.uid)) b.foeParticipants.push(foe.uid);
 }
 
 export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts: { arena?: Battle['arena']; legendary?: boolean; biome?: string; quickStep?: boolean } = {}): Battle {
@@ -533,7 +539,7 @@ function awardBattleXp(b: Battle, ev: BEvent[]) {
   for (const uid of b.participants) {
     const c = b.sides[0].team.find((x) => x.uid === uid);
     if (!c) continue;
-    const xp = participationXp(c.level, foeLevel) + bonus;
+    const xp = Math.max(1, participationXp(c.level, foeLevel) + bonus + (b.sides[0].xpBonus ?? 0));
     ev.push({ t: 'xp', uid, amount: xp, levels: gainXp(c, xp), reason: 'battle', ...(bonus ? { bonus } : {}) });
   }
 }

@@ -149,6 +149,7 @@ export class WorldView implements SceneView {
   private hitMeshes: THREE.Mesh[] = [];
   private pawn!: THREE.Group;
   private pawnRig: TrainerRig | null = null;
+  private rivalRigs: TrainerRig[] = [];
   private follower: CreatureRig | null = null;
   private followerSpecies = '';
   private particles!: THREE.Points;
@@ -580,6 +581,28 @@ export class WorldView implements SceneView {
     const n = NODE_BY_ID[id];
     const off = n.kind === 'city' ? 1.6 : 0;
     this.pawn.position.set(n.x + off, nodeHeight(n) + (n.kind === 'city' ? 0.6 : 0.42), n.z + off);
+    // the follower jumps along too (e.g. when the hotseat switches trainers), instead of gliding across the map
+    this.follower?.root.position.copy(this.pawn.position).add(new THREE.Vector3(-1.3, -0.4, 0.6));
+  }
+
+  /**
+   * Other hotseat trainers' minis, standing at their nodes (a little smaller, spread around the node so
+   * several trainers on one spot stay visible). Pass [] to clear.
+   */
+  setRivals(rivals: { look: TrainerLook; nodeId: string }[]) {
+    for (const r of this.rivalRigs) this.scene.remove(r.root);
+    this.rivalRigs = [];
+    const perNode = new Map<string, number>();
+    for (const r of rivals) {
+      const k = perNode.get(r.nodeId) ?? 0;
+      perNode.set(r.nodeId, k + 1);
+      const rig = buildTrainer(r.look);
+      rig.root.scale.setScalar(1.05);
+      const a = -0.6 - k * 1.1;
+      rig.root.position.copy(this.pawnPos(r.nodeId)).add(new THREE.Vector3(Math.cos(a) * 1.5, 0, Math.sin(a) * 1.5));
+      this.scene.add(rig.root);
+      this.rivalRigs.push(rig);
+    }
   }
 
   pawnPos(id: string) {
@@ -600,6 +623,7 @@ export class WorldView implements SceneView {
     if (!speciesId) return;
     this.follower = buildCreature(SPECIES_BY_ID[speciesId]);
     this.follower.root.scale.multiplyScalar(1.05);
+    this.follower.root.position.copy(this.pawn.position).add(new THREE.Vector3(-1.3, -0.4, 0.6)); // appear beside the trainer
     this.scene.add(this.follower.root);
   }
 
@@ -789,6 +813,7 @@ export class WorldView implements SceneView {
     }
     this.pawn.rotation.y = Math.sin(t * 0.8) * 0.2;
     this.pawnRig?.update(t);
+    for (const r of this.rivalRigs) r.update(t);
     if (this.follower) {
       const fp = this.follower.root.position;
       const want = this.pawn.position.clone().add(new THREE.Vector3(-1.3, -0.4, 0.6));

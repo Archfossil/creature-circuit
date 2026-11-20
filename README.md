@@ -20,6 +20,17 @@ npm run preview    # serve the production build
 
 The game runs in any modern desktop or mobile browser that supports WebGL. It saves to `localStorage` automatically. It can be installed as a PWA ("Add to Home Screen"), and the production build works offline.
 
+### 🌐 Online play
+
+Online multiplayer needs the small Node server in `server/`. It serves the built game and relays turns over WebSockets at `/ws`.
+
+```bash
+npm run build && npm start     # http://localhost:8787 (set PORT to change it)
+# while developing: run `npm run server` alongside `npm run dev` (Vite forwards /ws to port 8787)
+```
+
+**Deploying on Render:** `render.yaml` is a Render Blueprint. In Render, choose **New → Blueprint** and pick this repository. It builds with `npm ci && npm run build`, starts with `npm start`, and health-checks `/health`. Rooms are kept in memory, so a restart (or a sleeping free instance) closes them. Every browser keeps its last copy of the match, and **🌐 Online → Reopen as host** puts it back in a new room.
+
 ## 🛠️ Tech Stack
 - **Rendering:** [Three.js](https://threejs.org) (WebGL). The low-poly Margos map, the battle arenas and every creature model are generated procedurally from the data, so no 3D art assets are needed yet.
 - **Language/Build:** TypeScript (strict) + Vite. The UI is plain DOM and CSS (no framework) to keep it light on phones.
@@ -32,7 +43,7 @@ The game runs in any modern desktop or mobile browser that supports WebGL. It sa
 src/
   data/      schema.ts (content types) · types.ts (type chart) · species.ts · roster.ts (type-combo roster table + placeholders) · moves.ts · map.ts · content.ts
   engine/    pure game rules, no DOM
-             creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · events.ts (end-of-turn events) · state.ts (save)
+             creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · events.ts (start-of-turn events) · state.ts (save)
   render/    engine.ts (WebGL renderer) · world.ts (3D map) · land.ts (coastline math) · battle.ts (3D arena) · creatureModel.ts (procedural creatures) · trainerModel.ts (trainer minis)
   ui/        app.ts (screens & flows) · cards.ts (index cards) · dom.ts (sheets, dice, toasts) · sound.ts · settings.ts
 docs/        design documents (rules source of truth)
@@ -42,7 +53,7 @@ tests/       engine tests
 ### How the design docs map to code
 | Rule (docs) | Implementation |
 | --- | --- |
-| 5 Initiative, move/explore/city costs, trainer styles | `engine/world.ts` → `canMoveTo`, `reexploreCost`, `cityActionCost` |
+| 5 Initiative, move/explore/city costs, trainer styles | `engine/state.ts` → `TRAINER_STYLES`; `engine/world.ts` → `canMoveTo`, `moveCost`, `reexploreCost`, `cityActionCost`, `stableCost` |
 | Explore d6 (nothing / creature / item), rarity star dice | `world.ts` → `explore`, `wildEncounter` |
 | Speed order, Clash, accuracy vs Evasion, crits, type chart, status on minimum roll | `engine/battle.ts` → `resolveRound`, `useMove` |
 | Move readout (what a move will roll, in order) and damage breakdowns | `engine/battle.ts` → `movePreview`, `DamageCalc` |
@@ -56,11 +67,46 @@ tests/       engine tests
 | Creature Codex: seen creatures, where to find them, effigies | `battle.ts` → `seenFoes`; `world.ts` → `encounterSpots`, `evolutionLine`, `speciesPool`, `carveTotem` |
 | Stables (Chanko Nabe), Markets, Shrines, Arbiters, arena tricks, Tier scaling | `world.ts` + `battle.ts` → `arenaTrick` |
 | 100 turns, seasons, weather dice, endgame bracket | `world.ts` → `endTurn`, `startEndgame` |
-| End-of-turn events | `engine/events.ts` → `rollEvent`, `eventView`, `resolveEvent` |
+| Start-of-turn events | `engine/events.ts` → `rollEvent`, `eventView`, `resolveEvent` |
 
 ### Interpretations & additions (open to change)
 The docs leave a few points open. The prototype makes these calls:
-- **Wild-at-heart (nature) trainers** get their *first* re-explore each turn free, so re-exploring can't be repeated endlessly.
+- **Hotseat multiplayer** (title screen → 👥 Hotseat): 2–6 trainers share one browser.
+  - **Setup:** each trainer is created in turn. Main colours lock as they're chosen, so no two trainers share one.
+  - **Turns** go in seat order. When one trainer ends their turn, a "pass the device" screen hands over to the next, whose pending event and follower prompt then open.
+  - **Shared world:** everyone shares the map (other trainers' minis stand at their nodes), the weather for each turn (rolled once, on screen, when the first trainer starts that turn, and applied to everyone; nobody rolls when ending a turn), and the one-of-each Legendaries. A Legendary beaten or held by anyone is gone for all; released, it returns for all.
+  - **On screen:** a turn-order strip on the HUD shows whose turn it is.
+  - **Ending:** trainers who finish (Season Over or Champion) drop out of the rotation. When everyone is done, final standings rank them by result and Merits.
+  - **Saving:** the match is saved separately from a solo journey (`state.ts` → `Match`, `nextSeat`, `takenColors`; `world.ts` → `allTrainers`).
+- **Online multiplayer** (title screen → 🌐 Online; `server/index.mjs`, `src/net/online.ts`): hotseat rules, played turn by turn over the internet.
+  - **Rooms:** the host opens a room and shares its 5-letter code or invite link (`?room=CODE`). Everyone creates a trainer in the lobby, with colours locked as they're picked, and the host starts the game.
+  - **Turns:** only the trainer whose turn it is plays. Their browser runs the game and sends the match to the server after every move.
+  - **Watching:** everyone else follows live: the trainer's token and moves, their dice and messages, and their battles round by round. Watchers can open their own team while waiting.
+  - **Turn notifications:** when it's your turn and the tab is in the background, a ping plays (Settings → "Turn ping"), the tab title flashes "🔔 Your turn!", and a browser notification appears if allowed.
+  - **Trades and duels:** the other trainer is asked in their own browser.
+  - **Host controls:**
+    - **Turn timer** (off, or 1–15 minutes): when it runs out, the turn ends automatically.
+    - **⏭ Skip turn:** ends the current trainer's turn for them.
+    - **🎮 Play for…:** takes over the current trainer's turn from the host's browser, for someone who has stepped away.
+  - **Reconnecting:** a trainer who reloads or drops out rejoins with the same code and gets their seat back.
+- **Hotseat interactions** (👥 Trainers on the action bar; `engine/interactions.ts`):
+  - **Gifts:** send coins and items to anyone, anywhere (a courier carries them). Key items can't be given.
+  - **Trades:** creatures, coins and items between trainers on the same spot. The other trainer accepts or declines on a "pass the device" screen. Nobody can give away their only creature.
+  - **Challenges:** duel a trainer on the same spot (1 Initiative, once per opponent per turn), with an optional wager the winner takes. You command your team; theirs fights on its own instincts, and both sides earn trainer-battle XP. A fully knocked-out team is helped home to rest, without losing coins.
+  - **Notes:** each trainer finds notes about gifts, trades and duels in a "While you were away" note at the start of their turn.
+- **Save management** (title screen → 💾 Saves): continue, export (download a .json), import, or delete the solo journey and the hotseat game separately. Starting a new solo or hotseat game warns before replacing the existing one, and Abandon Journey only deletes the journey you're playing.
+- **Trainer styles** (chosen at the start; eight, each with a perk and a drawback):
+
+  | Style | Perk | Drawback |
+  | --- | --- | --- |
+  | ⚖️ Wanderer | Every city's stable counts as home: the doubled home Chanko Nabe anywhere | None |
+  | 🌲 Ranger | First re-explore each turn costs no Initiative (only the first, so re-exploring can't repeat endlessly) | City actions cost +1 Initiative |
+  | 🏙️ Urbanite | City actions cost no Initiative | Re-exploring costs 2 Initiative |
+  | 🤝 Beast Whisperer | +1 to every recruitment roll | Trainer battles pay half the coins (Arbiters pay in full) |
+  | 💰 Merchant | Markets 25% off (stacks with Baby Eyes), and +25% on every coin earned: prizes, finds, sales, events (at least +1) | −1 to every recruitment roll |
+  | 🎖️ Battle Master | +2 XP per creature in every battle, win or lose | Totem creatures lose Morale every 5 turns, not 10 |
+  | 💞 Caretaker | Camping tends 2 creatures per Initiative; stables give +1 extra Morale | −1 XP per creature per battle (min 1) |
+  | 🧭 Pathfinder | First move each turn is free (doesn't stack with Trailblazer) | Stables cost +1 Initiative |
 - **Encounter scaling** follows Trainer Tier. Starters begin at Lv 1 with an untouched chart. Wild and roaming-trainer levels sit around 2 × Tier − 1 (1, 3, 5, 7, 9: under that Tier's Arbiter), and a node's level shifts them by −1 to +2, so Tier 1 wilds are mostly Lv 1–2. Tier 1 can't roll Apex wilds. Tiers 3–4 roll one extra rarity die and Tier 5 rolls two. Roaming trainers bring more Prime/Apex creatures and bigger teams at higher Tiers (`world.ts` → `baseWildLevel`, `tierRarityDice`).
 - **Energy** is generated at 2× the base formula (stage-1 Commons make 6), and energy/Prisma nodes on the progression chart grant +2. This leaves room for real playbook trade-offs against move costs of 1–5 (`species.ts` → `ENERGY_SCALE`, `creature.ts` → `NODE_ENERGY`).
 - **Camping** (on wild nodes) ends the turn and spends all remaining Initiative. Each point tends one creature of your choice: it recovers all Vitality and clears Fatigue. KO'd and fully rested creatures can't be picked. The picker highlights the hearts each creature will get back. With 0 Initiative left, camping does nothing, so it's never free end-of-turn healing (`world.ts` → `campTargets`).
@@ -92,6 +138,7 @@ The docs leave a few points open. The prototype makes these calls:
   - Tapping or hovering the Morale/Loyalty chips on a card explains all of this. The team strip flags unhappy creatures with ⚠️.
 - **Follower prompt**: at the start of each turn (after the weather and any event), a sheet shows who is following you, with Ability, Affinity, Morale and Loyalty. It lists the other creatures you could switch to. It appears when there's a choice: more than one healthy creature, or nobody following. Turn it off in Settings → "Choose a follower each turn". The HUD's Following chip opens the same sheet any time.
 - **Battle lead**: your Following creature always leads. If nobody healthy is Following and more than one creature can fight, you choose the lead before round 1 (`world.ts` → `needsLeadChoice`, `battle.ts` → `chooseLead`).
+- **Keen Nose** (overworld ability): when an explore turns up an item, the follower sniffs out three different finds and you keep one (`world.ts` → `discoverItem`, `claimFind`).
 - **Running** from wild battles: d6 + (your Speed − foe Speed) ≥ 4. Followers with Quick Step always escape.
 - **Trainer encounters**: on road and meadow nodes, a 3–4 explore roll may be a wandering trainer instead of a wild creature (prize: d6 coins).
 - **Statuses**, one per type: Burn, Soak, Shock, Snare, Stagger, Sunder, Beguile, Daze. A creature holds one status at a time. It lasts 3 rounds, counted only while that creature is in battle, and ends on a KO or when the battle ends. The in-game Menu → Status Effects lists exactly what each does (`moves.ts` → `STATUS_INFO`, `STATUS_FOR`).
@@ -99,7 +146,7 @@ The docs leave a few points open. The prototype makes these calls:
 - **Offerings**: a material's bonus is its highest `allure` value among the creature's types. Berries give +1 (Moonberry +2) to anyone. Up to 2 offerings go with each totem.
 - **Roster table** (`roster.ts`): one slot per type and dual-type combination (36). Each slot has Common, Prime and Apex three-stage families plus a Legendary. The eight starter lines, Solstara and Thalassor fill their slots. The other 334 are generated **placeholders** (`ph-…` ids, `placeholder: true`), to be swapped for real designs one slot at a time (see docs/05). Placeholder Legendaries aren't on the map yet.
 - **Battle plates** lead with Vitality hearts (what actually decides a KO), with the Health bar below. A 🗿 badge marks wild species you've already recruited.
-- **End-of-turn events** (an addition, not in the design docs): after each turn's weather roll, one event is rolled (`EVENT_CHANCE` = 1 for playtesting; never the same one twice in a row). The pending event is saved, so it survives a reload. Closing its window never declines it: a pulsing pill at the bottom of the map reopens it, and the turn can't end until the player picks a choice (including an explicit decline). There are 14 to start:
+- **Start-of-turn events** (an addition, not in the design docs): from the second round on, each trainer's turn starts with one event, rolled right after the weather (in hotseat, after the round's shared weather roll; solo and hotseat work the same way) (`EVENT_CHANCE` = 1 for playtesting; never the same one twice in a row). The pending event is saved, so it survives a reload. Closing its window never declines it: a pulsing pill at the bottom of the map reopens it, and the turn can't end until the player picks a choice (including an explicit decline). There are 24:
 
   | Event | What it offers |
   | --- | --- |
@@ -117,6 +164,16 @@ The docs leave a few points open. The prototype makes these calls:
   | 🦝 Pickpocket | Must choose: chase (d6 + follower Speed ≥ 7 wins d6 coins, else lose d6), or lose 3 coins |
   | 🙏 Passing Pilgrim | A free Type Totem for one of your team's types |
   | ♨️ Hidden Hot Spring | 1 Initiative: everyone clears Fatigue, refills Stamina, +1 Morale |
+  | 🎲 Dice Gambler | Bet 5 or 10 coins: your d6 vs theirs; higher doubles the stake, a tie keeps it |
+  | 🪕 Traveling Bard | Free: active team +1 Morale. 3 coins: everyone +1 Morale and the follower +1 Loyalty |
+  | 🧓 Old Trainer's Advice | 1 Initiative: one creature +5 XP |
+  | 🧭 Local Guide | 3 coins: +1 Initiative this turn |
+  | 😾 Team Squabble | Forced: side with one creature (+2 / −1 Morale) or spend 1 Initiative to calm both (+1 each) |
+  | 🔍 Codex Scholar | Adds up to 2 unseen local species to your Codex (so their Effigies can be carved), or pays 3 coins if you've seen them all |
+  | 🎒 Lost Satchel | Keep the coins (follower −1 Morale) or return it for a Calm Tea and +1 Morale |
+  | 🌠 Shooting Star | Wish for a Star Charm, or +1 Morale for everyone |
+  | 🤢 Bad Berries | Forced: use a Salve, spend 1 Initiative (+1 Morale), or take −1 Vitality and −1 Morale |
+  | 🧒 Eager Apprentice | One creature runs a drill: +3 XP, +1 Morale, and a 2-coin tip |
 
   Each event is one entry in `EVENTS` with `create` (random params), `view` (text and choices) and `resolve` (the effect), so new ones are easy to add.
 - **Kilauea Forge** (Fire) is a mainland city on the southwest volcanic coast, linked to Houndmouth Canyon and Dustmere by new volcanic routes, so Fire is a valid home city. Only Amber's arena, **Amber's Fire Pit**, is on Kilauea island, reached by ferry from the Forge or Mangrove Port (Ferry Pass, sold at Saltmarsh Landing and the Forge, or Sail). A city can now keep its arena on a separate `arena` map node (`City.arenaNode`, `world.ts` → `arbiterHere`). New wild nodes were appended to the route list so existing saves keep their node ids.
@@ -142,5 +199,5 @@ To build out this game, please review the core design documents located in the `
 - **Phase 2:** ✅ Combat engine, energy pool generation, and modular custom move execution.
 - **Phase 3:** ✅ Arbiter challenge system, seasonal weather mechanics, and progression tracking.
 - **Phase 4:** 🟡 Content integration. Example creatures, moves and the map are in place; replace them with the final creature database and Master Move List (see `docs/05-data-schemas.md`).
-- **Phase 5:** 🟡 Systems depth. Done: end-of-turn events, the full 36-slot roster table and the 376-slot attack grid (placeholders), move readouts with explained rolls, Initiative-based camping, the stacked type chart, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups, trainer minis and customisation, Morale & Loyalty rules (with Legendary Loyalty drain and one-of-each Legendaries), the Research Facility (Quillhaven), the Battle School (Valor Ridge), city Trainer Halls with a trainer-battle XP bonus, and the start-of-turn follower prompt. Next: balance passes from playtesting (event prices, XP rates, evolution costs).
-- **Next:** creature art to replace the procedural models, multiplayer (local pass-and-play or online), dual battles, and a map editor.
+- **Phase 5:** 🟡 Systems depth. Done: start-of-turn events, the full 36-slot roster table and the 376-slot attack grid (placeholders), move readouts with explained rolls, Initiative-based camping, the stacked type chart, skill-tree progression charts, the Creature Codex, tier-scaled encounters, participation XP, town stables, in-battle type matchups, trainer minis and customisation, Morale & Loyalty rules (with Legendary Loyalty drain and one-of-each Legendaries), the Research Facility (Quillhaven), the Battle School (Valor Ridge), city Trainer Halls with a trainer-battle XP bonus, the start-of-turn follower prompt, eight trainer styles, 24 start-of-turn events, Keen Nose's pick-one-of-three finds, save management (export/import), hotseat multiplayer for 2–6 trainers (shared weather and Legendaries, gifts, trades and duels), and online turn-based multiplayer with live spectating, turn pings, a host turn timer and skip / play-for controls (Render-ready). Next: balance passes from playtesting (event prices, XP rates, evolution costs).
+- **Next:** creature art to replace the procedural models, two-player battle control in duels, persistent online rooms, dual battles, and a map editor.

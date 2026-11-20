@@ -1,4 +1,4 @@
-import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait } from './dom';
+import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait, mirror, type DieSpec } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
 import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp } from './cards';
@@ -9,9 +9,11 @@ import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, 
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle } from '../engine/state';
-import { newGame, save, load, clearSave, tierOf, season, follower, log } from '../engine/state';
+import { newGame, save, load, clearSave, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, parseSaveFile, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, type Match } from '../engine/state';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
+import * as I from '../engine/interactions';
+import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, partsText, chooseLead } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
@@ -19,37 +21,49 @@ import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAI
 import { NODE_BY_ID, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
-import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes } from '../data/content';
+import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes, seasonForTurn } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { ElementType, Item } from '../data/schema';
 
-const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3'];
+const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3', '#a51d2d', '#1f3a93'];
+const DEFAULT_NAMES = ['Rowan', 'Juno', 'Kai', 'Mira', 'Ash', 'Tess'];
 
 /**
  * Trainer customisation: a live preview of the mini plus swatches. Your colour always goes on the
  * top and the hat (and the token's base); everything else is free to pick.
  */
-function trainerLookEditor(get: () => { name: string; color: string; look: TrainerLookChoice }, set: (color: string, look: TrainerLookChoice) => void) {
+function trainerLookEditor(get: () => { name: string; color: string; look: TrainerLookChoice }, set: (color: string, look: TrainerLookChoice) => void, taken: string[] = []) {
   const { name, color, look } = get();
   const full = playerLook(name, color, look);
   const cur = { skin: full.skin, hair: full.hair, pants: full.pants, hat: full.hat, jacket: full.jacket ?? 'jacket', hairStyle: full.hairStyle ?? 'short' };
   const upd = (patch: Partial<TrainerLookChoice>, c = color) => set(c, { ...cur, ...patch });
-  const swatches = (label: string, list: string[], value: string, on: (v: string) => void) =>
+  const swatches = (label: string, list: string[], value: string, on: (v: string) => void, locked: string[] = []) =>
     h('div', { class: 'field' }, h('span', null, label), h('div', { class: 'swatches sm' }, list.map((c) =>
-      h('button', { class: `swatch ${c === value ? 'sel' : ''}`, style: `background:${c}`, 'aria-label': `${label} ${c}`, 'aria-pressed': String(c === value), onclick: () => on(c) }))));
+      h('button', {
+        class: `swatch ${c === value ? 'sel' : ''} ${locked.includes(c) ? 'taken' : ''}`, style: `background:${c}`, disabled: locked.includes(c),
+        title: locked.includes(c) ? 'Taken by another trainer' : '', 'aria-label': `${label} ${c}${locked.includes(c) ? ' (taken)' : ''}`, 'aria-pressed': String(c === value), onclick: () => on(c),
+      }))));
   const options = (label: string, list: { id: string; label: string }[], value: string, on: (v: string) => void) =>
     h('div', { class: 'field' }, h('span', null, label), h('div', { class: 'look-opts' }, list.map((o) =>
       h('button', { class: `pb-filter ${o.id === value ? 'on' : ''}`, 'aria-pressed': String(o.id === value), onclick: () => on(o.id) }, o.label))));
   return h('div', { class: 'look-editor' },
     h('div', { class: 'look-preview', style: `--tc:${color}` }, h('img', { src: trainerPortrait(full), alt: 'Your trainer' }), h('small', null, 'Your trainer, on the map and in battle')),
     h('div', { class: 'look-fields' },
-      swatches('Main colour (top, hat and token)', TRAINER_COLORS, color, (c) => upd({}, c)),
+      swatches(taken.length ? 'Main colour (top, hat and token; each trainer’s is unique)' : 'Main colour (top, hat and token)', TRAINER_COLORS, color, (c) => upd({}, c), taken),
       options('Jacket', JACKET_OPTIONS, cur.jacket, (v) => upd({ jacket: v })),
       options('Hat', HAT_OPTIONS, cur.hat, (v) => upd({ hat: v })),
       swatches('Skin tone', SKIN, cur.skin, (v) => upd({ skin: v })),
       options('Hair style (ties and streaks use your main colour)', HAIR_STYLE_OPTIONS, cur.hairStyle, (v) => upd({ hairStyle: v })),
       swatches('Hair colour', HAIR, cur.hair, (v) => upd({ hair: v })),
       swatches('Pants', PANTS, cur.pants, (v) => upd({ pants: v }))));
+}
+
+/** A small async queue (online: battle rounds arrive over the network while a battle is being watched). */
+class AsyncQueue<T> {
+  private items: T[] = [];
+  private waiters: ((v: T) => void)[] = [];
+  push(v: T) { const w = this.waiters.shift(); if (w) w(v); else this.items.push(v); }
+  next(): Promise<T> { return this.items.length ? Promise.resolve(this.items.shift()!) : new Promise((r) => this.waiters.push(r)); }
 }
 
 export class App {
@@ -70,6 +84,9 @@ export class App {
     this.world.onNodeTap = (id) => this.onNodeTap(id);
     this.world.onNodeDoubleTap = (id) => this.onNodeDoubleTap(id);
     this.title();
+    // invite links: ?room=CODE opens the Online sheet ready to join
+    const invite = new URLSearchParams(location.search).get('room');
+    if (invite) setTimeout(() => this.onlineSheet(invite.toUpperCase()), 300);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -83,6 +100,8 @@ export class App {
     this.world.setSeason('spring');
     this.world.setReach({});
     const saved = load();
+    const match = loadMatch();
+    const matchLive = match && match.players.some(stillPlaying);
     this.ui.replaceChildren(h('div', { class: 'title-screen' },
       h('div', { class: 'title-card' },
         h('div', { class: 'logo' },
@@ -91,26 +110,44 @@ export class App {
           h('p', null, 'Explore Margos · Befriend creatures · Earn 8 Merits · Win the Circuit')),
         h('div', { class: 'title-actions' },
           saved && saved.phase !== 'over' ? h('button', { class: 'btn primary big', onclick: () => this.start(saved) }, `Continue · ${saved.trainer.name}, Turn ${saved.turn}`) : null,
-          h('button', { class: `btn ${saved ? 'ghost' : 'primary'} big`, onclick: () => this.newGameWizard() }, 'New Journey'),
-          h('button', { class: 'btn ghost', onclick: () => this.howToPlay() }, 'How to Play')),
+          matchLive ? h('button', { class: 'btn primary big', onclick: () => this.startMatch(match!) }, `Continue hotseat · ${match!.players.length} trainers, Turn ${match!.players[match!.current].turn}`) : null,
+          h('button', { class: `btn ${saved || matchLive ? 'ghost' : 'primary'} big`, onclick: async () => {
+            if (saved && saved.phase !== 'over' && !(await confirmSheet('Start a new journey?', `Your solo journey with ${saved.trainer.name} (Turn ${saved.turn}) will be replaced once the new one starts. Export it from Saves first to keep a copy.`, 'Start anyway'))) return;
+            setActiveMatch(null); this.newGameWizard();
+          } }, 'New Journey'),
+          h('button', { class: 'btn ghost big', onclick: async () => {
+            if (matchLive && !(await confirmSheet('Start a new hotseat game?', `Your hotseat game with ${match!.players.map((p) => p.trainer.name).join(', ')} will be replaced once the new one starts. Export it from Saves first to keep a copy.`, 'Start anyway'))) return;
+            this.hotseatSetup();
+          } }, `👥 Hotseat (2–${MAX_PLAYERS} trainers)`),
+          h('div', { class: 'row gap-s center' },
+            h('button', { class: 'btn ghost', onclick: () => this.onlineSheet() }, '🌐 Online'),
+            h('button', { class: 'btn ghost', onclick: () => this.savesSheet() }, '💾 Saves'),
+            h('button', { class: 'btn ghost', onclick: () => this.howToPlay() }, 'How to Play'))),
         h('small', { class: 'muted' }, 'v0.1 · Prototype content — creatures, moves and map are examples'))));
   }
 
-  newGameWizard() {
-    let name = 'Rowan', color = TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = 'thunder', starter = STARTERS[3];
+  /**
+   * Create a trainer: name, look, style, home city and starter. In hotseat setup, `seat` / `taken` /
+   * `onDone` hand the finished trainer back instead of starting a solo journey, and colours already
+   * chosen by earlier trainers are locked.
+   */
+  newGameWizard(opts: { seat?: number; total?: number; taken?: string[]; onDone?: (s: GameState) => void; onCancel?: () => void } = {}) {
+    let finished = false;
+    const taken = opts.taken ?? [];
+    let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = 'thunder', starter = STARTERS[3];
+    const who = opts.seat !== undefined ? `Trainer ${opts.seat + 1} of ${opts.total} · ` : '';
     let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket', hairStyle: 'short' };
     const step = (n: number) => {
       let body: HTMLElement;
       if (n === 0) {
         body = h('div', { class: 'wizard' },
           h('label', { class: 'field' }, h('span', null, 'Trainer name'), h('input', { value: name, maxlength: 16, oninput: (e: Event) => { name = (e.target as HTMLInputElement).value || 'Rowan'; } })),
-          trainerLookEditor(() => ({ name, color, look }), (c, l) => { color = c; look = l; step(0); }),
+          trainerLookEditor(() => ({ name, color, look }), (c, l) => { color = c; look = l; step(0); }, taken),
           h('div', { class: 'field' }, h('span', null, 'Trainer style'),
-            h('div', { class: 'choice-grid three' },
-              ([['nature', '🌲 Wild-at-heart', 'First re-explore each turn is free. City actions cost +1 Initiative.'],
-                ['balanced', '⚖️ Wanderer', 'Every action costs the standard 1 Initiative.'],
-                ['urban', '🏙️ City-slicker', 'City actions are free. Re-exploring costs 2 Initiative.']] as const).map(([id, label, text]) =>
-                h('button', { class: `choice ${style === id ? 'sel' : ''}`, onclick: () => { style = id; step(0); } }, h('b', null, label), h('small', null, text))))),
+            h('p', { class: 'small muted' }, 'Your style shapes the whole season. Each has a perk and a drawback.'),
+            h('div', { class: 'choice-grid style-grid' }, TRAINER_STYLES.map((st) =>
+              h('button', { class: `choice ${style === st.id ? 'sel' : ''}`, onclick: () => { style = st.id; step(0); } },
+                h('b', null, `${st.icon} ${st.name}`), h('small', { class: 'good-text' }, '＋ ', st.perk), h('small', { class: 'bad-text' }, '− ', st.drawback))))),
           h('div', { class: 'row end' }, h('button', { class: 'btn primary', onclick: () => step(1) }, 'Next: Home City →')));
       } else if (n === 1) {
         body = h('div', { class: 'wizard' },
@@ -134,18 +171,24 @@ export class App {
               h('p', { class: 'small' }, h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
               h('p', { class: 'small muted' }, `Evolves: ${sp.name} → ${SPECIES_BY_ID[sp.evolvesTo!].name} → ${SPECIES_BY_ID[SPECIES_BY_ID[sp.evolvesTo!].evolvesTo!].name}`))),
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'),
-            h('button', { class: 'btn primary', onclick: () => { close(); this.start(newGame(name.trim() || 'Rowan', style, home, starter, color, look), true); } }, 'Begin Journey ✦')));
+            h('button', { class: 'btn primary', onclick: () => {
+              finished = true;
+              close();
+              const s = newGame(name.trim() || 'Rowan', style, home, starter, color, look);
+              if (opts.onDone) opts.onDone(s); else this.start(s, true);
+            } }, opts.onDone && opts.seat! + 1 < opts.total! ? 'Next trainer →' : 'Begin Journey ✦')));
       }
       sheetBody.replaceChildren(body);
-      $('.sheet-head h2', sheetEl).textContent = ['Your Trainer', 'Home City', 'Choose a Starter'][n];
+      $('.sheet-head h2', sheetEl).textContent = who + ['Your Trainer', 'Home City', 'Choose a Starter'][n];
     };
     const sheetBody = h('div');
-    const close = openSheet('Your Trainer', sheetBody, { wide: true });
+    const close = openSheet('Your Trainer', sheetBody, { wide: true, onClose: () => { if (!finished) opts.onCancel?.(); } });
     const sheetEl = sheetBody.closest('.sheet') as HTMLElement;
     step(0);
   }
 
   start(s: GameState, fresh = false) {
+    if (!activeMatchOf()?.players.includes(s)) setActiveMatch(null);
     this.s = s;
     closeAllSheets();
     this.world.setTitleMode(false);
@@ -153,15 +196,648 @@ export class App {
     this.world.setPawnAt(s.location);
     this.world.focus(s.location, true);
     this.engine.setView(this.world);
+    this.showRivals();
     if (s.phase === 'endgame') { this.renderHud(); this.endgameSheet(); return; }
     if (s.phase === 'over') { this.gameOver(); return; }
     this.renderHud();
-    if (s.event) setTimeout(() => this.eventFlow(), 400);
+    // (in hotseat, the waiting event opens once the trainer has taken the device: see startOfTurn)
+    if (s.event && !activeMatchOf()) setTimeout(() => this.eventFlow(), 400);
     if (fresh) {
       log(s, `${s.trainer.name} set out from ${CITIES[s.trainer.home].name}.`);
       save(s);
       setTimeout(() => this.howToPlay(true), 400);
     }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Save management (title screen)
+  // ════════════════════════════════════════════════════════════
+  /** The solo journey and the hotseat game on this device: continue, export, import or delete each one. */
+  savesSheet() {
+    const body = h('div', { class: 'saves' });
+    const download = (name: string, data: unknown) => {
+      const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })), download: name });
+      document.body.append(a); a.click(); a.remove();
+    };
+    const importFile = () => {
+      const input = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const parsed = parseSaveFile(await file.text());
+        if (!parsed) { toast('That file isn’t a Creature Circuit save.', 'bad'); return; }
+        const existing = parsed.kind === 'solo' ? load() : loadMatch();
+        if (existing && !(await confirmSheet('Replace your save?', parsed.kind === 'solo' ? 'This replaces your current solo journey.' : 'This replaces your current hotseat game.', 'Replace'))) return;
+        if (parsed.kind === 'solo') { setActiveMatch(null); save(parsed.save); } else saveMatch(parsed.match);
+        toast(parsed.kind === 'solo' ? `Imported ${parsed.save.trainer.name}’s journey.` : `Imported a hotseat game with ${parsed.match.players.length} trainers.`, 'good');
+        render();
+        this.title();
+      };
+      input.click();
+    };
+    const render = () => {
+      const solo = load();
+      const match = loadMatch();
+      const status = (p: GameState) => (p.phase === 'champion' ? '🏆 Champion' : p.phase === 'over' ? 'Season over' : p.phase === 'endgame' ? 'In the Circuit bracket' : `Turn ${p.turn}/100`);
+      const card = (title: string, lines: (string | HTMLElement)[], actions: (HTMLElement | null)[]) =>
+        h('div', { class: 'save-card' }, h('b', null, title), ...lines.map((l) => (typeof l === 'string' ? h('small', null, l) : l)), h('div', { class: 'row gap-s wrap' }, actions));
+      body.replaceChildren(
+        h('p', { class: 'small muted' }, 'Saves live in this browser. Export one to keep a backup or move it to another device; import it again from here.'),
+        h('h4', null, '🧭 Solo journey'),
+        solo
+          ? card(solo.trainer.name, [`${status(solo)} · ${NODE_BY_ID[solo.location]?.name ?? ''} · ${solo.merits.length}/8 Merits · ${solo.roster.length + solo.reserve.length} creatures`], [
+            solo.phase !== 'over' && solo.phase !== 'champion' ? h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); this.start(solo); } }, 'Continue') : null,
+            h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-${solo.trainer.name}-turn${solo.turn}.json`, solo) }, '⬇ Export'),
+            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete solo journey?', `${solo.trainer.name}’s journey (${status(solo)}) will be deleted permanently. Your hotseat game is not affected.`, 'Delete')) { clearSave(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
+          ])
+          : h('p', { class: 'small muted' }, 'No solo journey saved.'),
+        h('h4', null, '👥 Hotseat game'),
+        match
+          ? card(`${match.players.length} trainers`, [
+            h('div', { class: 'seats' }, match.players.map((p, i) => h('span', { class: `seat ${i === match.current && stillPlaying(p) ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}` }, p.trainer.name))),
+            match.players.map((p) => `${p.trainer.name}: ${status(p)}, ${p.merits.length}/8 Merits`).join(' · '),
+          ], [
+            match.players.some(stillPlaying) ? h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); void this.startMatch(match); } }, 'Continue') : null,
+            h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-hotseat-${match.players.length}p-turn${match.players[match.current].turn}.json`, match) }, '⬇ Export'),
+            h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete hotseat game?', `The game with ${match.players.map((p) => p.trainer.name).join(', ')} will be deleted permanently for every trainer. Your solo journey is not affected.`, 'Delete')) { clearMatch(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
+          ])
+          : h('p', { class: 'small muted' }, 'No hotseat game saved.'),
+        h('div', { class: 'row end' }, h('button', { class: 'btn ghost', onclick: importFile }, '⬆ Import a save file…')));
+    };
+    render();
+    openSheet('💾 Saves', body, { wide: true });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Online multiplayer (turn-based over the internet)
+  // ════════════════════════════════════════════════════════════
+  online: Online | null = null;
+  /** Online: watching someone else's turn (read-only). */
+  watching = false;
+  /** Online: the seat:turn this browser is currently playing (so updates don't restart it). */
+  activeKey = '';
+  /** Online: the host is ending someone's turn for them. */
+  skipping = false;
+  private hopping = false;
+  private watchQueue: AsyncQueue<FeedItem> | null = null;
+  private lobbyBody: HTMLElement | null = null;
+  private inWizard = false;
+  private closeLobby: (() => void) | null = null;
+  private pushTimer: ReturnType<typeof setTimeout> | null = null;
+  private titleFlash: ReturnType<typeof setInterval> | null = null;
+
+  /** True when this browser is playing the current turn online (so its actions are mirrored to everyone). */
+  feeding() { return !!this.online && this.online.isController && !this.watching; }
+  feed(item: FeedItem) { if (this.feeding()) this.online!.send({ type: 'feed', item }); }
+
+  /** Title screen → 🌐 Online: create a room, join one by code, or reopen a saved online game. */
+  onlineSheet(code?: string) {
+    const saved = loadOnlineMatch();
+    const last = lastRoom();
+    const input = h('input', { value: code ?? '', maxlength: 5, placeholder: 'ABCDE', style: 'text-transform:uppercase;width:8em;font-size:18px;text-align:center' }) as HTMLInputElement;
+    const close = openSheet('🌐 Online', h('div', { class: 'online' },
+      h('p', null, 'Play turn by turn with up to six trainers over the internet. Everyone watches the current trainer’s moves and battles live; when your turn comes up you’ll get a ping, even in another tab.'),
+      h('div', { class: 'row gap-s wrap' },
+        h('button', { class: 'btn primary', onclick: async () => { close(); if (await this.connectOnline()) this.online!.create(); } }, '➕ Host a new room')),
+      h('h4', null, 'Join a room'),
+      h('div', { class: 'row gap-s' }, input,
+        h('button', { class: 'btn primary', onclick: async () => { const c = input.value.trim().toUpperCase(); if (c.length !== 5) { toast('Room codes have 5 letters.', 'info'); return; } close(); if (await this.connectOnline()) this.online!.join(c); } }, 'Join')),
+      last && !code ? h('p', { class: 'small' }, h('button', { class: 'link', onclick: async () => { close(); if (await this.connectOnline()) this.online!.join(last); } }, `Rejoin room ${last}`)) : '',
+      saved && saved.owners ? h('div', null, h('h4', null, 'Your saved online game'),
+        h('p', { class: 'small muted' }, `${saved.players.map((p) => p.trainer.name).join(', ')} · Turn ${saved.players[saved.current].turn}. If its room has closed (e.g. the server restarted), open it again as host and share the new code.`),
+        h('button', { class: 'btn ghost', onclick: async () => { close(); if (await this.connectOnline()) this.online!.create({ match: saved, owners: saved.owners!, turnSeconds: saved.turnSeconds ?? 0 }); } }, '♻️ Reopen as host')) : '',
+      h('p', { class: 'small muted' }, 'Online play needs the game server: it runs on Render from render.yaml, or locally with npm run server.')), { wide: true });
+  }
+
+  /** Connect to the game server (once). */
+  async connectOnline(): Promise<boolean> {
+    if (this.online?.ws?.readyState === 1) return true;
+    const net = new Online();
+    try { await net.connect(); } catch { toast('Couldn’t reach the game server. Online play needs it running (npm run server, or the Render deployment).', 'bad', 6000); return false; }
+    this.online = net;
+    net.on((m) => void this.onServer(m));
+    useMatchSlot('online');
+    onMatchSaved((m) => this.pushState(m));
+    mirror.toast = (text, tone) => this.feed({ kind: 'toast', text, tone });
+    mirror.dice = (title, dice, caption, hold) => this.feed({ kind: 'dice', title, dice, caption, hold });
+    if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
+    return true;
+  }
+
+  /** Leave online play and go back to the title screen. */
+  leaveOnline() {
+    this.online?.close();
+    this.online = null;
+    mirror.toast = undefined; mirror.dice = undefined;
+    onMatchSaved(null);
+    useMatchSlot('hotseat');
+    setActiveMatch(null);
+    rememberRoom(null);
+    this.watching = false; this.activeKey = '';
+    this.world.setRivals([]);
+    this.title();
+  }
+
+  /** After every save while playing the current turn, send the match to the server (batched). */
+  pushState(m: Match) {
+    if (!this.feeding()) return;
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+    const net = this.online!;
+    this.pushTimer = setTimeout(() => { this.pushTimer = null; net.send({ type: 'state', match: m }); }, 80);
+  }
+
+  async onServer(m: ServerMsg) {
+    const net = this.online;
+    if (!net) return;
+    switch (m.type) {
+      case 'created': toast(`Room ${m.code} is open. Share the code (or link) with your friends.`, 'good', 5000); this.lobby(); break;
+      case 'room':
+        if (!m.started) this.lobby();
+        else { this.closeLobby?.(); await this.syncRole(); }
+        this.renderTimer();
+        break;
+      case 'state': this.applyState(m.match); break;
+      case 'feed': await this.onFeed(m.item); break;
+      case 'ask': this.answerAsk(m); break;
+      case 'do-skip': await this.skipFor(m.seat, m.reason); break;
+      case 'do-play': toast(`You’re playing ${activeMatchOf()?.players[m.seat]?.trainer.name ?? 'their'}’s turn for them.`, 'info', 4000); break;
+      case 'error':
+        toast(m.text, 'bad', 5000);
+        if (/Disconnected/.test(m.text) && net.code) setTimeout(() => void this.reconnect(net.code!), 2500);
+        break;
+    }
+  }
+
+  async reconnect(code: string) {
+    if (!this.online || this.online.ws?.readyState === 1) return;
+    const old = this.online;
+    this.online = null;
+    old.close();
+    if (await this.connectOnline()) { this.online!.join(code); toast('Reconnected.', 'good'); }
+  }
+
+  /** The lobby before the game starts: seats, your trainer, the host's timer and Start. */
+  lobby() {
+    const net = this.online!;
+    const room = net.room;
+    if (!room || room.started || this.inWizard) return;
+    if (!this.lobbyBody) {
+      this.lobbyBody = h('div', { class: 'lobby' });
+      this.closeLobby = openSheet(`🌐 Room ${room.code}`, this.lobbyBody, { wide: true, noClose: true });
+      const done = this.closeLobby;
+      this.closeLobby = () => { done(); this.lobbyBody = null; this.closeLobby = null; };
+    }
+    const mine = room.seats.find((s) => s.clientId === net.id);
+    const link = `${location.origin}${location.pathname}?room=${room.code}`;
+    const taken = room.seats.filter((s) => s.clientId !== net.id && s.trainer).map((s) => s.trainer!.trainer.color);
+    const ready = room.seats.filter((s) => s.trainer).length;
+    this.lobbyBody.replaceChildren(
+      h('p', null, 'Share this code or link. Everyone creates a trainer here, then the host starts the game.'),
+      h('div', { class: 'row gap-s wrap' }, h('b', { class: 'room-code' }, room.code),
+        h('button', { class: 'btn ghost sm', onclick: () => { void navigator.clipboard?.writeText(link); toast('Invite link copied.', 'good'); } }, '🔗 Copy invite link')),
+      h('h4', null, `Trainers (${room.seats.length}/${MAX_PLAYERS})`),
+      h('div', { class: 'list' }, room.seats.map((s, i) => h('div', { class: 'seat-row', style: `--tc:${s.trainer?.trainer.color ?? '#bbb'}` },
+        h('b', null, `${i + 1}. ${s.trainer?.trainer.name ?? s.name}`),
+        h('small', null, `${s.online ? '🟢 online' : '⚪ away'}${s.clientId === room.host ? ' · host' : ''}${s.clientId === net.id ? ' · you' : ''}${s.trainer ? '' : ' · creating…'}`)))),
+      h('div', { class: 'row gap-s wrap' },
+        room.seats.length < MAX_PLAYERS || mine ? h('button', { class: 'btn primary', onclick: () => {
+          this.closeLobby?.();
+          this.inWizard = true;
+          this.newGameWizard({ taken, onDone: (s) => { this.inWizard = false; net.send({ type: 'seat', trainer: s }); this.lobby(); }, onCancel: () => { this.inWizard = false; this.lobby(); } });
+        } }, mine?.trainer ? '✏️ Remake my trainer' : '➕ Create my trainer') : h('p', { class: 'small muted' }, 'The room is full.'),
+        mine ? h('button', { class: 'btn ghost', onclick: () => net.send({ type: 'leave-seat' }) }, 'Give up my seat') : ''),
+      net.isHost ? h('div', { class: 'host-box' },
+        h('h4', null, '👑 Host settings'),
+        h('label', { class: 'row gap-s' }, 'Turn timer ',
+          h('select', { onchange: (e: Event) => net.send({ type: 'settings', turnSeconds: Number((e.target as HTMLSelectElement).value) }) },
+            [0, 60, 120, 180, 300, 600, 900].map((sec) => h('option', { value: sec, selected: room.turnSeconds === sec }, sec ? `${sec / 60} min` : 'Off')))),
+        h('p', { class: 'small muted' }, 'When a turn’s time runs out, the turn ends automatically. During the game you can also skip a turn, or play one for a trainer who has stepped away.'),
+        h('button', { class: 'btn primary big', disabled: ready < 2 || ready !== room.seats.length, onclick: () => {
+          const players = room.seats.map((s) => s.trainer!);
+          const m = newMatch(players);
+          m.owners = room.seats.map((s) => s.clientId);
+          m.code = room.code;
+          m.turnSeconds = room.turnSeconds;
+          net.send({ type: 'start', match: m });
+        } }, ready < 2 ? 'Waiting for at least 2 trainers…' : ready !== room.seats.length ? 'Waiting for everyone’s trainer…' : `Start with ${ready} trainers`))
+        : h('p', { class: 'small muted' }, `Turn timer: ${room.turnSeconds ? `${room.turnSeconds / 60} min` : 'off'}. Waiting for the host to start…`),
+      h('div', { class: 'row end' }, h('button', { class: 'btn ghost', onclick: () => { this.closeLobby?.(); this.leaveOnline(); } }, 'Leave room')));
+  }
+
+  /** A new match snapshot from the server. */
+  applyState(match: Match) {
+    try { localStorage.setItem('creature-circuit-online-v1', JSON.stringify(match)); } catch { /* ignore */ }
+    if (this.feeding()) return; // we're the one playing: our copy is the newest
+    setActiveMatch(match);
+    this.activeKey = ''; // the server's copy replaces ours, so any turn we were playing restarts from it
+    if (!match.players.some(stillPlaying)) { this.matchSummary(); return; }
+    void this.syncRole();
+  }
+
+  /** Play the current turn if this browser controls it, otherwise watch it. */
+  async syncRole() {
+    const net = this.online;
+    const m = activeMatchOf();
+    if (!net?.room?.started || !m || this.skipping) return;
+    const s = m.players[m.current];
+    const key = `${m.current}:${s.turn}`;
+    if (net.room.controller === net.id) {
+      if (!this.watching && this.activeKey === key) return;
+      this.activeKey = key;
+      this.watching = false;
+      this.stopTitleFlash();
+      this.start(s);
+      if (m.owners?.[m.current] === net.id) this.notifyTurn(s);
+      else toast(`You’re playing ${s.trainer.name}’s turn for them.`, 'info', 4000);
+      await this.startOfTurn();
+    } else {
+      this.activeKey = '';
+      this.spectate();
+    }
+  }
+
+  /** Follow the current trainer: their token, their place on the map, their HUD (read-only). */
+  spectate() {
+    const m = activeMatchOf();
+    if (!m) return;
+    const s = m.players[m.current];
+    this.watching = true;
+    this.s = s;
+    this.world.setTitleMode(false);
+    this.world.setTrainerLook(playerLook(s.trainer.name, s.trainer.color, s.trainer.look));
+    if (!this.hopping) this.world.setPawnAt(s.location);
+    this.world.focus(s.location);
+    this.showRivals();
+    if (!this.watchQueue) { this.engine.setView(this.world); this.renderHud(); }
+  }
+
+  async onFeed(item: FeedItem) {
+    if (!this.watching) return;
+    switch (item.kind) {
+      case 'toast': toast(item.text, item.tone, 3200); break;
+      case 'dice': void rollDice(item.title, item.dice as DieSpec[], item.caption, item.hold); break;
+      case 'hop':
+        this.hopping = true;
+        this.world.setPawnAt(item.from);
+        await this.world.hop(item.from, item.to);
+        this.hopping = false;
+        break;
+      case 'battle-start': {
+        const q = new AsyncQueue<FeedItem>();
+        this.watchQueue = q;
+        const ctx = item.ctx as { kind: 'wild'; intro: string; city?: string; rivalLook?: TrainerLook };
+        await this.runBattle(item.battle as Battle, { ...ctx, watch: q });
+        if (this.watchQueue === q) this.watchQueue = null;
+        this.spectate();
+        break;
+      }
+      case 'battle-events': case 'battle-end': this.watchQueue?.push(item); break;
+    }
+  }
+
+  /** It's this browser's turn: ping and flag the tab if it's in the background. */
+  notifyTurn(s: GameState) {
+    toast(`🔔 ${s.trainer.name}, it’s your turn!`, 'good', 4000);
+    if (!document.hidden) return;
+    if (settings().turnPing) sfx.ping();
+    const base = document.title.replace(/^🔔 Your turn! · /, '');
+    let on = false;
+    this.stopTitleFlash();
+    this.titleFlash = setInterval(() => { on = !on; document.title = on ? `🔔 Your turn! · ${base}` : base; }, 1000);
+    const back = () => { if (!document.hidden) { this.stopTitleFlash(); document.title = base; removeEventListener('visibilitychange', back); } };
+    addEventListener('visibilitychange', back);
+    try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Creature Circuit', { body: `${s.trainer.name}, it’s your turn!`, tag: 'cc-turn' }); } catch { /* ignore */ }
+  }
+  stopTitleFlash() { if (this.titleFlash) { clearInterval(this.titleFlash); this.titleFlash = null; document.title = document.title.replace(/^🔔 Your turn! · /, ''); } }
+
+  /** Another trainer's trade or duel offer, answered from this browser. */
+  answerAsk(m: Extract<ServerMsg, { type: 'ask' }>) {
+    const net = this.online!;
+    if (document.hidden && settings().turnPing) sfx.ping();
+    const close = openSheet(m.title, h('div', null, h('p', null, m.text),
+      h('div', { class: 'row gap center' },
+        h('button', { class: 'btn ghost', onclick: () => { close(); net.send({ type: 'answer', id: m.id, yes: false }); } }, m.no),
+        h('button', { class: 'btn primary', onclick: () => { close(); net.send({ type: 'answer', id: m.id, yes: true }); } }, m.yes))), { noClose: true });
+  }
+
+  /** End a trainer's turn on their behalf (host's Skip, or the turn timer ran out). */
+  async skipFor(seat: number, reason: 'timeout' | 'host') {
+    const m = activeMatchOf();
+    if (!m || m.current !== seat) return;
+    const s = m.players[seat];
+    this.skipping = true;
+    closeAllSheets();
+    this.busy = false;
+    this.watching = false;
+    this.activeKey = `${seat}:${s.turn}`;
+    this.s = s;
+    if (s.event) { s.event = undefined; log(s, 'The waiting event passed by.'); }
+    toast(reason === 'timeout' ? `⏱ Time’s up: ${s.trainer.name}’s turn ends.` : `⏭ The host skipped ${s.trainer.name}’s turn.`, 'info', 4000);
+    try { await this.endTurn(false, true); } finally { this.skipping = false; }
+  }
+
+  /** The host's turn timer readout (top of the HUD). */
+  renderTimer() {
+    const room = this.online?.room;
+    let el = document.getElementById('turn-timer');
+    if (!room?.deadline) { el?.remove(); return; }
+    if (!el) { el = h('div', { id: 'turn-timer', class: 'turn-timer' }); document.body.append(el); }
+    const tick = () => {
+      const left = Math.max(0, Math.round(((this.online?.room?.deadline ?? 0) - Date.now()) / 1000));
+      if (!this.online?.room?.deadline) { el!.remove(); return; }
+      el!.textContent = `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      el!.classList.toggle('low', left <= 15);
+      setTimeout(tick, 500);
+    };
+    tick();
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Hotseat multiplayer
+  // ════════════════════════════════════════════════════════════
+  /** Choose how many trainers, then create each one in turn (their colours are locked as they go). */
+  hotseatSetup() {
+    const close = openSheet('👥 Hotseat', h('div', null,
+      h('p', null, 'Up to six trainers share this device. Turns go in seat order: when one trainer ends their turn, the next one starts theirs. Everyone shares the same map, weather and Legendaries.'),
+      h('p', { class: 'small muted' }, 'Each trainer picks a unique main colour so everyone is easy to spot on the map.'),
+      h('div', { class: 'row gap-s wrap' }, Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 2).map((n) =>
+        h('button', { class: 'btn primary', onclick: () => { close(); this.createTrainers(n); } }, `${n} trainers`)))));
+  }
+
+  createTrainers(total: number) {
+    const players: GameState[] = [];
+    const next = () => {
+      if (players.length === total) {
+        const m = newMatch(players);
+        setActiveMatch(m);
+        for (const p of players) log(p, `${p.trainer.name} set out from ${CITIES[p.trainer.home].name}.`);
+        saveMatch(m);
+        void this.startMatch(m, true);
+        return;
+      }
+      this.newGameWizard({ seat: players.length, total, taken: players.map((p) => p.trainer.color), onDone: (s) => { players.push(s); next(); } });
+    };
+    next();
+  }
+
+  /** Begin (or resume) a hotseat match with whoever's seat it is. */
+  async startMatch(m: Match, fresh = false) {
+    setActiveMatch(m);
+    const s = m.players[m.current];
+    this.start(s);
+    await this.passDevice(s, fresh);
+    await this.startOfTurn();
+    if (fresh) this.howToPlay(true);
+  }
+
+  /** "Pass the device" screen between turns, so the next trainer knows it's them. */
+  passDevice(s: GameState, first = false): Promise<void> {
+    return new Promise((resolve) => {
+      closeAllSheets();
+      const close = openSheet(first ? 'The season begins!' : 'Next trainer', h('div', { class: 'handoff', style: `--tc:${s.trainer.color}` },
+        h('img', { src: trainerPortrait(playerLook(s.trainer.name, s.trainer.color, s.trainer.look)), alt: '' }),
+        h('h3', null, `${s.trainer.name}, it’s your turn`),
+        h('p', { class: 'small muted' }, `Turn ${s.turn} · ${NODE_BY_ID[s.location].name}. Pass the device to ${s.trainer.name}.`),
+        h('button', { class: 'btn primary big', onclick: () => { close(); resolve(); } }, `I’m ${s.trainer.name}: start my turn`)), { noClose: true });
+    });
+  }
+
+  /** End of a hotseat turn: move to the next trainer still playing (or the final standings). */
+  async handoff() {
+    const m = activeMatchOf();
+    if (!m) return;
+    const i = nextSeat(m);
+    if (this.online) {
+      // online: hand the turn over through the server, then watch the next trainer
+      if (i >= 0) m.current = i;
+      saveMatch(m);
+      this.activeKey = '';
+      if (i < 0) { this.matchSummary(); return; }
+      this.spectate();
+      return;
+    }
+    if (i < 0) { this.matchSummary(); return; }
+    m.current = i;
+    saveMatch(m);
+    const s = m.players[i];
+    this.start(s);
+    await this.passDevice(s);
+    await this.startOfTurn();
+  }
+
+  /**
+   * Start of a trainer's turn, the same in solo and hotseat: the round's weather (hotseat: if they're
+   * first this turn), then from the second round on the turn's event, then the follower prompt.
+   */
+  async startOfTurn() {
+    const s = this.s;
+    if (s.phase !== 'map') return;
+    const m = activeMatchOf();
+    if (m && m.rolls[s.turn] === undefined) {
+      // first trainer to start this turn: roll the weather once for the whole table
+      const roll = W.rollRoundWeather(m, s.turn);
+      saveMatch(m);
+      this.renderHud();
+      const se = season(s);
+      if (s.turn > 1 && seasonForTurn(s.turn - 1) !== se) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in Margos.`);
+      const w = WEATHER[s.weather];
+      await rollDice(`Weather for Turn ${s.turn} · everyone`, [{ sides: 6, value: roll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 900);
+    }
+    if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
+    await this.showInbox();
+    // one event per trainer per turn, from the second round, rolled here at the start of the turn
+    if (s.turn >= 2 && s.eventTurn !== s.turn) { s.eventTurn = s.turn; E.rollEvent(s); save(s); this.renderHud(); }
+    if (s.event) await this.eventFlow();
+    if (settings().followerPrompt && s.phase === 'map' && (s.roster.filter((c) => !c.ko).length > 1 || !follower(s))) await this.followerSheet(true);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Hotseat: trainer interactions (gifts, trades, challenges)
+  // ════════════════════════════════════════════════════════════
+  /** The other trainers in the match, with what you can do with each. */
+  trainersSheet() {
+    const a = this.s;
+    const m = activeMatchOf();
+    if (!m) return;
+    const others = m.players.filter((p) => p !== a);
+    const close = openSheet('👥 Trainers', h('div', { class: 'list' },
+      h('p', { class: 'small muted' }, 'Send coins and items to anyone, anywhere (a courier carries them). Trading creatures and challenging to a duel need you both on the same spot.'),
+      others.map((b) => {
+        const here = I.sameSpot(a, b);
+        const why = I.challengeProblem(a, b);
+        return h('div', { class: 'trainer-row', style: `--tc:${b.trainer.color}` },
+          h('img', { src: trainerPortrait(playerLook(b.trainer.name, b.trainer.color, b.trainer.look)), alt: '' }),
+          h('div', { class: 'trainer-info' },
+            h('b', null, b.trainer.name, stillPlaying(b) ? '' : ' · finished'),
+            h('small', null, `${here ? '📍 Here with you' : `At ${NODE_BY_ID[b.location].name}`} · 🪙 ${b.coins} · ${b.merits.length}/8 Merits · ${b.roster.length + b.reserve.length} creatures`),
+            h('div', { class: 'row gap-s wrap' },
+              h('button', { class: 'btn ghost sm', onclick: () => { close(); this.giftSheet(b); } }, '📦 Send a gift'),
+              h('button', { class: 'btn ghost sm', disabled: !here, title: here ? '' : 'Meet on the same spot to trade', onclick: () => { close(); this.tradeSheet(b); } }, '🤝 Trade'),
+              h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => { close(); this.challengeSheet(b); } }, '⚔️ Challenge · 1⚡')),
+            why && here ? h('small', { class: 'muted' }, why) : null));
+      })), { wide: true });
+  }
+
+  /** Coins, items and (optionally) a creature from one trainer's belongings, for a gift or trade. */
+  offerEditor(owner: GameState, offer: I.Offer, changed: () => void, allowCreature: boolean): HTMLElement {
+    const items = Object.keys(owner.inventory).filter((id) => owner.inventory[id] > 0 && I.giftable(id));
+    const step = (d: number) => () => { offer.coins = Math.max(0, Math.min(owner.coins, offer.coins + d)); changed(); };
+    const itemStep = (id: string, d: number) => () => { offer.items[id] = Math.max(0, Math.min(owner.inventory[id], (offer.items[id] ?? 0) + d)); changed(); };
+    return h('div', { class: 'offer' },
+      h('div', { class: 'school-pay' }, h('span', null, '🪙 Coins'),
+        h('button', { class: 'btn ghost sm', onclick: step(-5) }, '−5'), h('button', { class: 'btn ghost sm', onclick: step(-1) }, '−1'),
+        h('b', { class: 'school-coins' }, String(offer.coins)),
+        h('button', { class: 'btn ghost sm', onclick: step(1) }, '+1'), h('button', { class: 'btn ghost sm', onclick: step(5) }, '+5'),
+        h('small', { class: 'muted' }, `of ${owner.coins}`)),
+      items.length ? h('div', { class: 'offer-items' }, items.map((id) => h('div', { class: 'offer-item' },
+        h('span', null, `${itemInfo(id).icon} ${W.itemDisplayName(id)}`), h('small', { class: 'muted' }, `×${owner.inventory[id]}`),
+        h('button', { class: 'btn ghost sm', onclick: itemStep(id, -1) }, '−'), h('b', null, String(offer.items[id] ?? 0)), h('button', { class: 'btn ghost sm', onclick: itemStep(id, 1) }, '+'))))
+        : h('p', { class: 'small muted' }, 'No items that can be given.'),
+      allowCreature ? h('div', null, h('small', { class: 'muted' }, 'Creature (optional): tap to choose, tap again to clear'),
+        h('div', { class: 'list' }, [...owner.roster, ...owner.reserve].map((c) => miniCard(c, { selected: offer.creature === c.uid, onClick: () => { offer.creature = offer.creature === c.uid ? undefined : c.uid; changed(); } })))) : '');
+  }
+
+  /** Send coins and items to another trainer (no reply needed). */
+  giftSheet(b: GameState) {
+    const a = this.s;
+    const offer = I.emptyOffer();
+    const body = h('div');
+    const render = () => {
+      const err = I.offerIsEmpty(offer) ? 'Choose something to send.' : I.offerProblem(a, offer, b);
+      body.replaceChildren(
+        h('p', { class: 'small' }, `A courier will carry it to ${b.trainer.name} at ${NODE_BY_ID[b.location].name}. They’ll find a note at the start of their turn.`),
+        this.offerEditor(a, offer, render, false),
+        h('div', { class: 'row end gap' }, h('button', { class: 'btn primary', disabled: !!err, title: err ?? '', onclick: () => {
+          const e = I.exchange(a, offer, b);
+          if (e) { toast(e, 'bad'); return; }
+          sfx.good(); save(a); close(); this.renderHud();
+          toast(`📦 Sent to ${b.trainer.name}.`, 'good');
+        } }, `Send to ${b.trainer.name}`)));
+    };
+    const close = openSheet(`📦 Gift for ${b.trainer.name}`, body, { wide: true });
+    render();
+  }
+
+  /** Propose a trade; the other trainer accepts or declines on the same device. */
+  tradeSheet(b: GameState) {
+    const a = this.s;
+    const give = I.emptyOffer(), want = I.emptyOffer();
+    const body = h('div', { class: 'trade' });
+    const render = () => {
+      const err = I.offerIsEmpty(give) && I.offerIsEmpty(want) ? 'Add something to the trade.' : I.offerProblem(a, give, b, want) ?? I.offerProblem(b, want, a, give);
+      body.replaceChildren(
+        h('div', { class: 'trade-cols' },
+          h('div', null, h('h4', null, `You give ${b.trainer.name}`), this.offerEditor(a, give, render, true)),
+          h('div', null, h('h4', null, `You ask from ${b.trainer.name}`), this.offerEditor(b, want, render, true))),
+        h('div', { class: 'row end gap' }, h('button', { class: 'btn primary', disabled: !!err, title: err ?? '', onclick: async () => {
+          close();
+          const summary = h('div', null, h('p', null, `${a.trainer.name} offers a trade:`), this.offerSummary(a, give, 'You get'), this.offerSummary(b, want, 'You give'));
+          const ok = await this.askTrainer(b, `🤝 ${a.trainer.name} proposes a trade`, summary, 'Accept trade', 'Decline');
+          await this.backTo(a);
+          if (!ok) { toast(`${b.trainer.name} declined the trade.`, 'info'); return; }
+          const e = I.exchange(a, give, b, want);
+          if (e) { toast(e, 'bad'); return; }
+          sfx.good(); save(a); this.renderHud();
+          toast(`🤝 Trade complete with ${b.trainer.name}!`, 'good');
+        } }, `Propose to ${b.trainer.name}`)));
+    };
+    const close = openSheet(`🤝 Trade with ${b.trainer.name}`, body, { wide: true });
+    render();
+  }
+
+  /** A readable list of what's in an offer (creature shown as a card). */
+  offerSummary(owner: GameState, o: I.Offer, label: string) {
+    const c = o.creature ? [...owner.roster, ...owner.reserve].find((x) => x.uid === o.creature) : undefined;
+    const bits = [...Object.entries(o.items).filter(([, n]) => n).map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`), ...(o.coins ? [`🪙 ${o.coins}`] : [])];
+    return h('div', { class: 'offer-summary' }, h('b', null, `${label}: `), bits.join(', ') || (c ? '' : 'nothing'), c ? miniCard(c) : '');
+  }
+
+  /** Challenge another trainer on the same spot to a duel, with an optional wager they must accept. */
+  challengeSheet(b: GameState) {
+    const a = this.s;
+    const max = I.maxWager(a, b);
+    const wagers = [0, 5, 10, 20].filter((w) => w <= max);
+    const close = openSheet(`⚔️ Challenge ${b.trainer.name}`, h('div', null,
+      h('p', null, `Duel ${b.trainer.name} here at ${NODE_BY_ID[a.location].name}. You command your team; ${b.trainer.name}’s creatures fight on their own instincts. Every creature that fights earns trainer-battle XP. Costs 1 Initiative.`),
+      h('p', { class: 'small muted' }, 'Choose a wager (the winner takes it). A team that’s fully knocked out is helped home to rest, without losing coins.'),
+      h('div', { class: 'row gap-s wrap' }, wagers.map((w) => h('button', { class: 'btn primary', onclick: async () => {
+        close();
+        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 🪙 ${w}` : ', just for honour'}. Your active team will fight on its own instincts.`), 'Accept the duel', 'Decline');
+        await this.backTo(a);
+        if (!ok) { toast(`${b.trainer.name} declined the challenge.`, 'info'); return; }
+        const battle = I.startChallenge(a, b);
+        if (!battle) { toast(I.challengeProblem(a, b) ?? 'The duel can’t start.', 'bad'); return; }
+        await this.runBattle(battle, { kind: 'rival', intro: `${b.trainer.name} accepts your challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look) });
+        for (const t of I.settleChallenge(a, b, battle, w)) toast(t, 'info', 4000);
+        save(a);
+        this.world.setPawnAt(a.location); this.world.focus(a.location, true);
+        this.showRivals(); this.renderHud();
+      } }, w ? `Wager 🪙 ${w}` : 'No wager')))));
+  }
+
+  /** Hand the device to another trainer for a yes/no answer (a trade or a challenge). */
+  askTrainer(b: GameState, title: string, content: HTMLElement, yes: string, no: string): Promise<boolean> {
+    const m = activeMatchOf();
+    if (this.online && m) {
+      toast(`Waiting for ${b.trainer.name} to answer…`, 'info', 4000);
+      return this.online.ask(m.players.indexOf(b), this.s.trainer.name, title, content.textContent ?? '', yes, no);
+    }
+    return new Promise((resolve) => {
+      closeAllSheets();
+      const close = openSheet(title, h('div', { class: 'handoff', style: `--tc:${b.trainer.color}` },
+        h('p', { class: 'small muted' }, `Pass the device to ${b.trainer.name}.`),
+        h('img', { src: trainerPortrait(playerLook(b.trainer.name, b.trainer.color, b.trainer.look)), alt: '' }),
+        content,
+        h('div', { class: 'row gap center' },
+          h('button', { class: 'btn ghost', onclick: () => { close(); resolve(false); } }, no),
+          h('button', { class: 'btn primary', onclick: () => { close(); resolve(true); } }, yes))), { noClose: true });
+    });
+  }
+
+  /** "Pass the device back" after another trainer has answered. */
+  backTo(a: GameState): Promise<void> {
+    if (this.online) return Promise.resolve();
+    return new Promise((resolve) => {
+      const close = openSheet('Back to you', h('div', { class: 'handoff', style: `--tc:${a.trainer.color}` },
+        h('p', null, `Pass the device back to ${a.trainer.name}.`),
+        h('button', { class: 'btn primary big', onclick: () => { close(); resolve(); } }, `I’m ${a.trainer.name}`)), { noClose: true });
+    });
+  }
+
+  /** Notes left by other trainers since your last turn (gifts, trades, duels). */
+  async showInbox() {
+    const s = this.s;
+    if (!s.inbox?.length) return;
+    const notes = s.inbox;
+    s.inbox = [];
+    save(s);
+    await new Promise<void>((resolve) => {
+      openSheet('📬 While you were away', h('ul', { class: 'tips' }, notes.map((n) => h('li', null, n))), { onClose: () => resolve() });
+    });
+  }
+
+  /** Other hotseat trainers still on the board, drawn as minis on the map. */
+  showRivals() {
+    const m = activeMatchOf();
+    this.world.setRivals(m ? m.players.filter((p) => p !== this.s && stillPlaying(p)).map((p) => ({ look: playerLook(p.trainer.name, p.trainer.color, p.trainer.look), nodeId: p.location })) : []);
+  }
+
+  /** Everyone has finished: final standings for the hotseat season. */
+  matchSummary() {
+    const m = activeMatchOf();
+    if (!m) { this.title(); return; }
+    this.engine.setView(this.world);
+    this.world.setTitleMode(true);
+    this.world.setRivals([]);
+    const result = (p: GameState) => (p.phase === 'champion' ? 3 : p.endgame ? 2 + p.endgame.round / 10 : 0) + p.merits.length / 100;
+    const ranked = [...m.players].sort((a, b) => result(b) - result(a));
+    this.ui.replaceChildren(h('div', { class: 'title-screen' }, h('div', { class: 'title-card' },
+      h('h1', null, '🏁 Season Over'),
+      h('ol', { class: 'standings' }, ranked.map((p) => h('li', { style: `--tc:${p.trainer.color}` },
+        h('b', null, p.trainer.name),
+        h('span', null, p.phase === 'champion' ? ' 🏆 Champion of the Circuit' : p.endgame ? ` · out in the ${['Quarterfinal', 'Semifinal', 'Grand Final'][p.endgame.round]}` : ' · missed the Circuit'),
+        h('small', { class: 'muted' }, ` · ${p.merits.length}/8 Merits · ${p.stats.battlesWon} wins · ${p.stats.recruited} recruited`)))),
+      h('button', { class: 'btn primary big', onclick: () => { if (this.online) { clearOnlineMatch(); this.leaveOnline(); } else { clearMatch(); this.title(); } } }, 'New Journey'))));
   }
 
   // ════════════════════════════════════════════════════════════
@@ -205,7 +881,11 @@ export class App {
     const ev = E.eventView(s);
     const eventPill = ev ? h('button', { class: 'event-pill', onclick: () => this.eventFlow(), title: 'Answer this event before ending your turn' },
       h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('small', null, 'Event waiting'), h('b', null, ev.title))) : null;
-    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, followerBtn, team), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
+    const m = activeMatchOf();
+    const seats = m ? h('div', { class: 'seats', title: 'Turn order' }, m.players.map((p) => h('span', {
+      class: `seat ${p === s ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}`,
+    }, p.trainer.name, p.phase === 'champion' ? ' 🏆' : ''))) : null;
+    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
   }
 
@@ -221,11 +901,12 @@ export class App {
 
   actionButtons(): HTMLElement[] {
     const s = this.s;
+    if (this.watching) return this.watchButtons();
     const node = NODE_BY_ID[s.location];
     const out: HTMLElement[] = [];
     const btn = (icon: string, label: string, fn: () => void, opts: { cost?: number; disabled?: boolean; cls?: string } = {}) =>
       h('button', { class: `act ${opts.cls ?? ''}`, disabled: opts.disabled, onclick: () => { if (!this.busy) fn(); } },
-        h('span', { class: 'act-ico' }, icon), h('span', { class: 'act-lbl' }, label), opts.cost !== undefined ? h('span', { class: 'cost' }, opts.cost === 0 ? 'free' : `${opts.cost}⚡`) : null);
+        h('span', { class: 'act-ico' }, icon), h('span', { class: 'act-lbl' }, label), opts.cost !== undefined ? h('span', { class: 'cost' }, opts.cost === 0 ? '0⚡' : `${opts.cost}⚡`) : null);
     if (node.kind === 'wild') {
       const c = W.reexploreCost(s);
       out.push(btn('🔍', 'Explore', () => this.doExplore(), { cost: c, disabled: s.initiative < c }));
@@ -236,9 +917,29 @@ export class App {
     if (node.kind === 'town') out.push(btn('🏘️', 'Town', () => this.townSheet(), { cls: 'hl' }));
     if (node.kind === 'stadium') out.push(btn('🏟️', 'Stadium', () => this.stadiumSheet(), { cls: 'hl' }));
     if (W.flyTargets(s).length) out.push(btn('🪽', 'Fly', () => this.flySheet(), { cost: 3, disabled: s.initiative < 3 }));
+    if (activeMatchOf()?.players.includes(s)) out.push(btn('👥', 'Trainers', () => this.trainersSheet()));
     out.push(btn('🐾', 'Team', () => this.teamSheet()));
     out.push(btn('🎒', 'Bag', () => this.bagSheet()));
     out.push(btn('⏭️', 'End Turn', () => this.endTurn(), { cls: s.initiative === 0 ? 'primary pulse' : 'primary' }));
+    return out;
+  }
+
+  /** Online, while someone else plays: who's playing, your own team, and the host's controls. */
+  watchButtons(): HTMLElement[] {
+    const net = this.online!;
+    const m = activeMatchOf();
+    const cur = m?.players[m.current];
+    const mySeat = m?.owners?.indexOf(net.id) ?? -1;
+    const me = mySeat >= 0 ? m!.players[mySeat] : null;
+    const out: HTMLElement[] = [h('div', { class: 'watch-label', style: `--tc:${cur?.trainer.color ?? '#999'}` }, h('span', null, '👀 ', h('b', null, cur?.trainer.name ?? '…'), '’s turn'))];
+    if (me) out.push(h('button', { class: 'act', onclick: () => openSheet('Your team', h('div', { class: 'list' }, [...me.roster, ...me.reserve].map((c) => miniCard(c, { onClick: () => this.showCreature(c, true) })))) },
+      h('span', { class: 'act-ico' }, '🐾'), h('span', { class: 'act-lbl' }, 'My team')));
+    if (net.isHost && cur) {
+      out.push(h('button', { class: 'act', title: `End ${cur.trainer.name}’s turn now`, onclick: async () => { if (await confirmSheet('Skip this turn?', `${cur.trainer.name}’s turn ends now, as if they pressed End Turn.`, 'Skip turn')) net.send({ type: 'host-skip' }); } },
+        h('span', { class: 'act-ico' }, '⏭️'), h('span', { class: 'act-lbl' }, 'Skip turn')));
+      out.push(h('button', { class: 'act', title: `Take over ${cur.trainer.name}’s turn on this device`, onclick: async () => { if (await confirmSheet(`Play for ${cur.trainer.name}?`, `You’ll play the rest of ${cur.trainer.name}’s turn from this device (their own screen switches to watching).`, 'Play for them')) net.send({ type: 'host-play' }); } },
+        h('span', { class: 'act-ico' }, '🎮'), h('span', { class: 'act-lbl' }, `Play for ${cur.trainer.name}`)));
+    }
     return out;
   }
 
@@ -259,7 +960,7 @@ export class App {
 
   /** Double-tap shortcut: travel straight to an adjacent node. Blocked moves leave the preview up to explain why. */
   onNodeDoubleTap(id: string) {
-    if (!settings().doubleTapTravel || this.busy || !this.s || this.s.phase !== 'map') return;
+    if (!settings().doubleTapTravel || this.busy || this.watching || !this.s || this.s.phase !== 'map') return;
     if (id === this.s.location || !neighbors(this.s.location).some((x) => x.node.id === id)) return;
     if (W.canMoveTo(this.s, id).ok) this.travel(id);
   }
@@ -293,7 +994,7 @@ export class App {
         h('div', null, h('b', null, n.name), h('small', null, this.nodeSubtitle(id)))),
       ...extra,
       isHere ? h('div', { class: 'small muted' }, 'You are here.') :
-        adj ? (chk.ok ? h('button', { class: 'btn primary block', onclick: () => this.travel(id) }, `Travel here · ${chk.cost === 0 ? 'free' : chk.cost + '⚡'}`) : h('div', { class: 'lock' }, '🔒 ', chk.reason)) :
+        this.watching ? '' : adj ? (chk.ok ? h('button', { class: 'btn primary block', onclick: () => this.travel(id) }, `Travel here · ${chk.cost}⚡`) : h('div', { class: 'lock' }, '🔒 ', chk.reason)) :
           h('div', { class: 'small muted' }, 'Not adjacent — travel node by node.'));
     this.ui.append(card);
   }
@@ -309,15 +1010,23 @@ export class App {
     $('.node-preview')?.remove();
     this.world.setReach({});
     sfx.hop();
+    this.feed({ kind: 'hop', from, to: id });
     await this.world.hop(from, id);
     this.busy = false;
+    this.syncWatchers();
     await this.handleOutcome(out);
+    this.syncWatchers();
   }
+
+  /** Online: send the latest match now (moves and explores don't always save, but watchers should see them). */
+  syncWatchers() { const m = activeMatchOf(); if (m && this.feeding()) this.pushState(m); }
 
   async doExplore() {
     const out = W.reexplore(this.s);
     if (!out) { toast('Not enough Initiative.', 'bad'); return; }
+    this.syncWatchers();
     await this.handleOutcome(out);
+    this.syncWatchers();
   }
 
   async handleOutcome(out: W.Outcome) {
@@ -337,6 +1046,21 @@ export class App {
         sfx.good();
         toast(`Found ${names.join(', ')}`, 'good', 3200);
         log(s, `Found ${names.join(', ')} at ${NODE_BY_ID[s.location].name}.`);
+      } else if (out.t === 'itemChoice') {
+        // Keen Nose: three finds to choose from
+        await rollDice('Explore', [{ sides: 6, value: out.roll, tone: 'good', label: '5–6 Item' }], 'Your follower’s Keen Nose picks up three scents…', 500);
+        const label = (f: W.Find) => [...f.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`), ...(f.coins ? [`🪙 ${f.coins} coins`] : [])].join(' + ');
+        const pickIt = await new Promise<W.Find>((resolve) => {
+          const close = openSheet('👃 Keen Nose · pick one find', h('div', null,
+            h('p', { class: 'small' }, `${follower(s) ? nameOf(follower(s)!) : 'Your follower'} sniffs out three things nearby. You can only carry one away.`),
+            h('div', { class: 'list' }, out.options.map((f) => h('button', { class: 'choice', onclick: () => { close(); resolve(f); } },
+              h('b', null, label(f)),
+              h('small', { class: 'muted' }, f.items.map((i) => itemInfo(i.id).text).join(' ') || 'A little extra coin.'))))), { noClose: true });
+        });
+        const got = W.claimFind(s, pickIt);
+        sfx.good();
+        toast(`Found ${label(got)}`, 'good', 3200);
+        log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
         await rollDice('Explore', [{ sides: 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], 'Something rustles nearby…', 300);
         await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 700);
@@ -376,7 +1100,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame'; intro: string; city?: string; nodeId?: string }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; rivalLook?: TrainerLook; watch?: AsyncQueue<FeedItem> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -389,11 +1113,13 @@ export class App {
     const foeLook: TrainerLook | null =
       foeSide.kind === 'arbiter' ? arbiterLook(foeSide.name, arenaType ?? CITIES[b.arena?.city ?? '']?.type ?? 'fire')
         : foeSide.kind === 'champion' ? championLook(foeSide.name)
-          : foeSide.kind === 'trainer' ? roamingLook(foeSide.name) : null;
+          : ctx.rivalLook ? ctx.rivalLook : foeSide.kind === 'trainer' ? roamingLook(foeSide.name) : null;
     bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color, s.trainer.look) : null, foeLook);
     this.engine.setView(bv);
     // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
-    if (W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
+    if (!ctx.watch && W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
+    // online: everyone else watches this battle live
+    this.feed({ kind: 'battle-start', battle: JSON.parse(JSON.stringify(b)), ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook } as never });
     const disp: [Snap, Snap] = [snapOf(activeOf(b.sides[0])), snapOf(activeOf(b.sides[1]))];
     const panel = h('div', { class: 'battle-ui' });
     const logLine = h('div', { class: 'battle-log' }, ctx.intro);
@@ -438,8 +1164,11 @@ export class App {
     await Promise.all([bv.setCreature(0, activeOf(b.sides[0]).species), bv.setCreature(1, activeOf(b.sides[1]).species)]);
     renderPlate(0); renderPlate(1);
 
+    let watchedEnd: Battle['over'] = null;
     const play = async (events: BEvent[]) => {
+      if (!ctx.watch) this.feed({ kind: 'battle-events', events });
       for (const e of events) {
+        if (e.t === 'end') watchedEnd = e.result;
         try { await playOne(e); } catch (err) { console.error('battle fx error', err); }
       }
       renderPlate(0); renderPlate(1);
@@ -601,8 +1330,21 @@ export class App {
         say('Choose your next creature!', 'bad');
         controls.replaceChildren(h('div', { class: 'list' }, b.sides[0].team.map((c, i) => c.ko ? null : miniCard(c, { onClick: async () => { controls.replaceChildren(); await play(sendIn(b, i)); showControls(); } }))));
       };
-      showControls();
+      if (ctx.watch) {
+        // watching someone else's battle: play their rounds as they arrive
+        say(ctx.intro);
+        controls.replaceChildren(h('div', { class: 'waiting' }, `👀 Watching ${s.trainer.name}’s battle`));
+        void (async () => {
+          for (;;) {
+            const it = await ctx.watch!.next();
+            if (it.kind === 'battle-events') await play(it.events as BEvent[]);
+            if (it.kind === 'battle-end' || watchedEnd) { finish(watchedEnd ?? 'fled'); return; }
+          }
+        })();
+      } else showControls();
     });
+    if (ctx.watch) { this.engine.setView(this.world); this.busy = false; return result; }
+    this.feed({ kind: 'battle-end' });
 
     // ── Aftermath ──────────────────────────────────────────────
     if (result === 'win') { sfx.fanfare(); say('Victory!', 'good'); await wait(600); }
@@ -679,14 +1421,14 @@ export class App {
     const id = s.location;
     const c = CITIES[id];
     const cost = W.cityActionCost(s);
-    const costTag = cost === 0 ? 'free' : `${cost}⚡`;
+    const costTag = `${cost}⚡`;
     const gate = W.arbiterGate(s, id);
     const body = h('div', { class: 'city' },
       h('div', { class: 'city-hero', style: `--tc:${TYPE_COLOR[c.type]}` },
         h('img', { src: typeIcon(c.type) }),
         h('div', null, h('h3', null, c.name), h('small', null, `Inspired by ${c.park} · ${TYPE_LABEL[c.type]} City${s.trainer.home === id ? ' · 🏠 Home' : ''}`), h('p', { class: 'small' }, c.blurb))),
       h('div', { class: 'tiles' },
-        tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : ''}`, costTag, () => this.stable()),
+        tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.trainer.style === 'balanced' ? ' (doubled — a Wanderer is at home anywhere)' : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
         tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
         tile('🪵', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
         tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
@@ -708,13 +1450,18 @@ export class App {
     await this.runBattle(r.battle, { kind: 'trainer', intro: `${r.name} accepts your challenge in the ${NODE_BY_ID[s.location].name} Trainer Hall!` });
   }
 
-  spend(): boolean {
+  spend(cost?: number): boolean {
+    if (cost !== undefined) {
+      if (this.s.initiative < cost) { toast('Not enough Initiative for that.', 'bad'); return false; }
+      this.s.initiative -= cost;
+      return true;
+    }
     if (!W.spendCityAction(this.s)) { toast('Not enough Initiative for that.', 'bad'); return false; }
     return true;
   }
 
   stable() {
-    if (!this.spend()) return;
+    if (!this.spend(W.stableCost(this.s))) return;
     const r = W.rest(this.s, this.s.location);
     const city = CITIES[this.s.location];
     closeAllSheets();
@@ -835,7 +1582,7 @@ export class App {
         if (!this.spend()) return;
         closeAllSheets();
         await this.runBattle(W.arbiterBattle(s, id), { kind: 'arbiter', intro: `Arbiter ${c.arbiter} accepts your challenge!`, city: id });
-      } }, `Challenge · ${W.cityActionCost(s) || 'free'}${W.cityActionCost(s) ? '⚡' : ''}`)));
+      } }, `Challenge · ${W.cityActionCost(s)}⚡`)));
     openSheet(`${c.name} Arena`, body);
   }
 
@@ -860,10 +1607,10 @@ export class App {
     const body = h('div', { class: 'city' },
       h('p', null, t.blurb),
       h('div', { class: 'tiles' },
-        tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', W.cityActionCost(s) ? `${W.cityActionCost(s)}⚡` : 'free', () => this.stable()),
-        tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', 'free', () => this.market(true)),
+        tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', `${W.stableCost(s)}⚡`, () => this.stable()),
+        tile('🛒', 'Market', t.key ? `Sells the ${itemInfo(t.key).name}. ${itemInfo(t.key).text}` : 'Local goods.', '0⚡', () => this.market(true)),
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
-        t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', 'free', () => this.researchSheet()) : null,
+        t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
         tile('🗺️', 'Notice Board', 'Local rumors and tips.', '', () => this.rumors())),
       h('p', { class: 'small muted' }, 'Towns are safe from the wilds. Town markets cost no Initiative; the stable costs the same as a city action.'));
     openSheet(n.name, body, { wide: true });
@@ -1019,11 +1766,12 @@ export class App {
   }
 
   showCreature(c: CreatureInst, readOnly = false) {
+    if (this.watching) readOnly = true;
     const close = openSheet(nameOf(c), creatureCard(c, { editable: !readOnly, onChange: () => { save(this.s); if (!readOnly) this.renderHud(); } }), { wide: true, cls: 'card-sheet' });
     void close;
   }
 
-  pickFollower() { void this.followerSheet(false); }
+  pickFollower() { if (!this.watching) void this.followerSheet(false); }
 
   /**
    * Choose who follows you. Shown at the start of every turn (Settings → "Choose a follower each turn")
@@ -1104,7 +1852,7 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Turn flow
   // ════════════════════════════════════════════════════════════
-  /** True (and the event reopens) if an end-of-turn event is still waiting for an answer. */
+  /** True (and the event reopens) if an start-of-turn event is still waiting for an answer. */
   private eventBlocks(): boolean {
     if (!this.s.event) return false;
     toast('Answer the waiting event before ending your turn.', 'info', 3000);
@@ -1117,7 +1865,8 @@ export class App {
     const s = this.s;
     const needs = W.campNeeds(s);
     if (s.initiative < 1 || !needs.length) { toast(s.initiative < 1 ? 'Camping needs Initiative: each point left tends one creature.' : 'No one needs tending.', 'info', 3000); return; }
-    const limit = s.initiative;
+    const per = W.campPerInitiative(s);
+    const limit = s.initiative * per;
     // start with the most wounded picked; the trainer can change it
     const picked = new Set(W.campTargets(s).map((c) => c.uid));
     const list = h('div', { class: 'camp-list' });
@@ -1149,7 +1898,7 @@ export class App {
     };
     render();
     const close = openSheet('Make camp', h('div', null,
-      h('p', { class: 'small' }, `Camping ends your turn and uses all ${limit} Initiative you have left. Each point tends one creature: it recovers all its Vitality and shakes off Fatigue.`),
+      h('p', { class: 'small' }, `Camping ends your turn and uses all ${s.initiative} Initiative you have left. Each point tends ${per === 1 ? 'one creature' : `${per} creatures (Caretaker)`}: it recovers all its Vitality and shakes off Fatigue.`),
       h('p', { class: 'small muted' }, 'Highlighted hearts are what tending restores. KO’d creatures need a stable.'),
       h('div', { class: 'row gap-s' }, h('span', null, 'Tending '), count),
       list,
@@ -1167,7 +1916,9 @@ export class App {
     this.busy = true;
     closeAllSheets();
     $('.node-preview')?.remove();
-    const r = W.endTurn(s, camping);
+    const match = activeMatchOf();
+    // hotseat: no weather roll here; the first trainer to start the next turn rolls it for everyone
+    const r = W.endTurn(s, camping, match ? match.rolls[s.turn + 1] ?? null : undefined);
     // Morale: warnings for creatures that just became unhappy, then any d10 checks for those already warned
     for (const td of r.trainingDone) toast(`🥋 ${td.name} has finished training at ${td.school}. Pick it up there.`, 'good', 6000);
     for (const lg of r.legendsReturned) toast(`✨ ${lg.name} has left your side and returned to ${lg.home}. Another trainer may find it there.`, 'info', 6000);
@@ -1182,22 +1933,25 @@ export class App {
     for (const n of r.left) toast(`${n} lost faith in you and returned to the wild…`, 'bad', 4000);
     if (r.ended === 'endgame') { this.busy = false; save(s); this.renderHud(); this.endgameSheet(); return; }
     if (r.ended === 'over') { this.busy = false; save(s); this.gameOver(); return; }
+    if (match) {
+      // hotseat: pass the device to the next trainer (the weather is rolled at the start of the round)
+      this.busy = false;
+      save(s);
+      await this.handoff();
+      return;
+    }
     const se = season(s);
     if (r.seasonChanged) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in Margos.`);
     const w = WEATHER[s.weather];
     await rollDice(`Weather · ${SEASON_INFO[se].label}`, [{ sides: 6, value: r.weatherRoll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 650);
     this.busy = false;
-    E.rollEvent(s);
     save(s);
     this.renderHud();
-    if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
-    if (s.event) await this.eventFlow();
-    // start of the new turn: choose who follows (when there's a choice)
-    if (settings().followerPrompt && s.phase === 'map' && (s.roster.filter((c) => !c.ko).length > 1 || !follower(s))) await this.followerSheet(true);
+    await this.startOfTurn();
   }
 
   /**
-   * Show the pending end-of-turn event and resolve the player's answer. Closing the window does NOT
+   * Show the pending start-of-turn event and resolve the player's answer. Closing the window does NOT
    * decline it: the event stays pending (reopen it from the HUD) until a choice is made.
    */
   async eventFlow(): Promise<void> {
@@ -1312,7 +2066,19 @@ export class App {
       h('p', null, `${s.trainer.name} is the Champion of the Creature Circuit — the best trainer of all time.`),
       h('div', { class: 'row center gap-s' }, s.roster.map((c) => h('div', { class: 'champ-mon' }, h('img', { src: portrait(c.species) }), h('b', null, nameOf(c)), h('small', null, `Lv ${c.level}`)))),
       this.statsLine(),
-      h('button', { class: 'btn primary big', onclick: () => { clearSave(); this.title(); } }, 'New Journey'))));
+      this.afterFinishButton())));
+  }
+
+  /** At a trainer's Champion / Season Over screen: in hotseat, carry on with the others; solo, start over. */
+  afterFinishButton() {
+    const m = activeMatchOf();
+    if (m && m.players.includes(this.s)) {
+      save(this.s);
+      return nextSeat(m) >= 0
+        ? h('button', { class: 'btn primary big', onclick: () => this.handoff() }, 'Continue the season →')
+        : h('button', { class: 'btn primary big', onclick: () => this.matchSummary() }, 'Final standings →');
+    }
+    return h('button', { class: 'btn primary big', onclick: () => { clearSave(); this.title(); } }, 'New Journey');
   }
 
   gameOver() {
@@ -1324,7 +2090,7 @@ export class App {
       h('h1', null, 'Season Over'),
       h('p', null, why),
       this.statsLine(),
-      h('button', { class: 'btn primary big', onclick: () => { clearSave(); this.title(); } }, 'New Journey'))));
+      this.afterFinishButton())));
   }
 
   statsLine() {
@@ -1346,9 +2112,21 @@ export class App {
       save(s);
       this.world.setTrainerLook(playerLook(s.trainer.name, c, l));
       render();
-    }));
+    }, takenColors(activeMatchOf(), s)));
     render();
     openSheet('Trainer Look', body, { wide: true });
+  }
+
+  /** Abandon the journey being played: the hotseat match (all trainers) or the solo save, never the other one. */
+  async abandon() {
+    const m = activeMatchOf();
+    const hotseat = !!m && m.players.includes(this.s);
+    const ok = await confirmSheet(hotseat ? 'Abandon this hotseat game?' : 'Abandon journey?',
+      hotseat ? `This permanently deletes the hotseat save for all ${m!.players.length} trainers (${m!.players.map((p) => p.trainer.name).join(', ')}). Your solo journey, if you have one, is kept.` : 'This permanently deletes your solo save. A hotseat game, if you have one, is kept.',
+      'Delete');
+    if (!ok) return;
+    if (hotseat) clearMatch(); else clearSave();
+    this.title();
   }
 
   menu() {
@@ -1357,18 +2135,19 @@ export class App {
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
-      tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
+      this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'Rules summary.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
       tile('🏠', 'Title Screen', 'Your game is autosaved.', '', () => { close(); this.title(); }),
-      tile('🗑️', 'Abandon Journey', 'Delete this save.', '', async () => { close(); if (await confirmSheet('Abandon journey?', 'This deletes your save permanently.', 'Delete')) { clearSave(); this.title(); } })));
+      this.online ? tile('🚪', 'Leave online game', 'Go back to the title screen. You can rejoin with the room code.', '', () => { close(); this.leaveOnline(); })
+        : tile('🗑️', 'Abandon Journey', activeMatchOf()?.players.includes(this.s) ? 'Delete this hotseat game (every trainer’s progress).' : 'Delete this save.', '', async () => { close(); await this.abandon(); })));
   }
 
   settingsSheet() {
     const body = h('div');
     const render = () => {
       const st = settings();
-      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel' | 'fastBattle' | 'followerPrompt', label: string, text: string) =>
+      const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel' | 'fastBattle' | 'followerPrompt' | 'turnPing', label: string, text: string) =>
         h('label', { class: 'toggle' }, h('div', null, h('b', null, label), h('small', null, text)),
           h('input', { type: 'checkbox', role: 'switch', checked: st[k], onchange: (e: Event) => { setSetting(k, (e.target as HTMLInputElement).checked); if (k === 'sound' && st[k] === false) sfx.tap(); render(); } }));
       body.replaceChildren(
@@ -1377,6 +2156,7 @@ export class App {
         toggle('fastBattle', 'Fast battles', 'Pick a move and it resolves at once, with no move readout, no damage dice and short pauses. Off: each move shows what it will roll first, and every roll is explained as it happens.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),
         toggle('doubleTapTravel', 'Double-tap to travel', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button.'),
+        toggle('turnPing', 'Turn ping (online)', 'Play a ping and flag the browser tab when it becomes your turn while you’re in another tab.'),
         toggle('followerPrompt', 'Choose a follower each turn', 'At the start of every turn, show who is following you (Ability, Morale, Loyalty) and offer to switch.'),
         h('p', { class: 'small muted' }, 'Keyboard: 1–4 pick a move (Enter to confirm its readout, Esc to go back), B catch breath, S swap, R run, T type chart, Esc closes panels.'));
     };
@@ -1470,6 +2250,10 @@ export class App {
   howToPlay(welcome = false) {
     openSheet(welcome ? `Welcome, ${this.s.trainer.name}!` : 'How to Play', h('div', { class: 'howto' },
       h('ol', null,
+        h('li', null, h('b', null, 'Online: '), 'title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts. You watch other trainers’ turns live (moves, dice and battles), and a ping tells you when it’s your turn. The host can set a turn timer, skip a turn, or play one for someone who stepped away.'),
+        h('li', null, h('b', null, 'Hotseat: '), 'up to six trainers can share this device (title screen → Hotseat). Each picks a unique colour; turns go in seat order with a pass-the-device screen between them. Everyone shares the map, the weather and the Legendaries, and you can see the other trainers’ minis on the map.'),
+        h('li', null, h('b', null, 'Trainers (hotseat): '), 'tap 👥 Trainers to send coins or items to anyone, or, when you share a spot, trade creatures or challenge them to a duel (they accept on the same device). Notes about gifts, trades and duels wait for each trainer at the start of their turn.'),
+        h('li', null, h('b', null, 'Trainer style: '), 'chosen when you start: eight styles, each with a perk and a drawback (Wanderer, Ranger, Urbanite, Beast Whisperer, Merchant, Battle Master, Caretaker, Pathfinder). They change Initiative costs, stables, coins, recruiting, battle XP, camping or Morale.'),
         h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel, or just double-tap it (you can turn this off in Settings).'),
         h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),
         h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict a status on a minimum damage roll (see Menu → Status Effects, or tap a status tag in battle). In battle, each Elemental move shows how it lands on the current opponent (2× Super effective, ½ Resisted, No effect…), and 🔺 Types (or T) opens the chart for the matchup. Damage drains the Health bar, then a Vitality heart; out of hearts means KO. Your Following creature leads every battle; with nobody following, you choose who goes first.'),
@@ -1481,8 +2265,8 @@ export class App {
         h('li', null, h('b', null, 'Creature Codex: '), 'every creature you meet in the wild or in a trainer\u2019s team is recorded. Its page lists the nodes to explore for it (or its earlier stages) and its favorite offerings. You can carve an Effigy of any creature in your Codex.'),
         h('li', null, h('b', null, 'Grow: '), 'every creature that fights earns XP when the battle ends, win or lose, and knocking out a foe earns a bonus (running away earns nothing). Every 10 XP is a level and a point to spend on the skill tree on the back of the creature\'s index card. A node opens once every node linked above it is bought. Evolving needs the whole center path; side branches are optional but are left behind when it evolves.'),
         h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit.'),
-        h('li', null, h('b', null, 'Events: '), 'at the end of each turn something happens on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
-        h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets are free.'),
+        h('li', null, h('b', null, 'Events: '), 'from the second turn on, each turn starts with something happening on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
+        h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets cost no Initiative.'),
         h('li', null, h('b', null, 'Morale & Loyalty: '), 'happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good. Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty. Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0, so release them at the Research Facility before then for coins. Tap Morale or Loyalty on a card for details.'),
         h('li', null, h('b', null, 'Following: '), 'at the start of each turn you’re asked who follows you. The follower leads every battle, uses its Ability on the map, and gains Morale every other turn. Tap the Following chip any time to switch, or turn the prompt off in Settings.'),
         h('li', null, h('b', null, 'Trainer Halls: '), 'every city has one. Battle a local trainer once per turn (a city action). Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.'),

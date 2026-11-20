@@ -1,0 +1,14 @@
+# Render Blueprint: deploys Creature Circuit as one Node web service that serves the built game and
+# hosts online multiplayer rooms over WebSockets (/ws). In Render: New → Blueprint → this repository.
+services:
+  - type: web
+    name: creature-circuit
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

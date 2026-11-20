@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES } from '../src/data/roster';
@@ -9,9 +9,10 @@ import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS } from '../src/data/content';
 import { recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality } from '../src/engine/creature';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, type Side } from '../src/engine/battle';
-import { newGame, tierOf, migrate, SAVE_VERSION } from '../src/engine/state';
+import { newGame, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
+import * as I from '../src/engine/interactions';
 import { Box3 } from 'three';
 import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
 
@@ -557,6 +558,237 @@ describe('trainer battles', () => {
   });
 });
 
+describe('hotseat multiplayer', () => {
+  const trio = () => {
+    const ps = [newGame('A', 'balanced', 'thunder', 'puddlit', '#ff6b3d'), newGame('B', 'balanced', 'iron', 'zapup', '#3d8bff'), newGame('C', 'balanced', 'gloom', 'sproutle', '#2fbf71')];
+    const m = newMatch(ps);
+    setActiveMatch(m);
+    return { m, ps };
+  };
+  afterEach(() => setActiveMatch(null));
+  it('solo and hotseat saves are separate: clearing one never deletes the other', () => {
+    const store = new Map<string, string>();
+    const g = globalThis as unknown as { localStorage?: unknown };
+    const prev = g.localStorage;
+    g.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    try {
+      const solo = newGame('Solo', 'balanced', 'thunder', 'puddlit', '#fff');
+      setActiveMatch(null);
+      save(solo);
+      const { m } = trio();
+      saveMatch(m);
+      expect(load()?.trainer.name).toBe('Solo');
+      expect(loadMatch()?.players.length).toBe(3);
+      save(m.players[1]); // a hotseat trainer saves into the match, not the solo slot
+      expect(load()?.trainer.name).toBe('Solo');
+      clearMatch();
+      expect(loadMatch()).toBeNull();
+      expect(load()?.trainer.name).toBe('Solo');
+      saveMatch(m);
+      clearSave();
+      expect(load()).toBeNull();
+      expect(loadMatch()).not.toBeNull();
+    } finally { g.localStorage = prev; }
+  });
+  it('exported save files are recognised as solo or hotseat when imported', () => {
+    const { m } = trio();
+    const solo = newGame('Solo', 'balanced', 'thunder', 'puddlit', '#fff');
+    expect(parseSaveFile(JSON.stringify(solo))).toMatchObject({ kind: 'solo', save: { trainer: { name: 'Solo' } } });
+    const back = parseSaveFile(JSON.stringify(m));
+    expect(back?.kind).toBe('match');
+    if (back?.kind === 'match') expect(back.match.players.map((p) => p.trainer.name)).toEqual(['A', 'B', 'C']);
+    expect(parseSaveFile('{"hello": 1}')).toBeNull();
+    expect(parseSaveFile('not json')).toBeNull();
+  });
+  it('turns go round the table, skipping trainers who have finished', () => {
+    const { m, ps } = trio();
+    expect(nextSeat(m)).toBe(1);
+    m.current = 2;
+    expect(nextSeat(m)).toBe(0);
+    ps[0].phase = 'over';
+    expect(nextSeat(m)).toBe(1);
+    ps[1].phase = 'champion'; ps[2].phase = 'over';
+    expect(nextSeat(m)).toBe(-1);
+  });
+  it('main colours are locked to one trainer each', () => {
+    const { m, ps } = trio();
+    expect(takenColors(m, ps[0]).sort()).toEqual(['#2fbf71', '#3d8bff']);
+    expect(MAX_PLAYERS).toBe(6);
+  });
+  it('Legendaries are shared: beaten or held by any trainer, they are gone for everyone', () => {
+    const { ps } = trio();
+    const node = NODE_BY_ID.sunspire;
+    expect(W.legendaryHere(ps[0], node)).toBe(true);
+    ps[1].reserve.push(createCreature('solstara', 9));
+    expect(W.legendaryHere(ps[0], node)).toBe(false);
+    ps[1].reserve = []; ps[2].flags.beaten.push('sunspire');
+    expect(W.legendaryHere(ps[0], node)).toBe(false);
+    // one trainer releasing it puts it back for everyone
+    ps[2].flags.beaten = []; ps[2].roster.push(createCreature('zapup', 3));
+    const sol = createCreature('solstara', 9); ps[2].reserve.push(sol); ps[0].flags.beaten.push('sunspire');
+    ps[2].location = 'quillhaven';
+    W.releaseToResearch(ps[2], sol.uid);
+    expect(W.legendaryHere(ps[0], node)).toBe(true);
+  });
+  it('a turn’s weather is rolled once, at the start of the round, for every trainer', () => {
+    const { m, ps } = trio();
+    ps.forEach((p, i) => { p.weather = ['clear', 'rain', 'gusts'][i]; }); // newGame gives each its own
+    const r = W.rollRoundWeather(m, 1);
+    expect(m.rolls[1]).toBe(r);
+    expect(new Set(ps.map((p) => p.weather)).size).toBe(1);
+    // ending a turn in hotseat doesn't roll: the weather waits for the next round's roll
+    const before = ps[0].weather;
+    const rep = W.endTurn(ps[0], false, null);
+    expect(rep.weatherRoll).toBe(0);
+    expect(ps[0].weather).toBe(before);
+    for (const p of ps.slice(1)) W.endTurn(p, false, null);
+    W.rollRoundWeather(m, 2);
+    expect(new Set(ps.map((p) => p.weather)).size).toBe(1);
+  });
+});
+
+describe('hotseat interactions', () => {
+  const pair = () => {
+    const a = newGame('A', 'balanced', 'thunder', 'puddlit', '#ff6b3d'), b = newGame('B', 'balanced', 'thunder', 'zapup', '#3d8bff');
+    a.coins = 30; b.coins = 20;
+    a.roster.push(createCreature('pebbark', 4)); b.roster.push(createCreature('sproutle', 4));
+    setActiveMatch(newMatch([a, b]));
+    return { a, b };
+  };
+  afterEach(() => setActiveMatch(null));
+  it('gifts of coins and items arrive anywhere, with a note for the receiver', () => {
+    const { a, b } = pair();
+    b.location = 'iron';
+    expect(I.exchange(a, { coins: 10, items: { salve: 1 } }, b)).toBeNull();
+    expect([a.coins, b.coins, a.inventory.salve, b.inventory.salve]).toEqual([20, 30, 1, 3]);
+    expect(b.inbox?.[0]).toMatch(/A sent you/);
+  });
+  it('refuses what a trainer doesn’t have, key items, and creatures across the map', () => {
+    const { a, b } = pair();
+    expect(I.exchange(a, { coins: 999, items: {} }, b)).toMatch(/doesn’t have/);
+    a.inventory['ferry-pass'] = 1;
+    expect(I.exchange(a, { coins: 0, items: { 'ferry-pass': 1 } }, b)).toMatch(/can’t be given/);
+    b.location = 'iron';
+    expect(I.exchange(a, { coins: 0, items: {}, creature: a.roster[1].uid }, b)).toMatch(/same spot/);
+  });
+  it('trades swap creatures between trainers on the same spot', () => {
+    const { a, b } = pair();
+    const mine = a.roster[1], theirs = b.roster[1];
+    expect(I.exchange(a, { coins: 5, items: {}, creature: mine.uid }, b, { coins: 0, items: {}, creature: theirs.uid })).toBeNull();
+    expect(a.roster).toContain(theirs); expect(b.roster).toContain(mine);
+    expect(a.roster).not.toContain(mine);
+    expect(a.dex.caught).toContain('sproutle');
+    expect([a.coins, b.coins]).toEqual([25, 25]);
+  });
+  it('nobody can give away their only creature', () => {
+    const { a, b } = pair();
+    a.roster = [a.roster[0]];
+    expect(I.exchange(a, { coins: 0, items: {}, creature: a.roster[0].uid }, b)).toMatch(/only creature/);
+    // …but swapping it for one of theirs is fine
+    expect(I.exchange(a, { coins: 0, items: {}, creature: a.roster[0].uid }, b, { coins: 0, items: {}, creature: b.roster[1].uid })).toBeNull();
+  });
+  it('challenges: same spot, 1 Initiative, once per opponent per turn; the winner takes the wager', () => {
+    const { a, b } = pair();
+    const before = a.initiative;
+    const bt = I.startChallenge(a, b)!;
+    expect(bt.sides[1].team).toBe(b.roster); // b's real team fights
+    expect(a.initiative).toBe(before - 1);
+    expect(I.challengeProblem(a, b)).toMatch(/already/);
+    bt.over = 'win';
+    I.settleChallenge(a, b, bt, 10);
+    expect([a.coins, b.coins]).toEqual([40, 10]);
+    expect(b.inbox?.some((n) => /beat you/.test(n))).toBe(true);
+    b.location = 'iron';
+    a.flags.challenged = [];
+    expect(I.challengeProblem(a, b)).toMatch(/same spot/);
+  });
+});
+
+describe('Keen Nose', () => {
+  it('turns an item find into a choice of three different finds; the pick goes in the bag', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    const sniffer = createCreature('fizzlet', 3); // Keen Nose
+    s.roster.push(sniffer); s.following = sniffer.uid;
+    s.location = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === 'forest')!.id;
+    let out: ReturnType<typeof W.reexplore> = null;
+    for (let i = 0; i < 300; i++) { s.initiative = 5; out = W.reexplore(s); if (out?.t === 'itemChoice') break; }
+    expect(out?.t).toBe('itemChoice');
+    if (out?.t !== 'itemChoice') return;
+    expect(out.options.length).toBe(3);
+    const keys = out.options.map((f) => JSON.stringify([f.items, f.coins]));
+    expect(new Set(keys).size).toBe(3);
+    const before = JSON.stringify(s.inventory);
+    const pickIt = out.options.find((f) => f.items.length) ?? out.options[0];
+    W.claimFind(s, pickIt);
+    expect(JSON.stringify(s.inventory)).not.toBe(before);
+  });
+  it('without Keen Nose, finds go straight into the bag', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff'); // Forager
+    s.location = MAP_NODES.find((n) => n.kind === 'wild')!.id;
+    for (let i = 0; i < 200; i++) { s.initiative = 5; const o = W.reexplore(s); expect(o?.t).not.toBe('itemChoice'); }
+  });
+});
+
+describe('trainer styles', () => {
+  const g = (style: Parameters<typeof newGame>[1]) => {
+    const s = newGame('T', style, 'thunder', 'puddlit', '#fff');
+    s.roster.push(createCreature('zapup', 3), createCreature('pebbark', 3));
+    return s;
+  };
+  it('there are eight styles, each with a perk and a drawback', () => {
+    expect(TRAINER_STYLES.length).toBe(8);
+    for (const st of TRAINER_STYLES) { expect(st.perk.length).toBeGreaterThan(0); expect(st.drawback.length).toBeGreaterThan(0); }
+  });
+  it('Wanderer gets the doubled home Chanko Nabe at any city stable', () => {
+    const s = g('balanced');
+    expect(W.rest(s, 'aurora').advanced).toBe(true);
+    expect(W.rest(g('urban'), 'aurora').advanced).toBe(false);
+  });
+  it('Merchant: 25% off, and 25% more of every coin earned (at least +1); −1 to recruit', () => {
+    const s = g('haggler'), base = g('balanced');
+    expect(s.coins).toBe(base.coins);
+    expect(earnCoins(s, 1)).toBe(2);
+    expect(earnCoins(s, 8)).toBe(10);
+    expect(earnCoins(base, 8)).toBe(8);
+    expect(W.priceOf(s, 'elixir')).toBe(Math.ceil(ITEMS.elixir.price * 0.75));
+    expect(W.styleRecruitMod(s)).toBe(-1);
+    expect(W.styleRecruitMod(g('whisperer'))).toBe(1);
+  });
+  it('Beast Whisperer: trainer prizes halved, Arbiters pay in full', () => {
+    const mk = (style: Parameters<typeof newGame>[1], kind: 'trainer' | 'arbiter') => {
+      const s = g(style);
+      const b = createBattle(W.playerSide(s), { kind, name: 'X', team: [createCreature('zapup', 4)], active: 0, mods: {} }, WEATHER.clear);
+      b.over = 'win';
+      return W.finishBattle(s, b, { kind, city: 'thunder' }).coins;
+    };
+    expect(mk('whisperer', 'arbiter')).toBe(10); // 10 × Tier 1
+    for (let i = 0; i < 20; i++) expect(mk('whisperer', 'trainer')).toBeLessThanOrEqual(Math.max(1, Math.floor((6 + 2) / 2)));
+  });
+  it('Battle Master +2 and Caretaker −1 battle XP per creature (never below 1)', () => {
+    expect(W.playerSide(g('drill')).xpBonus).toBe(2);
+    expect(W.playerSide(g('caretaker')).xpBonus).toBe(-1);
+    expect(W.playerSide(g('balanced')).xpBonus).toBe(0);
+  });
+  it('Caretaker camps two creatures per Initiative; Pathfinder moves free once but pays more for stables', () => {
+    const s = g('caretaker');
+    for (const c of s.roster) c.vitality = 1;
+    s.initiative = 1;
+    expect(W.campTargets(s).length).toBe(2);
+    const p = g('pathfinder');
+    expect(W.moveCost(p)).toBe(0);
+    p.flags.firstMoveUsed = true;
+    expect(W.moveCost(p)).toBe(1);
+    expect(W.stableCost(p)).toBe(W.cityActionCost(p) + 1);
+  });
+  it('Battle Master totems lose Morale every 5 turns', () => {
+    const s = g('drill');
+    const c = s.roster.pop()!; s.reserve.push(c); c.morale = 6;
+    s.turn = 5;
+    W.moraleAndLoyalty(s, { weatherRoll: 0, seasonChanged: false, left: [], warned: [], checks: [], legendsReturned: [], trainingDone: [] });
+    expect(c.morale).toBe(5);
+  });
+});
+
 describe('Battle School', () => {
   const game = () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
@@ -923,7 +1155,7 @@ describe('turn events', () => {
   };
 
   it('has at least a dozen distinct events', () => {
-    expect(E.EVENT_IDS.length).toBeGreaterThanOrEqual(12);
+    expect(E.EVENT_IDS.length).toBeGreaterThanOrEqual(24);
     expect(new Set(E.EVENT_IDS).size).toBe(E.EVENT_IDS.length);
   });
   it('every choice of every event resolves cleanly and clears the event', () => {
@@ -942,6 +1174,31 @@ describe('turn events', () => {
         expect(s.roster.length).toBeGreaterThan(0);
       }
     }
+  });
+  it('the gambler pays or takes the stake by the dice', () => {
+    for (let i = 0; i < 30; i++) {
+      const s = game();
+      E.rollEvent(s, 'gambler');
+      const r = E.resolveEvent(s, 'bet10')!;
+      const [mine, theirs] = r.rolls!;
+      expect(s.coins).toBe(50 + (mine > theirs ? 10 : mine < theirs ? -10 : 0));
+    }
+  });
+  it('a squabble moves Morale up for one creature and down for the other', () => {
+    const s = game();
+    for (const c of s.roster) c.morale = 5;
+    E.rollEvent(s, 'squabble');
+    const { a, b } = s.event!.data as { a: string; b: string };
+    E.resolveEvent(s, 'a');
+    expect(s.roster.find((c) => c.uid === a)!.morale).toBe(7);
+    expect(s.roster.find((c) => c.uid === b)!.morale).toBe(4);
+  });
+  it('the Codex scholar adds unseen local species to the Codex', () => {
+    const s = game();
+    E.rollEvent(s, 'scholar');
+    const ids = s.event!.data.species as string[];
+    E.resolveEvent(s, 'accept');
+    for (const id of ids) expect(s.dex.seen).toContain(id);
   });
   it('a pending event survives a save round-trip', () => {
     const s = game();

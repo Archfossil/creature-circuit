@@ -9,10 +9,13 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "start": "node server/index.mjs",
+    "server": "node server/index.mjs"
   },
   "dependencies": {
-    "three": "^0.170.0"
+    "three": "^0.170.0",
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",

@@ -71,5 +71,7 @@ export const sfx = {
   ko: () => tone(400, 0.6, 'triangle', 0.35, 60),
   good: () => { tone(523, 0.1, 'triangle', 0.3); tone(659, 0.1, 'triangle', 0.3, undefined, 0.09); tone(784, 0.2, 'triangle', 0.3, undefined, 0.18); },
   bad: () => tone(300, 0.3, 'triangle', 0.3, 150),
+  /** Online play: it's your turn (plays even while the tab is in the background). */
+  ping: () => { tone(988, 0.12, 'sine', 0.35); tone(1319, 0.22, 'sine', 0.35, undefined, 0.13); },
   fanfare: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.32, undefined, i * 0.12)),
 };

@@ -6,12 +6,13 @@ import { SPECIES_BY_ID } from '../data/species';
 import { NATURES, NATURE_BY_ID, ITEMS, BIOME_MATERIALS } from '../data/content';
 import { TYPE_LABEL } from '../data/types';
 import type { GameState } from './state';
-import { addItem, follower, log, tierOf } from './state';
+import { addItem, follower, log, tierOf, earnCoins } from './state';
 import type { CreatureInst } from './creature';
-import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, speciesOf, stats } from './creature';
+import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, speciesOf, stats, addLoyalty } from './creature';
 import type { Battle } from './battle';
 import { createBattle } from './battle';
-import { baseWildLevel, here, pickSpecies, playerSide, tierBandLevel, weather } from './world';
+import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather } from './world';
+import { BIOME_TYPES } from '../data/map';
 import { pick, roll, weightedPick, uid } from './dice';
 
 /** Chance that a turn ends with an event. 1 = every turn (good for playtesting); lower it to taste. */
@@ -59,6 +60,8 @@ const team = (s: GameState) => [...s.roster, ...s.reserve];
 const DECLINE: EventChoice = { id: 'decline', label: 'No thanks', detail: 'Go on your way.' };
 const afford = (s: GameState, coins: number) => (s.coins >= coins ? undefined : `Needs 🪙 ${coins}`);
 const notKO = (c: CreatureInst) => (c.ko ? 'KO\'d. Rest at a stable first.' : null);
+/** Change Morale within 0–10. */
+function cheer(c: CreatureInst, n: number) { c.morale = Math.max(0, Math.min(10, c.morale + n)); }
 function markCaught(s: GameState, species: string) {
   if (!s.dex.seen.includes(species)) s.dex.seen.push(species);
   if (!s.dex.caught.includes(species)) s.dex.caught.push(species);
@@ -327,7 +330,7 @@ const EVENTS: EventDef[] = [
       if (choice !== 'chase') { s.coins = Math.max(0, s.coins - 3); return { text: 'It vanishes with 3 coins.', tone: 'bad' }; }
       const f = follower(s);
       const r = roll(6), amt = roll(6);
-      if (r + (f ? stats(f).speed : 0) >= 7) { s.coins += amt; return { text: `Caught it! You recover your pouch and ${amt} extra coins.`, tone: 'good', rolls: [r, amt] }; }
+      if (r + (f ? stats(f).speed : 0) >= 7) { const got = earnCoins(s, amt); return { text: `Caught it! You recover your pouch and ${got} extra coins.`, tone: 'good', rolls: [r, amt] }; }
       const lost = Math.min(s.coins, amt);
       s.coins -= lost;
       return { text: `It got away with ${lost} coins.`, tone: 'bad', rolls: [r, amt] };
@@ -364,12 +367,221 @@ const EVENTS: EventDef[] = [
       return { text: 'Everyone comes out relaxed and refreshed.', tone: 'good' };
     },
   },
+
+  // ── More road events ───────────────────────────────────────────
+  {
+    id: 'gambler', weight: 2,
+    when: (s) => s.coins >= 5,
+    create: () => ({}),
+    view: (s) => ({
+      title: 'Dice Gambler', icon: '🎲',
+      text: 'A grinning gambler rattles a cup of dice. "Your d6 against mine. Higher roll doubles the stake; a tie, you keep it."',
+      choices: [
+        { id: 'bet5', label: 'Bet 🪙 5', disabled: afford(s, 5) },
+        { id: 'bet10', label: 'Bet 🪙 10', disabled: afford(s, 10) },
+        { id: 'decline', label: 'Not tonight', detail: 'Keep your coins.' },
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'decline') return { text: 'The gambler shrugs and finds another mark.', tone: 'info' };
+      const stake = choice === 'bet10' ? 10 : 5;
+      const mine = roll(6), theirs = roll(6);
+      if (mine > theirs) { const got = earnCoins(s, stake); return { text: `You roll ${mine}, they roll ${theirs}. You win 🪙 ${got}!`, tone: 'good', rolls: [mine, theirs] }; }
+      if (mine < theirs) { s.coins -= stake; return { text: `You roll ${mine}, they roll ${theirs}. You lose 🪙 ${stake}.`, tone: 'bad', rolls: [mine, theirs] }; }
+      return { text: `Both roll ${mine}. A tie: you keep your stake.`, tone: 'info', rolls: [mine, theirs] };
+    },
+  },
+  {
+    id: 'bard', weight: 3,
+    create: () => ({ price: 3 }),
+    view: (s, d) => ({
+      title: 'Traveling Bard', icon: '🪕',
+      text: 'A bard sets up by your campfire and plays a rousing tune about the Creature Circuit.',
+      choices: [
+        { id: 'listen', label: 'Listen', detail: 'Your active team gains +1 Morale.' },
+        { id: 'tip', label: `Request a ballad about your team · 🪙 ${d.price}`, detail: 'Every creature you own gains +1 Morale, and your follower +1 Loyalty.', disabled: afford(s, d.price as number) },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      if (choice === 'tip') {
+        s.coins -= d.price as number;
+        for (const c of team(s)) cheer(c, 1);
+        const f = follower(s);
+        if (f) addLoyalty(f, 1);
+        return { text: `The ballad of ${s.trainer.name} has your whole team beaming.`, tone: 'good' };
+      }
+      for (const c of s.roster) cheer(c, 1);
+      return { text: 'Your team hums along long after the fire dies down. (+1 Morale)', tone: 'good' };
+    },
+  },
+  {
+    id: 'mentor', weight: 2,
+    create: () => ({ xp: 5 }),
+    view: (s, d) => ({
+      title: 'Old Trainer’s Advice', icon: '🧓',
+      text: `A retired trainer watches your team and offers to walk one creature through its footwork. It takes time, but it’s free: +${d.xp} XP.`,
+      choices: [
+        { id: 'train', label: 'Spend the morning · 1 Initiative', pick: true, canPick: notKO, disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+        DECLINE,
+      ],
+    }),
+    resolve: (s, d, choice, c) => {
+      if (choice !== 'train' || !c) return { text: 'The old trainer tips their hat and wishes you luck.', tone: 'info' };
+      s.initiative -= 1;
+      const lv = gainXp(c, d.xp as number);
+      return { text: `${nameOf(c)} learns a thing or two: +${d.xp} XP${lv ? `, now Lv ${c.level}` : ''}.`, tone: 'good' };
+    },
+  },
+  {
+    id: 'guide', weight: 2,
+    create: () => ({ price: 3 }),
+    view: (s, d) => ({
+      title: 'Local Guide', icon: '🧭',
+      text: 'A local knows every shortcut in the area and offers to show you the quickest trails today.',
+      choices: [{ id: 'hire', label: `Hire them · 🪙 ${d.price}`, detail: '+1 Initiative this turn.', disabled: afford(s, d.price as number) }, DECLINE],
+    }),
+    resolve: (s, d, choice) => {
+      if (choice !== 'hire') return { text: 'You’ll find your own way, thanks.', tone: 'info' };
+      s.coins -= d.price as number;
+      s.initiative += 1;
+      return { text: 'With a guide leading, you’ll cover more ground today. (+1 Initiative)', tone: 'good' };
+    },
+  },
+  {
+    id: 'squabble', weight: 2,
+    when: (s) => s.roster.length >= 2,
+    create: (s) => {
+      const [a, b] = [...s.roster].sort(() => Math.random() - 0.5);
+      return { a: a.uid, b: b.uid, an: nameOf(a), bn: nameOf(b) };
+    },
+    view: (s, d) => ({
+      title: 'Team Squabble', icon: '😾', forced: true,
+      text: `${d.an} and ${d.bn} are fighting over the warm spot by the fire. Someone has to settle it.`,
+      choices: [
+        { id: 'a', label: `Side with ${d.an}`, detail: `${d.an} +2 Morale, ${d.bn} −1 Morale.` },
+        { id: 'b', label: `Side with ${d.bn}`, detail: `${d.bn} +2 Morale, ${d.an} −1 Morale.` },
+        { id: 'calm', label: 'Calm them both · 1 Initiative', detail: 'Both +1 Morale.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      const a = team(s).find((c) => c.uid === d.a), b = team(s).find((c) => c.uid === d.b);
+      if (!a || !b) return { text: 'By morning the argument has blown over on its own.', tone: 'info' };
+      if (choice === 'calm') { s.initiative -= 1; cheer(a, 1); cheer(b, 1); return { text: `You split the spot and some treats between them. ${nameOf(a)} and ${nameOf(b)} curl up together.`, tone: 'good' }; }
+      const [win, lose] = choice === 'a' ? [a, b] : [b, a];
+      cheer(win, 2); cheer(lose, -1);
+      return { text: `${nameOf(win)} gets the warm spot. ${nameOf(lose)} sulks. (+2 / −1 Morale)`, tone: 'info' };
+    },
+  },
+  {
+    id: 'scholar', weight: 2,
+    create: (s) => {
+      const biome = here(s).biome;
+      const unseen = [...new Set(BIOME_TYPES[biome].flatMap((t) => speciesPool(biome, t, 'common', 2).map((x) => x.id)))].filter((id) => !s.dex.seen.includes(id));
+      return { species: unseen.sort(() => Math.random() - 0.5).slice(0, 2) };
+    },
+    view: (_s, d) => ({
+      title: 'Codex Scholar', icon: '🔍',
+      text: (d.species as string[]).length
+        ? 'A field researcher sketching by the trail offers to copy a few pages of notes on the creatures around here into your Codex.'
+        : 'A field researcher compares notes with you. Your Codex already covers everything around here, so they pay you for a copy of yours.',
+      choices: [{ id: 'accept', label: (d.species as string[]).length ? 'Copy their notes' : 'Sell a copy · +🪙 3' }],
+    }),
+    resolve: (s, d) => {
+      const ids = d.species as string[];
+      if (!ids.length) { const got = earnCoins(s, 3); return { text: `The researcher pays ${got} coins for your notes.`, tone: 'good' }; }
+      for (const id of ids) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
+      return { text: `Your Codex now has entries for ${ids.map((id) => SPECIES_BY_ID[id].name).join(' and ')}, so you can carve their Effigies too.`, tone: 'good' };
+    },
+  },
+  {
+    id: 'satchel', weight: 2,
+    create: () => ({ coins: 2 + roll(6) }),
+    view: (_s, d) => ({
+      title: 'Lost Satchel', icon: '🎒',
+      text: `You find a satchel by the trail with 🪙 ${d.coins} inside and a name stitched on the strap.`,
+      choices: [
+        { id: 'keep', label: `Keep it · +🪙 ${d.coins}`, detail: 'Your follower gives you a look. (−1 Morale)' },
+        { id: 'return', label: 'Track down the owner', detail: 'They give you a Calm Tea, and your team is proud of you (+1 Morale).' },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      if (choice === 'keep') {
+        const got = earnCoins(s, d.coins as number);
+        const f = follower(s);
+        if (f) cheer(f, -1);
+        return { text: `You pocket 🪙 ${got}.${f ? ` ${nameOf(f)} looks away.` : ''}`, tone: 'info' };
+      }
+      addItem(s, 'calm-tea');
+      for (const c of s.roster) cheer(c, 1);
+      return { text: 'The grateful owner presses a Calm Tea into your hands.', tone: 'good' };
+    },
+  },
+  {
+    id: 'star', weight: 2,
+    create: () => ({}),
+    view: () => ({
+      title: 'Shooting Star', icon: '🌠',
+      text: 'A star streaks across the sky. Your team looks at you expectantly. Make a wish!',
+      choices: [
+        { id: 'luck', label: 'Wish for luck', detail: 'Receive a Star Charm (+1 rarity die on an encounter).' },
+        { id: 'team', label: 'Wish for your team', detail: 'Everyone you own gains +1 Morale.' },
+      ],
+    }),
+    resolve: (s, _d, choice) => {
+      if (choice === 'luck') { addItem(s, 'star-charm'); return { text: 'At dawn, a glittering Star Charm lies where the star fell.', tone: 'good' }; }
+      for (const c of team(s)) cheer(c, 1);
+      return { text: 'Your team sleeps soundly under the stars. (+1 Morale)', tone: 'good' };
+    },
+  },
+  {
+    id: 'berries', weight: 2,
+    when: (s) => s.roster.some((c) => !c.ko),
+    create: (s) => { const c = pick(s.roster.filter((x) => !x.ko)); return { uid: c.uid, name: nameOf(c) }; },
+    view: (s, d) => ({
+      title: 'Bad Berries', icon: '🤢', forced: true,
+      text: `${d.name} snuck a handful of wild berries before bed. They were not the good kind.`,
+      choices: [
+        { id: 'salve', label: 'Give it a Salve', detail: 'Uses one Salve. It’s fine by morning.', disabled: (s.inventory.salve ?? 0) > 0 ? undefined : 'You have no Salve.' },
+        { id: 'rest', label: 'Stay with it · 1 Initiative', detail: 'Nurse it through the night.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
+        { id: 'endure', label: 'Let it sleep it off', detail: '−1 Vitality and −1 Morale.' },
+      ],
+    }),
+    resolve: (s, d, choice) => {
+      const c = team(s).find((x) => x.uid === d.uid);
+      if (!c) return { text: 'Whoever it was, they seem fine now.', tone: 'info' };
+      if (choice === 'salve') { addItem(s, 'salve', -1); return { text: `${nameOf(c)} perks up after the Salve.`, tone: 'good' }; }
+      if (choice === 'rest') { s.initiative -= 1; cheer(c, 1); return { text: `You sit up with ${nameOf(c)} all night. It’s grateful (+1 Morale).`, tone: 'good' }; }
+      c.vitality = Math.max(c.ko ? 0 : 1, c.vitality - 1);
+      cheer(c, -1);
+      return { text: `${nameOf(c)} has a rough night. (−1 Vitality, −1 Morale)`, tone: 'bad' };
+    },
+  },
+  {
+    id: 'apprentice', weight: 2,
+    when: (s) => s.roster.some((c) => !c.ko),
+    create: () => ({ xp: 3, tip: 2 }),
+    view: (_s, d) => ({
+      title: 'Eager Apprentice', icon: '🧒',
+      text: 'A young would-be trainer begs to watch one of your creatures run its drills. They even offer to pay.',
+      choices: [
+        { id: 'show', label: 'Show them a drill', detail: `The creature gains +${d.xp} XP and +1 Morale, and the kid tips 🪙 ${d.tip}.`, pick: true, canPick: notKO },
+        { id: 'decline', label: 'Not today', detail: 'They wander off, disappointed.' },
+      ],
+    }),
+    resolve: (s, d, choice, c) => {
+      if (choice !== 'show' || !c) return { text: 'The apprentice waves goodbye.', tone: 'info' };
+      const lv = gainXp(c, d.xp as number);
+      cheer(c, 1);
+      const got = earnCoins(s, d.tip as number);
+      return { text: `${nameOf(c)} shows off: +${d.xp} XP${lv ? `, now Lv ${c.level}` : ''}, and the kid tips you 🪙 ${got}.`, tone: 'good' };
+    },
+  },
 ];
 
 export const EVENT_IDS = EVENTS.map((e) => e.id);
 const BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 
-/** Roll the end-of-turn event. Never repeats the previous event. Returns it (also stored on `s.event`). */
+/** Roll the start-of-turn event. Never repeats the previous event. Returns it (also stored on `s.event`). */
 export function rollEvent(s: GameState, force?: string): PendingEvent | null {
   if (s.phase !== 'map' || s.event) return s.event ?? null;
   if (!force && Math.random() >= EVENT_CHANCE) return null;

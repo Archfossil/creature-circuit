@@ -97,6 +97,25 @@ The save also holds:
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`.
 - **`trainer.look`:** the trainer's customisation: skin, hair, hair style, hat, jacket and pants.
 
+A **hotseat match** is saved under its own key as `{ version, players: GameState[], current, rolls }`:
+- **`players`:** one full save per trainer, in seat order.
+- **`current`:** whose turn it is.
+- **`rolls`:** the weather roll for each turn number. It's made once by the first trainer to start that turn (`rollRoundWeather`), so every trainer gets the same weather.
+
+Shared rules (Legendaries, released Legendaries returning) look across all players through `allTrainers`.
+
+**Online matches** use the same shape, plus a few extra fields:
+- **`owners`:** which browser (client id) owns each seat.
+- **`code`:** the room code.
+- **`turnSeconds`:** the host's turn timer.
+
+The match is kept in a separate local slot (`creature-circuit-online-v1`), so it never overwrites a hotseat game. The server (`server/index.mjs`) stores each room's latest match and relays these messages:
+- **`state`:** match snapshots, accepted only from the current controller.
+- **`feed`:** what watchers mirror: toasts, dice, hops and battle rounds.
+- **`ask` / `answer`:** trade and duel prompts.
+- **`host-skip` / `host-play`:** the host's controls.
+- **`do-skip`:** sent when the turn timer runs out.
+
 `points` are unspent level-ups. `unlocked` lists the progression-chart nodes already bought. The chart is a skill tree generated per species by `progressionTree` in `creature.ts`: each node has a `requires` list, and every node in it must be unlocked before that node can be bought. Evolving resets `unlocked` for the new stage's chart.
 
 ## Move
@@ -171,7 +190,7 @@ Wild nodes are generated from the `routes` list in `map.ts` and numbered in orde
 
 ## Turn event
 
-End-of-turn events live in [`src/engine/events.ts`](../src/engine/events.ts) as entries in `EVENTS`. Unlike the data above they are code, because each one has its own effect:
+Start-of-turn events live in [`src/engine/events.ts`](../src/engine/events.ts) as entries in `EVENTS`. Unlike the data above they are code, because each one has its own effect:
 
 ```ts
 {

@@ -29,7 +29,11 @@ export const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: Parent
 export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ── Toasts ────────────────────────────────────────────────────
+/** Online play: the controlling browser mirrors its toasts and dice rolls to everyone watching. */
+export const mirror: { toast?: (text: string, tone: 'info' | 'good' | 'bad') => void; dice?: (title: string, dice: DieSpec[], caption?: string, hold?: number) => void } = {};
+
 export function toast(text: string, tone: 'info' | 'good' | 'bad' = 'info', ms = 2600) {
+  mirror.toast?.(text, tone);
   let host = $('#toasts');
   if (!host) { host = h('div', { id: 'toasts' }); document.body.append(host); }
   const t = h('div', { class: `toast ${tone}`, role: 'status' }, text);
@@ -96,6 +100,7 @@ export interface DieSpec { sides: number; value: number; label?: string; tone?: 
 
 /** Show a tabletop dice roll overlay. Resolves when the animation ends. */
 export async function rollDice(title: string, dice: DieSpec[], caption?: string, hold = 900): Promise<void> {
+  mirror.dice?.(title, dice, caption, hold);
   const fast = settings().fastDice || settings().reduceMotion;
   const spin = fast ? 260 : 650;
   if (fast) hold = Math.round(hold * 0.45);
