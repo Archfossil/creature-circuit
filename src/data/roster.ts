@@ -94,7 +94,8 @@ function shade(hex: string, amt: number) {
 
 /** Biomes a family of these types spawns in: where both types live, else everywhere the primary does. */
 function biomesFor(types: ElementType[]): Biome[] {
-  const all = (Object.keys(BIOME_TYPES) as Biome[]).filter((b) => BIOME_TYPES[b].includes(types[0]));
+  // (the Rainbow Plains turn up every type, one a day, so no family calls them home)
+  const all = (Object.keys(BIOME_TYPES) as Biome[]).filter((b) => b !== 'prism' && BIOME_TYPES[b].includes(types[0]));
   const both = all.filter((b) => types.every((t) => BIOME_TYPES[b].includes(t)));
   return both.length ? both : all;
 }

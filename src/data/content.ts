@@ -87,7 +87,7 @@ export const ITEMS: Record<string, Item> = {
   'glowcap': material('glowcap', 'Glowcap', '🍄', { charm: 3, grass: 2, astral: 1 }, 'A mushroom that glows in the dark of the Forest Floor. A richer Moon Moss.'),
   'moonbow-prism': material('moonbow-prism', 'Moonbow Prism', '🌈', universal(3), 'A rare shard of a rainbow seen by moonlight. +3 to recruit any creature.'),
   // key items
-  'fog-lantern': { id: 'fog-lantern', name: 'Fog Lantern', kind: 'key', price: 12, icon: '🏮', text: 'Lights the fog road into Hollow Crest.' },
+  'fog-lantern': { id: 'fog-lantern', name: 'Fog Lantern', kind: 'key', price: 12, icon: '🏮', text: 'Catch a wisp in it and it lights the misty way to Lantern Glade and the Rainbow Plains. Check it to see where a wisp waits.' },
   'canopy-rope': { id: 'canopy-rope', name: 'Canopy Rope', kind: 'key', price: 12, icon: '🪢', text: 'Lets you descend to Dahlia\'s arena on the forest floor.' },
   'ferry-pass': { id: 'ferry-pass', name: 'Ferry Pass', kind: 'key', price: 15, icon: '⛴️', text: 'Ride the ferry to Black Sand Cove on Kilauea island, from Mangrove Port or Kilauea Forge.' },
   'root-whistle': { id: 'root-whistle', name: 'Root Whistle', kind: 'key', price: 14, icon: '🎐', text: 'Asks the mangrove roots to open the path to Katy.' },
@@ -117,6 +117,8 @@ export const BIOME_MATERIALS: Record<Biome, string[]> = {
   cloud: ['cloud-silk', 'cloud-silk', 'stardust', 'stardust', 'moonbow-prism'],
   // the Forest Floor: exotic, a little stronger than the materials above
   deepwood: ['heartwood-resin', 'glowcap'],
+  // the Rainbow Plains: the exotics of the Forest Floor and Cloud Island
+  prism: ['heartwood-resin', 'glowcap', 'cloud-silk', 'stardust', 'moonbow-prism'],
 };
 
 /** Biomes where exploring can turn up this material. */
@@ -134,6 +136,7 @@ export const BIOME_INFO: Record<Biome, { label: string; color: string; icon: str
   volcanic: { label: 'Volcanic', color: '#4a3a38', icon: '🌋' }, canyon: { label: 'Canyon', color: '#c4703a', icon: '🪨' },
   cloud: { label: 'Cloud', color: '#f4a9d8', icon: '☁️' },
   deepwood: { label: 'Forest Floor', color: '#1f3524', icon: '🌑' },
+  prism: { label: 'Rainbow Plains', color: '#d8e8b0', icon: '🌈' },
 };
 
 // ── Weather ─────────────────────────────────────────────

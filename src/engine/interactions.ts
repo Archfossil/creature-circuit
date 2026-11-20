@@ -34,6 +34,7 @@ export function offerProblem(from: GameState, o: Offer, to: GameState, back: Off
   if (o.creature) {
     if (!sameSpot(from, to)) return 'Creatures can only change hands when both trainers are on the same spot.';
     if (!owned(from).some((c) => c.uid === o.creature)) return `${from.trainer.name} doesn’t have that creature.`;
+    if (owned(from).find((c) => c.uid === o.creature)!.bond) return `${nameOf(owned(from).find((c) => c.uid === o.creature)!)} shares a special bond with ${from.trainer.name} and won’t leave them.`;
     if (owned(from).length - 1 + (back.creature ? 1 : 0) < 1) return `${from.trainer.name} can’t give away their only creature.`;
   }
   return null;

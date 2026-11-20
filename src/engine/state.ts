@@ -3,8 +3,9 @@ import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import { createCreature, speciesOf, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
-import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR } from '../data/map';
+import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
+import { SPECIES_BY_ID } from '../data/species';
 
 export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'haggler' | 'drill' | 'caretaker' | 'pathfinder';
 
@@ -94,6 +95,12 @@ export interface GameState {
     trailMix?: boolean;
     /** Forest Floor: Dahlia's Trail results found on this visit (reset on leaving). */
     dahliaTrail?: number;
+    /** Fog Lantern: where the next wisp waits (null once caught), whether the trainer has looked, and a wisp held in the lantern. */
+    wispAt?: string | null;
+    wispSeen?: boolean;
+    wisp?: boolean;
+    /** A wisp was just caught (the map shows a note, then clears this). */
+    wispNews?: boolean;
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };
@@ -103,6 +110,8 @@ export interface GameState {
    * (through the portal). Being sent home after a team wipe loses them.
    */
   cloudLoot?: Record<string, number>;
+  /** Seed for the Rainbow Plains' daily type (world.ts → prismType). Shared by everyone in a match. */
+  prismSeed?: number;
   /** This game's towns for the roaming key items (Canopy Rope, Root Whistle). Shared by everyone in a match. */
   keyTowns?: Record<string, string>;
   /** Cities this trainer has rested at (a stable rest), most recent last; starts with the home city.
@@ -146,11 +155,13 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
   };
   const c = createCreature(starter, 1); // starters begin at Lv 1 with an untouched chart
   c.morale = 7;
+  c.bond = true; // the starter's special bond: it never leaves, so a trainer always has a partner
   s.roster.push(c);
   s.following = c.uid;
   s.dex.seen.push(starter);
   s.dex.caught.push(starter);
   s.keyTowns = rollKeyTowns();
+  s.prismSeed = Math.floor(Math.random() * 1e9);
   return s;
 }
 
@@ -178,12 +189,40 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } 
     }
     s.cloudLoot = undefined;
   }
+  // leaving Lantern Glade and the Rainbow Plains: the wisp flies home, and the lantern feels for a new one
+  if (inWispRegion(s.location) && !inWispRegion(id) && s.flags.wisp) {
+    s.flags.wisp = false;
+    log(s, 'Left the Rainbow Plains behind: your wisp drifted home. Check your Fog Lantern to find a new one.');
+    rollWisp(s, id);
+  }
+  // arriving where the wisp waits catches it in the lantern
+  if (s.flags.wispAt === id && (s.inventory['fog-lantern'] ?? 0) > 0) {
+    s.flags.wispAt = null;
+    s.flags.wispSeen = false;
+    s.flags.wisp = true;
+    s.flags.wispNews = true;
+    log(s, `Caught a wisp in your Fog Lantern at ${NODE_BY_ID[id]?.name ?? id}. It will light the way to Lantern Glade.`);
+  }
   if (s.location === GAUNTLET_CITY && id !== GAUNTLET_CITY && !s.flags.stellaOpen && s.flags.gauntletWins) {
     log(s, `Left Iron Coast: the Gauntlet resets (${s.flags.gauntletWins} trainer${s.flags.gauntletWins === 1 ? '' : 's'} beaten).`);
     s.flags.gauntletWins = 0;
   }
   s.location = id;
 }
+
+// ── Wisps (the Fog Lantern) ─────────────────────────────────────
+/**
+ * Hide a new wisp somewhere on the mainland for this trainer's Fog Lantern: any wild node, town or
+ * city that can be walked to without a key item, never `from` (where they stand). The trainer sees
+ * where by checking the lantern.
+ */
+export function rollWisp(s: GameState, from = s.location) {
+  const spots = WISP_SPOTS.filter((id) => id !== from);
+  s.flags.wispAt = pick(spots);
+  s.flags.wispSeen = false;
+}
+/** A Fog Lantern with a wisp in it: the way into Lantern Glade is lit. */
+export const wispLit = (s: GameState) => (s.inventory['fog-lantern'] ?? 0) > 0 && !!s.flags.wisp;
 
 export function save(s: GameState) {
   // a trainer in a hotseat match is saved as part of the whole match
@@ -213,7 +252,8 @@ export function setActiveMatch(m: Match | null) { activeMatch = m; }
 export function newMatch(players: GameState[]): Match {
   // one shared world: everyone finds the roaming key items in the same towns
   const keyTowns = players[0]?.keyTowns ?? rollKeyTowns();
-  for (const p of players) p.keyTowns = { ...keyTowns };
+  const prismSeed = players[0]?.prismSeed ?? Math.floor(Math.random() * 1e9);
+  for (const p of players) { p.keyTowns = { ...keyTowns }; p.prismSeed = prismSeed; }
   return { version: 1, players, current: 0, rolls: {} };
 }
 
@@ -396,6 +436,16 @@ export function migrate(s: GameState): GameState | null {
     const k = sp.types[1] ?? sp.types[0];
     c.extraEnergy[k] = (c.extraEnergy[k] ?? 0) + NODE_ENERGY;
   }
+  // Special bond: older saves mark the starter (the first species recruited, or what it evolved into)
+  const mine = [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)];
+  if (s.dex.caught.length && !mine.some((c) => c.bond)) {
+    const line: string[] = [];
+    for (let id: string | undefined = s.dex.caught[0]; id && !line.includes(id); id = SPECIES_BY_ID[id]?.evolvesTo) line.push(id);
+    const starter = mine.find((c) => line.includes(c.species));
+    if (starter) starter.bond = true;
+  }
+  // Lantern Glade: a Fog Lantern from before wisps feels for its first one
+  if ((s.inventory['fog-lantern'] ?? 0) > 0 && s.flags.wispAt === undefined && !s.flags.wisp) rollWisp(s);
   // Trainer ID: older saves start their detailed stats from here
   if (s.stats && !s.stats.record) { s.stats.record = {}; if (s.turn > 1) s.stats.trackedFrom = s.turn; }
   return s.version === SAVE_VERSION ? s : null;

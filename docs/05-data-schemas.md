@@ -90,7 +90,7 @@ Each creature the player owns is saved as an instance of a species:
 }
 ```
 
-`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`).
+`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`). `bond` (optional) marks the starter: it never leaves from low Morale and can't be released or given away.
 
 The save also holds:
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`.
@@ -181,7 +181,7 @@ Dual attacks are only learnable by creatures that generate both energy types.
   "requires": { "item": "ferry-pass" } }
 ```
 
-`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. A requirement on an **edge** is met by carrying the listed item. A requirement on a **node** needs everything it lists. `via` marks special routes: `sea` (a ferry crossing, drawn over water), `portal` (Cloud Island) and `rope` (the Forest Floor).
+`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. A requirement on an **edge** is met by carrying the listed item; `"wisp": true` also needs a wisp in the Fog Lantern (Lantern Glade), and only applies when entering that area from outside. A requirement on a **node** needs everything it lists. `via` marks special routes: `sea` (a ferry crossing, drawn over water), `portal` (Cloud Island) and `rope` (the Forest Floor).
 
 An `arena` node is an Arbiter's arena that sits away from its city. It names its city in `arenaOf`, and that city's entry in `CITIES` sets `arenaNode` to the arena's id. Amber's Fire Pit on Kilauea island, reached by ferry from Kilauea Forge, works this way. Edges with `"via": "sea"` are ferry crossings: the 3D map leaves them as open water, so islands stay islands.
 

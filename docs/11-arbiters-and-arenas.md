@@ -276,9 +276,9 @@ Two Arbiter keys move each game, so every run sends trainers somewhere new:
 | Canopy Rope | The Forest Floor below Gloomshade (Dahlia) | A random eligible town, rolled each game |
 | Root Whistle | Katy (Mangrove Port) | A different random eligible town, rolled each game |
 
-- **Eligible towns:** every town without a special facility: Mistfall, Lumber Hollow, Dustmere Trading Post, Ridgeway and Saltmarsh Landing. Valor Ridge (Battle School), Quillhaven (Research Facility), Shifting Depths, and any future facility town are left out. So is Black Sand Cove, because it's only reachable by ferry, which would lock a key item behind another one.
+- **Eligible towns:** every town without a special facility: Mistfall, Lumber Hollow, Dustmere Trading Post, Ridgeway and Saltmarsh Landing. Valor Ridge (Battle School), Quillhaven (Research Facility), Shifting Depths, Lantern Glade (behind the wisp gate), and any future facility town are left out. So is Black Sand Cove, because it's only reachable by ferry, which would lock a key item behind another one.
 - **The two items always land in different towns.** A town can still sell its own fixed key item as well, e.g. Mistfall's Fog Lantern alongside a rolled Root Whistle.
-- **Fixed key items stay put:** the Fog Lantern (Mistfall), the Summit Pick (Ridgeway) and the Ferry Pass (Saltmarsh Landing and Kilauea Forge, two spots, since the island is a long way).
+- **Fixed key items stay put:** the Fog Lantern (Mistfall; it opens Lantern Glade once it holds a wisp), the Summit Pick (Ridgeway) and the Ferry Pass (Saltmarsh Landing and Kilauea Forge, two spots, since the island is a long way).
 - **Finding them:**
   - the town's Market tile and map preview list what it sells;
   - Dahlia's and Katy's arena hints name the town ("sold in Ridgeway this season");

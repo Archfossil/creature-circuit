@@ -20,6 +20,8 @@ export interface CreatureInst {
   moraleWarned?: boolean;
   /** Morale at the end of the previous turn, to tell whether it was raised since. */
   moraleMark?: number;
+  /** Special bond: the trainer's starter. It never leaves over low Morale, and can't be released or traded away. */
+  bond?: boolean;
   bonus: Partial<Stats> & { health?: number; vitality?: number };
   extraEnergy: EnergyMap;
   unlocked: string[];       // progression node ids (current stage chart)

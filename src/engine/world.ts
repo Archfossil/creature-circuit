@@ -1,12 +1,12 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Match, BattleKind } from './state';
-import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf } from './state';
+import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
-import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
+import { STAT_LABEL, createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
@@ -60,6 +60,12 @@ function routeBlock(s: GameState, nb: { node: MapNode; edge: MapEdge }): string 
   if (nb.edge.via === 'portal' && !portalOpen(s)) return 'The Cloud Island portal only opens at night (even turns), or any time in Winter.';
   const req = nb.edge.requires;
   if (req?.item && !hasItem(s, req.item)) return `Requires ${itemInfo(req.item).name}.`;
+  // the misty way into Lantern Glade (leaving is always open)
+  if (req?.wisp && inWispRegion(nb.node.id) && !inWispRegion(s.location) && !wispLit(s)) {
+    return hasItem(s, 'fog-lantern')
+      ? 'The mist is too thick. Catch a wisp in your Fog Lantern to light the way (check the lantern to see where one waits).'
+      : 'The mist is too thick. A Fog Lantern (Mistfall) with a wisp caught in it lights the way.';
+  }
   const nr = nb.node.requires;
   if (nr) {
     if (nr.tier && tierOf(s) < nr.tier) return `Only Tier ${nr.tier}+ trainers may enter.`;
@@ -67,6 +73,30 @@ function routeBlock(s: GameState, nb: { node: MapNode; edge: MapEdge }): string 
     if (nr.merit && !s.merits.includes(nr.merit)) return `Only trainers who hold ${CITIES[nr.merit]?.accolade ?? 'that Merit'} may cross. Beat Arbiter ${CITIES[nr.merit]?.arbiter ?? ''} first.`;
   }
   return null;
+}
+
+// ── Active effects ──────────────────────────────────────────────
+/** Something waiting to kick in (or lasting a while), shown on the map HUD so it isn't forgotten. */
+export interface ActiveEffect { id: string; icon: string; name: string; text: string }
+
+/** "+1 Ward, +2 Evasion" */
+export const buffText = (buff: Partial<Record<string, number>>) =>
+  Object.entries(buff).filter(([, v]) => v).map(([k, v]) => `${v! > 0 ? '+' : ''}${v} ${STAT_LABEL[k as keyof typeof STAT_LABEL] ?? k}`).join(', ');
+
+/**
+ * Lingering effects on the trainer: a Chanko Nabe's battle buff (until the next battle), an extra
+ * rarity die (Star Charm or the Fortune Teller), Lure Incense, and a wisp in the Fog Lantern.
+ */
+export function activeEffects(s: GameState): ActiveEffect[] {
+  const out: ActiveEffect[] = [];
+  if (s.hotpot && Object.keys(s.hotpot.buff).length) {
+    const ci = CITIES[s.hotpot.city];
+    out.push({ id: 'hotpot', icon: '🍲', name: ci?.hotpot.name ?? 'Chanko Nabe', text: `${buffText(s.hotpot.buff)} for your team in your next battle${ci ? ` (from ${ci.name})` : ''}.` });
+  }
+  if (s.flags.starCharm) out.push({ id: 'starCharm', icon: '⭐', name: 'Lucky stars', text: 'Your next wild encounter rolls an extra rarity die (a Star Charm or the Fortune Teller).' });
+  if (s.flags.lure) out.push({ id: 'lure', icon: '🕯️', name: 'Lure Incense', text: 'Your next explore is a guaranteed wild encounter.' });
+  if (wispLit(s)) out.push({ id: 'wisp', icon: '💫', name: 'Wisp in your Fog Lantern', text: 'The misty way from Fogbank Path to Lantern Glade is lit. It drifts home when you leave the Glade and the Rainbow Plains.' });
+  return out;
 }
 
 // ── Getting around: travel items & rides ────────────────────────
@@ -253,7 +283,7 @@ function exploreRoll(s: GameState): Outcome {
     if ((node.biome === 'road' || node.biome === 'meadow') && Math.random() < 0.4) return trainerEncounter(s, node, r);
     return wildEncounter(s, node, r);
   }
-  return discoverItem(s, node, r);
+  return discoverItem(s, node, r, node.biome === 'prism' ? exoticFind : rollFind);
 }
 
 /** One possible find from an explore: its find roll, the items, and any coins. Nothing is applied yet. */
@@ -332,23 +362,23 @@ function exploreFloor(s: GameState): Outcome {
     const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: node.biome, quickStep: ability(s) === 'quickStep', hardRun: true });
     return { t: 'encounter', roll: r, stars, rarity, battle, die };
   }
-  if (r <= 6) return discoverItem(s, node, r, floorFind, die);
+  if (r <= 6) return discoverItem(s, node, r, exoticFind, die);
   s.flags.dahliaTrail = (s.flags.dahliaTrail ?? 0) + 1;
   const t = trailProgress(s);
   if (t.found && s.flags.dahliaTrail === t.need) log(s, 'Followed Dahlia’s Trail to her arena on the Forest Floor.');
   return { t: 'trail', roll: r, die: 8, steps: t.steps, need: t.need, found: t.found };
 }
 
-/** Forest Floor finds: exotic, a little better than the usual ones (Duskberries, Heartwood Resin, Glowcaps, Root Salve). */
-function floorFind(s: GameState): Find {
+/** Forest Floor and Rainbow Plains finds: exotic, a little better than the usual ones (Duskberries, the biome's exotic materials, Root Salve). */
+function exoticFind(s: GameState, node: MapNode): Find {
   const ir = roll(6);
   const mult = ability(s) === 'forager' ? 2 : 1;
   const items: { id: string; n: number }[] = [];
   let coins = 0;
   if (ir <= 2) items.push({ id: 'duskberry', n: mult });
-  else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS.deepwood), n: mult });
+  else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: mult });
   else if (ir === 5) items.push({ id: 'root-salve', n: 1 });
-  else { items.push({ id: pick(BIOME_MATERIALS.deepwood), n: 1 }); coins = roll(6) + 3; }
+  else { items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: 1 }); coins = roll(6) + 3; }
   return { itemRoll: ir, items, coins };
 }
 
@@ -400,13 +430,32 @@ function rollRarity(s: GameState, node: MapNode): { stars: { face: number; star:
   const score = node.rarity + full + Math.floor(half / 2);
   const rolled: Rarity = score >= 3 ? 'apex' : score >= 2 ? 'prime' : 'common';
   const cap = tierRarityCap(tier);
-  return { stars, rarity: RARITY_RANK[rolled] > RARITY_RANK[cap] ? cap : rolled };
+  const capped = RARITY_RANK[rolled] > RARITY_RANK[cap] ? cap : rolled;
+  // the Rainbow Plains: always at least one rarity higher (Common → Prime, Prime → Apex), even past the Tier cap
+  return { stars, rarity: node.biome === 'prism' ? PRISM_BUMP[capped] : capped };
+}
+const PRISM_BUMP: Record<Rarity, Rarity> = { common: 'prime', prime: 'apex', apex: 'apex', legendary: 'legendary' };
+
+// ── The Rainbow Plains ──────────────────────────────────────────
+// Behind Lantern Glade. Every new day (odd turns) the Plains take on one type at random (never the
+// same two days running): only that type turns up, the ground turns its color, finds are exotic
+// (the Forest Floor's and Cloud Island's), and every creature is at least one rarity higher.
+const mix = (a: number, b: number) => { let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x632be5ab, 0xc2b2ae35); h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); return (h ^ (h >>> 12)) >>> 0; };
+/** The Rainbow Plains' type on this turn's day (turns 1–2 are day 1, 3–4 day 2 …). */
+export function prismType(s: GameState, turn = s.turn): ElementType {
+  const seed = s.prismSeed ?? 0;
+  const day = Math.ceil(Math.max(1, turn) / 2);
+  let i = mix(seed, 0) % TYPES.length;
+  for (let d = 2; d <= day; d++) i = (i + 1 + (mix(seed, d) % (TYPES.length - 1))) % TYPES.length;
+  return TYPES[i];
 }
 
 function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
   const { stars, rarity } = rollRarity(s, node);
   const level = wildLevel(s, node);
-  const sp = pickSpecies(node, rarity, level, weather(s).encounter, timeOfDay(s.turn));
+  const prism = node.biome === 'prism';
+  // the Rainbow Plains: only today's type (the weather doesn't bring others)
+  const sp = pickSpecies(node, rarity, level, prism ? [] : weather(s).encounter, timeOfDay(s.turn), prism ? [prismType(s)] : undefined);
   const wild = createCreature(sp.id, level);
   if (!s.dex.seen.includes(sp.id)) s.dex.seen.push(sp.id);
   const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: node.biome, quickStep: ability(s) === 'quickStep' });
@@ -418,8 +467,8 @@ function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
  * (diurnal by day, nocturnal by night, crepuscular always). A type with nobody awake is skipped;
  * if nobody at all is awake, the time is ignored.
  */
-export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost: ElementType[] = [], time?: TimeOfDay): Species {
-  const pool = BIOME_TYPES[node.biome];
+export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost: ElementType[] = [], time?: TimeOfDay, types_?: ElementType[]): Species {
+  const pool = types_ ?? BIOME_TYPES[node.biome];
   const stageCap = stageCapFor(level);
   const types = TYPES.filter((t) => pool.includes(t) || boost.includes(t));
   const weightOf = (t: ElementType) => (pool.includes(t) ? 3 : 0) + (boost.includes(t) ? 2 : 0);
@@ -516,6 +565,7 @@ export function encounterSpots(speciesId: string): Spot[] {
     if (node.kind === 'legendary') { if (node.legendary === speciesId) out.push({ node, minStage: 1 }); continue; }
     if (node.kind !== 'wild' || sp.rarity === 'legendary') continue;
     if (!BIOME_TYPES[node.biome].includes(sp.types[0])) continue;
+    if (node.biome === 'prism' && sp.rarity === 'common') continue; // the Rainbow Plains bump every Common up to Prime
     const cap = [1, 2, 3].find((c) => speciesPool(node.biome, sp.types[0], sp.rarity, c).includes(sp));
     if (cap) out.push({ node, minStage: cap });
   }
@@ -725,6 +775,7 @@ export const researchPayout = (c: CreatureInst) => c.level * RESEARCH_RATE[speci
 export function releaseBlock(s: GameState, uid: string): string | null {
   const all = [...s.roster, ...s.reserve];
   if (!all.some((c) => c.uid === uid)) return 'Not one of your creatures.';
+  if (all.find((c) => c.uid === uid)!.bond) return 'Your starter shares a special bond with you. It stays by your side.';
   if (all.length <= 1) return 'You can’t give up your last creature.';
   if (s.roster.length === 1 && s.roster[0].uid === uid) return 'Your only active creature. Swap another in from a totem first.';
   return null;
@@ -1027,6 +1078,7 @@ export function buy(s: GameState, id: string): boolean {
   if (isUnique(it) && hasItem(s, id)) return false;
   s.coins -= p;
   addItem(s, id, 1);
+  if (id === 'fog-lantern' && !s.flags.wisp) rollWisp(s); // a brand new lantern: go and find a wisp first
   return true;
 }
 /** Key items a town sells in this game: its own (Fog Lantern, Summit Pick, Ferry Pass) plus any roaming one rolled here. */
@@ -1211,7 +1263,8 @@ export function campTargets(s: GameState, chosen?: string[]): CreatureInst[] {
  * - high Morale (7+) earns +1 Loyalty, which unlocks Nature perks at their thresholds (perks never re-lock);
  * - low Morale (3 or less) first triggers a warning. After that, each turn that ends without its Morale
  *   having risen rolls a d10: above its Loyalty, it leaves; otherwise it loses 1 Loyalty instead.
- *   At 0 Loyalty any roll is above it. Your last active creature never leaves (it just loses Loyalty).
+ *   At 0 Loyalty any roll is above it. Your last active creature never leaves (it just loses Loyalty),
+ *   and neither does the starter (its special bond): low Morale never warns or checks it.
  */
 /** Loyalty a Legendary arrives with. It loses 1 every turn, so this is roughly how many turns you keep it. */
 export const LEGENDARY_START_LOYALTY = 10;
@@ -1256,7 +1309,7 @@ export function moraleAndLoyalty(s: GameState, report: TurnReport) {
           continue;
         }
       } else if (c.morale >= MORALE_HIGH) addLoyalty(c, 1);
-      if (c.morale > MORALE_LOW) c.moraleWarned = false;
+      if (c.morale > MORALE_LOW || c.bond) c.moraleWarned = false; // a special bond never breaks: no warning, no check
       else if (!c.moraleWarned) {
         c.moraleWarned = true;
         report.warned.push(nameOf(c));

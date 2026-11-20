@@ -3,10 +3,11 @@ import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES } from '../src/data/roster';
 import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from '../src/data/moves';
-import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR } from '../src/data/map';
+import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS } from '../src/data/content';
+import { rollWisp, wispLit } from '../src/engine/state';
 import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit } from '../src/engine/edits';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
@@ -472,6 +473,38 @@ describe('morale and loyalty', () => {
     expect(r2.checks[0].left).toBe(true);
     expect(s.roster).not.toContain(c);
   });
+  it('the starter shares a special bond: low Morale never warns, checks or drives it away', () => {
+    const s = game();
+    const starter = s.roster[0];
+    expect(starter.bond).toBe(true);
+    expect(s.roster[1].bond).toBeUndefined();
+    starter.morale = 0; starter.loyalty = 0; starter.moraleWarned = true; starter.moraleMark = 0;
+    for (let i = 0; i < 20; i++) {
+      const r = report();
+      W.moraleAndLoyalty(s, r);
+      expect(r.warned).toEqual([]);
+      expect(r.checks).toEqual([]);
+    }
+    expect(s.roster).toContain(starter);
+    expect(starter.moraleWarned).toBe(false);
+  });
+  it('the bonded starter can’t be released to research or traded away; old saves bond their starter', () => {
+    const s = game();
+    const starter = s.roster[0];
+    s.reserve.push(createCreature('zapup', 3));
+    expect(W.releaseBlock(s, starter.uid)).toMatch(/bond/);
+    expect(W.releaseToResearch(s, starter.uid)).toBeNull();
+    expect(W.releaseBlock(s, s.roster[1].uid)).toBeNull();
+    const b = newGame('U', 'balanced', 'mangrove', 'zapup', '#000');
+    expect(I.offerProblem(s, { ...I.emptyOffer(), creature: starter.uid }, b)).toMatch(/bond/);
+    // a save from before the bond: the starter (evolved since) gets it back
+    const old = JSON.parse(JSON.stringify(s));
+    for (const c of [...old.roster, ...old.reserve]) delete c.bond;
+    old.roster[0].species = SPECIES_BY_ID.puddlit.evolvesTo;
+    const m = migrate(old)!;
+    expect(m.roster[0].bond).toBe(true);
+    expect([...m.roster, ...m.reserve].filter((c) => c.bond)).toHaveLength(1);
+  });
   it('morale back above the low line clears the warning', () => {
     const s = game();
     const c = s.roster[1];
@@ -515,6 +548,7 @@ describe('morale and loyalty', () => {
   it('your last active creature never leaves', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
     const c = s.roster[0];
+    c.bond = false; // (not the starter's bond: this is the last-creature rule)
     c.morale = 0; c.moraleWarned = true; c.moraleMark = 0; c.loyalty = 0;
     const r = report();
     W.moraleAndLoyalty(s, r);
@@ -694,6 +728,7 @@ describe('hotseat interactions', () => {
   it('nobody can give away their only creature', () => {
     const { a, b } = pair();
     a.roster = [a.roster[0]];
+    a.roster[0].bond = false; // (a bonded starter can't be traded at all; this checks the only-creature rule)
     expect(I.exchange(a, { coins: 0, items: {}, creature: a.roster[0].uid }, b)).toMatch(/only creature/);
     // …but swapping it for one of theirs is fine
     expect(I.exchange(a, { coins: 0, items: {}, creature: a.roster[0].uid }, b, { coins: 0, items: {}, creature: b.roster[1].uid })).toBeNull();
@@ -936,12 +971,14 @@ describe('getting around: travel items and rides', () => {
       expect(NODE_BY_ID[id].kind).not.toBe('legendary');
       expect(isCloudNode(id) || id === FOREST_FLOOR).toBe(false);
     }
-    // the fog road's last step into Hollow Crest needs a Fog Lantern, by bike too
+    // the misty way into Lantern Glade needs a wisp in a Fog Lantern, by bike too
     const m = fresh('aurora');
-    m.location = MAP_NODES.find((n) => n.name === 'Lantern Glade')!.id;
-    expect(W.bikeReach(m, 1).hollow).toBeUndefined();
+    m.location = MAP_NODES.find((n) => n.name === 'Fogbank Path')!.id;
+    expect(W.bikeReach(m, 1)[LANTERN_GLADE]).toBeUndefined();
     m.inventory['fog-lantern'] = 1;
-    expect(W.bikeReach(m, 1).hollow).toBeDefined();
+    expect(W.bikeReach(m, 1)[LANTERN_GLADE]).toBeUndefined();
+    m.flags.wisp = true;
+    expect(W.bikeReach(m, 1)[LANTERN_GLADE]).toBeDefined();
   });
 
   it('a Taxi Ticket only works in a city, and spends the rest of the Initiative', () => {
@@ -1021,6 +1058,129 @@ describe('getting around: travel items and rides', () => {
   });
 });
 
+describe('active effects', () => {
+  it('lists the Nabe until the next battle, lucky stars, incense and a wisp', () => {
+    const s = newGame('T', 'balanced', 'hollow', 'cindercub', '#fff');
+    s.event = undefined;
+    expect(W.activeEffects(s)).toEqual([]);
+    W.rest(s, 'hollow');
+    const nabe = W.activeEffects(s).find((e) => e.id === 'hotpot')!;
+    expect(nabe.name).toBe('Mushroom Moss Nabe');
+    expect(nabe.text).toMatch(/\+2 Evasion/); // doubled at home
+    s.coins = 50;
+    E.rollEvent(s, 'fortune');
+    E.resolveEvent(s, 'pay');
+    s.flags.lure = true;
+    s.inventory['fog-lantern'] = 1; s.flags.wisp = true;
+    expect(W.activeEffects(s).map((e) => e.id)).toEqual(['hotpot', 'starCharm', 'lure', 'wisp']);
+    // a battle eats the Nabe
+    const b = createBattle(W.playerSide(s), { kind: 'wild', name: 'x', team: [createCreature('zapup', 1)], active: 0, mods: {} }, W.weather(s));
+    b.over = 'win';
+    W.finishBattle(s, b, { kind: 'wild' });
+    expect(W.activeEffects(s).map((e) => e.id)).not.toContain('hotpot');
+  });
+});
+
+describe('Lantern Glade and the Rainbow Plains', () => {
+  const fresh = () => { const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff'); s.event = undefined; s.initiative = 5; return s; };
+  const fogbank = () => MAP_NODES.find((n) => n.name === 'Fogbank Path')!.id;
+
+  it('the road between Mistfall and Hollow Crest is open to everyone now', () => {
+    const s = fresh();
+    s.location = MAP_NODES.find((n) => n.name === 'Dappled Dell')!.id;
+    expect(W.canMoveTo(s, 'hollow').ok).toBe(true);
+    expect(MAP_NODES.filter((n) => n.name === 'Lantern Glade').map((n) => n.id)).toEqual([LANTERN_GLADE]);
+    expect(NODE_BY_ID[LANTERN_GLADE].kind).toBe('town');
+    expect(neighbors(LANTERN_GLADE).map((n) => n.node.id).sort()).toEqual([fogbank(), 'prism1'].sort());
+    // north-west of the fog road, still south of Aurora Peak, and on the mainland
+    expect(NODE_BY_ID[LANTERN_GLADE].z).toBeGreaterThan(NODE_BY_ID.aurora.z);
+    for (const id of RAINBOW_PLAINS) { expect(NODE_BY_ID[id].z).toBeGreaterThan(NODE_BY_ID.aurora.z); expect(NODE_BY_ID[id].biome).toBe('prism'); }
+    expect(landmassOf('mistfall')).toEqual(expect.arrayContaining(WISP_REGION));
+    expect(KEY_ITEM_TOWNS).not.toContain(LANTERN_GLADE);
+  });
+
+  it('a new Fog Lantern hides a wisp on the mainland; catching it opens the Glade, leaving sends it home', () => {
+    const s = fresh();
+    s.coins = 50;
+    s.location = fogbank();
+    expect(W.canMoveTo(s, LANTERN_GLADE).reason).toMatch(/Fog Lantern/);
+    expect(W.buy(s, 'fog-lantern')).toBe(true);
+    const at = s.flags.wispAt!;
+    expect(WISP_SPOTS).toContain(at);
+    expect(at).not.toBe(s.location);
+    expect(W.canMoveTo(s, LANTERN_GLADE).ok).toBe(false); // a lantern alone won't do
+    expect(W.canMoveTo(s, LANTERN_GLADE).reason).toMatch(/wisp/);
+    W.travelTo(s, at);
+    expect(wispLit(s)).toBe(true);
+    expect(s.flags.wispAt).toBeNull();
+    s.location = fogbank();
+    expect(W.moveTo(s, LANTERN_GLADE)).not.toBeNull();
+    s.initiative = 5;
+    W.moveTo(s, 'prism1');
+    expect(s.location).toBe('prism1');
+    expect(wispLit(s)).toBe(true); // inside, the wisp stays
+    s.initiative = 5;
+    W.moveTo(s, LANTERN_GLADE);
+    W.moveTo(s, fogbank());
+    expect(wispLit(s)).toBe(false);
+    expect(WISP_SPOTS).toContain(s.flags.wispAt);
+    expect(s.flags.wispAt).not.toBe(fogbank());
+    expect(W.canMoveTo(s, LANTERN_GLADE).ok).toBe(false); // a new wisp for every visit
+  });
+
+  it('wisps only wait where you can walk without key items', () => {
+    for (const id of ['hollow', 'mistfall', 'thunder', 'lumber', fogbank()]) expect(WISP_SPOTS).toContain(id);
+    for (const id of [...WISP_REGION, 'blackSand', 'firepit', FOREST_FLOOR, ...CLOUD_RING, 'ironwake', 'sunspire', 'stadium']) expect(WISP_SPOTS).not.toContain(id);
+    for (const id of WISP_SPOTS) expect(['wild', 'town', 'city']).toContain(NODE_BY_ID[id].kind);
+    const s = fresh();
+    for (let i = 0; i < 50; i++) { rollWisp(s); expect(s.flags.wispAt).not.toBe(s.location); }
+    // an older save with a Fog Lantern gets its first wisp
+    const old = JSON.parse(JSON.stringify(s));
+    old.inventory['fog-lantern'] = 1; delete old.flags.wispAt;
+    expect(WISP_SPOTS).toContain(migrate(old)!.flags.wispAt);
+  });
+
+  it('the Plains change type every new day, never the same two days running, the same for everyone in a match', () => {
+    const s = fresh();
+    for (let t = 1; t < 100; t += 2) {
+      expect(W.prismType(s, t)).toBe(W.prismType(s, t + 1));
+      expect(W.prismType(s, t + 2)).not.toBe(W.prismType(s, t));
+    }
+    const seen = new Set(Array.from({ length: 50 }, (_, d) => W.prismType(s, d * 2 + 1)));
+    expect(seen.size).toBeGreaterThanOrEqual(6);
+    const b = fresh();
+    setActiveMatch(newMatch([s, b]));
+    expect(b.prismSeed).toBe(s.prismSeed);
+    setActiveMatch(null);
+  });
+
+  it('Plains creatures are the type of the day and at least a rarity higher; finds are exotic', () => {
+    const s = fresh();
+    s.location = 'prism1';
+    s.visited.push('prism1');
+    const exotic = new Set(['duskberry', 'root-salve', ...BIOME_MATERIALS.prism]);
+    let encounters = 0, finds = 0;
+    for (let i = 0; i < 300; i++) {
+      s.turn = 1 + (i % 20);
+      s.initiative = 5;
+      if (i % 2 === 0) s.flags.lure = true;
+      const out = W.reexplore(s)!;
+      if (out.t === 'encounter') {
+        encounters++;
+        expect(out.rarity).not.toBe('common');
+        expect(speciesOf(out.battle.sides[1].team[0]).types[0]).toBe(W.prismType(s));
+      }
+      if (out.t === 'item') { finds++; for (const it of out.items) expect(exotic.has(it.id), it.id).toBe(true); }
+      if (out.t === 'itemChoice') { finds++; for (const o of out.options) for (const it of o.items) expect(exotic.has(it.id), it.id).toBe(true); }
+    }
+    expect(encounters).toBeGreaterThan(50);
+    expect(finds).toBeGreaterThan(10);
+    // the Codex lists the Plains for Prime and up, never for Commons (they're bumped to Prime there)
+    expect(W.encounterSpots('twinkit').some((x) => x.node.biome === 'prism')).toBe(false);
+    expect(W.encounterSpots('orbuddle').some((x) => x.node.biome === 'prism')).toBe(true);
+  });
+});
+
 describe('no overworld movements', () => {
   it('no species learns Fly, Sail, Tunnel or Wayfind, and chart node g (third row, left) is always energy', () => {
     for (const sp of SPECIES) expect((sp as { movement?: string }).movement, sp.id).toBeUndefined();
@@ -1031,7 +1191,7 @@ describe('no overworld movements', () => {
   });
 
   it('every gated route opens with its item alone (Ironwake Shoals takes the ferry)', () => {
-    for (const e of MAP_EDGES) expect(Object.keys(e.requires ?? {}).every((k) => k === 'item'), `${e.a}-${e.b}`).toBe(true);
+    for (const e of MAP_EDGES) expect(Object.keys(e.requires ?? {}).every((k) => k === 'item' || k === 'wisp'), `${e.a}-${e.b}`).toBe(true);
     const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
     s.merits = ['thunder', 'iron', 'gloom', 'aurora', 'mistfall', 'dustmere']; // Tier 4
     s.initiative = 5;

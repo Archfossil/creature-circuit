@@ -113,6 +113,10 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .hud-pill.coins { cursor: default; }
 .hud-pill.menu { margin-left: auto; width: 40px; justify-content: center; font-size: 18px; padding: 0; }
 .hud-pill.merits { gap: 2px; padding: 4px 8px; }
+.hud-pill.effects { gap: 2px; background: #fff3c4; }
+.effect-row { display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: center; padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+.effect-row .effect-ico { font-size: 24px; text-align: center; }
+.effect-row small { display: block; color: var(--muted); }
 .merit { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; opacity: 0.28; filter: grayscale(1); transition: all 0.3s; }
 .merit img { width: 20px; height: 20px; }
 .merit.on { opacity: 1; filter: none; transform: scale(1.08); }

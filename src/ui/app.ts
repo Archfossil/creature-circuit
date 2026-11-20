@@ -10,7 +10,7 @@ import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, 
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind } from '../engine/state';
-import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
@@ -1042,13 +1042,25 @@ export class App {
     const f = follower(s);
     this.world.setFollower(f ? f.species : null);
     this.world.setReach(this.reach());
+    // the Rainbow Plains wear the color of the day's type; a wisp the trainer has looked for glows on the map
+    this.world.setPrism(TYPE_COLOR[W.prismType(s)]);
+    this.world.setWisp(hasItem(s, 'fog-lantern') && s.flags.wispSeen && s.flags.wispAt ? s.flags.wispAt : null);
+    if (s.flags.wispNews && !this.watching) {
+      s.flags.wispNews = false;
+      save(s);
+      toast(`💫 You caught a wisp in your Fog Lantern! It lights the misty way from Fogbank Path to Lantern Glade.`, 'good', 5000);
+    }
     const daysLeft = 100 - s.turn;
+    const effects = W.activeEffects(s);
     const top = h('div', { class: 'hud-top' },
       h('button', { class: 'hud-pill turn', onclick: () => this.calendar() },
         h('span', { class: 'season' }, SEASON_INFO[se].icon), h('b', null, `Turn ${s.turn}`), h('small', null, `/100 · ${SEASON_INFO[se].label}`)),
       h('button', { class: `hud-pill tod ${tod}`, title: tod === 'night' ? 'Night (even turns): nocturnal creatures are out, and night events happen.' : 'Day (odd turns): diurnal creatures are out, and day events happen.', onclick: () => this.calendar() },
         h('span', null, TIME_INFO[tod].icon), h('small', { class: 'hide-xs' }, TIME_INFO[tod].label)),
       h('button', { class: 'hud-pill', onclick: () => this.calendar() }, h('span', null, w.icon), h('small', { class: 'hide-xs' }, w.name)),
+      // active effects (Nabe, lucky stars, incense, a wisp): one icon each, tap for details
+      effects.length ? h('button', { class: 'hud-pill effects', title: effects.map((e) => `${e.icon} ${e.name}: ${e.text}`).join('\n'), 'aria-label': 'Active effects', onclick: () => this.effectsSheet() },
+        effects.map((e) => h('span', null, e.icon)), h('small', { class: 'hide-xs' }, effects.length === 1 ? effects[0].name : 'Active')) : null,
       h('div', { class: 'hud-pill coins' }, '🪙 ', h('b', null, s.coins)),
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
         h('span', { class: `merit ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '' })))),
@@ -1065,7 +1077,7 @@ export class App {
       f ? h('img', { src: portrait(f.species), alt: '' }) : h('span', { class: 'none' }, '—'),
       h('div', null, h('small', null, 'Following'), h('b', null, f ? nameOf(f) : 'Nobody')),
       f ? h('span', { class: 'ability-tag' }, ABILITIES[speciesOf(f).ability].name) : null);
-    const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale}) and may leave` : undefined, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
+    const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale})${c.bond ? '' : ' and may leave'}` : undefined, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
       h('i', { style: `--p:${c.ko ? 0 : (c.vitality * maxHealth(c) + c.health) / (maxHealth(c) * (maxVitality(c) + 1))}` }))));
     const ev = E.eventView(s);
@@ -1100,6 +1112,7 @@ export class App {
     if (n.kind === 'stadium') return 'Circuit Stadium · Be here at the end of Turn 100';
     if (n.kind === 'legendary') return 'Legendary grounds';
     if (n.kind === 'arena') { const c = CITIES[n.arenaOf!]; return `${TYPE_LABEL[c.type]} Arena · Arbiter ${c.arbiter}${this.s.merits.includes(c.nodeId) ? ' ✓' : ''}`; }
+    if (n.biome === 'prism') return `Rainbow Plains · ${TYPE_LABEL[W.prismType(this.s)]} creatures today · Wild Lv ~${W.baseWildLevel(this.s, n)} · ★ +1 rarity`;
     return `${BIOME_INFO[n.biome].label} · Wild Lv ~${W.baseWildLevel(this.s, n)}${n.rarity ? ' · ★ rare' : ''}`;
   }
 
@@ -1309,7 +1322,7 @@ export class App {
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
         await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], s.location === FOREST_FLOOR ? 'Something moves in the dark…' : 'Something rustles nearby…', 700, { read: true });
-        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
+        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].biome === 'prism' ? '(+1 rarity: the Rainbow Plains)' : NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
         this.busy = false;
         await this.runBattle(out.battle, { kind: 'wild', intro: `A wild ${nameOf(out.battle.sides[1].team[0])} appeared!` });
         return;
@@ -1385,7 +1398,8 @@ export class App {
       b.arena ? h('span', { class: 'chip arena', style: `--tc:${TYPE_COLOR[arenaType!]}` }, '🏟 ', CITIES[ctx.city!].arena.name, ` · Tier ${b.arena.tier}`) : null,
       ringTimer,
       h('span', { class: 'chip' }, `Round `, h('b', { class: 'rnd' }, '1')),
-      h('button', { class: 'chip log-btn', title: 'Battle Log: every move, roll and hit so far (L)', onclick: () => this.battleLogSheet() }, '📜 Log'));
+      h('button', { class: 'chip log-btn', title: 'Battle Log: every move, roll and hit so far (L)', onclick: () => this.battleLogSheet() }, '📜 Log'),
+      b.sides[0].buff && Object.keys(b.sides[0].buff).length ? h('span', { class: 'chip good', title: `Chanko Nabe: ${W.buffText(b.sides[0].buff)} for your team this battle` }, '🍲 ', W.buffText(b.sides[0].buff)) : null);
     panel.append(header, plates[1], h('div', { class: 'battle-stack' }, plates[0], h('div', { class: 'battle-bottom' }, logLine, controls)));
     this.ui.replaceChildren(panel);
 
@@ -1422,6 +1436,9 @@ export class App {
     this.lastBattleLog = { title: ctx.intro, entries: blog };
     const note = (text: string, opts: { tone?: string; detail?: string; side?: 0 | 1 } = {}) => blog.push({ round: b.round, text, ...opts });
     note(ctx.intro, { tone: 'info' });
+    // a Chanko Nabe kicks in: say so, and keep a chip in the header for the whole battle
+    const nabe = !ctx.watch && s.hotpot && b.sides[0].buff && Object.keys(b.sides[0].buff).length ? `${CITIES[s.hotpot.city]?.hotpot.name ?? 'Chanko Nabe'}: ${W.buffText(b.sides[0].buff)} this battle` : null;
+    if (nabe) { note(`🍲 ${nabe}.`, { tone: 'good' }); toast(`🍲 ${nabe}!`, 'good', 3000); }
     const KIND_TEXT: Record<string, string> = { physical: 'Physical · Power vs Armor', elemental: 'Elemental · Focus vs Ward', support: 'Support', affinity: 'Affinity Power' };
     const logEvent = (e: BEvent) => {
       switch (e.t) {
@@ -2354,6 +2371,43 @@ export class App {
       { wide: true });
   }
 
+  /** Everything waiting to kick in: the Nabe's battle buff, an extra rarity die, Lure Incense, a wisp. */
+  effectsSheet() {
+    const list = W.activeEffects(this.s);
+    openSheet('Active effects', h('div', null,
+      list.length ? h('div', { class: 'list' }, list.map((e) => h('div', { class: 'effect-row' }, h('span', { class: 'effect-ico' }, e.icon), h('div', null, h('b', null, e.name), h('small', null, e.text)))))
+        : h('p', { class: 'muted' }, 'Nothing active right now.'),
+      h('p', { class: 'small muted' }, 'A Chanko Nabe lasts until your next battle. Lucky stars and Lure Incense are used up by your next encounter or explore.')));
+  }
+
+  /** Check the Fog Lantern: a wisp held in it, or where the next one waits (marked on the map from now on). */
+  lanternSheet() {
+    const s = this.s;
+    if (!hasItem(s, 'fog-lantern')) return;
+    if (!wispLit(s) && !s.flags.wispAt) rollWisp(s);
+    closeAllSheets();
+    if (wispLit(s)) {
+      openSheet('🏮 Fog Lantern', h('div', null,
+        h('p', null, '💫 A wisp glows inside your lantern. The misty way from Fogbank Path to Lantern Glade is lit.'),
+        h('p', { class: 'small muted' }, 'When you leave Lantern Glade and the Rainbow Plains behind, it drifts home, and you’ll need to catch a new one to come back.')));
+      return;
+    }
+    const at = s.flags.wispAt!;
+    s.flags.wispSeen = true;
+    save(s);
+    this.renderHud();
+    // steps by road from here (ignoring Initiative and gates)
+    const dist: Record<string, number> = { [s.location]: 0 };
+    const q = [s.location];
+    while (q.length && dist[at] === undefined) { const id = q.shift()!; for (const nb of neighbors(id)) if (dist[nb.node.id] === undefined) { dist[nb.node.id] = dist[id] + 1; q.push(nb.node.id); } }
+    const n = NODE_BY_ID[at];
+    const close = openSheet('🏮 Fog Lantern', h('div', null,
+      h('p', null, 'The lantern is empty, but its flame leans one way: a wisp waits at ', h('b', null, n.name), ` (${this.nodeSubtitle(at).split(' · ')[0]}), ${dist[at] ?? '?'} step${dist[at] === 1 ? '' : 's'} away.`),
+      h('p', { class: 'small' }, 'Go there to catch it. A wisp in your lantern lights the misty way from Fogbank Path to Lantern Glade and the Rainbow Plains. It drifts home when you leave them, so every visit takes a new one.'),
+      h('p', { class: 'small muted' }, 'The wisp is marked on the map with a little light.'),
+      h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => { close(); this.world.focus(at); } }, 'Show on map'))));
+  }
+
   stadiumSheet() {
     const s = this.s;
     openSheet('Circuit Stadium', h('div', null,
@@ -2440,7 +2494,8 @@ export class App {
             const it = itemInfo(id);
             const usable = ['restore', 'treat', 'charm', 'travel'].includes(it.kind);
             return h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, it.icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', s.inventory[id]), h('small', null, it.text), it.kind === 'material' ? materialDetail(it) : null),
-              usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null);
+              usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null,
+              id === 'fog-lantern' && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.lanternSheet() }, 'Check') : null);
           })))),
         Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
         Object.keys(s.cloudLoot ?? {}).length ? h('section', { class: 'cloud-satchel' }, h('h4', null, '☁️ Cloud satchel (not yet secured)'),

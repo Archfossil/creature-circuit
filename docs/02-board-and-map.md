@@ -14,7 +14,9 @@ Based on Olympic National Park in Washington, Hollow Crest is a city nestled ins
 
 The Arbiter of Hollow Crest is **Fabian**. Their arena is made mostly of illusory terrain obfuscated by fog and glamorous lighting tricks. Fabian himself hides among the population of Hollow Crest in disguise, choosing to prank prospective challenging trainers to see their reaction before allowing them to challenge him to battle.
 
-Navigation in the fog can be difficult in Hollow Crest. The fog road from Mistfall needs a Fog Lantern.
+Navigation in the fog can be difficult in Hollow Crest. The road from Mistfall is open, but off its Fogbank Path a misty branch runs north-west, south of Aurora Peak, to the town of **Lantern Glade**. Only a Fog Lantern holding a **wisp** lights the way in. Wisps drift to a random wild node, town or city on the mainland; checking the lantern reveals where, and the trainer must walk there to catch it. The wisp slips away whenever the trainer leaves the Glade, so each visit needs a new one.
+
+Behind Lantern Glade lie the **Rainbow Plains**, four meadows whose creatures all change to one random type each new day (odd-numbered turns). The ground takes on that type's colour: purple for Astral, pink for Charm and so on. Creatures there are always at least one rarity step higher, and finds are exotic, like those of the Forest Floor and Cloud Island.
 
 ## 3. Thunder Spike
 
@@ -64,7 +66,7 @@ Legendary Nodes are specific slots on the map where legendary creatures roam. Th
 
 ## Towns with special services
 
-**Quillhaven** sits on the meadows between Ridgeway and Saltmarsh Landing, home to the Margos **Research Facility**. Trainers can release a recruited creature into the researchers' care for coins: its level × 2 (Common), × 3 (Prime), × 4 (Apex) or × 5 (Legendary). Release is permanent, though the Codex keeps its record. You can't release your last creature, or your only active one.
+**Quillhaven** sits on the meadows between Ridgeway and Saltmarsh Landing, home to the Margos **Research Facility**. Trainers can release a recruited creature into the researchers' care for coins: its level × 2 (Common), × 3 (Prime), × 4 (Apex) or × 5 (Legendary). Release is permanent, though the Codex keeps its record. You can't release your last creature, your only active one, or your starter, who shares a special bond with the trainer.
 
 **Valor Ridge** sits in the hills between Mistfall and Thunder Spike, home to the Margos **Battle School**:
 - **Enrolling:** pay coins and leave a creature. It earns 1 XP per coin, at 2 XP a turn, so a course takes half as many turns as the XP it buys. While it trains, it is away from your team.

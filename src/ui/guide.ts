@@ -81,6 +81,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'morale', title: 'Morale & Loyalty', body: [
         'Happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good.',
         'Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty.',
+        '🤝 Your starter shares a special bond with you: it never leaves over low Morale, and it can’t be released or traded away, so you always have a partner.',
         'Treats, wins, rest and Following all lift Morale. Tap Morale or Loyalty on a card for details.',
         'Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0.',
       ] },
@@ -168,9 +169,16 @@ export const GUIDE: GuideCategory[] = [
         'At Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn.',
         'You’re told when it’s done. Pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).',
       ] },
+      { id: 'rainbow', title: 'Lantern Glade & the Rainbow Plains', body: [
+        'Lantern Glade is a town up a misty branch off Fogbank Path (between Mistfall and Hollow Crest). Only a Fog Lantern with a wisp caught in it lights the way.',
+        '- Buy a Fog Lantern in Mistfall, then open your Bag and Check it: the flame shows where a wisp waits (any town, city or wild spot on the mainland), and the map marks it with a little light.',
+        '- Walk there to catch the wisp. Every visit takes a new one: when you leave the Glade and the Plains, it drifts home.',
+        'Behind the Glade, the Rainbow Plains take on a new type every day (odd turns), and turn its color. Only that type turns up there, every creature is at least one rarity higher, and finds are exotic (like the Forest Floor and Cloud Island).',
+      ] },
       { id: 'research', title: 'Research Facility', body: [
         'In Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).',
         'Each Legendary exists once per game, and a released one returns to its grounds on the map.',
+        'Your starter (🤝 special bond) stays with you and can’t be released.',
       ] },
       { id: 'depths', title: 'Explore the Depths', body: [
         'At Shifting Depths (down the Sinkhole Stair from Houndmouth Canyon), leave an offering material: a wild creature of a type that craves it climbs up to battle you (1 Initiative plus the material).',

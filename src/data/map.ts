@@ -24,6 +24,8 @@ const hubs: MapNode[] = [
   { id: 'blackSand', name: 'Black Sand Cove', kind: 'town', biome: 'coast', x: 28, z: 55, rarity: 0, level: 1 },
   { id: 'quillhaven', name: 'Quillhaven', kind: 'town', biome: 'meadow', x: 30, z: 4, rarity: 0, level: 1 },
   { id: 'valor', name: 'Valor Ridge', kind: 'town', biome: 'mountain', x: -8, z: -29, rarity: 0, level: 1 },
+  // The gateway to the Rainbow Plains, up a misty branch off the fog road (a Fog Lantern with a wisp in it lights the way)
+  { id: 'lanternglade', name: 'Lantern Glade', kind: 'town', biome: 'grove', x: -36, z: -23, rarity: 0, level: 1 },
   // At the bottom of the canyon pocket: offer a material and something from the deep answers
   { id: 'depths', name: 'Shifting Depths', kind: 'town', biome: 'canyon', x: -10, z: 42, rarity: 0, level: 1 },
   // Amber's arena sits alone on Kilauea island, reached by ferry
@@ -60,7 +62,7 @@ const added = (b: Biome, name: string, level: number): Leg => [b, name, level, t
 /** A route between two hubs; intermediate wild nodes are laid out along the line with a gentle wiggle. */
 const routes: { a: string; b: string; legs: Leg[]; req?: MapEdge['requires']; rarity?: number; bend?: number }[] = [
   { a: 'aurora', b: 'mistfall', legs: [['tundra', 'Frostbite Flats', 3], added('tundra', 'Rimeglass Shelf', 3), ['mountain', 'Glacier Stair', 3]], bend: 3 },
-  { a: 'mistfall', b: 'hollow', legs: [added('mountain', 'Misty Switchback', 2), ['grove', 'Fogbank Path', 2], ['forest', 'Fernway', 2], added('grove', 'Lantern Glade', 2)], req: { item: 'fog-lantern' }, bend: -3 },
+  { a: 'mistfall', b: 'hollow', legs: [added('mountain', 'Misty Switchback', 2), ['grove', 'Fogbank Path', 2], ['forest', 'Fernway', 2], added('grove', 'Dappled Dell', 2)], bend: -3 },
   { a: 'hollow', b: 'lumber', legs: [added('grove', 'Dewdrop Dell', 2), ['forest', 'Mossy Hollow', 2], ['grove', 'Rainshadow Glen', 3], added('forest', 'Bracken Trail', 3)], bend: 3 },
   { a: 'lumber', b: 'gloom', legs: [['forest', 'Shadeway', 3], added('forest', 'Hollow Log Crossing', 3), ['forest', 'Fallen Giant', 4]], bend: -2 },
   { a: 'gloom', b: 'canyon', legs: [added('forest', 'Fernlight Edge', 3), ['meadow', 'Sunbaked Meadow', 3], added('meadow', 'Thistle Rise', 3), added('canyon', 'Ochre Steps', 4), ['canyon', 'Redrock Pass', 4]], bend: 3 },
@@ -148,6 +150,29 @@ export const isCloudNode = (id: string) => CLOUD_NODES.includes(id);
   edges.push({ a: 'aurora', b: CLOUD_RING[0], via: 'portal' });
 }
 
+// ── Lantern Glade and the Rainbow Plains ──────────────────────
+// A misty branch off Fogbank Path leads north-west (south of Aurora Peak) to the town of Lantern Glade.
+// Only a Fog Lantern with a wisp caught in it lights the way in; the wisp flies home when the trainer
+// leaves the Glade and the Plains behind it, so every visit takes a new one (state.ts → wisps).
+// The Plains' wild type changes every day, they turn the color of that type, finds are exotic, and
+// every creature is at least one rarity higher (world.ts → Rainbow Plains).
+export const LANTERN_GLADE = 'lanternglade';
+export const RAINBOW_PLAINS = ['prism1', 'prism2', 'prism3', 'prism4'];
+/** Lantern Glade and the Rainbow Plains: the part of the map a wisp opens. */
+export const WISP_REGION = [LANTERN_GLADE, ...RAINBOW_PLAINS];
+export const inWispRegion = (id: string) => WISP_REGION.includes(id);
+export const isRainbowPlains = (id: string) => RAINBOW_PLAINS.includes(id);
+{
+  const spots: [string, number, number][] = [['Prism Meadow', -41, -27], ['Huefield Run', -46, -25], ['Spectrum Rise', -43, -31.5], ['Rainbow’s End', -49, -29.5]];
+  RAINBOW_PLAINS.forEach((id, i) => {
+    const [name, x, z] = spots[i];
+    nodes.push({ id, name, kind: 'wild', biome: 'prism', x: +(x * MAP_SCALE).toFixed(2), z: +(z * MAP_SCALE).toFixed(2), rarity: 0, level: 4 });
+  });
+  edges.push({ a: nodes.find((n) => n.name === 'Fogbank Path')!.id, b: LANTERN_GLADE, requires: { wisp: true } });
+  edges.push({ a: LANTERN_GLADE, b: 'prism1' });
+  edges.push({ a: 'prism1', b: 'prism2' }, { a: 'prism1', b: 'prism3' }, { a: 'prism2', b: 'prism4' }, { a: 'prism3', b: 'prism4' });
+}
+
 // The rope down to the Forest Floor (needs a Canopy Rope)
 export const FOREST_FLOOR = 'forestfloor';
 edges.push({ a: 'gloom', b: FOREST_FLOOR, via: 'rope', requires: { item: 'canopy-rope' } });
@@ -159,6 +184,25 @@ edges.push({ a: 'kilauea', b: 'blackSand', via: 'sea', requires: { item: 'ferry-
 export const DEPTHS_STAIR = nodes.find((n) => n.name === 'Sinkhole Stair')!.id;
 
 export const MAP_NODES = nodes;
+/**
+ * Where a wisp can wait: every wild node, town and city on the mainland that can be walked to with
+ * no key item (so no ferries, portal, rope or gates), outside Lantern Glade and the Plains.
+ */
+export const WISP_SPOTS: string[] = (() => {
+  const open = new Set(['mistfall']), q = ['mistfall'];
+  while (q.length) {
+    const at = q.pop()!;
+    for (const e of edges) {
+      if (e.via || e.requires) continue;
+      const to = e.a === at ? e.b : e.b === at ? e.a : null;
+      if (!to || open.has(to)) continue;
+      const n = byId(to);
+      if (n.requires) continue;
+      open.add(to); q.push(to);
+    }
+  }
+  return nodes.filter((n) => open.has(n.id) && ['wild', 'town', 'city'].includes(n.kind) && !inWispRegion(n.id)).map((n) => n.id);
+})();
 export const MAP_EDGES = edges;
 export const NODE_BY_ID: Record<string, MapNode> = Object.fromEntries(nodes.map((n) => [n.id, n]));
 
@@ -209,7 +253,7 @@ export const CITIES: Record<string, City> = {
 };
 
 export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: string; special?: string }> = {
-  mistfall: { blurb: 'A mountain waystation where travelers buy lanterns before braving the fog.', sells: ['salve', 'calm-tea', 'totem', 'sunberry', 'trail-mix'], key: 'fog-lantern' },
+  mistfall: { blurb: 'A mountain waystation where travelers buy lanterns before braving the fog. Catch a wisp in one and it lights the misty way to Lantern Glade.', sells: ['salve', 'calm-tea', 'totem', 'sunberry', 'trail-mix'], key: 'fog-lantern' },
   lumber: { blurb: 'Loggers and woodcarvers in a hollow among the giant trees. A bike-maker’s shed sits by the sawmill.', sells: ['salve', 'totem', 'dewberry', 'pine-resin', 'bike'] },
   dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'moonberry', 'energy-tonic', 'totem', 'homing-feather'] },
   ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt', 'trail-mix'], key: 'summit-pick' },
@@ -217,6 +261,7 @@ export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: strin
   blackSand: { blurb: 'Ferry landing on Kilauea\'s black sand. Hot springs bubble beside the dock.', sells: ['elixir', 'volcanic-glass', 'ember-charcoal'], },
   valor: { blurb: 'A hill town of training yards and the Margos Battle School. Leave a creature with the drill masters and it comes back stronger.', sells: ['salve', 'energy-tonic', 'totem', 'dewberry'], special: 'school' },
   quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea', 'homing-feather'], special: 'research' },
+  lanternglade: { blurb: 'Paper lanterns hang in the mist over a hidden glade. Past the last lantern, the Rainbow Plains change color with every new day.', sells: ['salve', 'totem', 'calm-tea', 'trail-mix', 'moonberry'] },
   depths: { blurb: 'Lantern-lit ledges at the bottom of the endless canyon. Leave an offering at the edge of the dark, and something that craves it climbs up to meet you.', sells: ['salve', 'totem', 'canyon-ochre', 'ember-charcoal'], special: 'depths' },
 };
 
@@ -232,9 +277,9 @@ export const CLASSIC_KEY_TOWNS: Record<string, string> = { 'canopy-rope': 'lumbe
 /**
  * Towns that can stock a roaming key item: every town without a special facility (Battle School,
  * Research Facility, Shifting Depths, and any added later), except Black Sand Cove, which is only
- * reachable by ferry, so it would lock a key item behind another one.
+ * reachable by ferry, and Lantern Glade, behind a wisp: either would lock a key item behind another one.
  */
-export const KEY_ITEM_TOWNS = Object.keys(TOWNS).filter((id) => !TOWNS[id].special && id !== 'blackSand');
+export const KEY_ITEM_TOWNS = Object.keys(TOWNS).filter((id) => !TOWNS[id].special && id !== 'blackSand' && id !== LANTERN_GLADE);
 
 /** Which types live near each biome — the wild type pool. */
 export const BIOME_TYPES: Record<Biome, ElementType[]> = {
@@ -245,4 +290,6 @@ export const BIOME_TYPES: Record<Biome, ElementType[]> = {
   volcanic: ['fire', 'rock'], canyon: ['rock', 'fire'],
   cloud: ['astral', 'electric', 'water', 'charm'],
   deepwood: ['grass', 'charm', 'rock'],
+  // the Rainbow Plains can turn up any type: which one changes every day (world.ts → prismType)
+  prism: ['astral', 'charm', 'electric', 'fire', 'grass', 'rock', 'steel', 'water'],
 };

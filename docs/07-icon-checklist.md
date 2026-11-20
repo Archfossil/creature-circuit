@@ -55,6 +55,8 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `action-team`: 🐾: Team (also "My team" while watching online).
 - [ ] `action-bag`: 🎒: Bag (also "My bag" while watching online).
 - [ ] `action-end-turn`: ⏭️: End Turn.
+- [ ] `active-effects`: the yellow HUD pill listing active effects (uses each effect's own icon: 🍲 Nabe, ⭐ lucky stars, 🕯️ Lure, 💫 wisp).
+- [ ] `bond`: 🤝: Special bond tag on the starter's card.
 
 ## 3. City & town services ★★
 
@@ -74,6 +76,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `forest-floor`: 🌲: The Forest Floor (Gloomshade's Dahlia tile, rules screen, HUD chip).
 - [ ] `dahlia-trail`: 🏮: Dahlia's Trail (trail found, explore result).
 - [ ] `explore-depths`: 🕳️: Explore the Depths (Shifting Depths).
+- [ ] `wisp`: 💫: A wisp (map marker, lantern check sheet, catch toast, active effect).
 - [ ] `notice-board`: 🗺️: Notice Board (rumors). Also the "Where to look" heading in the Codex.
 - [ ] `enrol`: 📝: Battle School "Enrol a creature" heading.
 - [ ] Notice Board townsfolk portraits (5), shown next to rumors:
@@ -103,6 +106,7 @@ Shown on map node previews, Codex pages and filters, and material "found in" lis
 - [ ] `biome-canyon`: 🪨
 - [ ] `biome-cloud`: ☁️ (Cloud Island)
 - [ ] `biome-deepwood`: 🌑 (the Forest Floor)
+- [ ] `biome-prism`: 🌈 (the Rainbow Plains)
 
 ## 5. Weather (11) & seasons (4) ★★★
 
@@ -174,7 +178,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `mat-canyon-ochre`: 🟠 Canyon Ochre
 - [ ] `mat-volcanic-glass`: 🖤 Volcanic Glass
 
-**Exotic finds (the Forest Floor)**
+**Exotic finds (the Forest Floor; Heartwood Resin and Glowcap also on the Rainbow Plains)**
 - [ ] `item-root-salve`: 🌿 Root Salve
 - [ ] `item-duskberry`: 🫐 Duskberry (needs a distinct icon from Dewberry)
 - [ ] `mat-heartwood-resin`: 🪵 Heartwood Resin (needs a distinct icon from Ember Charcoal)
@@ -186,7 +190,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `mat-moonbow-prism`: 🌈 Moonbow Prism
 
 **Key items**
-- [ ] `key-fog-lantern`: 🏮 Fog Lantern
+- [ ] `key-fog-lantern`: 🏮 Fog Lantern (with a Check button that reveals the wisp)
 - [ ] `key-canopy-rope`: 🪢 Canopy Rope
 - [ ] `key-ferry-pass`: ⛴️ Ferry Pass
 - [ ] `key-root-whistle`: 🎐 Root Whistle

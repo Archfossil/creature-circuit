@@ -78,7 +78,7 @@ export interface Move {
 
 export type Biome =
   | 'forest' | 'mountain' | 'tundra' | 'lake' | 'river' | 'road' | 'swamp'
-  | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove' | 'cloud' | 'deepwood';
+  | 'desert' | 'badlands' | 'coast' | 'volcanic' | 'canyon' | 'meadow' | 'grove' | 'cloud' | 'deepwood' | 'prism';
 
 export type NodeKind = 'wild' | 'town' | 'city' | 'legendary' | 'stadium' | 'arena';
 
@@ -104,7 +104,8 @@ export interface MapEdge {
   b: string;
   /** sea: a ferry crossing. portal: the Cloud Island portal, open at night or in Winter. */
   via?: 'sea' | 'road' | 'portal' | 'rope';
-  requires?: { item?: string };
+  /** wisp: entering past this edge takes a Fog Lantern with a wisp caught in it (Lantern Glade). */
+  requires?: { item?: string; wisp?: boolean };
 }
 
 export interface City {

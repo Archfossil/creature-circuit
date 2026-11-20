@@ -135,7 +135,7 @@ const MORALE_HELP = `Morale (0–10): how happy this creature is with you.
 Gain: winning battles it fights in (+1), Following you (+1 every other turn), treats and berries, stables, some events.
 Lose: being knocked out (−1), a team wipe (−1 each), waiting in a totem (−1 every 10 turns).
 High (${MORALE_HIGH}+): +1 Loyalty at the end of every turn, and +1 XP per battle.
-Low (${MORALE_LOW} or less): you get a warning. After that, every turn that ends without its Morale rising rolls a d10. Above its Loyalty, it leaves your team; otherwise it loses 1 Loyalty.`;
+Low (${MORALE_LOW} or less): you get a warning. After that, every turn that ends without its Morale rising rolls a d10. Above its Loyalty, it leaves your team; otherwise it loses 1 Loyalty. Your starter (🤝 special bond) never leaves.`;
 const LOYALTY_HELP = `Loyalty (0–${LOYALTY_MAX}): trust built over time.
 Gain: +1 at the end of each turn while Morale is ${MORALE_HIGH}+; treats add Loyalty too.
 Use: reaching each Nature perk's threshold unlocks it for good. Perks never re-lock. At the Capstone, attacks deal +1 damage per 5 Loyalty.
@@ -144,12 +144,15 @@ Lose: −1 each time it survives a low-Morale check. At 0 Loyalty, a low-Morale 
 /** A sheet explaining Morale and Loyalty, with this creature's current standing. */
 export function socialHelp(c: CreatureInst) {
   const nat = NATURE_BY_ID[c.nature];
-  const status = c.morale <= MORALE_LOW
+  const status = c.bond && c.morale <= MORALE_LOW
+    ? `${nameOf(c)} is unhappy, but you share a special bond: it will never leave you. Cheer it up to earn Loyalty again.`
+    : c.morale <= MORALE_LOW
     ? (c.moraleWarned ? `⚠️ ${nameOf(c)} is unhappy and has been warned. If a turn ends without its Morale rising, it rolls a d10: above ${c.loyalty} it leaves, otherwise it loses 1 Loyalty.` : `⚠️ ${nameOf(c)} is unhappy. At the end of this turn you'll get a warning.`)
     : c.morale >= MORALE_HIGH ? `💖 ${nameOf(c)} is happy: +1 Loyalty at the end of each turn.` : `${nameOf(c)} is content. Raise its Morale to ${MORALE_HIGH} to start earning Loyalty.`;
   const next = nat?.perks[c.perks];
   const legendary = speciesOf(c).rarity === 'legendary';
   openSheet('Morale & Loyalty', h('div', { class: 'social-help' },
+    c.bond ? h('p', { class: 'social-status good' }, `🤝 Special bond: ${nameOf(c)} was your first partner. It never leaves over low Morale, and it can’t be released or traded away.`) : null,
     legendary ? h('p', { class: 'social-status bad' }, `✨ Legendaries never fully settle. ${nameOf(c)} loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn, whatever its Morale, and gains none from Morale (treats still add some). At 0 Loyalty it returns to its grounds on the map: about ${c.loyalty} turn${c.loyalty === 1 ? '' : 's'} from now. Releasing it at Quillhaven’s Research Facility pays × 5 its level.`) : null,
     h('p', { class: `social-status ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}` }, status),
     h('h4', null, `💖 Morale · ${c.morale}/10`), ...MORALE_HELP.split('\n').slice(1).map((l) => h('p', { class: 'small' }, l)),
@@ -184,7 +187,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
     h('header', { class: 'ic-head' },
       h('div', null,
         h('h3', null, nameOf(c)),
-        h('div', { class: 'ic-sub' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'stage' }, `Stage ${sp.stage}`))),
+        h('div', { class: 'ic-sub' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'stage' }, `Stage ${sp.stage}`), c.bond ? h('span', { class: 'stage', title: 'Special bond: your starter never leaves, and can’t be released or traded.' }, '🤝 Bond') : null)),
       h('div', { class: 'lv-badge' }, h('small', null, 'LV'), c.level)),
     h('div', { class: 'ic-art' },
       h('img', { src: portrait(sp.id), alt: sp.name }),

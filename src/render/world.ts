@@ -15,7 +15,7 @@ import { MAP_SCALE as S } from '../data/map';
 
 const ELEV: Record<Biome, number> = {
   mountain: 3.2, tundra: 1.6, canyon: 2.2, badlands: 1.3, volcanic: 2.2, forest: 0.9, grove: 0.8, meadow: 0.5,
-  road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25, cloud: 3.4, deepwood: 0.3,
+  road: 0.5, desert: 0.7, lake: 0.25, river: 0.35, swamp: 0.2, coast: 0.25, cloud: 3.4, deepwood: 0.3, prism: 0.5,
 };
 
 /** Cloud Island's paths and node tiles: midnight plum, for contrast with the cotton-candy ground. */
@@ -26,6 +26,13 @@ function cloudWeight(x: number, z: number) {
   let cloud = 0, all = 0;
   for (const { n, w } of biomeWeights(x, z)) { all += w; if (n.biome === 'cloud') cloud += w; }
   return all ? cloud / all : 0;
+}
+
+/** How much a point belongs to the Rainbow Plains (0–1). */
+function prismWeight(x: number, z: number) {
+  let p = 0, all = 0;
+  for (const { n, w } of biomeWeights(x, z)) { all += w; if (n.biome === 'prism') p += w; }
+  return all ? p / all : 0;
 }
 
 /** Nearby nodes weighted for biome blending. */
@@ -152,6 +159,11 @@ export class WorldView implements SceneView {
   private sky!: THREE.Mesh;
   private terrain!: THREE.Mesh;
   private baseColors!: Float32Array;
+  /** Per vertex: how strongly the Rainbow Plains' color of the day shows (0 = not at all). */
+  private prismW!: Float32Array;
+  private prismColor: string | null = null;
+  private prismTiles: THREE.MeshStandardMaterial[] = [];
+  private wispMark: THREE.Group | null = null;
   private water!: THREE.Mesh;
   private waterMat!: THREE.ShaderMaterial;
   private trees: { mesh: THREE.InstancedMesh; base: THREE.Color[] }[] = [];
@@ -269,6 +281,13 @@ export class WorldView implements SceneView {
       for (let k = 0; k < 3; k++) { colors[(f + k) * 3] = col.r; colors[(f + k) * 3 + 1] = col.g; colors[(f + k) * 3 + 2] = col.b; }
     }
     this.baseColors = colors.slice();
+    this.prismW = new Float32Array(p2.count);
+    for (let f = 0; f < p2.count; f += 3) {
+      const cx = (p2.getX(f) + p2.getX(f + 1) + p2.getX(f + 2)) / 3, cz = (p2.getZ(f) + p2.getZ(f + 1) + p2.getZ(f + 2)) / 3;
+      const cy = (p2.getY(f) + p2.getY(f + 1) + p2.getY(f + 2)) / 3;
+      const w = cy > 0 ? smooth(0.3, 0.7, prismWeight(cx, cz)) * 0.92 : 0;
+      this.prismW[f] = this.prismW[f + 1] = this.prismW[f + 2] = w;
+    }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
     this.terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92 }));
@@ -434,7 +453,9 @@ export class WorldView implements SceneView {
       if (n.kind === 'wild') {
         // Cloud Island: midnight-plum tiles with a white rim, so they stand out from the pastel ground
         const cloud = n.biome === 'cloud';
-        const tile = new THREE.Mesh(hex, new THREE.MeshStandardMaterial({ color: cloud ? CLOUD_PATH : biomeCol, flatShading: true, roughness: 0.6 }));
+        const tileMat = new THREE.MeshStandardMaterial({ color: cloud ? CLOUD_PATH : biomeCol, flatShading: true, roughness: 0.6 });
+        if (n.biome === 'prism') this.prismTiles.push(tileMat);
+        const tile = new THREE.Mesh(hex, tileMat);
         tile.position.y = 0.2; tile.castShadow = true; tile.receiveShadow = true;
         const rim = new THREE.Mesh(new THREE.CylinderGeometry(cloud ? 1.55 : 1.42, cloud ? 1.65 : 1.5, 0.18, 6), new THREE.MeshStandardMaterial({ color: cloud ? '#ffffff' : '#fff8e8', flatShading: true }));
         rim.position.y = 0.06; rim.receiveShadow = true;
@@ -688,10 +709,45 @@ export class WorldView implements SceneView {
     void visited;
   }
 
+  /** The Rainbow Plains take on the color of the day's type. */
+  setPrism(color: string) {
+    if (color === this.prismColor) return;
+    this.prismColor = color;
+    for (const m of this.prismTiles) m.color.set(color);
+    if (this.terrain.userData.init) this.recolor();
+  }
+
+  /**
+   * Where the trainer's next wisp waits (once they've checked their Fog Lantern), or null: a little
+   * bobbing light over that node.
+   */
+  setWisp(id: string | null) {
+    if (this.wispMark) { this.scene.remove(this.wispMark); this.wispMark = null; }
+    const n = id ? NODE_BY_ID[id] : null;
+    if (!n) return;
+    const g = new THREE.Group();
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.7, 14, 12), new THREE.MeshStandardMaterial({ color: '#e6fdff', emissive: new THREE.Color('#5fe9ff'), emissiveIntensity: 1.8 }));
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), new THREE.MeshBasicMaterial({ color: '#7ff3ff', transparent: true, opacity: 0.3, depthWrite: false }));
+    // a faint column of light down to the node, so the wisp is easy to spot from afar
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.9, 4, 10, 1, true), new THREE.MeshBasicMaterial({ color: '#9ff6ff', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.y = -2.2;
+    g.add(orb, halo, beam);
+    g.position.set(n.x, nodeHeight(n) + 4, n.z);
+    g.userData.baseY = g.position.y;
+    this.scene.add(g);
+    this.wispMark = g;
+  }
+
   setSeason(season: Season) {
     if (season === this.season && this.terrain.userData.init) return;
     this.season = season;
     this.terrain.userData.init = true;
+    this.recolor();
+  }
+
+  /** Repaint the ground: the season's tint, then the Rainbow Plains' color of the day on top. */
+  private recolor() {
+    const season = this.season;
     const tint = (c: THREE.Color, y: number) => {
       const hsl = { h: 0, s: 0, l: 0 };
       c.getHSL(hsl);
@@ -703,10 +759,17 @@ export class WorldView implements SceneView {
     };
     const pos = this.terrain.geometry.attributes.position as THREE.BufferAttribute;
     const col = this.terrain.geometry.attributes.color as THREE.BufferAttribute;
-    const c = new THREE.Color();
+    const c = new THREE.Color(), prism = new THREE.Color();
     for (let i = 0; i < col.count; i++) {
       c.setRGB(this.baseColors[i * 3], this.baseColors[i * 3 + 1], this.baseColors[i * 3 + 2]);
       tint(c, pos.getY(i));
+      const pw = this.prismW[i];
+      if (pw > 0 && this.prismColor) {
+        // patchy bands of the day's color, lighter and darker, so the plains shimmer
+        const f = Math.floor(i / 3);
+        prism.set(this.prismColor).offsetHSL(0, 0, (hash(f * 0.37, f * 0.11) - 0.5) * 0.14);
+        c.lerp(prism, pw);
+      }
       col.setXYZ(i, c.r, c.g, c.b);
     }
     col.needsUpdate = true;
@@ -868,6 +931,7 @@ export class WorldView implements SceneView {
 
   // ── Frame ──────────────────────────────────────────────────────
   update(dt: number, t: number) {
+    if (this.wispMark) { this.wispMark.position.y = this.wispMark.userData.baseY + Math.sin(t * 2.2) * 0.35; this.wispMark.rotation.y = t; }
     if (this.title) { this.yaw = Math.sin(t * 0.05) * 0.5; }
     else this.yaw += (0 - this.yaw) * Math.min(1, dt * 2);
     this.target.lerp(this.goal, Math.min(1, dt * 3.5));
