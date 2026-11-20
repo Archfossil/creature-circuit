@@ -1,0 +1,211 @@
+// How to Play: the full rules guide, organized into categories and topics (opened from the title
+// screen and ☰ Menu), plus the short welcome tour shown when a journey starts. Content only; the
+// App renders it. In topic text, a line starting with "- " is a bullet.
+
+export interface GuideTopic { id: string; title: string; body: string[] }
+export interface GuideCategory { id: string; icon: string; label: string; topics: GuideTopic[] }
+
+export const GUIDE: GuideCategory[] = [
+  {
+    id: 'basics', icon: '🧭', label: 'Basics',
+    topics: [
+      { id: 'goal', title: 'The goal', body: [
+        'Earn 8 Merits by beating the Arbiters of Margos’s eight cities, then be standing in Circuit Stadium when Turn 100 ends.',
+        'Everyone who makes it fights an 8-trainer bracket. Win it to be crowned Champion.',
+        'The season has four seasons of 25 turns each. The Turn pill (top left) shows where you are; tap it for the calendar and weather.',
+      ] },
+      { id: 'turns', title: 'Turns & Initiative', body: [
+        'Each turn you get 5 Initiative (the diamonds on the location card).',
+        '- Moving to an adjacent node costs 1. Tap a glowing node, then Travel, or double-tap it (Settings can turn that off).',
+        '- City actions such as the Stable, Market and Arbiter usually cost Initiative too. The cost is shown on each option.',
+        '- End Turn when you’re done. Unspent Initiative doesn’t carry over, so camping can turn it into rest (see Places → Camping).',
+      ] },
+      { id: 'explore', title: 'Exploring', body: [
+        'Entering a wild node explores it with a d6:',
+        '- 1–2: nothing.',
+        '- 3–4: a wild creature (or a roaming trainer) wants to battle.',
+        '- 5–6: you find items or coins.',
+        'For creatures, rarity star dice decide Common, Prime or Apex. Rare areas and higher Tiers roll more stars.',
+      ] },
+      { id: 'events', title: 'Events', body: [
+        'From the second turn on, each turn starts with something happening on the road: a trader, a caretaker, a storm, a rival…',
+        'Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first: the event waits at the bottom of the screen, and you can’t end the turn until you answer it.',
+        'Trades and Nature changes show a before → after stat comparison before you confirm.',
+      ] },
+      { id: 'weather', title: 'Weather & seasons', body: [
+        'The weather is rolled at the start of each turn. It can boost or weaken attack types, change Speed, and bring out other creature types when exploring.',
+        'Tap the weather pill (top left) to see what today’s weather does.',
+      ] },
+    ],
+  },
+  {
+    id: 'creatures', icon: '🐾', label: 'Creatures',
+    topics: [
+      { id: 'following', title: 'Following', body: [
+        'One creature follows you on the map. It leads every battle, uses its Ability on the overworld, and gains Morale every other turn.',
+        'At the start of each turn you’re asked who follows you. Tap the Following chip (top left) any time to switch, or turn the prompt off in Settings.',
+        'With nobody following, you choose who goes first in each battle.',
+      ] },
+      { id: 'recruit', title: 'Recruiting', body: [
+        'Defeat a wild creature, then offer a totem plus up to 2 offerings. Roll 2d6 + bonuses against its Recruitment Threshold (RT).',
+        '- A Plain Totem gives +1. A typed Totem gives +3 for that type (−1 for others). An Effigy gives +5 for its species (−3 for others).',
+        '- Offering materials appeal to certain types (shown in your Bag). Berries help any creature.',
+        'Up to 3 creatures travel with you. The rest rest in totems; swap them for free in any city or town (🔄 Swap Team).',
+      ] },
+      { id: 'grow', title: 'Levels & the chart', body: [
+        'Every creature that fights earns XP when the battle ends, win or lose, and knocking out a foe earns a bonus. Running away earns nothing.',
+        'Every 10 XP is a level and a point to spend on the skill tree on the back of its index card. A node opens once every node linked above it is bought.',
+        'Evolving needs the whole center path. Side branches are optional, but are left behind when it evolves. Once a final stage’s chart is complete, extra points train +1 to a stat of your choice.',
+      ] },
+      { id: 'playbook', title: 'Playbooks & energy', body: [
+        'Each creature knows up to 4 moves. Energy is a requirement, not spent per use: a move fits if the creature generates enough of each type it needs.',
+        '- The playbook editor crosses out the energy each move takes and counts what’s left.',
+        '- Filter by type or by Physical / Support, sort by cost, damage or speed, and tick “Only moves that still fit”.',
+        '- ✨ Recommend moves? suggests a set for physical power, elemental power, a balanced spread, or against a type.',
+      ] },
+      { id: 'morale', title: 'Morale & Loyalty', body: [
+        'Happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good.',
+        'Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty.',
+        'Treats, wins, rest and Following all lift Morale. Tap Morale or Loyalty on a card for details.',
+        'Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0.',
+      ] },
+      { id: 'codex', title: 'Creature Codex', body: [
+        'Every creature you meet in the wild or in a trainer’s team is recorded (☰ Menu → Creature Codex).',
+        'Search it by name, or filter by type, biome, rarity and whether you’ve seen or recruited it. Each page lists the nodes to explore for it (or its earlier stages) and its favorite offerings.',
+        'You can carve an Effigy of any creature in your Codex at a Carving Shrine.',
+      ] },
+    ],
+  },
+  {
+    id: 'battles', icon: '⚔️', label: 'Battles',
+    topics: [
+      { id: 'combat', title: 'How a round works', body: [
+        'Both sides pick an action. The faster creature acts first (a tie is a Clash: both roll, and the lower roll takes the difference as damage and goes second).',
+        '- Accuracy: roll the move’s die against the foe’s Evasion.',
+        '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll.',
+        '- Elemental moves use Focus vs Ward and the type chart, and inflict a status on a minimum damage roll.',
+        'Damage drains the Health bar, then a Vitality heart. Out of hearts means knocked out.',
+      ] },
+      { id: 'types', title: 'Types', body: [
+        'Each Elemental move shows how it lands on the current opponent: 2× Super effective, ½ Resisted, No effect…',
+        'In battle, 🔺 Types (or T) opens the chart for the matchup. The full chart is in ☰ Menu → Type Chart.',
+        'Physical attacks ignore the type chart.',
+      ] },
+      { id: 'stamina', title: 'Stamina & Fatigue', body: [
+        'Each move costs Effort from Stamina. At 0 Stamina a creature gains Fatigue, and a fatigued creature rolls a d10 before acting and may lose its turn.',
+        'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
+      ] },
+      { id: 'readouts', title: 'Move readouts', body: [
+        'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion, then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',
+        'Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.',
+        'Keys: 1–4 pick a move (Enter confirms, Esc goes back), B catch breath, S swap, R run, T type chart.',
+      ] },
+      { id: 'trainers', title: 'Trainers & Arbiters', body: [
+        'Every city has a Trainer Hall: battle a local trainer once per turn (a city action).',
+        'Each city’s Arbiter guards a Merit. Their arenas have tricks (ice floes, fog, falling rocks…) described before you challenge.',
+        'Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.',
+      ] },
+    ],
+  },
+  {
+    id: 'places', icon: '🏙️', label: 'Places',
+    topics: [
+      { id: 'cities', title: 'Cities', body: [
+        '- Stable: full recovery, KOs included, plus a Chanko Nabe battle buff (doubled in your home city).',
+        '- Market: restoratives, treats, charms and totems.',
+        '- Carving Shrine: carve typed Totems and Effigies from materials.',
+        '- Trainer Hall and the Arbiter’s arena.',
+        '- 🔄 Swap Team (free): trade creatures between your active team and your totems.',
+      ] },
+      { id: 'towns', title: 'Towns', body: [
+        'Town Stables also fully recover your team, but serve no Chanko Nabe buff. Town markets cost no Initiative and often sell key items (lanterns, ropes, passes…).',
+        '- Valor Ridge: the Battle School.',
+        '- Quillhaven: the Research Facility.',
+        '- Shifting Depths: Explore the Depths.',
+      ] },
+      { id: 'camping', title: 'Camping', body: [
+        'On a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue.',
+        'Camp early to tend more of your team. Knocked-out creatures need a Stable.',
+      ] },
+      { id: 'school', title: 'Battle School', body: [
+        'At Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn.',
+        'You’re told when it’s done. Pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).',
+      ] },
+      { id: 'research', title: 'Research Facility', body: [
+        'In Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).',
+        'Each Legendary exists once per game, and a released one returns to its grounds on the map.',
+      ] },
+      { id: 'depths', title: 'Explore the Depths', body: [
+        'At Shifting Depths (down the Sinkhole Stair from Houndmouth Canyon), leave an offering material: a wild creature of a type that craves it climbs up to battle you (1 Initiative plus the material).',
+        'It has already accepted the offering, so the material counts toward recruiting it if you win.',
+      ] },
+    ],
+  },
+  {
+    id: 'multiplayer', icon: '👥', label: 'Multiplayer',
+    topics: [
+      { id: 'hotseat', title: 'Hotseat', body: [
+        'Up to six trainers share this device (title screen → Hotseat). Each picks a unique colour; turns go in seat order with a pass-the-device screen between them.',
+        'Everyone shares the map, the weather and the Legendaries, and you can see the other trainers’ minis on the map. Tap a name in the turn-order strip (top left) to find that trainer.',
+      ] },
+      { id: 'interactions', title: 'Gifts, trades & duels', body: [
+        'Tap 👥 Trainers on the action bar:',
+        '- Gifts and coin or item trades reach anyone, anywhere (a courier carries them).',
+        '- Creature trades and duel challenges need you both on the same spot.',
+        '- In a duel, each trainer picks their own moves every round, and who goes in after a knockout.',
+        'Notes about gifts, trades and duels wait for each trainer at the start of their turn.',
+      ] },
+      { id: 'online', title: 'Online', body: [
+        'Title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts.',
+        'You watch other trainers’ turns live (moves, dice and battles; 🔺 Types works while watching), and a ping tells you when it’s your turn.',
+        'While you wait you can unlock chart nodes and edit playbooks (🐾 My team) and look through your bag (🎒 My bag).',
+        'The host can set a turn timer, skip a turn, or play one for someone who stepped away.',
+      ] },
+    ],
+  },
+  {
+    id: 'trainer', icon: '🧢', label: 'You & saves',
+    topics: [
+      { id: 'style', title: 'Trainer style', body: [
+        'Chosen when you start: eight styles, each with a perk and a drawback (Wanderer, Ranger, Urbanite, Beast Whisperer, Merchant, Battle Master, Caretaker, Pathfinder).',
+        'They change Initiative costs, stables, coins, recruiting, battle XP, camping or Morale.',
+      ] },
+      { id: 'look', title: 'Your look', body: [
+        'Pick a top, hat, hair style, skin tone, hair colour and pants when you start, or later in ☰ Menu → Trainer Look.',
+        'Your main colour always goes on the top, the hat and any hair tie or streak. That mini is your token on the map and stands behind you in trainer battles.',
+      ] },
+      { id: 'saving', title: 'Saving', body: [
+        'Games autosave as you play.',
+        '☰ Menu → 📌 Save a copy keeps a named snapshot (solo, hotseat or online) that you can load again from 💾 Saves on the title screen, export or rename.',
+      ] },
+    ],
+  },
+];
+
+/** The short welcome tour shown when a journey starts. */
+export interface TourStep { icon: string; title: string; lines: string[] }
+export function welcomeTour(o: { name: string; home: string; starter: string }): TourStep[] {
+  return [
+    { icon: '🏆', title: 'Your goal', lines: [
+      `Welcome to Margos, ${o.name}! You set out from ${o.home} with ${o.starter}.`,
+      'Beat the Arbiters of the 8 cities to earn 8 Merits, then reach Circuit Stadium by the end of Turn 100 to fight for the Championship.',
+    ] },
+    { icon: '⚡', title: 'Your turn', lines: [
+      'Each turn you have 5 Initiative. Moving to a neighbouring node costs 1: tap a glowing node, then Travel.',
+      'Wild nodes are explored as you enter them: you might find items, or meet a creature.',
+      'Press ⏭️ End Turn when you’re done.',
+    ] },
+    { icon: '🐾', title: 'Creatures', lines: [
+      'Beat a wild creature, then offer it a totem to recruit it. Up to 3 travel with you.',
+      `Your Following creature (top left, ${o.starter} for now) leads every battle and lends you its Ability on the map.`,
+    ] },
+    { icon: '📈', title: 'Getting stronger', lines: [
+      'Creatures earn XP in every battle. Each level gives a point to spend on the chart on the back of its card, and the chart leads to evolution.',
+      'Rest at Stables in cities and towns, and shop at their Markets.',
+    ] },
+    { icon: '❓', title: 'Learn as you go', lines: [
+      'That’s all you need to start. The full guide is in ☰ Menu → How to Play, by topic.',
+      'Tip: in battle, tap a move to see exactly what it will roll before you use it.',
+    ] },
+  ];
+}

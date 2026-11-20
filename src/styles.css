@@ -407,12 +407,12 @@ button.status-tag { font-family: inherit; color: inherit; cursor: pointer; }
 .mc-eff.phys { color: var(--muted); background: transparent; border-style: dashed; border-color: var(--line); }
 
 /* Dex */
-.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
 .dex-entry { border: 2px solid var(--line); border-radius: 12px; padding: 6px; text-align: center; display: grid; gap: 2px; justify-items: center; background: var(--paper); }
-.dex-entry img { width: 76px; height: 76px; }
-.dex-entry b { font-family: var(--font-head); font-size: 13px; }
+.dex-entry > img { width: 76px; height: 76px; }
+.dex-entry b { font-family: var(--font-head); font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dex-entry.caught { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 12%, white); }
-.dex-entry.seen img { filter: saturate(0.5); opacity: 0.8; }
+.dex-entry.seen > img { filter: saturate(0.5); opacity: 0.8; }
 button.dex-entry { font: inherit; color: inherit; cursor: pointer; }
 button.dex-entry:hover { border-color: var(--ink); }
 .codex-where { margin: 6px 0; }
@@ -823,3 +823,50 @@ button.seat:hover, button.seat:focus-visible { background: var(--tc); color: #ff
 /* Explore the Depths offering picker */
 .depths-offer { display: grid; gap: 4px; text-align: left; }
 .gap-xs { gap: 3px; }
+
+/* Creature Codex: progress, filters and a tidier grid */
+.codex { display: grid; gap: 10px; }
+.dex-progress { display: grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items: center; }
+.dex-progress b { font-family: var(--font-head); font-size: 20px; }
+.dex-tools { display: grid; gap: 8px; padding: 10px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+.dex-search { flex: 1; min-width: 180px; font: inherit; font-size: 15px; padding: 7px 10px; border: 2px solid var(--line); border-radius: 10px; background: #fff; }
+.dex-types { display: flex; flex-wrap: wrap; gap: 4px; }
+.dex-types .type-pick { display: inline-flex; align-items: center; gap: 4px; }
+.dex-types .type-pick.sel { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 18%, white); }
+.dex-select { display: grid; gap: 2px; }
+.dex-select select { font: inherit; padding: 4px 6px; border: 2px solid var(--line); border-radius: 8px; background: #fff; }
+.dex-entry.unknown { opacity: 0.55; }
+.dex-entry .qm { width: 76px; height: 76px; display: grid; place-items: center; font-size: 28px; color: var(--muted, #999); }
+.dex-rarity { font-size: 10px; letter-spacing: -1px; color: #c99a1a; }
+.dex-empty { grid-column: 1 / -1; text-align: center; padding: 20px; }
+
+/* How to Play guide: category tabs, topic tabs, one topic at a time */
+.guide { display: grid; gap: 10px; }
+.guide-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.guide-cat { display: inline-flex; align-items: center; gap: 6px; font: inherit; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.guide-cat b { font-family: var(--font-head); font-size: 14px; }
+.guide-cat.sel { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.guide-main { display: grid; grid-template-columns: 190px 1fr; gap: 12px; align-items: start; }
+.guide-topics { display: grid; gap: 4px; }
+.guide-topic { font: inherit; text-align: left; padding: 7px 10px; border-radius: 10px; border: 2px solid transparent; background: none; color: var(--ink); cursor: pointer; }
+.guide-topic:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.guide-topic.sel { border-color: var(--line); background: var(--paper); font-weight: 800; }
+.guide-body { border: 2px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--paper); min-height: 220px; }
+.guide-body h3 { margin: 0 0 8px; font-family: var(--font-head); }
+.guide-body p { margin: 0 0 8px; line-height: 1.5; }
+.guide-body ul { margin: 0 0 8px; padding-left: 20px; line-height: 1.5; }
+.guide-nav { margin-top: 12px; }
+@media (max-width: 640px) {
+  .guide-main { grid-template-columns: 1fr; }
+  .guide-topics { display: flex; flex-wrap: wrap; }
+  .guide-topic { border-color: var(--line); padding: 4px 9px; }
+}
+
+/* Welcome tour */
+.tour { display: grid; gap: 8px; text-align: center; max-width: 460px; margin: 0 auto; }
+.tour-ico { font-size: 44px; line-height: 1; }
+.tour h3 { margin: 0; font-family: var(--font-head); font-size: 22px; }
+.tour p { margin: 0; line-height: 1.5; }
+.tour-dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0; }
+.tour-dots button { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; }
+.tour-dots button.on { background: var(--ink); width: 22px; border-radius: 6px; }

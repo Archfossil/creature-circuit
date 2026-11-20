@@ -305,6 +305,17 @@ export function encounterSpots(speciesId: string): Spot[] {
   return out;
 }
 
+const biomeCache = new Map<string, Biome[]>();
+/** Biomes where this species or an earlier stage of it turns up (its wild nodes, or its Legendary node). For Codex filters. */
+export function speciesBiomes(speciesId: string): Biome[] {
+  let out = biomeCache.get(speciesId);
+  if (!out) {
+    out = [...new Set(evolutionLine(speciesId).flatMap((m) => encounterSpots(m.id).map((spot) => spot.node.biome)))];
+    biomeCache.set(speciesId, out);
+  }
+  return out;
+}
+
 /** This species and its earlier stages, earliest first. */
 export function evolutionLine(speciesId: string): Species[] {
   const line = [SPECIES_BY_ID[speciesId]];

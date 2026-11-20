@@ -785,6 +785,20 @@ describe('saved copies (save library)', () => {
   });
 });
 
+describe('Codex biome filter', () => {
+  it('lists the biomes where a species or an earlier stage turns up', () => {
+    for (const sp of SPECIES.filter((x) => x.rarity !== 'legendary').slice(0, 40)) {
+      const fromSpots = new Set(W.evolutionLine(sp.id).flatMap((m) => W.encounterSpots(m.id).map((spot) => spot.node.biome)));
+      expect(new Set(W.speciesBiomes(sp.id))).toEqual(fromSpots);
+    }
+    const cinder = W.speciesBiomes('cindercub');
+    expect(cinder.length).toBeGreaterThan(0);
+    // an evolved form inherits its line's biomes
+    const evo = SPECIES.find((x) => x.id === 'cindercub')!.evolvesTo!;
+    expect(W.speciesBiomes(evo)).toEqual(expect.arrayContaining(cinder));
+  });
+});
+
 describe('Shifting Depths', () => {
   it('is a town at the bottom of the canyon pocket, reached by the Sinkhole Stair', () => {
     const stair = MAP_NODES.find((n) => n.name === 'Sinkhole Stair')!;

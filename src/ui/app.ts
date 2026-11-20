@@ -1,6 +1,7 @@
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait, mirror, type DieSpec } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
+import { GUIDE, welcomeTour } from './guide';
 import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
@@ -24,7 +25,7 @@ import { SPECIES, SPECIES_BY_ID, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
 import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes, seasonForTurn } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
-import type { ElementType, Item } from '../data/schema';
+import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3', '#a51d2d', '#1f3a93'];
 const DEFAULT_NAMES = ['Rowan', 'Juno', 'Kai', 'Mira', 'Ash', 'Tess'];
@@ -2383,7 +2384,7 @@ export class App {
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
       this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
-      tile('❓', 'How to Play', 'Rules summary.', '', () => { close(); this.howToPlay(); }),
+      tile('❓', 'How to Play', 'The full guide, by topic: basics, creatures, battles, places, multiplayer.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
       tile('📌', 'Save a copy', 'Keep a named snapshot of this game to load later (💾 Saves on the title screen).', '', () => { close(); void this.saveCopyNow(); }),
       tile('🏠', 'Title Screen', 'Your game is autosaved.', '', () => { close(); this.title(); }),
@@ -2412,17 +2413,88 @@ export class App {
     openSheet('Settings', body);
   }
 
+  /** Codex filters, kept while the game is open. */
+  private codexView: { q: string; type: ElementType | 'all'; biome: Biome | 'all'; rarity: Rarity | 'all'; status: 'all' | 'seen' | 'caught' | 'unseen'; sort: 'codex' | 'name' | 'rarity' | 'type' } =
+    { q: '', type: 'all', biome: 'all', rarity: 'all', status: 'all', sort: 'codex' };
+
+  /**
+   * The Creature Codex: every species, filterable by name, type (either half of a dual type), biome
+   * (where it or an earlier stage turns up), rarity and whether you've seen or recruited it.
+   */
   codex() {
     const s = this.s;
-    openSheet('Creature Codex', h('div', null,
-      h('p', { class: 'small muted' }, 'Every creature you meet in the wild or in a trainer’s team is recorded here. Tap one to see where to find it and what it likes. You can carve an Effigy of any creature in the Codex at a Carving Shrine.'),
-      h('div', { class: 'dex-grid' }, SPECIES.map((sp) => {
-        const caught = s.dex.caught.includes(sp.id), seen = s.dex.seen.includes(sp.id);
-        return h(seen ? 'button' : 'div', { class: `dex-entry ${caught ? 'caught' : seen ? 'seen' : 'unknown'}`, style: `--tc:${TYPE_COLOR[sp.types[0]]}`, onclick: seen ? () => this.codexEntry(sp.id) : undefined },
-          seen ? h('img', { src: portrait(sp.id), alt: '' }) : h('div', { class: 'qm' }, '?'),
-          h('b', null, seen ? sp.name : '???'),
-          h('div', { class: 'row gap-s center' }, seen ? sp.types.map((t) => typeIconImg(t, 14)) : null, caught ? h('span', { title: 'Recruited' }, '🗿') : null));
-      }))), { wide: true });
+    const v = this.codexView;
+    const RARITIES: Rarity[] = ['common', 'prime', 'apex', 'legendary'];
+    const rank = (r: Rarity) => RARITIES.indexOf(r);
+    const cap = (x: string) => x[0].toUpperCase() + x.slice(1);
+    const biomes = Object.keys(BIOME_INFO) as Biome[];
+    const status = (id: string) => (s.dex.caught.includes(id) ? 'caught' : s.dex.seen.includes(id) ? 'seen' : 'unseen');
+    const seenCount = SPECIES.filter((sp) => s.dex.seen.includes(sp.id)).length;
+    const caughtCount = SPECIES.filter((sp) => s.dex.caught.includes(sp.id)).length;
+
+    const matches = (sp: Species) => {
+      const st = status(sp.id);
+      if (v.status !== 'all' && (v.status === 'seen' ? st === 'unseen' : st !== v.status)) return false;
+      if (v.type !== 'all' && !sp.types.includes(v.type)) return false;
+      if (v.rarity !== 'all' && sp.rarity !== v.rarity) return false;
+      if (v.biome !== 'all' && !W.speciesBiomes(sp.id).includes(v.biome)) return false;
+      const q = v.q.trim().toLowerCase();
+      if (q && (st === 'unseen' || !sp.name.toLowerCase().includes(q))) return false; // unseen names stay secret
+      return true;
+    };
+    const sorted = (list: Species[]) => {
+      if (v.sort === 'codex') return list;
+      const name = (sp: Species) => (status(sp.id) === 'unseen' ? '\uffff' : sp.name); // unknowns last
+      return [...list].sort((a, b) =>
+        v.sort === 'name' ? name(a).localeCompare(name(b))
+          : v.sort === 'rarity' ? rank(a.rarity) - rank(b.rarity) || name(a).localeCompare(name(b))
+            : TYPES.indexOf(a.types[0]) - TYPES.indexOf(b.types[0]) || a.stage - b.stage);
+    };
+
+    const grid = h('div', { class: 'dex-grid' });
+    const count = h('small', { class: 'muted' });
+    const toolbar = h('div', { class: 'dex-tools' });
+    const renderGrid = () => {
+      const list = sorted(SPECIES.filter(matches));
+      count.textContent = `Showing ${list.length} of ${SPECIES.length}`;
+      grid.replaceChildren(...(list.length ? list.map((sp) => {
+        const st = status(sp.id);
+        const known = st !== 'unseen';
+        return h(known ? 'button' : 'div', { class: `dex-entry ${st === 'caught' ? 'caught' : known ? 'seen' : 'unknown'}`, style: `--tc:${TYPE_COLOR[sp.types[0]]}`, title: known ? `${sp.name} · ${cap(sp.rarity)} · Stage ${sp.stage}` : 'Not seen yet', onclick: known ? () => this.codexEntry(sp.id) : undefined },
+          known ? h('img', { src: portrait(sp.id), alt: '' }) : h('div', { class: 'qm' }, '?'),
+          h('b', null, known ? sp.name : '???'),
+          h('div', { class: 'row gap-xs center' }, known ? sp.types.map((t) => typeIconImg(t, 14)) : null, h('span', { class: `dex-rarity r-${sp.rarity}`, title: cap(sp.rarity) }, '★'.repeat(rank(sp.rarity) + 1)), st === 'caught' ? h('span', { title: 'Recruited' }, '🗿') : null));
+      }) : [h('p', { class: 'muted dex-empty' }, 'No creatures match these filters.')]));
+    };
+    const select = <T extends string>(label: string, value: T, options: [T, string][], set: (x: T) => void) =>
+      h('label', { class: 'dex-select' }, h('small', null, label),
+        h('select', { onchange: (e: Event) => { set((e.target as HTMLSelectElement).value as T); renderToolbar(); renderGrid(); } },
+          options.map(([val, text]) => h('option', { value: val, selected: val === value }, text))));
+    const search = h('input', { type: 'search', placeholder: '🔎 Search by name…', value: v.q, class: 'dex-search', oninput: (e: Event) => { v.q = (e.target as HTMLInputElement).value; renderGrid(); } }) as HTMLInputElement;
+    const renderToolbar = () => {
+      const filtered = v.q || v.type !== 'all' || v.biome !== 'all' || v.rarity !== 'all' || v.status !== 'all';
+      toolbar.replaceChildren(
+        h('div', { class: 'row gap-s wrap' }, search,
+          filtered ? h('button', { class: 'link', onclick: () => { Object.assign(v, { q: '', type: 'all', biome: 'all', rarity: 'all', status: 'all' }); search.value = ''; renderToolbar(); renderGrid(); } }, 'Clear filters') : null),
+        h('div', { class: 'dex-types', role: 'group', 'aria-label': 'Filter by type' },
+          h('button', { class: `pick ${v.type === 'all' ? 'sel' : ''}`, onclick: () => { v.type = 'all'; renderToolbar(); renderGrid(); } }, 'All types'),
+          TYPES.map((t) => h('button', { class: `pick type-pick ${v.type === t ? 'sel' : ''}`, style: `--tc:${TYPE_COLOR[t]}`, title: TYPE_LABEL[t], onclick: () => { v.type = v.type === t ? 'all' : t; renderToolbar(); renderGrid(); } }, typeIconImg(t, 18), h('span', { class: 'hide-xs' }, TYPE_LABEL[t])))),
+        h('div', { class: 'row gap-s wrap' },
+          select('Biome', v.biome, [['all', 'Any biome'], ...biomes.map((b) => [b, `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`] as [Biome, string])], (x) => { v.biome = x; }),
+          select('Rarity', v.rarity, [['all', 'Any rarity'], ...RARITIES.map((r) => [r, `${'★'.repeat(rank(r) + 1)} ${cap(r)}`] as [Rarity, string])], (x) => { v.rarity = x; }),
+          select('Status', v.status, [['all', 'Everything'], ['seen', 'Seen'], ['caught', 'Recruited'], ['unseen', 'Not seen yet']], (x) => { v.status = x; }),
+          select('Sort', v.sort, [['codex', 'Codex order'], ['name', 'Name'], ['rarity', 'Rarity'], ['type', 'Type']], (x) => { v.sort = x; })));
+    };
+    renderToolbar();
+    renderGrid();
+    openSheet('Creature Codex', h('div', { class: 'codex' },
+      h('div', { class: 'dex-progress' },
+        h('div', null, h('b', null, `${seenCount}`), h('small', null, ` / ${SPECIES.length} seen`)),
+        h('div', null, h('b', null, `${caughtCount}`), h('small', null, ' recruited')),
+        h('div', { class: 'progress' }, h('i', { style: `width:${Math.round((seenCount / SPECIES.length) * 100)}%` }))),
+      toolbar, count, grid,
+      h('p', { class: 'small muted' }, 'Creatures you meet in the wild or in a trainer’s team are recorded here. Tap one to see where to find it and what it likes. Biome shows where it (or an earlier stage) turns up. You can carve an Effigy of any creature in the Codex at a Carving Shrine.')), { wide: true });
+    setTimeout(() => search.focus({ preventScroll: true }), 50);
   }
 
   /** One Codex page: where to find the species (or its earlier stages) and how to win it over. */
@@ -2495,36 +2567,66 @@ export class App {
         h('img', { src: typeIcon(c.type) }), h('div', null, h('b', null, c.accolade), h('small', null, `${c.arbiter} · ${c.name}`)), s.merits.includes(c.nodeId) ? '✓' : '')))));
   }
 
-  howToPlay(welcome = false) {
-    openSheet(welcome ? `Welcome, ${this.s.trainer.name}!` : 'How to Play', h('div', { class: 'howto' },
-      h('ol', null,
-        h('li', null, h('b', null, 'Saving: '), 'games autosave as you play. ☰ Menu → 📌 Save a copy keeps a named snapshot (solo, hotseat or online) that you can load again from 💾 Saves on the title screen, export or rename.'),
-        h('li', null, h('b', null, 'Online: '), 'title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts. You watch other trainers’ turns live (moves, dice and battles), and a ping tells you when it’s your turn. While you wait you can unlock chart nodes and edit playbooks (🐾 My team) and look through your bag (🎒 My bag). Duels: you pick your own moves and your next creature after a knockout. The host can set a turn timer, skip a turn, or play one for someone who stepped away.'),
-        h('li', null, h('b', null, 'Hotseat: '), 'up to six trainers can share this device (title screen → Hotseat). Each picks a unique colour; turns go in seat order with a pass-the-device screen between them. Everyone shares the map, the weather and the Legendaries, and you can see the other trainers’ minis on the map.'),
-        h('li', null, h('b', null, 'Trainers (hotseat): '), 'tap 👥 Trainers to send or trade coins and items with anyone, anywhere, or, when you share a spot, trade creatures or challenge them to a duel (they accept on the same device, and both of you pick your own moves each round, and who goes in after a knockout). Notes about gifts, trades and duels wait for each trainer at the start of their turn. Tap a name in the turn-order strip (top left) to find that trainer on the map.'),
-        h('li', null, h('b', null, 'Trainer style: '), 'chosen when you start: eight styles, each with a perk and a drawback (Wanderer, Ranger, Urbanite, Beast Whisperer, Merchant, Battle Master, Caretaker, Pathfinder). They change Initiative costs, stables, coins, recruiting, battle XP, camping or Morale.'),
-        h('li', null, h('b', null, '5 Initiative per turn. '), 'Moving to an adjacent node costs 1. Tap a glowing node on the map, then Travel, or just double-tap it (you can turn this off in Settings).'),
-        h('li', null, h('b', null, 'Entering a wild node explores it: '), 'roll d6 — 1–2 nothing, 3–4 a wild creature (or trainer), 5–6 an item. Rarity star dice decide Common / Prime / Apex.'),
-        h('li', null, h('b', null, 'Combat: '), 'faster creature acts first (ties Clash). Roll accuracy vs Evasion. Physical attacks crit on a max roll; elemental attacks use the type chart and inflict a status on a minimum damage roll (see Menu → Status Effects, or tap a status tag in battle). In battle, each Elemental move shows how it lands on the current opponent (2× Super effective, ½ Resisted, No effect…), and 🔺 Types (or T) opens the chart for the matchup. Damage drains the Health bar, then a Vitality heart; out of hearts means KO. Your Following creature leads every battle; with nobody following, you choose who goes first.'),
-        h('li', null, h('b', null, 'Stamina & Fatigue: '), 'each move costs Effort. At 0 Stamina you gain Fatigue — fatigued creatures roll d10 and may lose their turn.'),
-        h('li', null, h('b', null, 'Move readouts: '), 'tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die vs the foe’s Evasion, then the damage die plus Power (physical) or Focus (elemental) minus the foe’s Armor or Ward. Confirm to use it. Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.'),
-        h('li', null, h('b', null, 'Camping: '), 'on a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue. Camp early to tend more of your team.'),
-        h('li', null, h('b', null, 'Playbook: '), 'up to 4 moves. Energy is a requirement, not spent per use: the playbook editor crosses out the energy each move takes and counts what is left. Filter moves by type (dual-type attacks show under both) or by Physical/Support, sort them by cost, damage, speed or name, and tick “Only moves that still fit”. ✨ Recommend moves? suggests a set to optimize physical power, elemental power, a balanced spread, or against a type. The ★ goal suits your creature’s stats, and Confirm playbook? sets it in one tap.'),
-        h('li', null, h('b', null, 'Recruit: '), 'defeat a wild creature, then offer a totem plus up to 2 offerings. Roll 2d6 + bonuses vs its Recruitment Threshold. Each material appeals to certain types (shown in your Bag).'),
-        h('li', null, h('b', null, 'Creature Codex: '), 'every creature you meet in the wild or in a trainer\u2019s team is recorded. Its page lists the nodes to explore for it (or its earlier stages) and its favorite offerings. You can carve an Effigy of any creature in your Codex.'),
-        h('li', null, h('b', null, 'Grow: '), 'every creature that fights earns XP when the battle ends, win or lose, and knocking out a foe earns a bonus (running away earns nothing). Every 10 XP is a level and a point to spend on the skill tree on the back of the creature\'s index card. A node opens once every node linked above it is bought. Evolving needs the whole center path; side branches are optional but are left behind when it evolves.'),
-        h('li', null, h('b', null, 'Cities: '), 'rest at the Stable (full recovery plus a Chanko Nabe battle buff), shop, carve totems and challenge the Arbiter for a Merit. 🔄 Swap Team (free, in any city or town) trades creatures between your active team and your totems.'),
-        h('li', null, h('b', null, 'Events: '), 'from the second turn on, each turn starts with something happening on the road: a trader, a caretaker, a storm, a rival… Most can be declined; a few (storms, thieves) make you choose. Close the window to check your team first; the event waits at the bottom of the screen until you answer it, and you can’t end the turn before then. Tap a trader’s creature to see its card. Trades and Nature changes show a before → after stat comparison before you confirm.'),
-        h('li', null, h('b', null, 'Towns: '), 'their Stable also fully recovers your team, KOs included, but serves no Chanko Nabe buff. Town markets cost no Initiative.'),
-        h('li', null, h('b', null, 'Morale & Loyalty: '), 'happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good. Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty. Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0, so release them at the Research Facility before then for coins. Tap Morale or Loyalty on a card for details.'),
-        h('li', null, h('b', null, 'Following: '), 'at the start of each turn you’re asked who follows you. The follower leads every battle, uses its Ability on the map, and gains Morale every other turn. Tap the Following chip any time to switch, or turn the prompt off in Settings.'),
-        h('li', null, h('b', null, 'Trainer Halls: '), 'every city has one. Battle a local trainer once per turn (a city action). Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.'),
-        h('li', null, h('b', null, 'Battle School: '), 'at Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn. You’re told when it’s done; pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).'),
-        h('li', null, h('b', null, 'Explore the Depths: '), 'at Shifting Depths (down the Sinkhole Stair from Houndmouth Canyon), leave an offering material: a wild creature of a type that craves it climbs up to battle you (1 Initiative). It has already accepted the offering, so it counts toward recruiting it.'),
-        h('li', null, h('b', null, 'Research Facility: '), 'in Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary). Each Legendary exists once per game, and a released one returns to its grounds on the map.'),
-        h('li', null, h('b', null, 'Your trainer: '), 'pick a top, hat, hair style, skin tone, hair colour and pants when you start (or later in Menu → Trainer Look). Your main colour always goes on the top, the hat and any hair tie or streak. That mini is your token on the map and stands behind you in trainer battles.'),
-        h('li', null, h('b', null, 'Win: '), 'hold 8 Merits and stand in Circuit Stadium when Turn 100 ends. Then win the 8-trainer bracket.')),
-      welcome ? h('p', { class: 'small muted' }, 'Tip: pick a Follower (top-left) — it leads your battles and powers your overworld Ability.') : null));
+  /** Last How to Play tab (category, topic), kept while the game is open. */
+  private guideAt = { cat: GUIDE[0].id, topic: GUIDE[0].topics[0].id };
+
+  /**
+   * How to Play: the full guide, by category (tabs) and topic (sub-tabs). `welcome` shows the short
+   * welcome tour instead (when a journey starts).
+   */
+  howToPlay(welcome = false, at?: { cat: string; topic?: string }) {
+    if (welcome) { this.welcomeTour(); return; }
+    if (at) this.guideAt = { cat: at.cat, topic: at.topic ?? GUIDE.find((c) => c.id === at.cat)?.topics[0].id ?? '' };
+    const body = h('div', { class: 'guide' });
+    const render = () => {
+      const cat = GUIDE.find((c) => c.id === this.guideAt.cat) ?? GUIDE[0];
+      const topic = cat.topics.find((t) => t.id === this.guideAt.topic) ?? cat.topics[0];
+      const lines: HTMLElement[] = [];
+      let list: HTMLElement | null = null;
+      for (const line of topic.body) {
+        if (line.startsWith('- ')) { if (!list) { list = h('ul'); lines.push(list); } list.append(h('li', null, line.slice(2))); }
+        else { list = null; lines.push(h('p', null, line)); }
+      }
+      const ti = cat.topics.indexOf(topic), ci = GUIDE.indexOf(cat);
+      const prev = ti > 0 ? { cat, t: cat.topics[ti - 1] } : ci > 0 ? { cat: GUIDE[ci - 1], t: GUIDE[ci - 1].topics[GUIDE[ci - 1].topics.length - 1] } : null;
+      const next = ti < cat.topics.length - 1 ? { cat, t: cat.topics[ti + 1] } : ci < GUIDE.length - 1 ? { cat: GUIDE[ci + 1], t: GUIDE[ci + 1].topics[0] } : null;
+      const go = (c: string, t: string) => { this.guideAt = { cat: c, topic: t }; render(); };
+      body.replaceChildren(
+        h('div', { class: 'guide-cats', role: 'tablist' }, GUIDE.map((c) => h('button', { class: `guide-cat ${c === cat ? 'sel' : ''}`, role: 'tab', 'aria-selected': String(c === cat), onclick: () => go(c.id, c.topics[0].id) }, h('span', null, c.icon), h('b', null, c.label)))),
+        h('div', { class: 'guide-main' },
+          h('div', { class: 'guide-topics', role: 'tablist' }, cat.topics.map((t) => h('button', { class: `guide-topic ${t === topic ? 'sel' : ''}`, role: 'tab', 'aria-selected': String(t === topic), onclick: () => go(cat.id, t.id) }, t.title))),
+          h('article', { class: 'guide-body' }, h('h3', null, topic.title), ...lines,
+            h('div', { class: 'row between guide-nav' },
+              prev ? h('button', { class: 'btn ghost sm', onclick: () => go(prev.cat.id, prev.t.id) }, `← ${prev.t.title}`) : h('span'),
+              next ? h('button', { class: 'btn ghost sm', onclick: () => go(next.cat.id, next.t.id) }, `${next.t.title} →`) : h('span')))));
+    };
+    render();
+    openSheet('❓ How to Play', body, { wide: true });
+  }
+
+  /** The short welcome tour: the goal and the basics, a card at a time. */
+  welcomeTour() {
+    const s = this.s;
+    const steps = welcomeTour({ name: s.trainer.name, home: CITIES[s.trainer.home]?.name ?? 'home', starter: s.roster[0] ? nameOf(s.roster[0]) : 'your starter' });
+    let i = 0;
+    const body = h('div', { class: 'tour' });
+    const render = () => {
+      const st = steps[i];
+      body.replaceChildren(
+        h('div', { class: 'tour-ico' }, st.icon),
+        h('h3', null, st.title),
+        ...st.lines.map((l) => h('p', null, l)),
+        h('div', { class: 'tour-dots' }, steps.map((_, k) => h('button', { class: k === i ? 'on' : '', 'aria-label': `Step ${k + 1}`, onclick: () => { i = k; render(); } }))),
+        h('div', { class: 'row between' },
+          i > 0 ? h('button', { class: 'btn ghost', onclick: () => { i--; render(); } }, '← Back') : h('button', { class: 'btn ghost', onclick: () => close() }, 'Skip'),
+          i < steps.length - 1 ? h('button', { class: 'btn primary', onclick: () => { i++; render(); } }, 'Next →')
+            : h('div', { class: 'row gap-s' },
+              h('button', { class: 'btn ghost', onclick: () => { close(); this.howToPlay(); } }, '📖 Full guide'),
+              h('button', { class: 'btn primary', onclick: () => close() }, 'Let’s go! ✦'))));
+      (body.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
+    };
+    const close = openSheet(`Welcome, ${s.trainer.name}!`, body);
+    render();
   }
 }
 
