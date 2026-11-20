@@ -10,7 +10,7 @@ export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'hagg
 
 /** Trainer styles: each has a perk and (except the Wanderer) a drawback. The rules live in world.ts / battle.ts. */
 export const TRAINER_STYLES: { id: TrainerStyle; icon: string; name: string; perk: string; drawback: string }[] = [
-  { id: 'balanced', icon: '⚖️', name: 'Wanderer', perk: 'Every city’s stable treats you like home: the doubled home Chanko Nabe, anywhere.', drawback: 'None. You have no real home, and no special rules.' },
+  { id: 'balanced', icon: '⚖️', name: 'Wanderer', perk: 'You make your home anywhere: every city’s stable serves you the doubled home Chanko Nabe, and if your team is wiped out you choose which city to return to, from any city you’ve rested at this game.', drawback: 'None.' },
   { id: 'nature', icon: '🌲', name: 'Ranger', perk: 'Up to Tier times a turn, exploring and finding Nothing gives back 1 Initiative (once at Tier 1, twice at Tier 2, and so on).', drawback: 'City actions cost +1 Initiative.' },
   { id: 'urban', icon: '🏙️', name: 'Urbanite', perk: 'City actions cost no Initiative.', drawback: 'Re-exploring costs 2 Initiative.' },
   { id: 'whisperer', icon: '🤝', name: 'Beast Whisperer', perk: '+1 to every recruitment roll.', drawback: 'Trainer battles pay half the coins (Arbiters still pay in full).' },
@@ -19,6 +19,31 @@ export const TRAINER_STYLES: { id: TrainerStyle; icon: string; name: string; per
   { id: 'caretaker', icon: '💞', name: 'Caretaker', perk: 'Camping tends 2 creatures per Initiative; stables give +1 extra Morale.', drawback: '−1 XP per battle for each creature (never below 1).' },
   { id: 'pathfinder', icon: '🧭', name: 'Pathfinder', perk: 'Your first move each turn costs no Initiative.', drawback: 'Stables cost +1 Initiative.' },
 ];
+
+/** The kinds of battle a trainer's record is kept for (the `kind` passed to world.ts → finishBattle). */
+export type BattleKind = 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival';
+export interface WinLoss { won: number; lost: number; ran: number }
+/** Running totals shown on the Trainer ID. Everything past the first three fields is optional: saves from
+ *  before the Trainer ID start counting when loaded (`trackedFrom`). */
+export interface TrainerStats {
+  battlesWon: number; recruited: number; explored: number;
+  /** Wild and Legendary creatures met in battle. */
+  encountered?: number;
+  /** Wins, losses and getaways per kind of battle. */
+  record?: Partial<Record<BattleKind, WinLoss>>;
+  /** How often the trainer's creatures have used moves of each type. */
+  moveTypes?: Partial<Record<string, number>>;
+  /** Opposing creatures knocked out. */
+  foesKO?: number;
+  /** Items picked up while exploring. */
+  itemsFound?: number;
+  /** Every coin earned (prizes, finds, sales, events). */
+  coinsEarned?: number;
+  /** Steps taken between map nodes. */
+  steps?: number;
+  /** The turn the detailed stats began (only for saves from before the Trainer ID). */
+  trackedFrom?: number;
+}
 
 export interface GameState {
   version: number;
@@ -67,7 +92,7 @@ export interface GameState {
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
   endgame?: { round: number; bracket: string[]; eliminated: boolean };
-  stats: { battlesWon: number; recruited: number; explored: number };
+  stats: TrainerStats;
   /**
    * Cloud satchel: items earned on Cloud Island, held here until the trainer escapes the island
    * (the portal, or Flying away). Being sent home after a team wipe loses them.
@@ -75,6 +100,9 @@ export interface GameState {
   cloudLoot?: Record<string, number>;
   /** This game's towns for the roaming key items (Canopy Rope, Root Whistle). Shared by everyone in a match. */
   keyTowns?: Record<string, string>;
+  /** Cities this trainer has rested at (a stable rest), most recent last; starts with the home city.
+   *  A Wanderer whose team is wiped may return to any of them (world.ts → wipeOptions). */
+  rested?: string[];
   /** Creatures left at a Battle School (see world.ts → enrollTraining). */
   training?: Training[];
   /** Notes from other hotseat trainers (gifts, trades, duels), shown at the start of your next turn. */
@@ -103,13 +131,13 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
     version: SAVE_VERSION,
     trainer: { name, style, home, color, ...(look ? { look } : {}) },
     turn: 1, initiative: 5, weather: pick(SEASON_INFO.spring.dice),
-    location: home, visited: [home], coins: 15,
+    location: home, visited: [home], rested: [home], coins: 15,
     inventory: { totem: 2, salve: 2, sunberry: 2 },
     roster: [], reserve: [], following: null, merits: [],
     log: [], dex: { seen: [], caught: [] },
     flags: { freeReexploreUsed: false, firstMoveUsed: false, lure: false, starCharm: false, beaten: [], salemNight: false, fabianFound: false },
     phase: 'map',
-    stats: { battlesWon: 0, recruited: 0, explored: 0 },
+    stats: { battlesWon: 0, recruited: 0, explored: 0, encountered: 0, record: {}, moveTypes: {}, foesKO: 0, itemsFound: 0, coinsEarned: 0, steps: 0 },
   };
   const c = createCreature(starter, 1); // starters begin at Lv 1 with an untouched chart
   c.morale = 7;
@@ -353,6 +381,8 @@ export function migrate(s: GameState): GameState | null {
     for (const c of [...s.roster, ...s.reserve]) c.unlocked = c.unlocked.map((id) => rename[id] ?? id);
     s.version = 3;
   }
+  // Trainer ID: older saves start their detailed stats from here
+  if (s.stats && !s.stats.record) { s.stats.record = {}; if (s.turn > 1) s.stats.trackedFrom = s.turn; }
   return s.version === SAVE_VERSION ? s : null;
 }
 export function clearSave() { try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
@@ -376,6 +406,7 @@ export function earnCoins(s: GameState, n: number): number {
   if (n <= 0) return 0;
   const got = s.trainer.style === 'haggler' ? n + Math.max(1, Math.ceil(n * 0.25)) : n;
   s.coins += got;
+  if (s.stats) s.stats.coinsEarned = (s.stats.coinsEarned ?? 0) + got;
   return got;
 }
 

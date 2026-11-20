@@ -16,7 +16,7 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'turns', title: 'Turns & Initiative', body: [
         'Each turn you get 5 Initiative (the diamonds on the location card).',
-        '- Moving to an adjacent node costs 1. Tap a glowing node, then Travel, or double-tap it (Settings can turn that off).',
+        '- Moving to an adjacent node costs 1. Tap a glowing node, then Travel, or double-tap it. Double-tapping the city or town you’re in opens its menu (Settings can turn both off).',
         '- City actions such as the Stable, Market and Arbiter usually cost Initiative too. The cost is shown on each option.',
         '- End Turn when you’re done. Unspent Initiative doesn’t carry over, so camping can turn it into rest (see Places → Camping).',
       ] },
@@ -86,11 +86,15 @@ export const GUIDE: GuideCategory[] = [
     id: 'battles', icon: '⚔️', label: 'Battles',
     topics: [
       { id: 'combat', title: 'How a round works', body: [
-        'Both sides pick an action. The faster creature acts first (a tie is a Clash: both roll, and the lower roll takes the difference as damage and goes second).',
+        'Both sides pick an action. The faster creature acts first (a tie is a Clash: both roll, and the lower roll takes the difference as damage and goes second; equal rolls flip a coin for who goes first).',
         '- Accuracy: roll the move’s die against the foe’s Evasion.',
         '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll.',
         '- Elemental moves use Focus vs Ward and the type chart, and inflict a status on a minimum damage roll.',
         'Damage drains the Health bar, then a Vitality heart. Out of hearts means knocked out.',
+      ] },
+      { id: 'battlelog', title: 'Battle Log', body: [
+        'Tap 📜 Log at the top of a battle (or press L) to see everything so far, round by round: each move used, every accuracy and damage roll with the numbers behind it, statuses, buffs, Clashes and coin flips.',
+        'After a battle, ☰ Menu → Last Battle Log shows it again (until you reload the page).',
       ] },
       { id: 'types', title: 'Types', body: [
         'Each Elemental move shows how it lands on the current opponent: 2× Super effective, ½ Resisted, No effect…',
@@ -193,6 +197,11 @@ export const GUIDE: GuideCategory[] = [
       { id: 'style', title: 'Trainer style', body: [
         'Chosen when you start: eight styles, each with a perk and a drawback (Wanderer, Ranger, Urbanite, Beast Whisperer, Merchant, Battle Master, Caretaker, Pathfinder).',
         'They change Initiative costs, stables, coins, recruiting, battle XP, camping or Morale.',
+        'The Wanderer makes their home anywhere: if their team is wiped out, they choose which city to return to, from any city whose stable they’ve rested at this game (only their home city at the start).',
+      ] },
+      { id: 'trainerId', title: 'Trainer ID', body: [
+        'Tap 📇 on the top bar (or ☰ Menu → Trainer ID) to see your home town, trainer style and its rules, Tier and Merits.',
+        'It also keeps your journey stats: creatures encountered, foes knocked out, items found, steps and coins, your won / lost record against wild creatures, trainers and Arbiters, and your favoured move types.',
       ] },
       { id: 'look', title: 'Your look', body: [
         'Pick a top, hat, hair style, skin tone, hair colour and pants when you start, or later in ☰ Menu → Trainer Look.',

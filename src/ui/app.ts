@@ -1,4 +1,4 @@
-import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, floatText, wait, mirror, type DieSpec } from './dom';
+import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec } from './dom';
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
@@ -9,7 +9,7 @@ import { BattleView } from '../render/battle';
 import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, type TrainerLook } from '../render/trainerModel';
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
-import type { GameState, TrainerStyle } from '../engine/state';
+import type { GameState, TrainerStyle, BattleKind } from '../engine/state';
 import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
@@ -26,6 +26,9 @@ import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
 import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
+
+/** One line of the 📜 Battle Log: what happened (`text`), the rolls and maths behind it (`detail`), and whose side it was. */
+interface BattleLogEntry { round: number; text: string; tone?: string; detail?: string; side?: 0 | 1 }
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3', '#a51d2d', '#1f3a93'];
 const DEFAULT_NAMES = ['Rowan', 'Juno', 'Kai', 'Mira', 'Ash', 'Tess'];
@@ -76,6 +79,8 @@ export class App {
   ui = h('div', { id: 'ui' });
   busy = false;
   selected: string | null = null;
+  /** The current (or most recent) battle's log, for the 📜 Battle Log. Kept in memory only, not saved. */
+  lastBattleLog: { title: string; entries: BattleLogEntry[] } | null = null;
 
   constructor(root: HTMLElement) {
     this.engine = new Engine(root);
@@ -1047,6 +1052,7 @@ export class App {
       h('div', { class: 'hud-pill coins' }, '🪙 ', h('b', null, s.coins)),
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
         h('span', { class: `merit ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '' })))),
+      h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.trainerId(), 'aria-label': 'Trainer ID', title: 'Trainer ID: your home town, style and records' }, '📇'),
       h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': 'Menu' }, '☰'));
     const loc = h('div', { class: 'loc-card', style: node.cityType ? `--tc:${TYPE_COLOR[node.cityType]}` : '' },
       h('div', { class: 'loc-title' },
@@ -1161,10 +1167,20 @@ export class App {
     this.showNodePreview(id);
   }
 
-  /** Double-tap shortcut: travel straight to an adjacent node. Blocked moves leave the preview up to explain why. */
+  /** Double-tap shortcuts: travel straight to an adjacent node (blocked moves leave the preview up to explain
+   *  why), or open the City / Town menu of the place you're standing in. Arenas and the Stadium are left to
+   *  their buttons, since those start battles. */
   onNodeDoubleTap(id: string) {
     if (!settings().doubleTapTravel || this.busy || this.watching || !this.s || this.s.phase !== 'map') return;
-    if (id === this.s.location || !neighbors(this.s.location).some((x) => x.node.id === id)) return;
+    if (id === this.s.location) {
+      const kind = NODE_BY_ID[id].kind;
+      if (kind !== 'city' && kind !== 'town') return;
+      $('.node-preview')?.remove();
+      this.selected = null;
+      if (kind === 'city') this.citySheet(); else this.townSheet();
+      return;
+    }
+    if (!neighbors(this.s.location).some((x) => x.node.id === id)) return;
     if (W.canMoveTo(this.s, id).ok) this.travel(id);
   }
 
@@ -1366,7 +1382,8 @@ export class App {
       h('span', { class: 'chip' }, WEATHER[s.weather].icon, ' ', WEATHER[s.weather].name),
       b.arena ? h('span', { class: 'chip arena', style: `--tc:${TYPE_COLOR[arenaType!]}` }, '🏟 ', CITIES[ctx.city!].arena.name, ` · Tier ${b.arena.tier}`) : null,
       ringTimer,
-      h('span', { class: 'chip' }, `Round `, h('b', { class: 'rnd' }, '1')));
+      h('span', { class: 'chip' }, `Round `, h('b', { class: 'rnd' }, '1')),
+      h('button', { class: 'chip log-btn', title: 'Battle Log: every move, roll and hit so far (L)', onclick: () => this.battleLogSheet() }, '📜 Log'));
     panel.append(header, plates[1], h('div', { class: 'battle-stack' }, plates[0], h('div', { class: 'battle-bottom' }, logLine, controls)));
     this.ui.replaceChildren(panel);
 
@@ -1398,6 +1415,50 @@ export class App {
     const pace = (ms: number) => (slow() ? Math.round(ms * 1.6) : ms);
     const whoOn = (side: 0 | 1) => nameOf(b.sides[side].team.find((x) => x.uid === disp[side].uid) ?? activeOf(b.sides[side]));
 
+    // ── Battle Log: every line of the fight, with the full rolls and maths, to look back on ──
+    const blog: BattleLogEntry[] = [];
+    this.lastBattleLog = { title: ctx.intro, entries: blog };
+    const note = (text: string, opts: { tone?: string; detail?: string; side?: 0 | 1 } = {}) => blog.push({ round: b.round, text, ...opts });
+    note(ctx.intro, { tone: 'info' });
+    const KIND_TEXT: Record<string, string> = { physical: 'Physical · Power vs Armor', elemental: 'Elemental · Focus vs Ward', support: 'Support', affinity: 'Affinity Power' };
+    const logEvent = (e: BEvent) => {
+      switch (e.t) {
+        case 'say': note(e.text, { tone: e.tone }); break;
+        case 'arena': note(e.text, { tone: 'bad' }); break;
+        case 'ring': note(`Plateau: ${e.left} of ${e.total} rounds left.`, { tone: e.left <= 2 ? 'bad' : undefined }); break;
+        case 'use': note(e.kind === 'affinity' ? `${whoOn(e.side)} swaps in with ${e.name}!` : `${whoOn(e.side)} used ${e.name}.`, { side: e.side, detail: [e.type ? TYPE_LABEL[e.type] : null, KIND_TEXT[e.kind]].filter(Boolean).join(' · ') }); break;
+        case 'roll': {
+          const rolled = e.natural ?? e.value;
+          if (e.die === 20) { note(`${e.label}: rolled ${rolled}. ${e.hit ? 'It stays to fight.' : 'It loses interest…'}`, { side: e.side }); break; }
+          const mods = e.mods?.length ? ` ${partsText(e.mods)} = ${e.value}` : '';
+          const verdict = e.crit ? 'Critical hit! (double damage)' : e.hit ? 'Hit!' : 'Miss.';
+          note(`${whoOn(e.side)} · ${e.label}: ${verdict}`, { side: e.side, tone: e.hit ? undefined : 'bad', detail: `d${e.die} rolled ${rolled}${mods}, needed ${e.need}+${e.label === 'Accuracy' ? ` (Evasion ${e.need})` : ''}.` });
+          break;
+        }
+        case 'clash':
+          note(`Clash! Speeds tied: you rolled ${e.rolls[0]} (d${e.dice[0]}), the foe rolled ${e.rolls[1]} (d${e.dice[1]}).`, { detail: e.loser === null ? 'Even clash: no damage, and a coin flip decided turn order.' : `${e.loser === 0 ? 'You' : 'The foe'} rolled lower: ${e.dmg} damage (the difference) and acted second.` });
+          if (e.coin && e.first !== undefined) note(`🪙 Coin flip: ${whoOn(e.first)} won and acts first.`, { side: e.first, tone: e.first === 0 ? 'good' : 'bad' });
+          break;
+        case 'tired': note(`${whoOn(e.side)} · Fatigue check: ${e.fail ? 'catching breath!' : 'kept going.'}`, { side: e.side, tone: e.fail ? 'bad' : undefined, detail: `d10 rolled ${e.value} vs Fatigue ${e.fatigue} (${e.fail ? 'at or under' : 'over'} it).` }); break;
+        case 'damage': {
+          const target = b.sides[e.side].team.find((x) => x.uid === e.snap.uid);
+          const eff = e.eff >= 2 ? ' Super effective!' : e.eff > 0 && e.eff < 1 ? ' Not very effective.' : '';
+          const k = e.calc;
+          const math = k ? `${k.die ? `d${k.die} rolled ${k.roll} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
+          const left = target ? ` ${nameOf(target)}: Health ${e.snap.ko ? 'KO' : `${e.snap.health}/${maxHealth(target)}`}, Vitality ${e.snap.vitality}/${maxVitality(target)}.` : '';
+          note(`${whoOn(e.side)} took ${e.amount} damage${e.crit ? ' (critical)' : ''}.${eff}`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: `${math}${left}`.trim() || undefined });
+          break;
+        }
+        case 'heal': if (e.amount > 0) note(`${whoOn(e.side)} recovered ${e.amount} Health.`, { side: e.side, tone: 'good' }); break;
+        case 'status': note(`${whoOn(e.side)} is afflicted with ${STATUS_INFO[e.status].icon} ${STATUS_INFO[e.status].name}.`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: STATUS_INFO[e.status].text }); break;
+        case 'buff': note(`${whoOn(e.side)}: ${e.text}.`, { side: e.side }); break;
+        case 'send': { const c = b.sides[e.side].team.find((x) => x.uid === e.snap.uid); if (c) note(`${e.side === 0 ? 'You send' : `${b.sides[1].name} sends`} in ${nameOf(c)} (Lv ${c.level}).`, { side: e.side }); break; }
+        case 'xp': { const c = b.sides[0].team.find((x) => x.uid === e.uid); if (c) note(e.reason === 'ko' ? `${nameOf(c)} gained ${e.amount} XP for knocking out ${e.foe ?? 'its foe'}.` : `${nameOf(c)} gained ${e.amount} XP for battling${e.bonus ? ` (incl. +${e.bonus} trainer battle bonus)` : ''}.`, { tone: 'good', detail: e.levels ? `Reached Lv ${c.level}!` : undefined }); break; }
+        case 'end': note(e.result === 'win' ? 'Victory!' : e.result === 'lose' ? 'Your team is out of creatures.' : e.result === 'escaped' ? 'Got away safely.' : 'The foe fled.', { tone: e.result === 'win' || e.result === 'escaped' ? 'good' : 'bad' }); break;
+        default: break; // 'ko' is already announced by a 'say'
+      }
+    };
+
     bv.trainerHop(0); bv.trainerHop(1);
     await Promise.all([bv.setCreature(0, activeOf(b.sides[0]).species), bv.setCreature(1, activeOf(b.sides[1]).species)]);
     renderPlate(0); renderPlate(1);
@@ -1407,6 +1468,7 @@ export class App {
       if (!ctx.watch) this.feed({ kind: 'battle-events', events });
       for (const e of events) {
         if (e.t === 'end') watchedEnd = e.result;
+        try { logEvent(e); } catch (err) { console.error('battle log error', err); }
         try { await playOne(e); } catch (err) { console.error('battle fx error', err); }
       }
       renderPlate(0); renderPlate(1);
@@ -1436,9 +1498,14 @@ export class App {
                 : `Need ${e.need}+ vs Evasion ${e.need}${e.crit ? ' · CRITICAL!' : ''}`, slow() ? 1100 : 350);
             break;
           }
-          case 'clash':
-            await rollDice('Clash! Speeds tied', [{ sides: e.dice[0], value: e.rolls[0], label: 'You', tone: e.loser === 0 ? 'bad' : 'good' }, { sides: e.dice[1], value: e.rolls[1], label: 'Foe', tone: e.loser === 1 ? 'bad' : 'good' }], e.loser === null ? 'Even clash! Turn order is a coin flip.' : `${e.loser === 0 ? 'You' : 'Foe'} rolled lower: ${e.dmg} damage (the difference) and acts second.`, slow() ? 1300 : 500);
+          case 'clash': {
+            await rollDice('Clash! Speeds tied', [{ sides: e.dice[0], value: e.rolls[0], label: 'You', tone: e.loser === 0 ? 'bad' : 'good' }, { sides: e.dice[1], value: e.rolls[1], label: 'Foe', tone: e.loser === 1 ? 'bad' : 'good' }], e.loser === null ? 'Even clash! A coin flip decides who goes first…' : `${e.loser === 0 ? 'You' : 'Foe'} rolled lower: ${e.dmg} damage (the difference) and acts second.`, slow() ? 1300 : 500);
+            // a tie on the dice too: flip a coin, with each creature's name on a face, and show who won before anyone acts
+            const first = e.first ?? 0;
+            if (e.coin) await coinFlip('Coin flip!', [whoOn(0), whoOn(1)], first, `${whoOn(first)} goes first!`, slow() ? 1100 : 600);
+            say(`${whoOn(first)} acts first this round.`, first === 0 ? 'good' : 'bad');
             break;
+          }
           case 'tired':
             await rollDice('Fatigue check', [{ sides: 10, value: e.value, tone: e.fail ? 'bad' : 'good' }], e.fail ? `Rolled ≤ ${e.fatigue}: catching breath!` : `Beat Fatigue ${e.fatigue}.`, slow() ? 1000 : 300);
             disp[e.side] = e.snap; renderPlate(e.side);
@@ -1544,7 +1611,8 @@ export class App {
           else if (ev.key === 'Enter') { ev.preventDefault(); const id = readoutFor; readoutFor = null; act({ kind: 'move', move: id }); }
           return;
         }
-        if (ctx.watch) { if (ev.key.toLowerCase() === 't') showTypes(); return; } // spectators: the type chart only
+        if (ev.key.toLowerCase() === 'l') { this.battleLogSheet(); return; }
+        if (ctx.watch) { if (ev.key.toLowerCase() === 't') showTypes(); return; } // spectators: the type chart and log only
         if (!controls.querySelector('.move-grid')) return;
         const me = activeOf(b.sides[0]);
         const n = Number(ev.key);
@@ -1611,7 +1679,10 @@ export class App {
     if (result === 'win' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) {
       await this.recruitFlow(wild);
     }
-    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet });
+    // a Wanderer whose team is wiped out picks which rested city to return to
+    let wipeTo: string | undefined;
+    if (ctx.kind !== 'rival' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
+    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo });
     for (const t of summary.text) toast(t, summary.wiped ? 'bad' : 'good', 3500);
     this.busy = false;
     if (ctx.kind !== 'endgame') {
@@ -1622,6 +1693,22 @@ export class App {
       if (ctx.kind === 'arbiter' && result === 'win') this.meritCelebration(ctx.city!);
     }
     return result;
+  }
+
+  /** Wanderer: the team is wiped out; choose a city you've rested at this game to return to. */
+  pickWipeCity(): Promise<string> {
+    const s = this.s;
+    const last = W.wipeDefault(s);
+    return new Promise((resolve) => {
+      const close = openSheet('⚖️ Where do you rest up?', h('div', null,
+        h('p', { class: 'small' }, 'Your team is wiped out. As a Wanderer you make your home anywhere: return to any city you’ve rested at this game. You still lose half your coins, and your turn ends.'),
+        h('div', { class: 'list' }, W.wipeOptions(s).map((id) => {
+          const c = CITIES[id];
+          return h('button', { class: 'choice', onclick: () => { close(); resolve(id); } },
+            h('b', null, h('img', { src: typeIcon(c.type), alt: '', style: 'width:18px;height:18px;vertical-align:-3px;margin-right:6px' }), c.name),
+            h('small', { class: 'muted' }, [`${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}`, id === s.trainer.home ? '🏠 Home' : '', id === last ? 'rested here last' : ''].filter(Boolean).join(' · ')));
+        }))), { noClose: true });
+    });
   }
 
   async recruitFlow(wild: CreatureInst) {
@@ -1687,7 +1774,7 @@ export class App {
         h('img', { src: typeIcon(c.type) }),
         h('div', null, h('h3', null, c.name), h('small', null, `Inspired by ${c.park} · ${TYPE_LABEL[c.type]} City${s.trainer.home === id ? ' · 🏠 Home' : ''}`), h('p', { class: 'small' }, c.blurb))),
       h('div', { class: 'tiles' },
-        tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.trainer.style === 'balanced' ? ' (doubled — a Wanderer is at home anywhere)' : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
+        tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.trainer.style === 'balanced' ? ` (doubled — a Wanderer is at home anywhere${W.restedCities(s).includes(id) ? '' : '. Resting here also lets you return here if your team is wiped'})` : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
         this.swapTile(),
         tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
         tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
@@ -2559,6 +2646,83 @@ export class App {
     openSheet('Trainer Look', body, { wide: true });
   }
 
+  /**
+   * The Trainer ID: who you are (home town, trainer style and its rules, Tier, Merits) and how the journey
+   * has gone (records per kind of battle, creatures met, favourite move types). Stats live in
+   * `s.stats` (state.ts → TrainerStats) and are counted in world.ts → recordBattle, claimFind, moveTo
+   * and state.ts → earnCoins.
+   */
+  trainerId() {
+    const s = this.s, st = s.stats;
+    const style = TRAINER_STYLES.find((x) => x.id === s.trainer.style)!;
+    const tier = tierOf(s);
+    // a stable, made-up ID number from who the trainer is
+    let hsh = 7; for (const ch of `${s.trainer.name}|${s.trainer.home}|${s.trainer.style}`) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+    const idNo = String(hsh % 100000).padStart(5, '0');
+    const home = NODE_BY_ID[s.trainer.home];
+    const homeCity = CITIES[s.trainer.home];
+    const styleNow = s.trainer.style === 'nature' ? `This turn: ${W.rangerRefundsLeft(s)} of ${tier} Initiative refunds left.`
+      : s.trainer.style === 'pathfinder' ? `This turn: free first move ${s.flags.firstMoveUsed ? 'used' : 'ready'}.`
+      : s.trainer.style === 'balanced' ? `If your team is wiped out, you can return to: ${W.restedCities(s).map((id) => CITIES[id].name).join(', ')}. Rest at a city’s stable to add it.`
+      : null;
+    const fact = (label: string, value: string | number) => h('div', { class: 'tid-fact' }, h('b', null, String(value)), h('small', null, label));
+    const rec = st.record ?? {};
+    const RECORD_ROWS: [BattleKind, string][] = [['wild', 'Wild creatures'], ['trainer', 'Trainers'], ['arbiter', 'Arbiters'], ['legendary', 'Legendaries'], ['rival', 'Rival duels'], ['endgame', 'Circuit Finals']];
+    const rows = RECORD_ROWS.filter(([k]) => k === 'wild' || k === 'trainer' || k === 'arbiter' || rec[k]);
+    const types = Object.entries(st.moveTypes ?? {}).filter(([t, n]) => (n ?? 0) > 0 && t in TYPE_LABEL).sort((a, b) => b[1]! - a[1]!) as [ElementType, number][];
+    const used = types.reduce((a, [, n]) => a + n, 0);
+    const body = h('div', { class: 'tid' },
+      h('div', { class: 'tid-card', style: `--tc:${s.trainer.color}` },
+        h('img', { class: 'tid-portrait', src: trainerPortrait(playerLook(s.trainer.name, s.trainer.color, s.trainer.look ?? {})), alt: '' }),
+        h('div', { class: 'tid-who' },
+          h('small', { class: 'tid-no' }, `TRAINER ID · No. ${idNo}`),
+          h('h3', null, s.trainer.name),
+          h('div', null, h('small', { class: 'muted' }, 'Home town '), h('b', null, home?.name ?? '—'), homeCity ? h('small', { class: 'muted' }, ` · ${TYPE_LABEL[homeCity.type]} City, Arbiter ${homeCity.arbiter}`) : null),
+          h('div', null, h('small', { class: 'muted' }, 'Tier '), h('b', null, `${tier}`), h('small', { class: 'muted' }, ` · ${s.merits.length}/8 Merits · Turn ${s.turn}/100`)))),
+      h('h4', null, `${style.icon} ${style.name}`),
+      h('div', { class: 'tid-style' },
+        h('p', null, h('b', null, '⬆ '), style.perk),
+        h('p', null, h('b', null, '⬇ '), style.drawback),
+        styleNow ? h('p', { class: 'small muted' }, styleNow) : null),
+      h('h4', null, '🏅 Merits'),
+      s.merits.length ? h('div', { class: 'row gap-s wrap' }, s.merits.map((id) => CITIES[id]).filter(Boolean).map((c) => h('span', { class: 'chip', style: `border-color:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '', style: 'width:16px;height:16px' }), `${c.accolade} · ${c.arbiter}`)))
+        : h('p', { class: 'small muted' }, 'None yet. Beat a city’s Arbiter to earn its Merit.'),
+      h('h4', null, '📊 Journey'),
+      h('div', { class: 'tid-facts' },
+        fact('creatures encountered', st.encountered ?? 0), fact('recruited', st.recruited), fact('Codex seen / recruited', `${s.dex.seen.length} / ${s.dex.caught.length}`),
+        fact('foes knocked out', st.foesKO ?? 0), fact('times explored', st.explored), fact('items found', st.itemsFound ?? 0),
+        fact('places visited', s.visited.length), fact('steps travelled', st.steps ?? 0), fact('coins earned', st.coinsEarned ?? 0)),
+      h('h4', null, '⚔️ Battle record'),
+      h('table', { class: 'tid-record' },
+        h('thead', null, h('tr', null, h('th', null, ''), h('th', null, 'Won'), h('th', null, 'Lost'), h('th', null, 'Ran'))),
+        h('tbody', null, rows.map(([k, label]) => { const r = rec[k] ?? { won: 0, lost: 0, ran: 0 }; return h('tr', null, h('td', null, label), h('td', null, r.won), h('td', null, r.lost), h('td', null, k === 'wild' || k === 'legendary' ? r.ran : '—')); }))),
+      h('h4', null, '✨ Favoured move types'),
+      used ? h('div', { class: 'tid-types' }, types.slice(0, 5).map(([t, n]) => h('div', { class: 'tid-type' },
+        h('span', { class: 'tid-type-name' }, h('img', { src: typeIcon(t), alt: '' }), TYPE_LABEL[t] ?? t),
+        h('span', { class: 'tid-bar' }, h('i', { style: `width:${Math.round((n / types[0][1]) * 100)}%;background:${TYPE_COLOR[t] ?? 'var(--ink-2)'}` })),
+        h('small', null, `${n} · ${Math.round((n / used) * 100)}%`))))
+        : h('p', { class: 'small muted' }, 'No moves used in battle yet.'),
+      st.trackedFrom ? h('p', { class: 'small muted' }, `Detailed stats have been kept since Turn ${st.trackedFrom}, when this journey was first loaded with the Trainer ID.`) : null);
+    openSheet('Trainer ID', body, { wide: true });
+  }
+
+  /** The 📜 Battle Log: every move, roll, hit and status of the current (or last) battle, grouped by round. */
+  battleLogSheet() {
+    const lg = this.lastBattleLog;
+    if (!lg) { toast('No battle yet this session.', 'info'); return; }
+    const rounds = new Map<number, BattleLogEntry[]>();
+    for (const e of lg.entries) { if (!rounds.has(e.round)) rounds.set(e.round, []); rounds.get(e.round)!.push(e); }
+    const body = h('div', { class: 'blog' },
+      h('p', { class: 'small muted' }, 'Every move, roll and hit, with the numbers behind them. ', h('span', { class: 'blog-you' }, 'Your side'), ' · ', h('span', { class: 'blog-foe' }, 'the foe'), '.'),
+      [...rounds.entries()].map(([r, list]) => h('section', { class: 'blog-round' },
+        h('h4', null, r === 0 ? 'Start' : `Round ${r}`),
+        h('ol', null, list.map((e) => h('li', { class: `blog-line ${e.tone ?? ''} ${e.side === 0 ? 'you' : e.side === 1 ? 'foe' : ''}` },
+          h('span', null, e.text), e.detail ? h('small', null, e.detail) : null))))));
+    openSheet(`📜 Battle Log`, body, { wide: true });
+    // open at the latest line
+    requestAnimationFrame(() => { const sc = body.closest('.sheet-body') as HTMLElement | null; if (sc) sc.scrollTop = sc.scrollHeight; });
+  }
+
   /** Abandon the journey being played: the hotseat match (all trainers) or the solo save, never the other one. */
   async abandon() {
     const m = activeMatchOf();
@@ -2573,10 +2737,12 @@ export class App {
 
   menu() {
     const close = openSheet('Menu', h('div', { class: 'tiles' },
+      tile('📇', 'Trainer ID', `${this.s.trainer.name} of ${NODE_BY_ID[this.s.trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
       tile('📖', 'Creature Codex', `${this.s.dex.caught.length} recruited · ${this.s.dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
+      this.lastBattleLog ? tile('⚔️', 'Last Battle Log', 'Every move, roll and hit from your last battle.', '', () => { close(); this.battleLogSheet(); }) : null,
       this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'The full guide, by topic: basics, creatures, battles, places, multiplayer.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
@@ -2598,7 +2764,7 @@ export class App {
         toggle('fastDice', 'Fast dice', 'Shorter dice-roll animations for quicker turns.'),
         toggle('fastBattle', 'Fast battles', 'Pick a move and it resolves at once, with no move readout, no damage dice and short pauses. Off: each move shows what it will roll first, and every roll is explained as it happens.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),
-        toggle('doubleTapTravel', 'Double-tap to travel', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button.'),
+        toggle('doubleTapTravel', 'Double-tap shortcuts', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button, or the city or town you’re in to open its menu.'),
         toggle('turnPing', 'Turn ping (online)', 'Play a ping and flag the browser tab when it becomes your turn while you’re in another tab.'),
         toggle('followerPrompt', 'Choose a follower each turn', 'At the start of every turn, show who is following you (Ability, Morale, Loyalty) and offer to switch.'),
         h('p', { class: 'small muted' }, 'Keyboard: 1–4 pick a move (Enter to confirm its readout, Esc to go back), B catch breath, S swap, R run, T type chart, Esc closes panels.'));

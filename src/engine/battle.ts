@@ -37,6 +37,9 @@ export interface Battle {
   hardRun?: boolean;
   /** Species ids of every opposing creature that has taken the field (for the Creature Codex). */
   seenFoes: string[];
+  /** Trainer ID: the types of the moves side 0 used, and how many foes side 0 knocked out. */
+  moveTypes?: Record<string, number>;
+  foeKOs?: number;
   /** Opposing creatures that took the field (uids), e.g. to reward a hotseat duel's defender. */
   foeParticipants?: string[];
   /** Two-player duels: a human picks side 1's replacement after a KO (instead of the next in line). */
@@ -52,7 +55,8 @@ export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number
 export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId }
 export type BEvent =
   | { t: 'say'; text: string; tone?: 'good' | 'bad' | 'info' }
-  | { t: 'clash'; dice: [number, number]; rolls: [number, number]; loser: 0 | 1 | null; dmg: number }
+  /** A speed tie. `first`: who acts first (the higher roller, or on equal rolls the winner of a coin flip, `coin`). */
+  | { t: 'clash'; dice: [number, number]; rolls: [number, number]; loser: 0 | 1 | null; dmg: number; first: 0 | 1; coin?: boolean }
   | { t: 'use'; side: 0 | 1; name: string; move: string; type?: ElementType; kind: Move['kind'] | 'affinity' }
   | { t: 'roll'; side: 0 | 1; die: number; value: number; need: number; hit: boolean; crit: boolean; label: string; natural?: number; mods?: Part[] }
   | { t: 'damage'; side: 0 | 1; amount: number; eff: number; crit: boolean; snap: Snap; calc?: DamageCalc }
@@ -355,12 +359,14 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
       dmg = Math.abs(rolls[0] - rolls[1]);
       applyDamage(cs[loser], dmg);
     }
-    ev.push({ t: 'clash', dice, rolls, loser, dmg });
+    // equal rolls: a coin flip decides who goes first (decided here so the UI can show it before anyone acts)
+    const first: 0 | 1 = loser === 0 ? 1 : loser === 1 ? 0 : Math.random() < 0.5 ? 0 : 1;
+    ev.push({ t: 'clash', dice, rolls, loser, dmg, first, ...(loser === null ? { coin: true } : {}) });
     if (loser !== null) {
       ev.push({ t: 'damage', side: loser, amount: dmg, eff: 1, crit: false, snap: snap(b, cs[loser]) });
       if (cs[loser].ko) handleKO(b, loser, ev);
     }
-    order = loser === 0 ? [1, 0] : loser === 1 ? [0, 1] : (Math.random() < 0.5 ? [0, 1] : [1, 0]);
+    order = first === 0 ? [0, 1] : [1, 0];
   }
 
   for (const si of order) {
@@ -427,6 +433,7 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
     return;
   }
   ev.push({ t: 'use', side: si, name: m.name, move: m.id, type: m.type, kind: m.kind });
+  if (si === 0 && m.type) (b.moveTypes ??= {})[m.type] = (b.moveTypes[m.type] ?? 0) + 1;
   spendStamina(b, si, m.effort, ev);
 
   // accuracy
@@ -699,6 +706,7 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
   if (ev.some((e) => e.t === 'ko' && e.uid === dead.uid)) return;
   delete b.status[dead.uid];
   ev.push({ t: 'ko', side: loser, uid: dead.uid });
+  if (loser === 1) b.foeKOs = (b.foeKOs ?? 0) + 1;
   ev.push({ t: 'say', text: `${nameOf(dead)} was knocked out!`, tone: loser === 0 ? 'bad' : 'good' });
   dead.losses++;
   if (!winner.ko) {

@@ -3,7 +3,7 @@ import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_ST
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, timeOfDay } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
-import type { GameState, Training, Match } from './state';
+import type { GameState, Training, Match, BattleKind } from './state';
 import { tierOf, teamMovements, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf } from './state';
 import type { CreatureInst } from './creature';
 import { createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
@@ -90,6 +90,7 @@ export function moveTo(s: GameState, id: string): Outcome | null {
   if (!chk.ok) return null;
   s.initiative -= chk.cost;
   s.flags.firstMoveUsed = true;
+  s.stats.steps = (s.stats.steps ?? 0) + 1;
   const from = s.location;
   moveTrainer(s, id);
   stepCloudLap(s, from, id);
@@ -161,6 +162,7 @@ function rollFind(s: GameState, node: MapNode): Find {
 /** Put a find in the bag (coins through earnCoins); returns it with the coins actually received. */
 export function claimFind(s: GameState, f: Find): Find {
   for (const it of f.items) addItem(s, it.id, it.n);
+  s.stats.itemsFound = (s.stats.itemsFound ?? 0) + f.items.reduce((n, it) => n + it.n, 0);
   return { ...f, coins: earnCoins(s, f.coins) };
 }
 
@@ -735,10 +737,24 @@ export interface BattleSummary { coins: number; wiped: boolean; text: string[] }
 export const QUICK_STEP_REFUND = 1;
 const QUICK_STEP_MAX = 5;
 
-export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean }): BattleSummary {
+/** Trainer ID: fold a finished battle into the trainer's running stats. */
+function recordBattle(s: GameState, b: Battle, kind: BattleKind) {
+  const st = s.stats;
+  const rec = ((st.record ??= {})[kind] ??= { won: 0, lost: 0, ran: 0 });
+  if (b.over === 'win') rec.won++;
+  else if (b.over === 'lose') rec.lost++;
+  else if (b.over === 'escaped' || b.over === 'fled') rec.ran++;
+  if (kind === 'wild' || kind === 'legendary') st.encountered = (st.encountered ?? 0) + 1;
+  st.foesKO = (st.foesKO ?? 0) + (b.foeKOs ?? 0);
+  const mt = (st.moveTypes ??= {});
+  for (const [t, n] of Object.entries(b.moveTypes ?? {})) mt[t] = (mt[t] ?? 0) + n;
+}
+
+export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean; wipeTo?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
   for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
+  recordBattle(s, b, ctx.kind);
   if (b.over === 'win') {
     s.stats.battlesWon++;
     if (ctx.kind === 'trainer') {
@@ -778,19 +794,37 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
   }
   if (s.roster.every((c) => c.ko) && ctx.kind !== 'rival') { // hotseat duels settle their own losses (interactions.ts)
     out.wiped = true;
-    wipe(s);
-    out.text.push(`Your team was wiped out. You rush back to ${CITIES[s.trainer.home].name}…`);
+    const dest = wipe(s, ctx.wipeTo);
+    out.text.push(`Your team was wiped out. You rush back to ${CITIES[dest].name}…`);
   }
   // out of combat: creatures restore all Health (not Vitality)
   for (const c of s.roster) if (!c.ko) { c.health = maxHealth(c); c.stamina = maxStamina(c); }
   return out;
 }
-function wipe(s: GameState) {
-  moveTrainer(s, s.trainer.home, { wiped: true });
+/** Cities this trainer has rested at this game: the home city first, then the rest in the order first rested. */
+export function restedCities(s: GameState): string[] {
+  const out = [s.trainer.home];
+  for (const id of s.rested ?? []) if (CITIES[id] && !out.includes(id)) out.push(id);
+  return out;
+}
+/** Where a wiped-out team can be sent: home, or for a Wanderer (who makes their home anywhere) any city they've rested at. */
+export const wipeOptions = (s: GameState) => (s.trainer.style === 'balanced' ? restedCities(s) : [s.trainer.home]);
+/** Where a trainer goes when there's no one to ask (a hotseat duel): home, or for a Wanderer the city they rested at last. */
+export function wipeDefault(s: GameState): string {
+  if (s.trainer.style !== 'balanced') return s.trainer.home;
+  const last = [...(s.rested ?? [])].reverse().find((id) => CITIES[id]);
+  return last ?? s.trainer.home;
+}
+
+/** Send a wiped-out team to `to` (when it's one of wipeOptions; home otherwise). Returns the city. */
+function wipe(s: GameState, to?: string): string {
+  const dest = to && wipeOptions(s).includes(to) ? to : s.trainer.home;
+  moveTrainer(s, dest, { wiped: true });
   for (const c of s.roster) { fullRestore(c); c.morale = Math.max(0, c.morale - 1); }
   s.coins = Math.floor(s.coins / 2);
   s.initiative = 0;
-  log(s, 'Team wiped. Returned home and lost half your coins.');
+  log(s, dest === s.trainer.home ? 'Team wiped. Returned home and lost half your coins.' : `Team wiped. Returned to ${CITIES[dest].name} and lost half your coins.`);
+  return dest;
 }
 
 // ── Recruitment ─────────────────────────────────────────────────
@@ -860,6 +894,8 @@ export function rest(s: GameState, nodeId: string) {
   for (const c of s.roster) c.morale = Math.min(10, c.morale + (s.trainer.style === 'caretaker' ? 2 : 1));
   const ci = CITIES[nodeId];
   if (!ci) return { advanced: false, buff: {} as Record<string, number> };
+  // remember where we've rested (most recent last): a Wanderer can be sent back to any of these after a wipe
+  s.rested = [...(s.rested ?? [s.trainer.home]).filter((id) => id !== nodeId), nodeId];
   const advanced = s.trainer.home === nodeId || s.trainer.style === 'balanced'; // Wanderers are at home anywhere
   const buff = Object.fromEntries(Object.entries(ci.hotpot.buff).map(([k, v]) => [k, v! * (advanced ? 2 : 1)]));
   s.hotpot = { city: nodeId, buff };

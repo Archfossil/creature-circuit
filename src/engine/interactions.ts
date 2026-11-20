@@ -7,7 +7,7 @@ import type { CreatureInst } from './creature';
 import { fullRestore, gainXp, nameOf, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import type { Battle } from './battle';
 import { createBattle } from './battle';
-import { here, playerSide, weather } from './world';
+import { here, playerSide, weather, wipeDefault } from './world';
 import { itemInfo } from '../data/content';
 import { NODE_BY_ID, CITIES } from '../data/map';
 
@@ -129,9 +129,10 @@ export function startChallenge(a: GameState, b: GameState): Battle | null {
 
 /** A duel's loser whose whole team is down is helped home to rest; no coins are lost (that's for the wager). */
 function helpHome(s: GameState) {
-  moveTrainer(s, s.trainer.home, { wiped: true });
+  const to = wipeDefault(s); // home, or for a Wanderer the city they last rested at (nobody's there to ask)
+  moveTrainer(s, to, { wiped: true });
   for (const c of s.roster) fullRestore(c);
-  log(s, `Your team was knocked out in a duel. You were helped home to ${CITIES[s.trainer.home].name} to rest.`);
+  log(s, `Your team was knocked out in a duel. You were helped ${to === s.trainer.home ? 'home ' : ''}to ${CITIES[to].name} to rest.`);
 }
 
 /**

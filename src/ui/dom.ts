@@ -145,6 +145,35 @@ export async function rollDice(title: string, dice: DieSpec[], caption?: string,
   if (opts.read) await wait(280);
 }
 
+/**
+ * Flip a coin on screen: it tumbles, lands on `winner`'s face (0 = front, 1 = back), then the caption
+ * appears. Used when a Clash ties and a coin decides who acts first.
+ */
+export async function coinFlip(title: string, faces: [string, string], winner: 0 | 1, caption: string, hold = 1000): Promise<void> {
+  const fast = settings().fastDice || settings().reduceMotion;
+  const spin = fast ? 550 : 1200;
+  if (fast) hold = Math.round(hold * 0.6);
+  sfx.dice();
+  const coin = h('div', { class: `coin ${settings().reduceMotion ? 'still' : ''}`, style: `--end:${winner === 0 ? 1440 : 1620}deg;--dur:${spin}ms` },
+    h('div', { class: 'coin-face front' }, faces[0]), h('div', { class: 'coin-face back' }, faces[1]));
+  const cap = h('div', { class: 'dice-caption' }, caption);
+  const wrap = h('div', { class: 'dice-overlay', role: 'status', 'aria-live': 'polite', 'aria-label': `${title}: flipping…` },
+    h('div', { class: 'dice-card' }, h('div', { class: 'dice-title' }, title), h('div', { class: 'coin-stage' }, coin), cap));
+  document.body.append(wrap);
+  requestAnimationFrame(() => wrap.classList.add('in'));
+  // reveal the winner when the coin has actually landed (a busy first frame can start the animation late),
+  // with a timeout in case animations don't run at all
+  void getComputedStyle(coin).transform;
+  const anim = coin.getAnimations?.()[0];
+  await Promise.race([anim ? anim.finished.catch(() => undefined) : wait(spin), wait(spin + 1500)]);
+  sfx.land();
+  cap.classList.add('shown');
+  wrap.setAttribute('aria-label', `${title}: ${faces[winner]}. ${caption}`);
+  await wait(hold);
+  wrap.classList.remove('in');
+  setTimeout(() => wrap.remove(), 250);
+}
+
 export function floatText(x: number, y: number, text: string, cls = '') {
   const el = h('div', { class: `float-text ${cls}`, style: `left:${x}px;top:${y}px` }, text);
   document.body.append(el);

@@ -902,6 +902,138 @@ describe('Quick Step', () => {
   });
 });
 
+describe('Clash coin flip', () => {
+  it('a tied Clash reports the coin flip winner, and that side acts first', () => {
+    // identical creatures both catching their breath: speeds always tie, so every round is a Clash
+    const real = Math.random;
+    try {
+      for (const coin of [0.2, 0.8]) {
+        Math.random = () => coin; // every roll equal, and the coin lands on `coin`
+        const b = createBattle(side('A', [createCreature('zapup', 5)]), side('B', [createCreature('zapup', 5)]), WEATHER.clear);
+        const ev = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+        const clash = ev.find((e) => e.t === 'clash');
+        expect(clash && clash.t === 'clash' && clash.loser).toBeNull();
+        if (clash?.t !== 'clash') throw new Error('no clash');
+        expect(clash.coin).toBe(true);
+        expect(clash.first).toBe(coin < 0.5 ? 0 : 1);
+        const firstUse = ev.find((e) => e.t === 'use');
+        expect(firstUse && firstUse.t === 'use' && firstUse.side).toBe(clash.first);
+      }
+    } finally { Math.random = real; }
+  });
+
+  it('an uneven Clash: the higher roller acts first, with no coin', () => {
+    let seen = 0;
+    for (let i = 0; i < 300 && seen < 5; i++) {
+      const b = createBattle(side('A', [createCreature('zapup', 5)]), side('B', [createCreature('zapup', 5)]), WEATHER.clear);
+      const ev = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+      const clash = ev.find((x) => x.t === 'clash');
+      if (clash?.t !== 'clash' || clash.loser === null) continue;
+      seen++;
+      expect(clash.first).toBe(clash.loser === 0 ? 1 : 0);
+      expect(clash.coin).toBeUndefined();
+      const firstUse = ev.find((x) => x.t === 'use');
+      if (firstUse?.t === 'use') expect(firstUse.side).toBe(clash.first);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+});
+
+describe('Wanderer: home anywhere', () => {
+  const wipeOut = (s: ReturnType<typeof newGame>, wipeTo?: string) => {
+    const b = createBattle(W.playerSide(s), side('wild', [createCreature('zapup', 3)]), WEATHER.clear);
+    b.over = 'lose';
+    for (const c of s.roster) c.ko = true;
+    return W.finishBattle(s, b, { kind: 'wild', wipeTo });
+  };
+
+  it('remembers the cities rested at (not towns), most recent last, starting with home', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    expect(W.restedCities(s)).toEqual(['thunder']);
+    W.rest(s, 'iron');
+    W.rest(s, Object.keys(TOWNS)[0]);
+    W.rest(s, 'gloom');
+    W.rest(s, 'iron');
+    expect(W.restedCities(s)).toEqual(['thunder', 'gloom', 'iron']);
+    expect(W.wipeDefault(s)).toBe('iron');
+  });
+
+  it('a wiped Wanderer returns to the rested city they choose, and only a rested one', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    W.rest(s, 'iron');
+    s.location = 'gloom';
+    const sum = wipeOut(s, 'iron');
+    expect(s.location).toBe('iron');
+    expect(sum.text.join(' ')).toMatch(new RegExp(CITIES.iron.name));
+    s.location = 'iron';
+    wipeOut(s, 'gloom'); // never rested there: home instead
+    expect(s.location).toBe('thunder');
+  });
+
+  it('other styles always go home, and only have home to choose', () => {
+    const s = newGame('T', 'drill', 'thunder', 'cindercub', '#fff');
+    W.rest(s, 'iron');
+    expect(W.wipeOptions(s)).toEqual(['thunder']);
+    expect(W.wipeDefault(s)).toBe('thunder');
+    s.location = 'iron';
+    wipeOut(s, 'iron');
+    expect(s.location).toBe('thunder');
+  });
+});
+
+describe('Trainer ID stats', () => {
+  it('a new game starts every counter at zero', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    expect(s.stats).toMatchObject({ encountered: 0, foesKO: 0, itemsFound: 0, coinsEarned: 0, steps: 0, record: {}, moveTypes: {} });
+    expect(s.stats.trackedFrom).toBeUndefined();
+  });
+
+  it('records wins, losses and getaways per kind of battle, and wild encounters', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    const fight = (kind: 'wild' | 'trainer', over: 'win' | 'lose' | 'escaped') => {
+      const b = createBattle(W.playerSide(s), side('foe', [createCreature('zapup', 3)]), WEATHER.clear);
+      b.over = over;
+      W.finishBattle(s, b, { kind });
+      for (const c of s.roster) c.ko = false;
+    };
+    fight('wild', 'win'); fight('wild', 'escaped'); fight('trainer', 'win'); fight('trainer', 'lose');
+    expect(s.stats.record).toEqual({ wild: { won: 1, lost: 0, ran: 1 }, trainer: { won: 1, lost: 1, ran: 0 } });
+    expect(s.stats.encountered).toBe(2);
+  });
+
+  it('counts the types of moves the player used and the foes they knocked out', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    s.roster[0].level = 30;
+    const b = createBattle(W.playerSide(s), side('wild', [createCreature('zapup', 1)]), WEATHER.clear);
+    for (let i = 0; i < 60 && !b.over; i++) resolveRound(b, chooseAI(b, 0));
+    const used = Object.values(b.moveTypes ?? {}).reduce((a, n) => a + n, 0);
+    W.finishBattle(s, b, { kind: 'wild' });
+    expect(Object.values(s.stats.moveTypes ?? {}).reduce((a, n) => a + (n ?? 0), 0)).toBe(used);
+    if (b.over === 'win') expect(s.stats.foesKO).toBe(1);
+  });
+
+  it('counts coins earned, items found and steps taken', () => {
+    const s = newGame('T', 'haggler', 'thunder', 'cindercub', '#fff');
+    earnCoins(s, 4);
+    expect(s.stats.coinsEarned).toBe(5); // the Merchant's cut counts too
+    W.claimFind(s, { itemRoll: 3, items: [{ id: 'salve', n: 2 }], coins: 0 });
+    expect(s.stats.itemsFound).toBe(2);
+    s.initiative = 5;
+    const to = neighbors(s.location).map((n) => n.node.id).find((id) => W.canMoveTo(s, id).ok)!;
+    expect(W.moveTo(s, to)).not.toBeNull();
+    expect(s.stats.steps).toBe(1);
+  });
+
+  it('older saves start counting when loaded, and say from which turn', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'cindercub', '#fff');
+    s.turn = 12;
+    s.stats = { battlesWon: 3, recruited: 1, explored: 9 };
+    migrate(s);
+    expect(s.stats.record).toEqual({});
+    expect(s.stats.trackedFrom).toBe(12);
+  });
+});
+
 describe('the Forest Floor (Dahlia)', () => {
   const atGloom = (merits: string[] = []) => {
     const s = newGame('T', 'balanced', 'gloom', 'sproutle', '#fff');

@@ -10,7 +10,7 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 
 | # | Style | ID | Perk | Drawback | Best for |
 |---|---|---|---|---|---|
-| 1 | ⚖️ Wanderer | `balanced` | Every city Stable serves the doubled "home" hot pot | None | New players, flexible routes |
+| 1 | ⚖️ Wanderer | `balanced` | Every city Stable serves the doubled "home" hot pot; after a wipe, choose any city you've rested at | None | New players, flexible routes |
 | 2 | 🌲 Ranger | `nature` | Up to Tier times a turn, finding Nothing refunds 1 Initiative | City actions cost +1 Initiative | Living in the wilds, hunting creatures |
 | 3 | 🏙️ Urbanite | `urban` | City actions are free | Re-exploring costs 2 Initiative | City-hopping, shopping, Arbiters |
 | 4 | 🤝 Beast Whisperer | `whisperer` | +1 to every recruitment roll | Trainer battles pay half the coins | Collecting creatures |
@@ -23,7 +23,7 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 
 | Style | Moving | Exploring | City actions | Stables | Camping | Recruiting | Coins earned | Shop prices | Battle XP | Morale |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Wanderer | | | | ⬆ doubled hot pot everywhere | | | | | | |
+| Wanderer | ⬆ choose where to return after a wipe | | | ⬆ doubled hot pot everywhere | | | | | | |
 | Ranger | | ⬆ Nothing refunds 1 (Tier times a turn) | ⬇ +1 | ⬇ +1 (Stables count as a city action) | | | | | | |
 | Urbanite | | ⬇ re-explore costs 2 | ⬆ free | ⬆ free | | | | | | |
 | Beast Whisperer | | | | | | ⬆ +1 | ⬇ trainer battles halved | | | |
@@ -55,16 +55,20 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
 
 | Perk | Drawback |
 |---|---|
-| Every city's Stable treats you like home | None |
+| You make your home anywhere | None |
 
-**In game:** "Every city's stable treats you like home: the doubled home Chanko Nabe, anywhere." / "None. You have no real home, and no special rules."
+**In game:** "You make your home anywhere: every city’s stable serves you the doubled home Chanko Nabe, and if your team is wiped out you choose which city to return to, from any city you’ve rested at this game." / "None."
 
 **Exact rules**
-- **Perk:** resting at *any* city Stable serves the hot pot battle buff **doubled**, as if it were your home city. For example, Thunder Spike's Prairie Chili Nabe gives +2 Speed instead of +1 for your next battle. Town Stables still serve no hot pot.
+- **Perk 1:** resting at *any* city Stable serves the hot pot battle buff **doubled**, as if it were your home city. For example, Thunder Spike's Prairie Chili Nabe gives +2 Speed instead of +1 for your next battle. Town Stables still serve no hot pot.
+- **Perk 2:** if the team is wiped out, the Wanderer **chooses which city to return to**. The choices are the home city plus every city whose Stable they've rested at this game. Town stables don't count. At the start of a game only the home city is on the list. Everything else about a wipe is unchanged: half the coins are lost, Initiative drops to 0, and an unsecured Cloud satchel is lost.
 - **Drawback:** none.
 
 **Notes:**
-- The Wanderer still has a home city: a full team wipe sends them back there, like everyone else.
+- Every trainer's rested cities are tracked (`GameState.rested`, most recent last), but only the Wanderer uses them.
+- If there's only one choice (no city rested at besides home), nobody is asked.
+- **Hotseat duels:** when a duel knocks out a whole team, the loser may not be at the screen to choose. A Wanderer is helped to the city they rested at **most recently** (`wipeDefault`). Everyone else goes home.
+- The Trainer ID lists the cities a Wanderer can currently return to. A city's Stable tile tells them when resting there would add it.
 - This is the default style in the trainer creator.
 
 ### 2. 🌲 Ranger · `nature`
@@ -182,7 +186,7 @@ To review when balancing. Tick them off or move them into a card's **Notes** onc
 - [ ] **Merchant + Baby-Doll Eyes stack** to about 44% off Market prices. Strong for a shopping-focused run.
 - [ ] **Ranger also pays more for Stables** (2 Initiative), because Stables cost the same as a city action. The in-game drawback only says "city actions". Consider naming Stables in the text.
 - [ ] **Urbanite rests for free** at every Stable, city or town, which isn't mentioned in its in-game perk.
-- [ ] **The Wanderer's perk is small** next to the others (a doubled one-battle buff). It has no drawback, but may need a little more to be a real choice beyond "safe default".
+- [ ] **The Wanderer's perk was small** next to the others (a doubled one-battle buff). It now also picks where to return after a wipe, from any city rested at. Watch whether that makes deep runs too safe, since Stables everywhere become respawn points.
 - [ ] **Battle Master vs Caretaker XP:** that's +2 vs −1 per creature per battle. Over a season with roughly 40 battles and 3 creatures each, that's a gap of about 360 XP: around 12 levels for the Battle Master, and about 4 lost for the Caretaker.
 - [ ] **Beast Whisperer's coin penalty** halves Trainer Hall and Rival coins, but not Arbiter prizes (the biggest source late in the season), so it softens as the season goes on.
 - [ ] **Merchant's recruitment penalty** is the same size as the Whisperer's bonus, so the two are mirror images on recruiting.
@@ -203,6 +207,7 @@ To review when balancing. Tick them off or move them into a card's **Notes** onc
 | Battle XP bonus (Battle Master +2, Caretaker −1) | `playerSide` (`xpBonus`) in `world.ts` → `awardBattleXp` in `battle.ts` |
 | Trainer battle coins halved (Whisperer) | `finishBattle` in `world.ts` |
 | Stable Morale (Caretaker +2) and doubled hot pot (Wanderer) | `rest` in `world.ts` |
+| Rested cities and the Wanderer's choice after a wipe | `restedCities`, `wipeOptions`, `wipeDefault`, `wipe` in `world.ts`; `helpHome` in `interactions.ts`; `pickWipeCity` in `ui/app.ts` |
 | Market discount (Merchant, Baby-Doll Eyes) | `priceOf` in `world.ts` |
 | +25% coins earned (Merchant) | `earnCoins` in `state.ts` |
 | Totem Morale decay (Battle Master every 5 turns) | end-of-turn Morale in `world.ts` |
