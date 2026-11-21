@@ -1,14 +1,17 @@
 // Online: trainers who aren't taking their turn can still tend their creatures (progression nodes,
-// stat training, playbooks). Their browser sends each change as a small edit; the browser running
+// stat training, playbooks) and mark where they mean to go next. Their browser sends each change as a small edit; the browser running
 // the current turn checks it with the same rules and applies it to the shared match.
 import type { StatKey } from '../data/schema';
 import type { GameState } from './state';
+import { NODE_BY_ID } from '../data/map';
 import { energy, fits, learnable, trainStat, unlockNode, TRAINABLE } from './creature';
 
 export type CreatureEdit =
   | { uid: string; op: 'unlock'; node: string }
   | { uid: string; op: 'train'; stat: StatKey }
-  | { uid: string; op: 'playbook'; moves: string[] };
+  | { uid: string; op: 'playbook'; moves: string[] }
+  /** Mark a node as the trainer's next stop (null clears the marker). */
+  | { op: 'waypoint'; node: string | null };
 
 /** Is this a legal playbook for the creature: up to 4 different learnable moves that fit its energy. */
 export function playbookOk(moves: unknown, learn: string[], fitsEnergy: (m: string[]) => boolean): moves is string[] {
@@ -18,6 +21,7 @@ export function playbookOk(moves: unknown, learn: string[], fitsEnergy: (m: stri
 
 /** Apply a creature edit to one trainer's state, with the usual rules. Returns false if it doesn't apply. */
 export function applyEdit(s: GameState, e: CreatureEdit): boolean {
+  if (e?.op === 'waypoint') return setWaypoint(s, e.node);
   const c = [...s.roster, ...s.reserve].find((x) => x.uid === e?.uid);
   if (!c) return false;
   switch (e.op) {
@@ -29,4 +33,12 @@ export function applyEdit(s: GameState, e: CreatureEdit): boolean {
       return true;
     default: return false;
   }
+}
+
+/** Mark a node as where the trainer means to go next, or clear the marker (null). Not the node they're on. */
+export function setWaypoint(s: GameState, node: string | null): boolean {
+  if (node === null) { s.waypoint = undefined; return true; }
+  if (typeof node !== 'string' || !NODE_BY_ID[node] || node === s.location) return false;
+  s.waypoint = node;
+  return true;
 }

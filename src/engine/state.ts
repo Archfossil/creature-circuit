@@ -127,6 +127,9 @@ export interface GameState {
   event?: PendingEvent;
   /** Id of the last event rolled, so the same one never fires twice in a row. */
   lastEvent?: string;
+  /** The node this trainer has marked as where they mean to go next (a reminder between turns). Only shown
+   *  on this trainer's own screen; reaching it clears it (moveTrainer). */
+  waypoint?: string;
 }
 
 const KEY = 'creature-circuit-save-v1';
@@ -207,6 +210,8 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } 
     log(s, `Left Iron Coast: the Gauntlet resets (${s.flags.gauntletWins} trainer${s.flags.gauntletWins === 1 ? '' : 's'} beaten).`);
     s.flags.gauntletWins = 0;
   }
+  // reaching your marked next stop clears the marker
+  if (s.waypoint === id) s.waypoint = undefined;
   s.location = id;
 }
 

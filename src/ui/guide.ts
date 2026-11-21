@@ -19,6 +19,7 @@ export const GUIDE: GuideCategory[] = [
         '- Moving to an adjacent node costs 1. Tap a glowing node, then Travel, or double-tap it. Double-tapping the city or town you’re in opens its menu (Settings can turn both off).',
         '- City actions such as the Stable, Market and Arbiter usually cost Initiative too. The cost is shown on each option.',
         '- End Turn when you’re done. Unspent Initiative doesn’t carry over, so camping can turn it into rest (see Places → Camping).',
+        'Planning ahead? Tap any node and choose 📍 Mark as next stop. A flag in your colour marks it on the map as a reminder. Only you see it (online you can set it while others play), and it clears when you arrive.',
       ] },
       { id: 'explore', title: 'Exploring', body: [
         'Entering a wild node explores it with a d6:',
@@ -74,7 +75,8 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'playbook', title: 'Playbooks & energy', body: [
         'Each creature knows up to 4 moves. Energy is a requirement, not spent per use: a move fits if the creature generates enough of each type it needs.',
-        '- The playbook editor crosses out the energy each move takes and counts what’s left.',
+        '- The playbook editor crosses out the energy each move takes and counts what’s left. Its side panel shows the creature’s stats and your picks so far, with rough damage for each. The stats your picks use (Power for Physical moves, Focus for Elemental ones) light up.',
+        '- On a phone, tap a move to see what it does with this creature (damage, accuracy, Effort, speed) and why it might not fit, then ➕ Add move?. Double-tap a move to add or remove it straight away. Tap a stat to see what it does.',
         '- Filter by type or by Physical / Support, sort by cost, damage or speed, and tick “Only moves that still fit”.',
         '- ✨ Recommend moves? suggests a set for physical power, elemental power, a balanced spread, or against a type.',
       ] },
@@ -203,7 +205,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'online', title: 'Online', body: [
         'Title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts.',
         'You watch other trainers’ turns live (moves, dice and battles; 🔺 Types works while watching), and a ping tells you when it’s your turn.',
-        'While you wait you can unlock chart nodes and edit playbooks (🐾 My team) and look through your bag (🎒 My bag).',
+        'While you wait you can unlock chart nodes and edit playbooks (🐾 My team), look through your bag (🎒 My bag), and tap a node to 📍 mark your next stop.',
         'The host can set a turn timer, skip a turn, or play one for someone who stepped away.',
       ] },
     ],

@@ -11,7 +11,7 @@ import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind } from '../engine/state';
 import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
-import { applyEdit, type CreatureEdit } from '../engine/edits';
+import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
@@ -601,6 +601,31 @@ export class App {
   /** My seat in an online match (or -1). */
   mySeat(): number { const m = activeMatchOf(); return this.online && m?.owners ? m.owners.indexOf(this.online.id) : -1; }
 
+  /**
+   * The trainer whose next-stop marker this screen may show and change, or null. It's private to each
+   * trainer: in hotseat that's whoever is taking their turn; online it's this browser's own trainer, even
+   * while watching someone else (and never another trainer's while playing their turn for them).
+   */
+  markerOwner(): GameState | null {
+    if (!this.s || this.s.phase !== 'map') return null;
+    if (!this.online) return this.watching ? null : this.s;
+    const m = activeMatchOf();
+    const me = m?.players[this.mySeat()];
+    return me && me.phase === 'map' ? me : null;
+  }
+
+  /** Mark (or unmark, with null) the next stop. While watching online, the change goes to the trainer playing. */
+  markNextStop(id: string | null) {
+    const me = this.markerOwner();
+    if (!me || !setWaypoint(me, id)) return;
+    if (this.watching) {
+      const seat = this.mySeat();
+      if (seat >= 0) this.online?.send({ type: 'edit', seat, edit: { op: 'waypoint', node: id } });
+    } else if (activeMatchOf()?.players.includes(me)) saveMatch(activeMatchOf()!); else save(me);
+    this.renderHud();
+    toast(id ? `📍 Marked ${NODE_BY_ID[id].name} as your next stop. Only you can see it.` : '📍 Marker removed.', 'info', 2500);
+  }
+
   /** While watching: tend my own creatures. The change shows here at once and is sent to the trainer playing. */
   showMyCreature(c: CreatureInst) {
     const seat = this.mySeat();
@@ -1045,6 +1070,8 @@ export class App {
     // the Rainbow Plains wear the color of the day's type; a wisp the trainer has looked for glows on the map
     this.world.setPrism(TYPE_COLOR[W.prismType(s)]);
     this.world.setWisp(hasItem(s, 'fog-lantern') && s.flags.wispSeen && s.flags.wispAt ? s.flags.wispAt : null);
+    const marker = this.markerOwner();
+    this.world.setWaypoint(marker?.waypoint ?? null, marker?.trainer.color);
     if (s.flags.wispNews && !this.watching) {
       s.flags.wispNews = false;
       save(s);
@@ -1222,6 +1249,7 @@ export class App {
       const held = [...s.roster, ...s.reserve].some((c) => c.species === n.legendary);
       extra.push(h('p', { class: 'small' }, held ? `${sp.name} travels with you. Each Legendary exists once per game.` : s.flags.beaten.includes(id) ? 'The legend has moved on.' : `Something powerful stirs here… (${sp.types.map((t) => TYPE_LABEL[t]).join('/')})`));
     }
+    const card0 = () => card;
     const card = h('div', { class: 'node-preview', style: n.cityType ? `--tc:${TYPE_COLOR[n.cityType]}` : '' },
       h('button', { class: 'icon-btn close', onclick: () => { this.selected = null; card.remove(); } }, '✕'),
       h('div', { class: 'np-head' }, h('span', { class: 'loc-ico' }, n.kind === 'city' ? h('img', { src: typeIcon(n.cityType!) }) : BIOME_INFO[n.biome].icon),
@@ -1229,8 +1257,19 @@ export class App {
       ...extra,
       isHere ? h('div', { class: 'small muted' }, 'You are here.') :
         this.watching ? '' : adj ? (chk.ok ? h('button', { class: 'btn primary block', onclick: () => this.travel(id) }, `Travel here · ${chk.cost}⚡`) : h('div', { class: 'lock' }, '🔒 ', chk.reason)) :
-          h('div', { class: 'small muted' }, 'Not adjacent — travel node by node.'));
+          h('div', { class: 'small muted' }, 'Not adjacent — travel node by node.'),
+      this.markerButton(id, card0));
     this.ui.append(card);
+  }
+
+  /** Node preview: mark this node as your next stop, or remove the marker (not for the node you're on). */
+  markerButton(id: string, card: () => HTMLElement): HTMLElement | string {
+    const me = this.markerOwner();
+    if (!me || id === me.location) return '';
+    const marked = me.waypoint === id;
+    return h('button', { class: 'btn ghost block', title: 'A reminder of where you mean to go next. Only you can see it, and it clears when you get there.',
+      onclick: () => { this.markNextStop(marked ? null : id); card().remove(); this.showNodePreview(id); } },
+    marked ? '📍 Remove next-stop marker' : '📍 Mark as next stop');
   }
 
   async travel(id: string) {
@@ -1248,9 +1287,11 @@ export class App {
       if (this.busy) return;
     }
     const worthy = !!s.flags.salemWorthy;
+    const marked = s.waypoint === id && this.markerOwner() === s;
     const held = Object.entries(s.cloudLoot ?? {}).filter(([, n]) => n > 0);
     const out = W.moveTo(s, id);
     if (!out) return;
+    if (marked) toast(`📍 You reached your next stop, ${NODE_BY_ID[id].name}. Marker cleared.`, 'good', 2500);
     if (held.length && !s.cloudLoot) toast(`☁️ Escaped Cloud Island! Secured: ${held.map(([i, n]) => `${itemInfo(i).icon} ${W.itemDisplayName(i)} ×${n}`).join(', ')}.`, 'good', 5000);
     if (!worthy && s.flags.salemWorthy) toast('☁️ A full lap of Cloud Island! Salem will accept your challenge at Aurora Peak.', 'good', 5000);
     else if (!s.flags.salemWorthy && W.cloudLapProgress(s).steps > 0) toast(`☁️ Cloud Island lap: ${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}${s.flags.cloudLap === 1 && W.cloudLapProgress(s).onIsland ? ' (keep going the same way round)' : ''}`, 'info', 2200);

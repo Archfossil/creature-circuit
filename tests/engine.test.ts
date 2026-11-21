@@ -7,9 +7,9 @@ import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS } from '../src/data/content';
-import { rollWisp, wispLit } from '../src/engine/state';
+import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
-import { applyEdit } from '../src/engine/edits';
+import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
@@ -766,6 +766,38 @@ describe('online creature edits (tending your team while someone else plays)', (
     expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves: ['not-a-move'] })).toBe(false);
     expect(applyEdit(s, { uid: c.uid, op: 'playbook', moves: [moves[0], moves[0]] })).toBe(false);
     expect(applyEdit(s, { uid: 'someone-else', op: 'playbook', moves })).toBe(false);
+  });
+});
+
+describe('next-stop marker', () => {
+  it('marks any other node, clears with null, and rejects unknown nodes or where you stand', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    const other = MAP_NODES.find((n) => n.id !== s.location)!.id;
+    expect(setWaypoint(s, s.location)).toBe(false);
+    expect(setWaypoint(s, 'nowhere')).toBe(false);
+    expect(s.waypoint).toBeUndefined();
+    expect(setWaypoint(s, other)).toBe(true);
+    expect(s.waypoint).toBe(other);
+    expect(setWaypoint(s, null)).toBe(true);
+    expect(s.waypoint).toBeUndefined();
+  });
+
+  it('can be set online while someone else plays, as an edit', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    const other = neighbors(s.location)[0].node.id;
+    expect(applyEdit(s, { op: 'waypoint', node: other })).toBe(true);
+    expect(s.waypoint).toBe(other);
+    expect(applyEdit(s, { op: 'waypoint', node: null })).toBe(true);
+    expect(s.waypoint).toBeUndefined();
+  });
+
+  it('clears when the trainer arrives there, however they get there', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    const [a, b] = neighbors(s.location).map((x) => x.node.id);
+    setWaypoint(s, b ?? a);
+    if (b) { moveTrainer(s, a); expect(s.waypoint).toBe(b); }
+    moveTrainer(s, b ?? a);
+    expect(s.waypoint).toBeUndefined();
   });
 });
 

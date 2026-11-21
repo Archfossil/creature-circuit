@@ -680,6 +680,57 @@ body.gl-lost::after { content: 'Graphics were paused by your device. Tap to relo
 .pb-fits { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .pb-sortrow small { margin-left: auto; }
 
+/* Playbook editor: a sidebar with the creature's stats and picks beside the move list */
+.pb-layout { display: grid; gap: 14px; }
+.pb-main { display: grid; gap: 4px; align-content: start; min-width: 0; }
+.pb-side { display: grid; gap: 8px; align-content: start; padding: 12px; border: 2px solid var(--ink); border-top: 6px solid var(--tc); border-radius: 14px; background: var(--paper-2, #f6efe0); }
+.pb-who { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; }
+.pb-who > img { width: 56px; height: 56px; border-radius: 12px; border: 2px solid var(--ink); background: var(--paper); object-fit: cover; }
+.pb-who b { font-family: var(--font-head); font-size: 17px; display: block; }
+.pb-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.pb-stats .stat { padding: 3px 2px; cursor: help; font: inherit; color: var(--ink); }
+.pb-stats .stat b { font-size: 17px; }
+.pb-stats .stat.used { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 16%, white); box-shadow: 0 2px 0 var(--tc); }
+.pb-hint { margin: 0; }
+.pb-side .pb-usage { display: grid; gap: 6px; }
+.pb-picks { display: grid; gap: 5px; }
+.pb-picks h5 { font-size: 14px; margin: 0; }
+.pb-pick { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 4px 4px 4px 8px; border: 2px solid var(--ink); border-left: 6px solid var(--tc); border-radius: 10px; background: var(--paper); font-size: 13px; }
+.pb-pick b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-pick.empty { display: block; padding: 6px 8px; border-style: dashed; border-color: var(--line); border-left-width: 2px; background: transparent; color: var(--muted); }
+.icon-btn.tiny { width: 24px; height: 24px; min-width: 0; min-height: 0; font-size: 12px; padding: 0; }
+/* phones: a tapped move opens its details under it */
+.move-card.dim { opacity: 0.45; }
+.move-card.open { opacity: 1; outline: 3px dashed var(--tc); outline-offset: 1px; }
+.move-card.sel.open { outline: 3px solid var(--accent-2); }
+.pb-item { display: grid; gap: 0; grid-column: 1 / -1; }
+.pb-item > .move-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.pb-detail { scroll-margin-bottom: 100px; display: grid; gap: 8px; padding: 10px 12px 12px; border: 2px solid var(--ink); border-top: none; border-left: 7px solid var(--tc); border-radius: 0 0 12px 12px; background: color-mix(in srgb, var(--tc) 8%, var(--paper)); font-size: 13px; }
+.pb-detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.pb-detail .btn { margin: 0; }
+@media (min-width: 760px) {
+  .pb-sheet .sheet.wide { width: min(1040px, 94vw); }
+  .pb-layout { grid-template-columns: 280px minmax(0, 1fr); align-items: start; }
+  .pb-side { position: sticky; top: 0; z-index: 2; max-height: calc(86vh - 130px); overflow-y: auto; }
+}
+/* phones: keep the sidebar short so the move list isn't pushed far down */
+@media (max-width: 759px) {
+  .pb-hint { display: none; }
+  .pb-hint.show { display: block; color: var(--ink); }
+  .pb-who { grid-template-columns: 44px 1fr; }
+  .pb-who > img { width: 44px; height: 44px; }
+  .pb-side { padding: 10px; gap: 6px; }
+  .pb-stats { gap: 4px; }
+  .pb-stats .stat { padding: 1px 2px; }
+  .pb-stats .stat small { font-size: 9px; }
+  .pb-stats .stat b { font-size: 15px; }
+  .pb-picks { grid-template-columns: 1fr 1fr; gap: 4px; }
+  .pb-picks h5 { grid-column: 1 / -1; }
+  .pb-pick { grid-template-columns: 16px minmax(0, 1fr) auto; font-size: 12px; }
+  .pb-pick:not(.empty) > small { display: none; } /* expected damage: hover detail on desktop; too tight here */
+  .pb-pick.empty { padding: 4px 8px; }
+}
+
 /* Recommend moves: goal options (the suggested one starred) and the resulting playbook */
 .rec { display: grid; gap: 10px; }
 .rec-opts { display: grid; gap: 6px; }

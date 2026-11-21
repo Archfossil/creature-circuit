@@ -164,6 +164,8 @@ export class WorldView implements SceneView {
   private prismColor: string | null = null;
   private prismTiles: THREE.MeshStandardMaterial[] = [];
   private wispMark: THREE.Group | null = null;
+  private waypointMark: THREE.Group | null = null;
+  private waypointKey = '';
   private water!: THREE.Mesh;
   private waterMat!: THREE.ShaderMaterial;
   private trees: { mesh: THREE.InstancedMesh; base: THREE.Color[] }[] = [];
@@ -738,6 +740,41 @@ export class WorldView implements SceneView {
     this.wispMark = g;
   }
 
+  /**
+   * The trainer's marked next stop, or null: a little flag in their colour planted beside that node, with a
+   * pulsing ring on the ground. The app only passes the marker of the trainer whose screen this is.
+   */
+  setWaypoint(id: string | null, color = '#ff5a5a') {
+    const key = id ? `${id}|${color}` : '';
+    if (key === this.waypointKey) return;
+    this.waypointKey = key;
+    if (this.waypointMark) { this.scene.remove(this.waypointMark); this.waypointMark = null; }
+    const n = id ? NODE_BY_ID[id] : null;
+    if (!n) return;
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 3.4, 8), new THREE.MeshStandardMaterial({ color: '#f4efe4', roughness: 0.6 }));
+    pole.position.y = 1.7;
+    pole.castShadow = true;
+    const cloth = new THREE.Shape();
+    cloth.moveTo(0, 0); cloth.lineTo(1.5, -0.45); cloth.lineTo(0, -0.9); cloth.closePath();
+    const flag = new THREE.Mesh(new THREE.ShapeGeometry(cloth), new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 0.45, side: THREE.DoubleSide }));
+    flag.position.set(0.08, 3.35, 0);
+    flag.castShadow = true;
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), new THREE.MeshStandardMaterial({ color: '#ffd84a', emissive: new THREE.Color('#ffb000'), emissiveIntensity: 0.4 }));
+    knob.position.y = 3.45;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.75, 24), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.06;
+    g.add(pole, flag, knob, ring);
+    // planted near the edge of the node's tile or platform, so it doesn't hide the node or a trainer standing there
+    const edge = n.kind === 'city' ? 2.8 : n.kind === 'arena' ? 2.2 : n.kind === 'town' || n.kind === 'stadium' ? 1.8 : 0.95;
+    const top = n.kind === 'city' ? 0.6 : n.kind === 'arena' ? 0.5 : 0.4;
+    g.position.set(n.x + edge * 0.82, nodeHeight(n) + top, n.z - edge * 0.57);
+    g.userData = { flag, ring };
+    this.scene.add(g);
+    this.waypointMark = g;
+  }
+
   setSeason(season: Season) {
     if (season === this.season && this.terrain.userData.init) return;
     this.season = season;
@@ -932,6 +969,13 @@ export class WorldView implements SceneView {
   // ── Frame ──────────────────────────────────────────────────────
   update(dt: number, t: number) {
     if (this.wispMark) { this.wispMark.position.y = this.wispMark.userData.baseY + Math.sin(t * 2.2) * 0.35; this.wispMark.rotation.y = t; }
+    if (this.waypointMark) {
+      const { flag, ring } = this.waypointMark.userData as { flag: THREE.Mesh; ring: THREE.Mesh };
+      flag.rotation.y = Math.sin(t * 3) * 0.35; // the flag flutters
+      const k = (t * 0.8) % 1;
+      ring.scale.setScalar(1 + k * 1.6);
+      (ring.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.7;
+    }
     if (this.title) { this.yaw = Math.sin(t * 0.05) * 0.5; }
     else this.yaw += (0 - this.yaw) * Math.min(1, dt * 2);
     this.target.lerp(this.goal, Math.min(1, dt * 3.5));

@@ -58,13 +58,18 @@ export function moveMatchup(m: Move, defender: ElementType[]): { mult: number; l
   return { mult, label: '1× Neutral', cls: 'x1' };
 }
 
-export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boolean; selected?: boolean; compact?: boolean; hotkey?: string; vs?: ElementType[] } = {}) {
+/** A move's damage dice as text, e.g. "d6+1" (or "—" for none). */
+const dmgText = (m: Move) => (m.dmgDie || m.dmgFlat ? `${m.dmgDie ? 'd' + m.dmgDie : ''}${m.dmgDie && m.dmgFlat ? '+' : ''}${m.dmgFlat || ''}` : '—');
+
+/** `dim` looks like `disabled` but can still be tapped (the phone playbook editor explains why it doesn't fit). */
+export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boolean; dim?: boolean; open?: boolean; selected?: boolean; compact?: boolean; hotkey?: string; vs?: ElementType[] } = {}) {
   const match = opts.vs ? moveMatchup(m, opts.vs) : null;
   const col = m.type ? TYPE_COLOR[m.type] : '#8a8796';
   const acc = m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}`;
-  const dmg = m.dmgDie || m.dmgFlat ? `${m.dmgDie ? 'd' + m.dmgDie : ''}${m.dmgDie && m.dmgFlat ? '+' : ''}${m.dmgFlat || ''}` : '—';
+  const dmg = dmgText(m);
   return h('button', {
-    class: `move-card ${m.kind} ${opts.selected ? 'sel' : ''} ${opts.compact ? 'compact' : ''}`, style: `--tc:${col}`,
+    class: `move-card ${m.kind} ${opts.selected ? 'sel' : ''} ${opts.compact ? 'compact' : ''} ${opts.dim ? 'dim' : ''} ${opts.open ? 'open' : ''}`, style: `--tc:${col}`,
+    'aria-expanded': opts.open === undefined ? null : String(opts.open),
     disabled: opts.disabled, onclick: opts.onClick, type: 'button', 'aria-pressed': opts.selected ? 'true' : null,
   },
     h('div', { class: 'mc-top' },
@@ -321,6 +326,91 @@ function drawChartLinks(chart: HTMLElement, svg: SVGSVGElement, tree: ReturnType
   svg.replaceChildren(...paths.sort((p, q) => rank(p) - rank(q)));
 }
 
+/** What each stat does for the moves you pick (hints in the playbook editor's sidebar). */
+const STAT_HINT: Record<string, string> = {
+  vigor: 'Sets Health and Vitality.',
+  power: 'Added to Physical move damage (minus the target’s Armor).',
+  armor: 'Blocks Physical damage.',
+  focus: 'Added to Elemental move damage (minus the target’s Ward).',
+  ward: 'Blocks Elemental damage.',
+  speed: 'Who acts first. Moves add their own ⚡ modifier.',
+  evasion: 'Makes the opponent’s moves miss more often.',
+  stamina: 'Pays each move’s 💨 Effort. Running out adds Fatigue.',
+};
+
+/**
+ * The playbook editor's sidebar: who you're building for (portrait, level, stats with what each does),
+ * the energy and slots left, and the picks so far with their expected damage. The stats the picks lean
+ * on (Power for Physical moves, Focus for Elemental ones, Speed and Stamina) are highlighted.
+ */
+function playbookSidebar(c: CreatureInst, sel: string[], usage: Node, remove: (id: string) => void) {
+  const sp = speciesOf(c);
+  const st = stats(c);
+  const picks = sel.map((id) => MOVE_BY_ID[id]);
+  const uses = new Set<string>();
+  for (const m of picks) {
+    if (m.kind === 'physical') uses.add('power');
+    if (m.kind === 'elemental') uses.add('focus');
+    if (m.speed) uses.add('speed');
+    if (m.effort) uses.add('stamina');
+  }
+  const effort = picks.reduce((a, m) => a + m.effort, 0);
+  const hint = h('p', { class: 'pb-hint small muted', 'aria-live': 'polite' }, 'Power boosts Physical moves, Focus boosts Elemental ones. Hover or tap a stat for more.');
+  return h('aside', { class: 'pb-side', style: `--tc:${TYPE_COLOR[sp.types[0]]}`, 'aria-label': `${nameOf(c)}’s stats` },
+    h('div', { class: 'pb-who' },
+      h('img', { src: portrait(sp.id), alt: '' }),
+      h('div', null,
+        h('b', null, nameOf(c)),
+        h('div', { class: 'row gap-s small' }, sp.types.map((t) => typeIconImg(t, 16)), h('span', null, `Lv ${c.level}`), h('span', { class: 'muted' }, NATURE_BY_ID[c.nature]?.name ?? '')),
+        h('small', { class: 'muted' }, `❤️ ${maxHealth(c)} HP · 💨 ${maxStamina(c)} Stamina`))),
+    // tapping a stat explains it (phones have no hover for the title)
+    h('div', { class: 'pb-stats' }, STAT_KEYS.map((k) => h('button', {
+      class: `stat ${uses.has(k) ? 'used' : ''}`, type: 'button', title: `${STAT_LABEL[k]}: ${STAT_HINT[k]}`,
+      onclick: () => { hint.replaceChildren(h('b', null, `${STAT_LABEL[k]} ${st[k]}: `), STAT_HINT[k]); hint.classList.add('show'); },
+    }, h('small', null, STAT_LABEL[k]), h('b', null, st[k])))),
+    hint,
+    usage,
+    h('div', { class: 'pb-picks' },
+      h('h5', null, 'Your playbook', effort ? h('small', { class: 'muted' }, ` · ${effort} 💨 Effort in all`) : null),
+      Array.from({ length: 4 }, (_, i) => {
+        const m = picks[i];
+        if (!m) return h('div', { class: 'pb-pick empty' }, h('small', null, `Slot ${i + 1} · pick a move`));
+        const dmg = expectedDamage(c, m);
+        return h('div', { class: `pb-pick ${m.kind}`, style: `--tc:${m.type ? TYPE_COLOR[m.type] : '#8a8796'}` },
+          m.type ? typeIconImg(m.type, 16) : h('span', { class: 'phys-ico' }, m.kind === 'support' ? '✦' : '✊'),
+          h('b', null, m.name),
+          h('small', { class: 'muted', title: m.kind === 'support' ? 'Support move' : `About ${dmg.toFixed(1)} damage a use against a typical target, with this creature’s ${m.kind === 'physical' ? 'Power' : 'Focus'}` },
+            m.kind === 'support' ? 'Support' : `≈${Math.round(dmg)} dmg`),
+          h('button', { class: 'icon-btn tiny', type: 'button', 'aria-label': `Remove ${m.name}`, onclick: () => remove(m.id) }, '✕'));
+      })));
+}
+
+/**
+ * Phone playbook editor: what a tapped move does with this creature (damage with its Power or Focus,
+ * accuracy, Effort against its Stamina, speed, status, energy), and a button to add or remove it.
+ * `why` says why it can't be added (no slot or not enough energy), or is null.
+ */
+function moveDetail(c: CreatureInst, m: Move, on: boolean, why: string | null, toggle: () => void) {
+  const st = stats(c);
+  const stat = m.kind === 'physical' ? 'Power' : 'Focus';
+  const statVal = m.kind === 'physical' ? st.power : st.focus;
+  const lines: (Node | string)[][] = [];
+  if (m.kind === 'support') lines.push(['✦ ', 'Support move: no damage.']);
+  else lines.push(['⚔ ', h('b', null, `About ${Math.round(expectedDamage(c, m))} damage`), ` a use: ${dmgText(m)} + ${stat} ${statVal}, minus the target’s ${m.kind === 'physical' ? 'Armor' : 'Ward'}. `,
+    m.kind === 'physical' ? 'Ignores the type chart.' : 'The type chart applies.']);
+  lines.push(['🎯 ', m.accuracy === 'sure' ? 'Always hits.' : `Rolls a d${m.accuracy} against the target’s Evasion.`]);
+  lines.push(['💨 ', m.effort ? `Effort ${m.effort}: uses ${m.effort} of ${nameOf(c)}’s ${maxStamina(c)} Stamina each time.` : 'No Stamina cost.']);
+  if (m.speed) lines.push(['⚡ ', `Speed ${m.speed > 0 ? '+' : ''}${m.speed}: acts at Speed ${st.speed + m.speed} that round.`]);
+  if (m.status) lines.push([STATUS_INFO[m.status].icon + ' ', `Min roll: ${STATUS_INFO[m.status].name}. ${STATUS_INFO[m.status].text}`]);
+  return h('div', { class: 'pb-detail', style: `--tc:${m.type ? TYPE_COLOR[m.type] : '#8a8796'}` },
+    h('ul', null, lines.map((l) => h('li', null, ...l))),
+    h('div', { class: 'row gap-s small' }, 'Needs ', energyPips(m.cost as Record<string, number>, true)),
+    why && !on ? h('div', { class: 'lock small' }, '🔒 ', why) : null,
+    h('div', { class: 'row gap-s' },
+      h('button', { class: `btn ${on ? 'ghost' : 'primary'} block`, type: 'button', disabled: !on && !!why, onclick: toggle }, on ? '➖ Remove move' : '➕ Add move?')),
+    h('small', { class: 'muted' }, 'Tip: double-tap a move to add or remove it.'));
+}
+
 export function editPlaybook(c: CreatureInst, changed: () => void, onEdit?: (e: CreatureEdit) => void) {
   const setPlaybook = (ids: string[]) => { c.playbook = ids; onEdit?.({ uid: c.uid, op: 'playbook', moves: [...ids] }); };
   {
@@ -330,6 +420,10 @@ export function editPlaybook(c: CreatureInst, changed: () => void, onEdit?: (e: 
     type Filter = 'all' | 'physical' | 'support' | ElementType;
     type Sort = 'cost' | 'cost-desc' | 'damage' | 'speed' | 'type' | 'name';
     let filter: Filter = 'all', sort: Sort = 'cost', fitsOnly = false;
+    // phones: the move whose details are open, and the last tap (for double-tap to add)
+    let inspect: string | null = null;
+    let lastTap = { id: '', t: 0 };
+    const touchMode = () => matchMedia('(max-width: 759px), (hover: none)').matches;
     const typesOf = (m: Move) => TYPES.filter((t) => (m.cost[t] ?? 0) > 0);
     const costSum = (m: Move) => Object.values(m.cost).reduce<number>((a, v) => a + (v ?? 0), 0);
     const avgDmg = (m: Move) => (m.dmgDie ? (m.dmgDie + 1) / 2 : 0) + m.dmgFlat;
@@ -383,24 +477,47 @@ export function editPlaybook(c: CreatureInst, changed: () => void, onEdit?: (e: 
               (Object.keys(SORTS) as Sort[]).map((k) => h('option', { value: k, selected: sort === k }, SORTS[k][0])))),
           h('label', { class: 'pb-fits' }, h('input', { type: 'checkbox', checked: fitsOnly, onchange: (ev: Event) => { fitsOnly = (ev.target as HTMLInputElement).checked; render(); } }), ' Only moves that still fit'),
           h('small', { class: 'muted' }, `Showing ${opts.length} of ${all.length}`)));
+      // Desktop: a click adds or removes the move. Phones: the first tap opens what the move does (with an
+      // Add button, or why it doesn't fit); a quick second tap adds or removes it straight away.
+      const touch = touchMode();
       const list = h('div', { class: 'moves grid' }, opts.length ? opts.map((id) => {
         const on = sel.includes(id);
         const canAdd = !on && sel.length < 4 && fits(e, [...sel, id]);
-        return moveCard(MOVE_BY_ID[id], { selected: on, disabled: !on && !canAdd, onClick: () => { sel = on ? sel.filter((x) => x !== id) : [...sel, id]; render(); } });
+        const toggle = () => { if (!on && !canAdd) return; sel = on ? sel.filter((x) => x !== id) : [...sel, id]; inspect = null; render(); };
+        if (!touch) return moveCard(MOVE_BY_ID[id], { selected: on, disabled: !on && !canAdd, onClick: toggle });
+        const open = inspect === id;
+        const tap = () => {
+          const now = performance.now();
+          const double = lastTap.id === id && now - lastTap.t < 350;
+          lastTap = double ? { id: '', t: 0 } : { id, t: now };
+          if (double && (on || canAdd)) { toggle(); return; }
+          inspect = open && !double ? null : id;
+          render();
+        };
+        const card = moveCard(MOVE_BY_ID[id], { selected: on, dim: !on && !canAdd, open, onClick: tap });
+        if (!open) return card;
+        const why = sel.length >= 4 ? 'All 4 move slots are full. Remove a move first.'
+          : `Not enough energy left: ${free} free, and this needs ${costSum(MOVE_BY_ID[id])} of the right types.`;
+        return h('div', { class: 'pb-item' }, card, moveDetail(c, MOVE_BY_ID[id], on, canAdd ? null : why, toggle));
       }) : [h('p', { class: 'small muted' }, 'No moves match this filter.')],
         // the species' Signature Move, shown locked until its chart node is bought
         lockedSig && matches(MOVE_BY_ID[lockedSig], filter) && !fitsOnly ? h('div', { class: 'sig-locked' },
           moveCard(MOVE_BY_ID[lockedSig], { disabled: true }),
           h('small', null, '🔒 Signature Move: unlock it from the ★ node on the progression chart.')) : null);
       body.replaceChildren(
-        h('p', { class: 'small' }, 'Energy is a requirement, not a cost per use. A move fits if your creature generates enough of each type; Neutral slots take any energy and Prisma counts as any type.'),
-        usage, controls, list,
+        h('div', { class: 'pb-layout' },
+          playbookSidebar(c, sel, usage, (id) => { sel = sel.filter((x) => x !== id); render(); }),
+          h('div', { class: 'pb-main' },
+            h('p', { class: 'small' }, 'Energy is a requirement, not a cost per use. A move fits if your creature generates enough of each type; Neutral slots take any energy and Prisma counts as any type.'),
+            controls, list)),
         h('div', { class: 'row end gap sticky-foot' },
           h('button', { class: 'btn ghost', onclick: () => recommendSheet(c, (ids) => { setPlaybook(ids); close(); changed(); }) }, '✨ Recommend moves?'),
           h('button', { class: 'btn ghost', onclick: () => { sel = []; render(); } }, 'Clear'),
           h('button', { class: 'btn primary', disabled: sel.length === 0, onclick: () => { setPlaybook(sel); close(); changed(); } }, 'Save playbook')));
+      // keep an opened move's details on screen (they can open below the fold)
+      if (inspect) requestAnimationFrame(() => body.querySelector('.pb-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
     };
-    const close = openSheet(`${nameOf(c)} · Playbook`, body, { wide: true });
+    const close = openSheet(`${nameOf(c)} · Playbook`, body, { wide: true, cls: 'pb-sheet' });
     render();
   }
 }
