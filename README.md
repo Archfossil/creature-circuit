@@ -10,6 +10,8 @@ A game about collecting wonderous creatures, developing their battle powers, bec
 
 ## 🎮 Play it
 
+Needs **Node.js 20 or newer** (the current LTS is best). Vitest 4 won't start on older versions.
+
 ```bash
 npm install
 npm run dev        # http://localhost:5173. Also served on your LAN, so you can open it on a phone
@@ -38,7 +40,8 @@ npm run build && npm start     # http://localhost:8787 (set PORT to change it)
 - **Language/Build:** TypeScript (strict) + Vite. The UI is plain DOM and CSS (no framework) to keep it light on phones.
 - **UI style:** a tabletop look built from index cards: chunky outlines, ruled-paper creature cards and animated dice. It is mobile-first, with bottom sheets on phones, centered panels on desktop, safe-area insets and landscape layouts.
 - **Audio:** sound effects synthesized with Web Audio (no audio files).
-- **Tests:** Vitest unit tests for the rules engine (`tests/`).
+- **Tests:** Vitest 4 unit tests for the rules engine (`tests/`). The time limit is raised to 30 s in `vite.config.ts`, because a few tests simulate thousands of battles.
+- **Tooling notes:** Vite 6 and Vitest 4 (the first versions clear of the `npm audit` advisories). `vite-node` runs the docs scripts. `.npmrc` sets `legacy-peer-deps=true`: Vitest 4 lists many optional peer plugins (coverage, browser, UI) this project doesn't use, and resolving them crashes some npm versions. Run `npm audit` to check dependencies. It should report 0 vulnerabilities.
 
 ### Code map
 ```
