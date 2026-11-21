@@ -18,10 +18,11 @@ Every move in the game with all its attributes. Use it to swap generated **place
 
 - **Cost** is the energy a creature must generate to slot the move into its playbook. It isn’t spent per use. Neutral can be paid by any type.
 - **Hits as**: the type the attack uses on the type chart. Physical moves ignore the chart and use Power vs Armor.
-- **Damage** is the damage die plus a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.
-- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face.
+- **Damage** is the damage die (plus any extra dice, e.g. d10+d4, which are added up) and a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.
+- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits).
+- **⌖ Zeroing In**: a miss gives the creature's next accuracy roll +1, stacking over a streak of misses up to +3. The next accuracy roll uses it up, and leaving the field loses it. Moves that differ say so after their accuracy: **(⌖ +2)** is a pursuit move that zeroes in harder, **(⌖ ✕)** is all or nothing and never zeroes in.
 - **Speed** is added to the user’s Speed this round to decide who acts first. **Effort** is the Stamina it drains.
-- **Status** is inflicted when the damage die rolls a 1 (elemental attacks carry their type’s status).
+- **Status** is inflicted when a damage die rolls a 1 (elemental attacks carry their type’s status). Moves with extra dice (e.g. d10+d4) inflict it if **any** die shows a 1, so the chance is shown next to the status.
 - **Balance note** compares a hand-made move’s average damage with a generated placeholder of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.
 - **Design ☐**: a designed name, flavour and numbers. Hand-made moves start ticked. **Balance ☐**: tick once someone has reviewed its numbers in play.
 - **Swapping a placeholder (developers):** add the move to `HANDMADE` in `src/data/moves.ts` with the same typed cost and hit type. It takes over that grid slot and the placeholder disappears. Then regenerate this file.
@@ -57,16 +58,16 @@ Generated attacks use these numbers by total typed cost. Dual-type attacks get +
 
 ## Physical moves
 
-Type-free attacks: Power vs Armor, ignore the type chart, crit on the accuracy die’s top face.
+Type-free attacks: Power vs Armor, ignore the type chart, crit on the accuracy die’s top face (or a wider range, marked ✸).
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Tackle** | `tackle` | 1 Neutral | Physical | d4 | 2.5 | 2.50 | d6 | 0 | 1 | — | — | — | Hand-made | ☑ | ☐ |
-| **Claw** | `claw` | 2 Neutral | Physical | d6 | 3.5 | 1.75 | d6 | 0 | 1 | — | — | — | Hand-made | ☑ | ☐ |
+| **Claw** | `claw` | 2 Neutral | Physical | d6 | 3.5 | 1.75 | d6 (✸ 5+) | 0 | 1 | — | — | — | Hand-made | ☑ | ☐ |
 | **Quick Jab** | `quick-jab` | 1 Neutral | Physical | 2 | 2.0 | 2.00 | Sure-hit | +3 | 1 | — | — | — | Hand-made | ☑ | ☐ |
 | **Headbutt** | `headbutt` | 3 Neutral | Physical | d8 | 4.5 | 1.50 | d6 | -1 | 2 | — | — | — | Hand-made | ☑ | ☐ |
-| **Pounce** | `pounce` | 2 Neutral | Physical | d4+1 | 3.5 | 1.75 | d6 | +2 | 1 | — | — | — | Hand-made | ☑ | ☐ |
-| **Rampage** | `rampage` | 4 Neutral | Physical | d10 | 5.5 | 1.38 | d8 | -2 | 3 | — | — | — | Hand-made | ☑ | ☐ |
+| **Pounce** | `pounce` | 2 Neutral | Physical | d4+1 | 3.5 | 1.75 | d6 (⌖ +2) | +2 | 1 | — | — | — | Hand-made | ☑ | ☐ |
+| **Rampage** | `rampage` | 4 Neutral | Physical | d10 | 5.5 | 1.38 | d8 (✸ 6+) (⌖ ✕) | -2 | 3 | — | — | — | Hand-made | ☑ | ☐ |
 | **Tail Lash** | `tail-whip` | 2 Neutral | Physical | d4 | 2.5 | 1.25 | d6 | 0 | 1 | — | On a hit, the foe gets −1 Armor. | — | Hand-made | ☑ | ☐ |
 
 ## Support moves
@@ -124,7 +125,7 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 | **Stardust** | `stardust` | 1 Astral | Astral | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Daze | — | — | Hand-made | ☑ | ☐ |
 | **Comet Tail** | `comet-tail` | 2 Astral + 1 Neutral | Astral | d6 | 3.5 | 1.17 | d6 | +1 | 1 | Daze | — | — | Hand-made | ☑ | ☐ |
 | **Star Lance** | `atk-astral3` | 3 Astral | Astral | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Daze | — | — | Placeholder | ☐ | ☐ |
-| **Meteor** | `meteor` | 4 Astral + 1 Neutral | Astral | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Daze | — | — | Hand-made | ☑ | ☐ |
+| **Meteor** | `meteor` | 4 Astral + 1 Neutral | Astral | d10+d4 | 8.0 | 1.60 | d6 | -2 | 3 | Daze (32%) | — | — | Hand-made | ☑ | ☐ |
 | **Star Nova** | `atk-astral5` | 5 Astral | Astral | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Daze | — | — | Placeholder | ☐ | ☐ |
 
 ### Astral: dual-type
@@ -374,7 +375,7 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Vine Snap** | `vine-snap` | 1 Grass | Grass | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Snare | — | — | Hand-made | ☑ | ☐ |
-| **Thorn Volley** | `thorn-volley` | 2 Grass + 1 Neutral | Grass | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Snare | — | — | Hand-made | ☑ | ☐ |
+| **Thorn Volley** | `thorn-volley` | 2 Grass + 1 Neutral | Grass | d4+d4 | 5.0 | 1.67 | d6 | 0 | 1 | Snare (44%) | — | — | Hand-made | ☑ | ☐ |
 | **Bramble Lance** | `atk-grass3` | 3 Grass | Grass | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Snare | — | — | Placeholder | ☐ | ☐ |
 | **Redwood Crush** | `redwood-crush` | 4 Grass + 1 Neutral | Grass | d10 | 5.5 | 1.10 | d6 | -2 | 3 | Snare | — | ⬇ Weak for its cost (-1.5 vs baseline) | Hand-made | ☑ | ☐ |
 | **Bramble Nova** | `atk-grass5` | 5 Grass | Grass | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Snare | — | — | Placeholder | ☐ | ☐ |
@@ -437,7 +438,7 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Pebble Shot** | `pebble-shot` | 1 Rock | Rock | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Stagger | — | — | Hand-made | ☑ | ☐ |
-| **Rockslide** | `rockslide` | 2 Rock + 1 Neutral | Rock | d6 | 3.5 | 1.17 | d6 | -1 | 1 | Stagger | — | — | Hand-made | ☑ | ☐ |
+| **Rockslide** | `rockslide` | 2 Rock + 1 Neutral | Rock | d4+d4 | 5.0 | 1.67 | d6 | -1 | 1 | Stagger (44%) | — | — | Hand-made | ☑ | ☐ |
 | **Stone Lance** | `atk-rock3` | 3 Rock | Rock | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Stagger | — | — | Placeholder | ☐ | ☐ |
 | **Canyon Quake** | `canyon-quake` | 4 Rock + 1 Neutral | Rock | d10+1 | 6.5 | 1.30 | d6 | -3 | 3 | Stagger | — | — | Hand-made | ☑ | ☐ |
 | **Stone Nova** | `atk-rock5` | 5 Rock | Rock | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Stagger | — | — | Placeholder | ☐ | ☐ |
@@ -565,7 +566,7 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 | **Splash Jet** | `splash-jet` | 1 Water | Water | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Soak | — | — | Hand-made | ☑ | ☐ |
 | **Tide Crash** | `tide-crash` | 2 Water + 1 Neutral | Water | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Soak | — | — | Hand-made | ☑ | ☐ |
 | **Tide Lance** | `atk-water3` | 3 Water | Water | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Soak | — | — | Placeholder | ☐ | ☐ |
-| **Maelstrom** | `maelstrom` | 4 Water + 1 Neutral | Water | d10 | 5.5 | 1.10 | d6 | -1 | 3 | Soak | — | — | Hand-made | ☑ | ☐ |
+| **Maelstrom** | `maelstrom` | 4 Water + 1 Neutral | Water | d10+d4 | 8.0 | 1.60 | d6 | -2 | 3 | Soak (32%) | — | — | Hand-made | ☑ | ☐ |
 | **Tide Nova** | `atk-water5` | 5 Water | Water | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Soak | — | — | Placeholder | ☐ | ☐ |
 
 ### Water: dual-type

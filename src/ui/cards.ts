@@ -2,7 +2,7 @@ import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
-import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR } from '../data/moves';
+import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../data/moves';
 import { ABILITIES, AFFINITIES, NATURE_BY_ID } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
 import type { ElementType, EnergyKey, Move } from '../data/schema';
@@ -59,7 +59,7 @@ export function moveMatchup(m: Move, defender: ElementType[]): { mult: number; l
 }
 
 /** A move's damage dice as text, e.g. "d6+1" (or "—" for none). */
-const dmgText = (m: Move) => (m.dmgDie || m.dmgFlat ? `${m.dmgDie ? 'd' + m.dmgDie : ''}${m.dmgDie && m.dmgFlat ? '+' : ''}${m.dmgFlat || ''}` : '—');
+const dmgText = (m: Move) => diceText(m) || '—';
 
 /** `dim` looks like `disabled` but can still be tapped (the phone playbook editor explains why it doesn't fit). */
 export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boolean; dim?: boolean; open?: boolean; selected?: boolean; compact?: boolean; hotkey?: string; vs?: ElementType[] } = {}) {
@@ -80,11 +80,16 @@ export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boole
     h('div', { class: 'mc-stats' },
       h('span', { title: 'Damage' }, '⚔ ', dmg),
       h('span', { title: 'Accuracy' }, '🎯 ', acc),
+      critFaces(m) > 1 && typeof m.accuracy === 'number' ? h('span', { class: 'mc-crit', title: `Wide crits: an accuracy roll of ${critFrom(m, m.accuracy)}–${m.accuracy} is a critical hit (double damage). Most physical moves crit only on a ${m.accuracy}.` }, '✸', `${critFrom(m, m.accuracy)}+`) : null,
       h('span', { title: 'Effort (stamina)' }, '💨 ', m.effort),
-      m.speed ? h('span', { title: 'Speed modifier' }, '⚡', m.speed > 0 ? `+${m.speed}` : m.speed) : null),
+      m.speed ? h('span', { title: 'Speed modifier' }, '⚡', m.speed > 0 ? `+${m.speed}` : m.speed) : null,
+      // Zeroing In, only when it isn't the usual +1 on a miss
+      m.accuracy !== 'sure' && zeroInOf(m) !== ZERO_IN
+        ? h('span', { class: `mc-zero ${zeroInOf(m) ? 'pursuit' : 'none'}`, title: zeroInOf(m) ? `Pursuit: a miss zeroes in +${zeroInOf(m)} for the next accuracy roll (usually +${ZERO_IN}).` : 'All or nothing: a miss never zeroes in.' }, h('i', { class: 'zi' }, '⌖'), zeroInOf(m) ? `+${zeroInOf(m)}` : '✕')
+        : null),
     match ? h('div', { class: `mc-eff ${match.cls}`, title: `Type matchup against the opponent: ×${match.mult}` }, match.label)
       : opts.vs && m.kind === 'physical' ? h('div', { class: 'mc-eff phys', title: 'Physical attacks ignore the type chart' }, 'Ignores types') : null,
-    opts.compact ? null : h('div', { class: 'mc-text' }, m.text, m.status ? h('em', null, ` Min roll: ${STATUS_INFO[m.status].name}.`) : null),
+    opts.compact ? null : h('div', { class: 'mc-text' }, m.text, m.status ? h('em', null, ` ${m.extraDice?.length ? 'A 1 on any die' : 'Min roll'}: ${STATUS_INFO[m.status].name} (${Math.round(statusChance(m) * 100)}%).`) : null),
     opts.compact ? null : h('div', { class: 'mc-cost' }, energyPips(m.cost as Record<string, number>, true)));
 }
 
@@ -134,6 +139,29 @@ export function statCompare(before: CreatureInst, after: CreatureInst, labels: [
 
 function meter(label: string, v: number, max: number, cls = '') {
   return h('div', { class: `meter ${cls}` }, h('span', { class: 'lbl' }, label), h('div', { class: 'bar' }, h('i', { style: `width:${(v / max) * 100}%` })), h('span', { class: 'num' }, `${v}/${max}`));
+}
+
+/** What Fatigue does, for the diamond badge's hover text and tap sheet. */
+export function fatigueHelp(n: number): string {
+  const odds = n > 0 ? `Fatigue ${n}: before acting, it rolls a d10. On ${n === 1 ? 'a 1' : `1–${Math.min(n, 10)}`} it loses the turn catching its breath (${Math.min(100, n * 10)}% chance), then its Stamina refills.` : 'No Fatigue: it acts without a Fatigue check.';
+  return `${odds}
+Running out of Stamina adds +1 Fatigue (and Stamina refills).
+Fatigue lasts after the battle. Camping, resting at a stable, Calm Tea, Root Salve or an Elixir clears it.`;
+}
+
+/** Fatigue as a red number in a warning diamond (greyed at 0). Hover explains it; tap opens the same text. */
+export function fatigueBadge(n: number) {
+  return h('button', {
+    class: `fat-badge ${n > 0 ? 'on' : ''}`, title: fatigueHelp(n), 'aria-label': `Fatigue ${n}`,
+    onclick: (e: Event) => { e.stopPropagation(); openSheet(`😮‍💨 Fatigue ${n}`, h('div', { class: 'fat-help' }, fatigueHelp(n).split('\n').map((t) => h('p', null, t)))); },
+  }, h('span', null, n));
+}
+
+/** Stamina meter with the Fatigue diamond beside it. */
+function staminaMeter(c: CreatureInst) {
+  const m = meter('STA', c.stamina, maxStamina(c), 'sta');
+  m.append(fatigueBadge(c.fatigue));
+  return m;
 }
 
 const MORALE_HELP = `Morale (0–10): how happy this creature is with you.
@@ -199,15 +227,14 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
       h('div', { class: 'ic-art-tags' }, h('span', null, `RT ${sp.rt}`), h('span', null, nat.name))),
     h('div', { class: 'ic-bars' },
       hpBlock(c),
-      meter('STA', c.stamina, maxStamina(c)),
+      staminaMeter(c),
       meter('XP', c.xp, 10, 'xp'),
       h('div', { class: 'row gap-s small' },
         h('button', { class: `chip social ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}`, title: MORALE_HELP, onclick: () => socialHelp(c) },
           c.morale <= MORALE_LOW ? '⚠️ ' : '💖 ', 'Morale ', h('b', null, c.morale), '/10'),
         h('button', { class: `chip social ${sp.rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: sp.rarity === 'legendary' ? `${LOYALTY_HELP}
 Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to its grounds at 0.` : LOYALTY_HELP, onclick: () => socialHelp(c) },
-          sp.rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), `/${LOYALTY_MAX}`),
-        c.fatigue ? h('span', { class: 'chip bad' }, '😮‍💨 Fatigue ', h('b', null, c.fatigue)) : null)),
+          sp.rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), `/${LOYALTY_MAX}`),)),
     h('div', { class: 'ic-stats' }, STAT_KEYS.map((k) => h('div', { class: 'stat' }, h('small', null, STAT_LABEL[k]), h('b', null, st[k])))),
     h('section', { class: 'ic-sec' },
       h('h4', null, 'Energy ', h('span', { class: 'muted' }, `${free}/${energyTotal(e)} free · ${4 - c.playbook.length}/4 slots open`)),
@@ -398,10 +425,11 @@ function moveDetail(c: CreatureInst, m: Move, on: boolean, why: string | null, t
   if (m.kind === 'support') lines.push(['✦ ', 'Support move: no damage.']);
   else lines.push(['⚔ ', h('b', null, `About ${Math.round(expectedDamage(c, m))} damage`), ` a use: ${dmgText(m)} + ${stat} ${statVal}, minus the target’s ${m.kind === 'physical' ? 'Armor' : 'Ward'}. `,
     m.kind === 'physical' ? 'Ignores the type chart.' : 'The type chart applies.']);
-  lines.push(['🎯 ', m.accuracy === 'sure' ? 'Always hits.' : `Rolls a d${m.accuracy} against the target’s Evasion.`]);
+  lines.push(['🎯 ', m.accuracy === 'sure' ? 'Always hits.' : `Rolls a d${m.accuracy} against the target’s Evasion.${critFaces(m) ? ` Crits (double damage) on ${critFaces(m) > 1 ? `${critFrom(m, m.accuracy)}–${m.accuracy}` : `a ${m.accuracy}`}.` : ''}`]);
+  if (m.accuracy !== 'sure') lines.push(['⌖ ', zeroInOf(m) ? `A miss zeroes in: +${zeroInOf(m)} to ${nameOf(c)}’s next accuracy roll${zeroInOf(m) !== ZERO_IN ? ` (most moves give +${ZERO_IN})` : ''}.` : 'All or nothing: a miss never zeroes in.']);
   lines.push(['💨 ', m.effort ? `Effort ${m.effort}: uses ${m.effort} of ${nameOf(c)}’s ${maxStamina(c)} Stamina each time.` : 'No Stamina cost.']);
   if (m.speed) lines.push(['⚡ ', `Speed ${m.speed > 0 ? '+' : ''}${m.speed}: acts at Speed ${st.speed + m.speed} that round.`]);
-  if (m.status) lines.push([STATUS_INFO[m.status].icon + ' ', `Min roll: ${STATUS_INFO[m.status].name}. ${STATUS_INFO[m.status].text}`]);
+  if (m.status) lines.push([STATUS_INFO[m.status].icon + ' ', `${m.extraDice?.length ? 'A 1 on any damage die' : 'A 1 on the damage die'} (${Math.round(statusChance(m) * 100)}%): ${STATUS_INFO[m.status].name}. ${STATUS_INFO[m.status].text}`]);
   return h('div', { class: 'pb-detail', style: `--tc:${m.type ? TYPE_COLOR[m.type] : '#8a8796'}` },
     h('ul', null, lines.map((l) => h('li', null, ...l))),
     h('div', { class: 'row gap-s small' }, 'Needs ', energyPips(m.cost as Record<string, number>, true)),
@@ -426,7 +454,7 @@ export function editPlaybook(c: CreatureInst, changed: () => void, onEdit?: (e: 
     const touchMode = () => matchMedia('(max-width: 759px), (hover: none)').matches;
     const typesOf = (m: Move) => TYPES.filter((t) => (m.cost[t] ?? 0) > 0);
     const costSum = (m: Move) => Object.values(m.cost).reduce<number>((a, v) => a + (v ?? 0), 0);
-    const avgDmg = (m: Move) => (m.dmgDie ? (m.dmgDie + 1) / 2 : 0) + m.dmgFlat;
+    const avgDmg = avgRoll;
     const matches = (m: Move, f: Filter) =>
       f === 'all' ? true : f === 'physical' ? m.kind === 'physical' : f === 'support' ? m.kind === 'support' : typesOf(m).includes(f);
     const typeRank = (m: Move) => { const ts = typesOf(m); return ts.length ? TYPES.indexOf(ts[0]) * 10 + ts.length : m.kind === 'physical' ? -2 : -1; };
@@ -584,7 +612,7 @@ function recommendSheet(c: CreatureInst, confirm: (ids: string[]) => void) {
 /** How statuses work (shared by the Status Effects guide and the Type Chart). */
 function statusRules() {
   return h('ul', { class: 'small status-rules' },
-    h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die, the target gains that attack type’s status.'),
+    h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die (or on any of them, for moves with extra dice like d10+d4), the target gains that attack type’s status.'),
     h('li', null, h('b', null, 'One at a time: '), 'a creature that already has a status can’t gain another until it wears off.'),
     h('li', null, h('b', null, 'Duration: '), '3 rounds, counted only while the creature is in battle (not while swapped out). Ends early on a KO, and always ends with the battle.'));
 }

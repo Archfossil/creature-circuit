@@ -2,7 +2,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -22,7 +22,7 @@ import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
-import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
+import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
@@ -1459,14 +1459,21 @@ export class App {
           h('b', null, nameOf(c)), h('span', { class: 'lv' }, `Lv ${c.level}`),
           h('span', { class: 'pl-types' }, sp.types.map((t) => typeIconImg(t, 16))),
           recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
+          sn.zero ? h('span', { class: 'zero-tag', title: `Zeroing In: +${sn.zero} to its next accuracy roll, from missing. Misses stack it up to +${ZERO_IN_MAX}; leaving the field loses it.` }, h('i', { class: 'zi' }, '⌖'), ` +${sn.zero}`) : null,
           sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
         // Vitality first: hearts are what actually decide the fight
         h('div', { class: 'pl-vit' },
           h('span', { class: 'hearts', title: `Vitality ${sn.vitality}/${mv}` }, Array.from({ length: mv }, (_, i) => h('span', { class: `heart ${i < sn.vitality ? 'on' : ''}` }, '♥'))),
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: x.ko ? 'ko' : '' })))),
-        h('div', { class: 'hp-row', title: 'Health' }, h('div', { class: 'bar' }, h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' })), h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`)),
-        ...(side === 0 ? [h('div', { class: 'pl-sub' },
-          h('span', { class: 'sta' }, '💨 ', `${sn.stamina}/${maxStamina(c)}`, sn.fatigue ? h('b', { class: 'fat' }, ` · Fatigue ${sn.fatigue}`) : null))] : []));
+        // Health bar and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
+        h('div', { class: `pl-bars ${side === 0 ? 'mine' : 'foe'}` },
+          h('div', { class: 'bar hp-bar', title: `Health ${sn.health}/${mh}` }, h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' })),
+          h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`),
+          fatigueBadge(sn.fatigue),
+          ...(side === 0 ? [
+            h('div', { class: 'bar sta-bar', title: `Stamina ${sn.stamina}/${maxStamina(c)}: each move's 💨 Effort comes out of it. Running out adds Fatigue.` },
+              h('i', { style: `width:${Math.min(100, (sn.stamina / maxStamina(c)) * 100)}%` })),
+            h('span', { class: 'num sta-num', title: 'Stamina' }, `💨 ${sn.stamina}/${maxStamina(c)}`)] : [])));
     };
     const say = (t: string, tone?: string) => { logLine.textContent = t; logLine.className = `battle-log ${tone ?? ''}`; };
     // Normal battles slow down and explain every roll; Fast battles (Settings) keep the quick pace
@@ -1506,7 +1513,7 @@ export class App {
           const target = b.sides[e.side].team.find((x) => x.uid === e.snap.uid);
           const eff = e.eff >= 2 ? ' Super effective!' : e.eff > 0 && e.eff < 1 ? ' Not very effective.' : '';
           const k = e.calc;
-          const math = k ? `${k.die ? `d${k.die} rolled ${k.roll} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
+          const math = k ? `${k.dice.length ? `${k.dice.map((d, i) => `d${d} rolled ${k.rolls[i]}`).join(' + ')} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
           const left = target ? ` ${nameOf(target)}: Health ${e.snap.ko ? 'KO' : `${e.snap.health}/${maxHealth(target)}`}, Vitality ${e.snap.vitality}/${maxVitality(target)}.` : '';
           note(`${whoOn(e.side)} took ${e.amount} damage${e.crit ? ' (critical)' : ''}.${eff}`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: `${math}${left}`.trim() || undefined });
           break;
@@ -1514,6 +1521,7 @@ export class App {
         case 'heal': if (e.amount > 0) note(`${whoOn(e.side)} recovered ${e.amount} Health.`, { side: e.side, tone: 'good' }); break;
         case 'status': note(`${whoOn(e.side)} is afflicted with ${STATUS_INFO[e.status].icon} ${STATUS_INFO[e.status].name}.`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: STATUS_INFO[e.status].text }); break;
         case 'buff': note(`${whoOn(e.side)}: ${e.text}.`, { side: e.side }); break;
+        case 'zero': if (e.bonus > 0) note(`⌖ ${whoOn(e.side)} is zeroing in: +${e.bonus} to its next accuracy roll.`, { side: e.side, detail: `A miss adds Zeroing In (up to +${ZERO_IN_MAX} over several misses). The next accuracy roll uses it up, and it's lost if the creature leaves the field.` }); break;
         case 'send': { const c = b.sides[e.side].team.find((x) => x.uid === e.snap.uid); if (c) note(`${e.side === 0 ? 'You send' : `${b.sides[1].name} sends`} in ${nameOf(c)} (Lv ${c.level}).`, { side: e.side }); break; }
         case 'xp': { const c = b.sides[0].team.find((x) => x.uid === e.uid); if (c) note(e.reason === 'ko' ? `${nameOf(c)} gained ${e.amount} XP for knocking out ${e.foe ?? 'its foe'}.` : `${nameOf(c)} gained ${e.amount} XP for battling${e.bonus ? ` (incl. +${e.bonus} trainer battle bonus)` : ''}.`, { tone: 'good', detail: e.levels ? `Reached Lv ${c.level}!` : undefined }); break; }
         case 'end': note(e.result === 'win' ? 'Victory!' : e.result === 'lose' ? 'Your team is out of creatures.' : e.result === 'escaped' ? 'Got away safely.' : 'The foe fled.', { tone: e.result === 'win' || e.result === 'escaped' ? 'good' : 'bad' }); break;
@@ -1576,10 +1584,10 @@ export class App {
             if (slow() && e.calc) {
               const k = e.calc;
               const attacker = whoOn(e.side === 0 ? 1 : 0);
-              const steps = `${k.die ? k.roll : ''} ${partsText(k.parts)}`.trim().replace(/^\+ /, '');
+              const steps = `${k.rolls.join(' + ')} ${partsText(k.parts)}`.trim().replace(/^\+ /, '');
               const math = `${steps} = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''}`;
               const caption = `${math} → ${k.total} damage`;
-              if (k.die) await rollDice(`${attacker} · Damage d${k.die}`, [{ sides: k.die, value: k.roll, tone: k.mult > 1 || k.crit ? 'good' : k.mult < 1 ? 'bad' : undefined }], caption, 1300);
+              if (k.dice.length) await rollDice(`${attacker} · Damage ${k.dice.map((d) => `d${d}`).join(' + ')}`, k.dice.map((d, i) => ({ sides: d, value: k.rolls[i], tone: k.mult > 1 || k.crit ? 'good' as const : k.mult < 1 ? 'bad' as const : undefined })), caption, 1300);
               else { say(`${attacker}: ${caption}`); await wait(900); }
             }
             disp[e.side] = e.snap;
@@ -1595,6 +1603,11 @@ export class App {
             if (e.amount > 0) { const p = bv.screenOf(e.side); floatText(p.x, p.y, `+${e.amount}`, 'heal'); await bv.heal(e.side); }
             break;
           case 'status': disp[e.side] = e.snap; renderPlate(e.side); break;
+          case 'zero': {
+            disp[e.side] = e.snap; renderPlate(e.side);
+            if (e.bonus > 0) { const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, `⌖ Zeroing in +${e.bonus}`, 'buff'); await wait(slow() ? 650 : 300); }
+            break;
+          }
           case 'buff': { const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, e.text, 'buff'); await wait(450); break; }
           case 'ko': sfx.ko(); await bv.ko(e.side); break;
           case 'send': {

@@ -239,7 +239,9 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `readout-turn-order`: ⚡ Turn order
 - [ ] `readout-stamina`: 💨 Stamina cost
 - [ ] `readout-fatigue`: 🥵 Fatigue check
+- Fatigue counter: drawn with CSS as a rotated-square warning diamond (`.fat-badge`) on the battle nameplate and creature cards, so it needs no icon. A custom diamond frame could replace it later.
 - [ ] `readout-accuracy`: 🎯 Accuracy roll / sure hit
+- [ ] `zero-in`: ⌖ Zeroing In. The nameplate tag ("⌖ +2"), its float text and log line, the readout line, and the move-card marker for pursuit (⌖+2) and all-or-nothing (⌖✕) moves.
 - [ ] `readout-damage`: 💥 Damage
 - [ ] `readout-effects`: ✨ Effects
 

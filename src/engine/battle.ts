@@ -1,5 +1,5 @@
 import type { ArenaTrick, ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
-import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO } from '../data/moves';
+import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, critFrom } from '../data/moves';
 import { AFFINITIES } from '../data/content';
 import { effectiveness, TYPE_LABEL } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
@@ -15,6 +15,8 @@ export interface Side {
   team: CreatureInst[];
   active: number;
   mods: Partial<Stats>;
+  /** Zeroing In: accuracy bonus for the active creature's next accuracy roll, built up by misses. Lost when it leaves the field. */
+  zeroIn?: number;
   buff?: Partial<Record<StatKey, number>>; // hot pot (player) / arena (arbiter)
   /** Extra XP per participant from the trainer's style (Battle Master +2, Caretaker −1). */
   xpBonus?: number;
@@ -52,7 +54,7 @@ export interface Battle {
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
 
-export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId }
+export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number }
 export type BEvent =
   | { t: 'say'; text: string; tone?: 'good' | 'bad' | 'info' }
   /** A speed tie. `first`: who acts first (the higher roller, or on equal rolls the winner of a coin flip, `coin`). */
@@ -63,6 +65,8 @@ export type BEvent =
   | { t: 'heal'; side: 0 | 1; amount: number; snap: Snap }
   | { t: 'status'; side: 0 | 1; status: StatusId; snap: Snap }
   | { t: 'buff'; side: 0 | 1; text: string }
+  /** Zeroing In changed: a miss built it up (bonus > 0) or the next accuracy roll used it (bonus 0). */
+  | { t: 'zero'; side: 0 | 1; bonus: number; gained: number; snap: Snap }
   | { t: 'tired'; side: 0 | 1; value: number; fatigue: number; fail: boolean; snap: Snap }
   | { t: 'ko'; side: 0 | 1; uid: string }
   | { t: 'send'; side: 0 | 1; idx: number; snap: Snap }
@@ -75,10 +79,12 @@ export type BEvent =
 /** One labelled number in a roll or damage formula, e.g. { label: 'Power', value: 3 }. */
 export interface Part { label: string; value: number }
 /** How a move's damage was worked out, so the battle UI can show the formula. */
-export interface DamageCalc { die: number; roll: number; parts: Part[]; raw: number; mult: number; crit: boolean; total: number }
+/** `dice` are the damage dice rolled (empty for flat damage) and `rolls` what each showed. */
+export interface DamageCalc { dice: number[]; rolls: number[]; parts: Part[]; raw: number; mult: number; crit: boolean; total: number }
 
 export function snap(b: Battle, c: CreatureInst): Snap {
-  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id };
+  const sd = b.sides.find((s) => activeOf(s) === c);
+  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}) };
 }
 
 export const activeOf = (s: Side) => s.team[s.active];
@@ -187,14 +193,14 @@ export function chooseAI(b: Battle, si: 0 | 1): Action {
   for (const id of c.playbook) {
     const m = MOVE_BY_ID[id];
     let score = 0;
-    const hit = m.accuracy === 'sure' ? 1 : hitChance(m.accuracy, eff(b, fi, 'evasion'));
+    const hit = m.accuracy === 'sure' ? 1 : hitChance(m.accuracy, eff(b, fi, 'evasion') - (b.sides[si].zeroIn ?? 0));
     if (m.kind === 'support') {
       // buffs, debuffs and heals are worth what the situation makes them worth (see effectValue)
       score = hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * (finishingBlow ? 0.35 : 1) * (desperate && !m.effect?.heal ? 0.4 : 1);
     } else {
       const atk = m.kind === 'physical' ? eff(b, si, 'power') - eff(b, fi, 'armor') : eff(b, si, 'focus') - eff(b, fi, 'ward');
       const mult = m.kind === 'elemental' && m.type ? effectiveness(m.type, speciesOf(foe).types) : 1;
-      score = hit * Math.max(1, (m.dmgDie + 1) / 2 + m.dmgFlat + atk) * mult;
+      score = hit * Math.max(1, avgRoll(m) + atk) * mult;
       if (m.effect) score += hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * 0.5; // a rider on a hit
     }
     if (m.effort > c.stamina) score *= 0.7;
@@ -446,8 +452,13 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
     const v = natural + mods.reduce((a, p) => a + p.value, 0);
     const need = eff(b, fi, 'evasion');
     hit = v >= need;
-    crit = hit && m.kind === 'physical' && natural === die;
+    crit = hit && critFrom(m, die) > 0 && natural >= critFrom(m, die);
     ev.push({ t: 'roll', side: si, die, value: v, need, hit, crit, label: 'Accuracy', natural, mods });
+    // Zeroing In: the roll uses up any bonus; a miss builds it back up (stacking over a streak of misses)
+    const had = side.zeroIn ?? 0;
+    const gain = hit ? 0 : zeroInOf(m);
+    side.zeroIn = gain ? Math.min(ZERO_IN_MAX, had + gain) : 0;
+    if (had || side.zeroIn) ev.push({ t: 'zero', side: si, bonus: side.zeroIn, gained: side.zeroIn - (gain ? had : 0), snap: snap(b, c) });
   }
   if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); return; }
 
@@ -457,20 +468,22 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   }
 
   // damage
-  const dmgRoll = m.dmgDie > 0 ? roll(m.dmgDie) : 0;
+  const dice = damageDice(m);
+  const rolls = dice.map((d) => roll(d));
+  const dmgRoll = rolls.reduce((a, r) => a + r, 0);
   const parts = damageParts(b, si, m);
   const mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
   const raw = Math.max(1, dmgRoll + parts.reduce((a, p) => a + p.value, 0));
   let dmg = mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult));
   if (crit) dmg *= 2;
   applyDamage(foe, dmg);
-  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe), calc: { die: m.dmgDie, roll: dmgRoll, parts, raw, mult, crit, total: dmg } });
+  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe), calc: { dice, rolls, parts, raw, mult, crit, total: dmg } });
   if (mult >= 2) ev.push({ t: 'say', text: mult >= 4 ? 'Devastatingly effective!' : 'Super effective!', tone: 'good' });
   else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
   else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
 
-  // status on minimum damage roll
-  if (m.kind === 'elemental' && m.status && m.dmgDie > 0 && dmgRoll === 1 && !foe.ko && !b.status[foe.uid]) {
+  // status when any damage die shows a 1
+  if (m.kind === 'elemental' && m.status && rolls.includes(1) && !foe.ko && !b.status[foe.uid]) {
     b.status[foe.uid] = { id: m.status, turns: 3 };
     ev.push({ t: 'status', side: fi, status: m.status, snap: snap(b, foe) });
     ev.push({ t: 'say', text: `${nameOf(foe)} is afflicted with ${STATUS_INFO[m.status].name}!`, tone: 'info' });
@@ -479,12 +492,13 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   if (foe.ko) handleKO(b, fi, ev);
 }
 
-/** Modifiers to an accuracy roll (Beguile, the Darkness arena). */
+/** Modifiers to an accuracy roll (Beguile, the Darkness arena, Zeroing In). */
 function accuracyMods(b: Battle, si: 0 | 1): Part[] {
   const c = activeOf(b.sides[si]);
   const out: Part[] = [];
   if (b.status[c.uid]?.id === 'beguile') out.push({ label: 'Beguile', value: -1 });
   if (si === 0 && b.arena?.trick === 'darkness') out.push({ label: 'Darkness', value: b.arena.tier >= 4 ? -2 : -1 });
+  if (b.sides[si].zeroIn) out.push({ label: 'Zeroing In', value: b.sides[si].zeroIn! });
   return out;
 }
 
@@ -561,7 +575,8 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     steps.push({
       icon: '🎯', title: `Accuracy: d${die}${mods.length ? ` ${partsText(mods)}` : ''}`, tone: pct >= 67 ? 'good' : pct < 40 ? 'bad' : 'info',
       text: `${die !== m.accuracy ? `Daze shrinks the die from d${m.accuracy}. ` : ''}Need ${need}+ to beat ${foeName}’s Evasion ${need}: ${pct}% to hit.` +
-        (m.kind === 'physical' ? ` A natural ${die} is a critical hit: double damage.` : ''),
+        (critFrom(m, die) ? ` ${critFrom(m, die) === die ? `A natural ${die}` : `A natural ${critFrom(m, die)}–${die}`} is a critical hit: double damage.` : '') +
+        (zeroInOf(m) ? ` A miss zeroes in: +${Math.min(ZERO_IN_MAX, (b.sides[si].zeroIn ?? 0) + zeroInOf(m))} to the next accuracy roll.` : ' All or nothing: a miss never zeroes in.'),
     });
   }
 
@@ -570,19 +585,21 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     const add = parts.reduce((a, p) => a + p.value, 0);
     const mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
     const dmgFor = (r: number) => (mult === 0 ? 0 : Math.max(1, Math.floor(Math.max(1, r + add) * mult)));
-    const lo = dmgFor(m.dmgDie ? 1 : 0), hi = dmgFor(m.dmgDie);
+    const dice = damageDice(m);
+    const lo = dmgFor(dice.length), hi = dmgFor(dice.reduce((a, d) => a + d, 0));
+    const dt = dice.map((d) => `d${d}`).join(' + ');
     const multText = mult === 1 ? '' : ` × ${mult} (${mult === 0 ? 'immune' : mult > 1 ? 'super effective' : 'resisted'})`;
     const range = (a: number, z: number) => (a === z ? `${a}` : `${a}–${z}`);
     const stat = m.kind === 'physical' ? 'add your Power and subtract the foe’s Armor (physical move)' : 'add your Focus and subtract the foe’s Ward (elemental move)';
     steps.push({
-      icon: '💥', title: `Damage: ${[m.dmgDie ? `d${m.dmgDie}` : '', partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
+      icon: '💥', title: `Damage: ${[dt, partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
       tone: mult > 1 ? 'good' : mult < 1 ? 'bad' : undefined,
-      text: `${m.dmgDie ? `Roll a d${m.dmgDie}, then ` : ''}${stat}${multText ? `, then apply the type chart${multText}` : ''}. ` +
+      text: `${dice.length ? `Roll ${dice.length > 1 ? `${dt} and add them up` : `a ${dt}`}, then ` : ''}${stat}${multText ? `, then apply the type chart${multText}` : ''}. ` +
         `Deals ${range(lo, hi)} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)} on a crit` : ''}. ${foeName} has ${foe.health} Health left in its current heart.`,
     });
     if (m.kind === 'elemental' && m.status && m.dmgDie > 0) {
       const st = STATUS_INFO[m.status];
-      steps.push({ icon: st.icon, title: `Status chance: ${st.name}`, text: `If the damage die shows a 1 (${Math.round(100 / m.dmgDie)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}` });
+      steps.push({ icon: st.icon, title: `Status chance: ${st.name}`, text: `If ${dice.length > 1 ? 'any damage die' : 'the damage die'} shows a 1 (${Math.round(statusChance(m) * 100)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}` });
     }
   }
   const e = m.effect;
@@ -625,6 +642,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   side.active = to;
   noteFoe(b);
   side.mods = {};
+  side.zeroIn = 0;
   if (!b.participants.includes(alpha.uid) && si === 0) b.participants.push(alpha.uid);
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
   const powerId = speciesOf(alpha).affinity;
@@ -735,6 +753,7 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
     ls.active = next;
     noteFoe(b);
     ls.mods = {};
+    ls.zeroIn = 0;
     ev.push({ t: 'send', side: 1, idx: next, snap: snap(b, ls.team[next]) });
     ev.push({ t: 'say', text: `${ls.name} sends out ${nameOf(ls.team[next])}!`, tone: 'info' });
   } else {
@@ -766,6 +785,7 @@ export function foeSendIn(b: Battle, idx: number): BEvent[] {
   const i = ok.includes(idx) ? idx : ok[0];
   s.active = i;
   s.mods = {};
+  s.zeroIn = 0;
   b.foeNeedSwap = false;
   noteFoe(b);
   return [
@@ -779,6 +799,7 @@ export function sendIn(b: Battle, idx: number): BEvent[] {
   const s = b.sides[0];
   s.active = idx;
   s.mods = {};
+  s.zeroIn = 0;
   b.needSwap = false;
   if (!b.participants.includes(s.team[idx].uid)) b.participants.push(s.team[idx].uid);
   return [{ t: 'send', side: 0, idx, snap: snap(b, s.team[idx]) }];

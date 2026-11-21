@@ -66,9 +66,15 @@ export interface Move {
   effort: number;               // stamina drained on use
   speed: number;                // speed modifier for this round
   accuracy: number | 'sure';    // die size rolled vs Evasion, or always hits
+  /** Zeroing In: accuracy bonus this move gives the creature's next accuracy roll when it misses (default ZERO_IN = 1; 0 = never zeroes in). */
+  zeroIn?: number;
   dmgDie: number;               // 0 = none
+  /** More damage dice rolled with dmgDie and added up (e.g. [4] for "d6+d4"). Any of them showing a 1 inflicts the status. */
+  extraDice?: number[];
+  /** Physical moves: crit on the top N faces of the accuracy die (default 1, the top face only). */
+  critRange?: number;
   dmgFlat: number;
-  status?: StatusId;            // inflicted on minimum damage roll (elemental)
+  status?: StatusId;            // inflicted when any damage die shows a 1 (elemental)
   /** Support effects */
   effect?: { self?: Partial<Record<StatKey, number>>; foe?: Partial<Record<StatKey, number>>; heal?: number; staminaGain?: number };
   text: string;

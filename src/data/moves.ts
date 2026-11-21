@@ -14,6 +14,26 @@ const S = (id: string, name: string, type: ElementType | undefined, o: Partial<M
   id, name, kind: 'support', type, cost: {}, effort: 1, speed: 2, accuracy: 'sure', dmgDie: 0, dmgFlat: 0, text, ...o,
 });
 
+/** Zeroing In: a missed accuracy roll gives the creature's next accuracy roll this bonus, unless the move says otherwise. */
+export const ZERO_IN = 1;
+/** Misses in a row stack Zeroing In up to this bonus. */
+export const ZERO_IN_MAX = 3;
+/** How much a miss with this move zeroes in (sure-hit moves never miss, so 0). */
+export const zeroInOf = (m: Move) => (m.accuracy === 'sure' ? 0 : m.zeroIn ?? ZERO_IN);
+
+/** Every damage die a move rolls: its main die plus any extra dice (empty for none). */
+export const damageDice = (m: Move): number[] => (m.dmgDie ? [m.dmgDie, ...(m.extraDice ?? [])] : []);
+/** Average of a move's damage dice plus its flat bonus, before stats. */
+export const avgRoll = (m: Move) => damageDice(m).reduce((a, d) => a + (d + 1) / 2, 0) + m.dmgFlat;
+/** A move's damage as text, e.g. "d6+d4+1" ('' for none). */
+export const diceText = (m: Move) => [...damageDice(m).map((d) => `d${d}`), m.dmgFlat ? `${m.dmgFlat}` : ''].filter(Boolean).join('+');
+/** Chance that at least one damage die shows a 1 (which inflicts an elemental move's status). */
+export const statusChance = (m: Move) => (m.dmgDie ? 1 - damageDice(m).reduce((p, d) => p * (1 - 1 / d), 1) : 0);
+/** How many top faces of the accuracy die crit (physical, non-sure-hit moves only). */
+export const critFaces = (m: Move) => (m.kind === 'physical' && m.accuracy !== 'sure' ? Math.max(1, m.critRange ?? 1) : 0);
+/** The lowest natural accuracy roll that crits on this die (never a 1), or 0 if the move can't crit. */
+export const critFrom = (m: Move, die: number) => (critFaces(m) ? Math.max(2, die - critFaces(m) + 1) : 0);
+
 /** The status each type's elemental attacks inflict. */
 export const STATUS_FOR: Record<ElementType, StatusId> = {
   astral: 'daze', charm: 'beguile', electric: 'shock', fire: 'burn',
@@ -23,11 +43,11 @@ export const STATUS_FOR: Record<ElementType, StatusId> = {
 const HANDMADE: Move[] = [
   // ── Physical (type-less, can crit) ─────────────────────────────
   P('tackle', 'Tackle', { cost: { neutral: 1 }, dmgDie: 4 }, 'A reliable body slam.'),
-  P('claw', 'Claw', { cost: { neutral: 2 }, dmgDie: 6, effort: 1 }, 'Raking swipe. Crits on a max accuracy roll.'),
+  P('claw', 'Claw', { cost: { neutral: 2 }, dmgDie: 6, effort: 1, critRange: 2 }, 'Raking swipe that finds the soft spots.'),
   P('quick-jab', 'Quick Jab', { cost: { neutral: 1 }, dmgDie: 0, dmgFlat: 2, speed: 3, accuracy: 'sure' }, 'Strikes first and never misses.'),
   P('headbutt', 'Headbutt', { cost: { neutral: 3 }, dmgDie: 8, effort: 2, speed: -1 }, 'Heavy, slow, and hard to shrug off.'),
-  P('pounce', 'Pounce', { cost: { neutral: 2 }, dmgDie: 4, dmgFlat: 1, speed: 2 }, 'Leaps in before the foe can react.'),
-  P('rampage', 'Rampage', { cost: { neutral: 4 }, dmgDie: 10, effort: 3, speed: -2, accuracy: 8 }, 'An all-out charge. Exhausting.'),
+  P('pounce', 'Pounce', { cost: { neutral: 2 }, dmgDie: 4, dmgFlat: 1, speed: 2, zeroIn: 2 }, 'Leaps in before the foe can react.'),
+  P('rampage', 'Rampage', { cost: { neutral: 4 }, dmgDie: 10, effort: 3, speed: -2, accuracy: 8, zeroIn: 0, critRange: 3 }, 'An all-out charge. Exhausting.'),
   P('tail-whip', 'Tail Lash', { cost: { neutral: 2 }, dmgDie: 4, effect: { foe: { armor: -1 } } }, 'A stinging lash of the tail.'),
 
   // ── Support (type-less) ────────────────────────────────────────
@@ -38,7 +58,7 @@ const HANDMADE: Move[] = [
   E('stardust', 'Stardust', 'astral', { cost: { astral: 1 }, dmgDie: 4 }, 'Glittering motes that can Daze.'),
   E('comet-tail', 'Comet Tail', 'astral', { cost: { astral: 2, neutral: 1 }, dmgDie: 6, speed: 1 }, 'A streaking blow of starlight.'),
   E('aurora-veil', 'Aurora Veil', 'astral', { kind: 'support', cost: { astral: 2 }, dmgDie: 0, speed: 3, accuracy: 'sure', effect: { self: { ward: 2, evasion: 1 } } }, 'A shimmering curtain of aurora light.'),
-  E('meteor', 'Meteor', 'astral', { cost: { astral: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 3, speed: -2 }, 'Calls down a falling star.'),
+  E('meteor', 'Meteor', 'astral', { cost: { astral: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -2 }, 'Calls down a falling star and its shower of fragments.'),
 
   // ── Charm ──────────────────────────────────────────────────────
   E('pixie-glint', 'Pixie Glint', 'charm', { cost: { charm: 1 }, dmgDie: 4 }, 'A dazzling wink that can Beguile.'),
@@ -60,13 +80,13 @@ const HANDMADE: Move[] = [
 
   // ── Grass ──────────────────────────────────────────────────────
   E('vine-snap', 'Vine Snap', 'grass', { cost: { grass: 1 }, dmgDie: 4 }, 'A whipping vine that can Snare.'),
-  E('thorn-volley', 'Thorn Volley', 'grass', { cost: { grass: 2, neutral: 1 }, dmgDie: 6 }, 'A spray of needle-sharp thorns.'),
+  E('thorn-volley', 'Thorn Volley', 'grass', { cost: { grass: 2, neutral: 1 }, dmgDie: 4, extraDice: [4] }, 'A spray of needle-sharp thorns.'),
   E('photosynth', 'Photosynth', 'grass', { kind: 'support', cost: { grass: 2 }, dmgDie: 0, accuracy: 'sure', effect: { heal: 3, staminaGain: 2 } }, 'Drinks in the light.'),
   E('redwood-crush', 'Redwood Crush', 'grass', { cost: { grass: 4, neutral: 1 }, dmgDie: 10, effort: 3, speed: -2 }, 'Topples an ancient trunk onto the foe.'),
 
   // ── Rock ───────────────────────────────────────────────────────
   E('pebble-shot', 'Pebble Shot', 'rock', { cost: { rock: 1 }, dmgDie: 4 }, 'Flung grit that can Stagger.'),
-  E('rockslide', 'Rockslide', 'rock', { cost: { rock: 2, neutral: 1 }, dmgDie: 6, speed: -1 }, 'A tumble of loose boulders.'),
+  E('rockslide', 'Rockslide', 'rock', { cost: { rock: 2, neutral: 1 }, dmgDie: 4, extraDice: [4], speed: -1 }, 'A tumble of loose boulders.'),
   E('stone-skin', 'Stone Skin', 'rock', { kind: 'support', cost: { rock: 2 }, dmgDie: 0, accuracy: 'sure', speed: 3, effect: { self: { armor: 2, ward: 1 } } }, 'Hardens the hide.'),
   E('canyon-quake', 'Canyon Quake', 'rock', { cost: { rock: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 3, speed: -3 }, 'Splits the ground beneath the foe.'),
 
@@ -80,7 +100,7 @@ const HANDMADE: Move[] = [
   E('splash-jet', 'Splash Jet', 'water', { cost: { water: 1 }, dmgDie: 4 }, 'A pressurized squirt that can Soak.'),
   E('tide-crash', 'Tide Crash', 'water', { cost: { water: 2, neutral: 1 }, dmgDie: 6 }, 'Rolling breaker.'),
   E('mist-cloak', 'Mist Cloak', 'water', { kind: 'support', cost: { water: 2 }, dmgDie: 0, accuracy: 'sure', speed: 3, effect: { self: { evasion: 2 } } }, 'Wraps itself in mist.'),
-  E('maelstrom', 'Maelstrom', 'water', { cost: { water: 4, neutral: 1 }, dmgDie: 10, effort: 3, speed: -1 }, 'A whirlpool that drags the foe under.'),
+  E('maelstrom', 'Maelstrom', 'water', { cost: { water: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -2 }, 'A whirlpool that drags the foe under.'),
 
   // ── Signature moves (unlocked via progression trees) ──────────
   E('sig-borealis', 'Borealis Lance', 'astral', { cost: { astral: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 1, speed: 1 }, 'Signature. A spear of aurora light.'),
@@ -172,7 +192,7 @@ const filled = new Set(HANDMADE.filter((m) => m.kind === 'elemental' && !m.id.st
 
 export const MOVES: Move[] = [...HANDMADE, ...ATTACK_SLOTS.filter((sl) => !filled.has(slotKey(sl.cost, sl.type))).map(placeholderAttack)];
 
-// Every elemental attack carries its type's status (inflicted on minimum damage roll).
+// Every elemental attack carries its type's status (inflicted when any damage die shows a 1).
 for (const m of MOVES) if (m.kind === 'elemental' && m.type && !m.status) m.status = STATUS_FOR[m.type];
 
 const STAT_NAME: Record<string, string> = { vigor: 'Vigor', power: 'Power', armor: 'Armor', focus: 'Focus', ward: 'Ward', speed: 'Speed', evasion: 'Evasion', stamina: 'Stamina' };
@@ -200,8 +220,24 @@ export function effectText(m: Move): string {
   return `${sentence}${e.self || e.foe ? ' Stat changes last until that creature leaves the field (max ±3 each).' : ''}`;
 }
 
+/** A move's Zeroing In when it isn't the usual +1, e.g. "Pursuit: a miss zeroes in +2." */
+export function zeroInText(m: Move): string {
+  const z = zeroInOf(m);
+  if (m.accuracy === 'sure' || z === ZERO_IN) return '';
+  return z === 0 ? 'All or nothing: a miss never zeroes in.' : `Pursuit: a miss zeroes in +${z} (not +${ZERO_IN}).`;
+}
+
+/** Extra dice and wider crits, spelled out, e.g. "Crits on an accuracy roll of 5–6." */
+export function diceRulesText(m: Move): string {
+  const out: string[] = [];
+  if (m.extraDice?.length && m.kind === 'elemental' && m.status) out.push(`Rolls ${diceText(m)}: a 1 on any die inflicts the status (${Math.round(statusChance(m) * 100)}%).`);
+  else if (m.extraDice?.length) out.push(`Rolls ${diceText(m)}.`);
+  if (critFaces(m) > 1 && typeof m.accuracy === 'number') out.push(`Wide crits: an accuracy roll of ${critFrom(m, m.accuracy)}–${m.accuracy} crits.`);
+  return out.join(' ');
+}
+
 // Spell out every effect's exact numbers in the move's text, so cards never go vague or stale.
-for (const m of MOVES) { const fx = effectText(m); if (fx) m.text = `${m.text} ${fx}`; }
+for (const m of MOVES) { const fx = [diceRulesText(m), effectText(m), zeroInText(m)].filter(Boolean).join(' '); if (fx) m.text = `${m.text} ${fx}`; }
 
 export const MOVE_BY_ID: Record<string, Move> = Object.fromEntries(MOVES.map((m) => [m.id, m]));
 

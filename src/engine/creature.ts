@@ -1,6 +1,6 @@
 import type { EnergyMap, ElementType, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
-import { MOVES, MOVE_BY_ID } from '../data/moves';
+import { MOVES, MOVE_BY_ID, avgRoll, diceText, critFaces } from '../data/moves';
 import { NATURES, NATURE_BY_ID } from '../data/content';
 import { TYPES, effectiveness } from '../data/types';
 import { pick, uid } from './dice';
@@ -144,7 +144,7 @@ export function autoPlaybook(c: CreatureInst, varied = false): string[] {
   const val = (id: string) => {
     const m = MOVE_BY_ID[id];
     const typed = Object.keys(m.cost).some((k) => k !== 'neutral');
-    return (m.dmgDie + 1) / 2 + m.dmgFlat + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2;
+    return avgRoll(m) + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2;
   };
   // The attack grid makes the learnable list long (dozens for dual types), so search a shortlist:
   // the strongest moves, the best value per energy, and the best of each kind and of the main type.
@@ -207,7 +207,7 @@ export interface ProgNode {
 
 /** One-line summary of a move for chart nodes, e.g. "d8+1 Astral attack". */
 export function sigSummary(m: Move): string {
-  const dmg = m.dmgDie || m.dmgFlat ? `${m.dmgDie ? `d${m.dmgDie}` : ''}${m.dmgDie && m.dmgFlat ? '+' : ''}${m.dmgFlat || ''} ` : '';
+  const dmg = diceText(m) ? `${diceText(m)} ` : '';
   const kind = m.kind === 'support' ? 'support move' : m.kind === 'physical' ? 'physical attack' : 'attack';
   return `${dmg}${m.type ? `${m.type[0].toUpperCase()}${m.type.slice(1)} ` : ''}${kind}`;
 }
@@ -416,9 +416,9 @@ const TYPICAL_EVASION = 3;
 export function expectedDamage(c: CreatureInst, m: Move, vs?: ElementType): number {
   if (m.kind === 'support') return 0;
   const st = stats(c);
-  const base = Math.max(1, (m.dmgDie ? (m.dmgDie + 1) / 2 : 0) + m.dmgFlat + (m.kind === 'physical' ? st.power : st.focus));
+  const base = Math.max(1, avgRoll(m) + (m.kind === 'physical' ? st.power : st.focus));
   const hit = m.accuracy === 'sure' ? 1 : Math.max(0, Math.min(1, (m.accuracy - TYPICAL_EVASION + 1) / m.accuracy));
-  const crit = m.kind === 'physical' && m.accuracy !== 'sure' ? 1 + 1 / m.accuracy : 1;
+  const crit = critFaces(m) && typeof m.accuracy === 'number' ? 1 + Math.min(critFaces(m), m.accuracy - 1) / m.accuracy : 1;
   const mult = vs && m.kind === 'elemental' && m.type ? effectiveness(m.type, [vs]) : 1;
   return base * hit * crit * mult;
 }

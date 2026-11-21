@@ -490,16 +490,35 @@ button.dex-entry:hover { border-color: var(--ink); }
 .pl-top { display: flex; align-items: center; gap: 6px; }
 .pl-top b { font-family: var(--font-head); font-size: 17px; }
 .pl-types { display: flex; gap: 2px; }
+.zero-tag { margin-left: auto; font-size: 11px; font-weight: 800; background: #e3f1ff; border: 1.5px solid var(--info); border-radius: 999px; padding: 1px 7px; white-space: nowrap; cursor: help; }
+.zero-tag + .status-tag { margin-left: 0; }
+.mc-zero { font-weight: 800; }
+.mc-crit { font-weight: 800; color: #c25b00; }
+.zi { font-style: normal; font-size: 1.45em; line-height: 0; vertical-align: -0.12em; font-family: 'Segoe UI Symbol', 'Cambria Math', 'DejaVu Sans', sans-serif; }
+.mc-zero.none { color: var(--bad); }
+.mc-zero.pursuit { color: var(--info); }
 .status-tag { margin-left: auto; font-size: 11px; font-weight: 800; background: #ffe7c2; border: 1.5px solid #d08a1a; border-radius: 999px; padding: 1px 7px; }
-.plate .hp-row { grid-template-columns: 1fr auto; gap: 6px; font-size: 10px; color: #6b6577; }
-.plate .hp-row .bar { height: 7px; border-width: 1.5px; }
+.pl-bars { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; row-gap: 3px; align-items: center; font-size: 10px; font-weight: 800; color: #6b6577; }
+.pl-bars.mine, .pl-bars.foe { grid-template-columns: 1fr auto 30px; }
+.pl-bars.foe .fat-badge { grid-row: 1; margin: -6px 0; }
+.pl-bars .bar { height: 7px; border-width: 1.5px; }
+.pl-bars .sta-bar { grid-column: 1; height: 5px; }
+.pl-bars .sta-bar i { background: linear-gradient(180deg, #7cc4ff, var(--info)); }
+.pl-bars .sta-num { grid-column: 2; font-size: 9.5px; }
+.pl-bars .fat-badge { grid-column: 3; grid-row: 1 / span 2; }
 .pl-vit { display: flex; align-items: center; gap: 8px; }
 .pl-vit .hearts { gap: 2px; }
 .pl-vit .heart { font-size: 24px; }
 .pl-vit .heart.on { text-shadow: 0 2px 0 #8d1f3b; }
 .caught-mark { font-size: 14px; line-height: 1; padding: 2px 4px; border: 1.5px solid var(--ink); border-radius: 6px; background: #fff3c4; }
-.pl-sub { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
-.pl-sub .fat { color: var(--bad); }
+/* Fatigue: a number in a warning diamond. Greyed at 0, red when the creature is fatigued. */
+.fat-badge { position: relative; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; background: none; box-shadow: none; cursor: help; }
+.fat-badge::before { content: ''; position: absolute; inset: 4px; transform: rotate(45deg); background: #efe7d6; border: 2px solid #b9ae98; border-radius: 3px; }
+.fat-badge span { position: relative; font-size: 13px; font-weight: 900; line-height: 1; color: #a89f8c; font-variant-numeric: tabular-nums; }
+.fat-badge.on::before { background: #fff0ee; border-color: var(--bad); box-shadow: 0 2px 0 #8d1f2b; }
+.fat-badge.on span { color: var(--bad); }
+.meter.sta { grid-template-columns: 34px 1fr auto 30px; }
+.fat-help p { margin: 0 0 8px; }
 .team-balls { margin-left: auto; display: flex; gap: 3px; }
 .team-balls i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--ink); }
 .team-balls i.ko { background: #bbb; }

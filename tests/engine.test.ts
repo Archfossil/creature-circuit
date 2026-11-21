@@ -297,7 +297,7 @@ describe('move readout', () => {
             bt.sides[1].mods.speed = -20; // act first, so the foe's move can't shift stats before we hit
             const hit = resolveRound(bt, { kind: 'move', move: moveId }).find((e) => e.t === 'damage' && e.side === 1 && e.calc);
             if (hit && hit.t === 'damage' && hit.calc) {
-              expect(hit.calc.raw).toBe(Math.max(1, hit.calc.roll + hit.calc.parts.reduce((a2, x) => a2 + x.value, 0)));
+              expect(hit.calc.raw).toBe(Math.max(1, hit.calc.rolls.reduce((a2, r) => a2 + r, 0) + hit.calc.parts.reduce((a2, x) => a2 + x.value, 0)));
               expect(hit.amount).toBe(hit.calc.total);
               const base = hit.calc.crit ? hit.amount / 2 : hit.amount;
               expect(base, `${id} ${moveId} ${JSON.stringify(hit.calc)}`).toBeGreaterThanOrEqual(lo);
@@ -2775,5 +2775,147 @@ describe('trainer minis', () => {
     expect(box.min.y).toBeCloseTo(0, 1);
     expect(box.max.y).toBeGreaterThan(1.6);
     expect(box.max.y).toBeLessThan(2.4);
+  });
+});
+
+describe('Zeroing In', () => {
+  const ZI = () => import('../src/data/moves');
+  // the foe can't be hit by a d6 or d8 without help: Evasion 6, and every die rolls `r`
+  const setup = () => {
+    const me = createCreature('zapup', 5), alt = createCreature('puddlit', 5), foe = createCreature('sproutle', 5);
+    me.playbook = ['tackle', 'pounce', 'rampage', 'quick-jab'];
+    const b = createBattle(side('player', [me, alt]), side('wild', [foe]), WEATHER.clear);
+    b.sides[1].mods.evasion = 9;
+    const use = (move: string) => { me.stamina = 99; me.fatigue = 0; foe.health = 99; return resolveRound(b, { kind: 'move', move }, { kind: 'move', move: CATCH_BREATH.id }); };
+    return { b, me, use };
+  };
+  const withRolls = <T>(r: number, fn: () => T): T => { const real = Math.random; Math.random = () => r; try { return fn(); } finally { Math.random = real; } };
+  const accRoll = (ev: BEvent[]) => ev.find((e) => e.t === 'roll' && e.label === 'Accuracy' && e.side === 0);
+
+  it('a miss gives +1 to the next accuracy roll, stacking over misses up to +3', () => {
+    const { b, use } = setup();
+    withRolls(0, () => {
+      use('tackle'); expect(b.sides[0].zeroIn).toBe(1);
+      const ev = use('tackle'); expect(b.sides[0].zeroIn).toBe(2);
+      const r = accRoll(ev);
+      expect(r?.t === 'roll' && r.mods?.find((p) => p.label === 'Zeroing In')?.value).toBe(1);
+      expect(ev.some((e) => e.t === 'zero' && e.bonus === 2 && e.snap.zero === 2)).toBe(true);
+      use('tackle'); use('tackle');
+      expect(b.sides[0].zeroIn).toBe(3);
+    });
+  });
+
+  it('pursuit moves zero in more; all-or-nothing moves never do and still use up the bonus', async () => {
+    const { ZERO_IN, zeroInOf, MOVE_BY_ID: M } = await ZI();
+    expect(zeroInOf(M.tackle)).toBe(ZERO_IN);
+    expect(zeroInOf(M.pounce)).toBe(2);
+    expect(zeroInOf(M.rampage)).toBe(0);
+    expect(zeroInOf(M['quick-jab'])).toBe(0);
+    expect(M.rampage.text).toMatch(/never zeroes in/);
+    expect(M.pounce.text).toMatch(/zeroes in \+2/);
+    const { b, use } = setup();
+    withRolls(0, () => {
+      use('pounce'); expect(b.sides[0].zeroIn).toBe(2);
+      const ev = use('rampage');
+      const r = accRoll(ev);
+      expect(r?.t === 'roll' && r.mods?.find((p) => p.label === 'Zeroing In')?.value).toBe(2);
+      expect(b.sides[0].zeroIn).toBe(0);
+    });
+  });
+
+  it('a hit uses up the bonus; a sure hit keeps it; leaving the field loses it', () => {
+    const { b, me, use } = setup();
+    withRolls(0, () => { use('tackle'); use('tackle'); });
+    expect(b.sides[0].zeroIn).toBe(2);
+    withRolls(0, () => use('quick-jab'));
+    expect(b.sides[0].zeroIn).toBe(2);
+    b.sides[1].mods.evasion = 0;
+    const ev = withRolls(0.99, () => use('tackle'));
+    expect(accRoll(ev)?.t === 'roll' && (accRoll(ev) as { hit: boolean }).hit).toBe(true);
+    expect(b.sides[0].zeroIn).toBe(0);
+    expect(ev.some((e) => e.t === 'zero' && e.bonus === 0)).toBe(true);
+    b.sides[1].mods.evasion = 9;
+    withRolls(0, () => use('tackle'));
+    expect(b.sides[0].zeroIn).toBe(1);
+    me.stamina = 99;
+    withRolls(0.5, () => resolveRound(b, { kind: 'swap', to: 1 }, { kind: 'move', move: CATCH_BREATH.id }));
+    expect(b.sides[0].active).toBe(1);
+    expect(b.sides[0].zeroIn).toBe(0);
+  });
+
+  it('the move readout shows the bonus and what a miss would add', () => {
+    const { b, use } = setup();
+    withRolls(0, () => use('tackle'));
+    const acc = movePreview(b, 'tackle').find((s) => s.title.startsWith('Accuracy'))!;
+    expect(acc.title).toMatch(/Zeroing In 1/);
+    expect(acc.text).toMatch(/zeroes in: \+2/);
+    expect(movePreview(b, 'rampage').find((s) => s.title.startsWith('Accuracy'))!.text).toMatch(/never zeroes in/);
+  });
+});
+
+describe('extra damage dice and wide crits', () => {
+  const queue = <T>(vals: number[], fn: () => T): T => {
+    const real = Math.random; let i = 0;
+    Math.random = () => (i < vals.length ? vals[i++] : 0.5);
+    try { return fn(); } finally { Math.random = real; }
+  };
+  const fight = (move: string) => {
+    const me = createCreature('sproutle', 6), foe = createCreature('zapup', 6);
+    me.playbook = [move];
+    const b = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+    b.sides[0].mods.speed = 9; // act first, no Clash rolls
+    b.sides[1].mods.evasion = -9; // need 1+: any accuracy roll hits
+    foe.health = 99;
+    return { b, me, foe, go: () => resolveRound(b, { kind: 'move', move }, { kind: 'move', move: CATCH_BREATH.id }) };
+  };
+
+  it('moves with extra dice roll them all, add them up, and show the odds', async () => {
+    const { damageDice, avgRoll, diceText, statusChance } = await import('../src/data/moves');
+    const tv = MOVE_BY_ID['thorn-volley'];
+    expect(damageDice(tv)).toEqual([4, 4]);
+    expect(diceText(tv)).toBe('d4+d4');
+    expect(avgRoll(tv)).toBe(5);
+    expect(statusChance(tv)).toBeCloseTo(1 - 0.75 * 0.75);
+    expect(diceText(MOVE_BY_ID.meteor)).toBe('d10+d4');
+    expect(statusChance(MOVE_BY_ID.meteor)).toBeGreaterThan(statusChance(MOVE_BY_ID['magma-surge']));
+    expect(tv.text).toMatch(/a 1 on any die inflicts the status \(44%\)/);
+  });
+
+  it('only one of the dice needs to show a 1 to inflict the status', () => {
+    const { b, foe, go } = fight('thorn-volley');
+    // accuracy 4, then the damage dice: 4 and 1
+    const ev = queue([0.5, 0.9, 0], go);
+    const dmg = ev.find((e) => e.t === 'damage' && e.side === 1);
+    expect(dmg?.t === 'damage' && dmg.calc?.dice).toEqual([4, 4]);
+    expect(dmg?.t === 'damage' && dmg.calc?.rolls).toEqual([4, 1]);
+    expect(b.status[foe.uid]?.id).toBe('snare');
+  });
+
+  it('no 1 on any die: no status', () => {
+    const { b, foe, go } = fight('thorn-volley');
+    queue([0.5, 0.9, 0.3], go);
+    expect(b.status[foe.uid]).toBeUndefined();
+  });
+
+  it('Claw crits on a 5 or 6; Tackle only on a 6; Rampage on 6–8', async () => {
+    const { critFrom } = await import('../src/data/moves');
+    expect(critFrom(MOVE_BY_ID.claw, 6)).toBe(5);
+    expect(critFrom(MOVE_BY_ID.tackle, 6)).toBe(6);
+    expect(critFrom(MOVE_BY_ID.rampage, 8)).toBe(6);
+    expect(critFrom(MOVE_BY_ID.claw, 4)).toBe(3); // a Dazed d4 keeps the two-face range
+    expect(critFrom(MOVE_BY_ID['thorn-volley'], 6)).toBe(0); // elemental moves don't crit
+    for (const [move, crit] of [['claw', true], ['tackle', false]] as const) {
+      const ev = queue([0.7], fight(move).go); // natural 5
+      const dmg = ev.find((e) => e.t === 'damage' && e.side === 1);
+      expect(dmg?.t === 'damage' && dmg.crit).toBe(crit);
+    }
+  });
+
+  it('the readout lists every die, the combined status chance and the crit range', () => {
+    const tv = movePreview(fight('thorn-volley').b, 'thorn-volley');
+    expect(tv.find((s) => s.title.startsWith('Damage'))!.title).toMatch(/^Damage: d4 \+ d4/);
+    expect(tv.find((s) => s.title.startsWith('Status chance'))!.text).toMatch(/any damage die shows a 1 \(44% chance\)/);
+    const claw = movePreview(fight('claw').b, 'claw');
+    expect(claw.find((s) => s.title.startsWith('Accuracy'))!.text).toMatch(/natural 5–6 is a critical hit/);
   });
 });

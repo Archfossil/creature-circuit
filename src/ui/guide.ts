@@ -100,8 +100,9 @@ export const GUIDE: GuideCategory[] = [
       { id: 'combat', title: 'How a round works', body: [
         'Both sides pick an action. The faster creature acts first (a tie is a Clash: both roll, and the lower roll takes the difference as damage and goes second; equal rolls flip a coin for who goes first).',
         '- Accuracy: roll the move’s die against the foe’s Evasion.',
-        '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll.',
-        '- Elemental moves use Focus vs Ward and the type chart, and inflict a status on a minimum damage roll.',
+        '- ⌖ Zeroing In: a miss gives that creature +1 on its next accuracy roll, stacking up to +3 over several misses. The next roll uses it up, and swapping out loses it. Some moves zero in harder (Pounce: +2); all-or-nothing moves (Rampage) never do.',
+        '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll. Some (Claw, Rampage) have wide crits marked ✸ on their card, e.g. ✸5+ crits on a 5 or 6.',
+        '- Elemental moves use Focus vs Ward and the type chart, and inflict a status when the damage die shows a 1. Some roll an extra die (Meteor: d10+d4); then a 1 on either die inflicts it.',
         'Damage drains the Health bar, then a Vitality heart. Out of hearts means knocked out.',
       ] },
       { id: 'battlelog', title: 'Battle Log', body: [
@@ -116,10 +117,11 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'stamina', title: 'Stamina & Fatigue', body: [
         'Each move costs Effort from Stamina. At 0 Stamina a creature gains Fatigue, and a fatigued creature rolls a d10 before acting and may lose its turn.',
+        'In battle, the thin blue bar under your Health is Stamina. The diamond beside it is Fatigue: grey at 0, a red number when fatigued. The opponent’s nameplate shows its Fatigue diamond too. Hover or tap one to see the odds of losing a turn.',
         'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
       ] },
       { id: 'readouts', title: 'Move readouts', body: [
-        'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion, then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',
+        'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion (plus any ⌖ Zeroing In, and what a miss would add), then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',
         'Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.',
         'Keys: 1–4 pick a move (Enter confirms, Esc goes back), B catch breath, S swap, R run, T type chart.',
       ] },

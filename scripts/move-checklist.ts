@@ -2,7 +2,7 @@
 // accuracy, speed, effort, status, effects), marking generated placeholders to replace and flagging
 // moves that stand out from the attack-grid baseline for a balance check. Run: npm run docs:moves
 import { writeFileSync } from 'node:fs';
-import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL } from '../src/data/moves';
+import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../src/data/moves';
 import { SPECIES } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
 import type { ElementType, Move } from '../src/data/schema';
@@ -17,12 +17,12 @@ const costText = (m: Move) => {
   if (m.cost.neutral) parts.push(`${m.cost.neutral} Neutral`);
   return parts.join(' + ') || 'Free';
 };
-const avgDmg = (m: Move) => (m.dmgDie ? (m.dmgDie + 1) / 2 : 0) + m.dmgFlat;
-const dmgText = (m: Move) => (m.kind === 'support' ? '—' : [m.dmgDie ? `d${m.dmgDie}` : '', m.dmgFlat ? `${m.dmgDie ? '+' : ''}${m.dmgFlat}` : ''].join('') || '0');
-const accText = (m: Move) => (m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}`);
+const avgDmg = avgRoll;
+const dmgText = (m: Move) => (m.kind === 'support' ? '—' : diceText(m) || '0');
+const accText = (m: Move) => (m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}${critFaces(m) > 1 ? ` (✸ ${critFrom(m, m.accuracy)}+)` : ''}${zeroInOf(m) === ZERO_IN ? '' : zeroInOf(m) ? ` (⌖ +${zeroInOf(m)})` : ' (⌖ ✕)'}`);
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const fx = (m: Move) => effectText(m).replace(/ Stat changes last until.*$/, '') || '—';
-const statusText = (m: Move) => (m.status ? STATUS_INFO[m.status].name : '—');
+const statusText = (m: Move) => (m.status ? `${STATUS_INFO[m.status].name}${m.extraDice?.length ? ` (${Math.round(statusChance(m) * 100)}%)` : ''}` : '—');
 
 // Baseline: what a generated placeholder with the same total typed cost does (dual types get +1 flat).
 const BASE: Record<number, { single: number; dual: number }> = Object.fromEntries(Object.entries(BY_TOTAL).map(([n, b]) => {
@@ -39,7 +39,9 @@ function balanceNote(m: Move): string {
   const ref = dual ? base.dual : base.single;
   let d = avgDmg(m) - ref;
   // sure-hit moves and fast moves are worth a little more, slow ones a little less
-  const perks = (m.accuracy === 'sure' ? 1 : 0) + Math.max(0, m.speed) * 0.25 + Math.min(0, m.speed) * 0.25;
+  // wider crits: each extra crit face adds a 1-in-die chance of doubling the damage
+  const wideCrit = critFaces(m) > 1 && typeof m.accuracy === 'number' ? ((critFaces(m) - 1) / m.accuracy) * avgDmg(m) : 0;
+  const perks = (m.accuracy === 'sure' ? 1 : 0) + Math.max(0, m.speed) * 0.25 + Math.min(0, m.speed) * 0.25 + wideCrit;
   d += perks;
   if (d >= 1.5) return `⬆ Strong for its cost (${signed(+d.toFixed(1))} vs baseline)`;
   if (d <= -1.5) return `⬇ Weak for its cost (${signed(+d.toFixed(1))} vs baseline)`;
@@ -87,10 +89,11 @@ lines.push(
   '',
   '- **Cost** is the energy a creature must generate to slot the move into its playbook. It isn’t spent per use. Neutral can be paid by any type.',
   '- **Hits as**: the type the attack uses on the type chart. Physical moves ignore the chart and use Power vs Armor.',
-  '- **Damage** is the damage die plus a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.',
-  '- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face.',
+  '- **Damage** is the damage die (plus any extra dice, e.g. d10+d4, which are added up) and a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.',
+  '- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits).',
+  `- **⌖ Zeroing In**: a miss gives the creature's next accuracy roll +${ZERO_IN}, stacking over a streak of misses up to +${ZERO_IN_MAX}. The next accuracy roll uses it up, and leaving the field loses it. Moves that differ say so after their accuracy: **(⌖ +2)** is a pursuit move that zeroes in harder, **(⌖ ✕)** is all or nothing and never zeroes in.`,
   '- **Speed** is added to the user’s Speed this round to decide who acts first. **Effort** is the Stamina it drains.',
-  '- **Status** is inflicted when the damage die rolls a 1 (elemental attacks carry their type’s status).',
+  '- **Status** is inflicted when a damage die rolls a 1 (elemental attacks carry their type’s status). Moves with extra dice (e.g. d10+d4) inflict it if **any** die shows a 1, so the chance is shown next to the status.',
   '- **Balance note** compares a hand-made move’s average damage with a generated placeholder of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.',
   '- **Design ☐**: a designed name, flavour and numbers. Hand-made moves start ticked. **Balance ☐**: tick once someone has reviewed its numbers in play.',
   '- **Swapping a placeholder (developers):** add the move to `HANDMADE` in `src/data/moves.ts` with the same typed cost and hit type. It takes over that grid slot and the placeholder disappears. Then regenerate this file.',
@@ -115,7 +118,7 @@ lines.push('', '## Contents', '',
   flagged.length ? '- [Balance watch list](#balance-watch-list)' : '',
   '', '---', '');
 
-lines.push('## Physical moves', '', 'Type-free attacks: Power vs Armor, ignore the type chart, crit on the accuracy die’s top face.', '', header, rule, ...physical.map(row), '');
+lines.push('## Physical moves', '', 'Type-free attacks: Power vs Armor, ignore the type chart, crit on the accuracy die’s top face (or a wider range, marked ✸).', '', header, rule, ...physical.map(row), '');
 lines.push('## Support moves', '', 'Buffs, debuffs and heals. No damage. Catch Breath is always available and doesn’t take a playbook slot.', '', header, rule, ...[...support, CATCH_BREATH].map(row), '');
 lines.push('## Signature moves', '', 'Unlocked from a creature’s progression chart (★ node). They don’t fill attack-grid slots.', '',
   '| Signature | Learned by |', '|---|---|', ...sigs.map((m) => `| ${m.name} | ${sigUsers(m.id).join(', ') || '—'} |`), '', header, rule, ...sigs.map(row), '');
