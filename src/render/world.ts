@@ -862,6 +862,9 @@ export class WorldView implements SceneView {
     return i >= 0 ? this.rivalRigs[i].root.position.clone() : null;
   }
 
+  /** Where the next-stop flag stands, or null if none is planted. */
+  waypointPos(): THREE.Vector3 | null { return this.waypointMark ? this.waypointMark.position.clone() : null; }
+
   /** Glide the camera to a spot (keeping the usual framing). */
   focusPos(p: THREE.Vector3) { this.goal.set(p.x, p.y - 0.4, p.z + 3); }
 

@@ -149,6 +149,10 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .pips-init { display: flex; gap: 4px; margin-top: 2px; }
 .pips-init span { width: 16px; height: 16px; transform: rotate(45deg); border: 2px solid var(--ink); background: #ddd3bd; border-radius: 3px; transition: all 0.3s; }
 .pips-init span.on { background: linear-gradient(135deg, #ffd84a, var(--accent)); }
+.next-stop-chip { grid-column: 1 / -1; justify-self: start; display: flex; align-items: baseline; gap: 2px; font: inherit; font-size: 12px; background: #fff; border: 2px solid var(--tc, var(--ink)); border-radius: 999px; padding: 2px 10px 2px 7px; cursor: pointer; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.next-stop-chip small { color: var(--muted); font-weight: 700; font-size: 11px; }
+.next-stop-chip b { font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
+.next-stop-chip:hover, .next-stop-chip:focus-visible { background: color-mix(in srgb, var(--tc, #888) 14%, #fff); }
 .warn { grid-column: 1 / -1; font-size: 12px; font-weight: 800; color: var(--bad); }
 .action-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 5px; }
 .action-bar::-webkit-scrollbar { display: none; }

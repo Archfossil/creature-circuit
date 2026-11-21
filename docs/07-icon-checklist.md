@@ -75,7 +75,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `action-team`: 🐾: Team (also "My team" while watching online).
 - [ ] `action-bag`: 🎒: Bag (also "My bag" while watching online).
 - [ ] `action-end-turn`: ⏭️: End Turn.
-- [ ] `next-stop`: 📍: "Mark as next stop" in the node preview and its toasts (the marker on the map itself is a 3D flag in the trainer's colour).
+- [ ] `next-stop`: 📍: "Mark as next stop" in the node preview, the "Your next stop" chip on the location card, and its toasts (the marker on the map itself is a 3D flag in the trainer's colour).
 - [ ] `active-effects`: the yellow HUD pill listing active effects (uses each effect's own icon: 🍲 Nabe, ⭐ lucky stars, 🕯️ Lure, 💫 wisp).
 - [ ] `bond`: 🤝: Special bond tag on the starter's card.
 

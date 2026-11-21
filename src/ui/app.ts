@@ -628,6 +628,17 @@ export class App {
     toast(id ? `📍 Marked ${NODE_BY_ID[id].name} as your next stop. Only you can see it.` : '📍 Marker removed.', 'info', 2500);
   }
 
+  /** Next-stop chip tapped: glide the map to my flag and light it up in my colour. */
+  findNextStop() {
+    const me = this.markerOwner();
+    if (!me?.waypoint || this.engine.view !== this.world) return;
+    const pos = this.world.waypointPos();
+    if (!pos) return;
+    this.world.focusPos(pos);
+    this.world.spotlight(pos, me.trainer.color);
+    toast(`📍 Your next stop: ${NODE_BY_ID[me.waypoint]?.name ?? ''}`, 'info', 2000);
+  }
+
   /** While watching: tend my own creatures. The change shows here at once and is sent to the trainer playing. */
   showMyCreature(c: CreatureInst) {
     const seat = this.mySeat();
@@ -1100,6 +1111,9 @@ export class App {
         h('span', { class: 'loc-ico' }, node.kind === 'city' ? h('img', { src: typeIcon(node.cityType!), alt: '' }) : BIOME_INFO[node.biome].icon),
         h('div', null, h('b', null, node.name), h('small', null, this.nodeSubtitle(node.id)))),
       h('div', { class: 'init' }, h('small', null, 'Initiative'), h('div', { class: 'pips-init' }, Array.from({ length: 5 }, (_, i) => h('span', { class: i < s.initiative ? 'on' : '' })))),
+      // my private next-stop flag: tap to find it on the map
+      marker?.waypoint ? h('button', { class: 'next-stop-chip', style: `--tc:${marker.trainer.color}`, title: 'Show your next-stop flag on the map', onclick: () => this.findNextStop() },
+        '📍 ', h('small', null, 'Your next stop: '), h('b', null, NODE_BY_ID[marker.waypoint]?.name ?? '')) : null,
       daysLeft <= 10 ? h('div', { class: 'warn' }, `⏳ ${daysLeft + 1} turns left — reach Circuit Stadium with 8 Merits!`) : null);
     const actions = h('div', { class: 'action-bar' }, this.actionButtons());
     const followerBtn = h('button', { class: 'follower-chip', onclick: () => this.pickFollower() },

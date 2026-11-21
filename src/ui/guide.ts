@@ -19,7 +19,7 @@ export const GUIDE: GuideCategory[] = [
         '- Moving to an adjacent node costs 1. Tap a glowing node, then Travel, or double-tap it. Double-tapping the city or town you’re in opens its menu (Settings can turn both off).',
         '- City actions such as the Stable, Market and Arbiter usually cost Initiative too. The cost is shown on each option.',
         '- End Turn when you’re done. Unspent Initiative doesn’t carry over, so camping can turn it into rest (see Places → Camping).',
-        'Planning ahead? Tap any node and choose 📍 Mark as next stop. A flag in your colour marks it on the map as a reminder. Only you see it (online you can set it while others play), and it clears when you arrive.',
+        'Planning ahead? Tap any node and choose 📍 Mark as next stop. A flag in your colour marks it on the map as a reminder. Only you see it (online you can set it while others play), and it clears when you arrive. Lost track of it? Tap “📍 Your next stop” on your location card to fly the map there.',
       ] },
       { id: 'explore', title: 'Exploring', body: [
         'Entering a wild node explores it with a d6:',
