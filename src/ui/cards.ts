@@ -581,21 +581,27 @@ function recommendSheet(c: CreatureInst, confirm: (ids: string[]) => void) {
   render();
 }
 
+/** How statuses work (shared by the Status Effects guide and the Type Chart). */
+function statusRules() {
+  return h('ul', { class: 'small status-rules' },
+    h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die, the target gains that attack type’s status.'),
+    h('li', null, h('b', null, 'One at a time: '), 'a creature that already has a status can’t gain another until it wears off.'),
+    h('li', null, h('b', null, 'Duration: '), '3 rounds, counted only while the creature is in battle (not while swapped out). Ends early on a KO, and always ends with the battle.'));
+}
+
+/** One status: its icon, name, the type whose elemental attacks inflict it, and what it does. */
+function statusRow(t: ElementType) {
+  const st = STATUS_INFO[STATUS_FOR[t]];
+  return h('div', { class: 'status-row', style: `--tc:${TYPE_COLOR[t]}` },
+    h('span', { class: 'status-ico' }, st.icon),
+    h('div', null,
+      h('div', { class: 'row gap-s' }, h('b', null, st.name), h('span', { class: 'muted small' }, 'from'), typeChip(t, true)),
+      h('p', { class: 'small' }, st.text)));
+}
+
 /** Reference sheet: every status, what inflicts it, and exactly what it does. */
 export function statusGuide() {
-  return h('div', { class: 'status-guide' },
-    h('ul', { class: 'small status-rules' },
-      h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die, the target gains that attack type’s status.'),
-      h('li', null, h('b', null, 'One at a time: '), 'a creature that already has a status can’t gain another until it wears off.'),
-      h('li', null, h('b', null, 'Duration: '), '3 rounds, counted only while the creature is in battle (not while swapped out). Ends early on a KO, and always ends with the battle.')),
-    h('div', { class: 'status-list' }, TYPES.map((t) => {
-      const st = STATUS_INFO[STATUS_FOR[t]];
-      return h('div', { class: 'status-row', style: `--tc:${TYPE_COLOR[t]}` },
-        h('span', { class: 'status-ico' }, st.icon),
-        h('div', null,
-          h('div', { class: 'row gap-s' }, h('b', null, st.name), h('span', { class: 'muted small' }, 'from'), typeChip(t, true)),
-          h('p', { class: 'small' }, st.text)));
-    })));
+  return h('div', { class: 'status-guide' }, statusRules(), h('div', { class: 'status-list' }, TYPES.map(statusRow)));
 }
 
 /** The 8×8 type chart. `attack` rows and `defend` columns are highlighted (e.g. your moves vs the opponent). */
@@ -620,7 +626,7 @@ export function typeChart(hl: { attack?: ElementType[]; defend?: ElementType[]; 
   return h('div', { class: 'type-stack' },
     h('div', { class: 'tc-legend' },
       h('span', { class: 'tc-side left' }, h('b', null, '⚔️ Strong against'), h('small', null, 'deals 2× · and resists them')),
-      h('span'),
+      h('span', { class: 'tc-side mid' }, h('small', null, 'type · status')),
       h('span', { class: 'tc-side right' }, h('b', null, '🛡️ Weak to'), h('small', null, 'takes 2× · and is resisted by'))),
     TYPES.map((t) => {
       const row = atk.has(t) ? 'hl-atk' : def.has(t) ? 'hl-def' : '';
@@ -629,6 +635,8 @@ export function typeChart(hl: { attack?: ElementType[]; defend?: ElementType[]; 
         h('div', { class: 'tc-list left' }, strongVs(t).map((x) => icon(x, atk.has(t) && def.has(x)))),
         h('div', { class: 'tc-pill', style: `--tc:${TYPE_COLOR[t]};--pill-ink:${inkOn(TYPE_COLOR[t])}` },
           h('b', null, TYPE_LABEL[t].toUpperCase()), typeIconImg(t, 22),
+          // the status this type's elemental attacks can inflict
+          h('span', { class: 'tc-status', title: `${TYPE_LABEL[t]} attacks can inflict ${STATUS_INFO[STATUS_FOR[t]].name}: ${STATUS_INFO[STATUS_FOR[t]].text}` }, STATUS_INFO[STATUS_FOR[t]].icon),
           atk.has(t) ? h('small', { class: 'tc-tag' }, hl.attackerName ? 'their move' : 'your move') : def.has(t) ? h('small', { class: 'tc-tag' }, 'foe') : null),
         h('div', { class: 'tc-list right' }, weakTo(t).map((x) => icon(x, def.has(t) && atk.has(x)))));
     }));
@@ -643,5 +651,24 @@ export function typeChartSheet(hl: { attack?: ElementType[]; defend?: ElementTyp
   return openSheet('Type Chart', h('div', null,
     inBattle ? h('p', { class: 'small' }, 'Gold rows are ', hl.attackerName ? h('b', null, hl.attackerName) : 'your', hl.attackerName ? '\u2019s moves\u2019 types; blue rows are ' : ' moves\u2019 types; blue rows are ', h('b', null, hl.foeName ?? 'the opponent'), '\u2019s types (', hl.defend!.map((t) => typeChip(t, true)), '). Ringed icons are the matchups in this fight.') : null,
     typeChart(hl),
-    h('p', { class: 'small' }, 'Matchups mirror: a type resists (takes ½ from) everything it is strong against. Dual types multiply: 4× when both types are weak, immune when both resist. Only Elemental attacks use the chart; Physical attacks ignore it.')), { wide: true });
+    h('p', { class: 'small' }, 'Matchups mirror: a type resists (takes ½ from) everything it is strong against. Dual types multiply: 4× when both types are weak, immune when both resist. Only Elemental attacks use the chart; Physical attacks ignore it.'),
+    typeChartStatuses(hl)), { wide: true });
+}
+
+/**
+ * The Type Chart's status section. In battle: the statuses the attacker's elemental moves can inflict and
+ * the ones the foe's types may inflict, with every status folded away below. Otherwise the full guide.
+ */
+function typeChartStatuses(hl: { attack?: ElementType[]; defend?: ElementType[]; foeName?: string; attackerName?: string }) {
+  const head = h('h4', null, '🌀 Status effects');
+  if (!hl.defend?.length) return h('section', { class: 'tc-statuses' }, head, statusGuide());
+  const mine = hl.attack ?? [];
+  const theirs = hl.defend.filter((t, i, a) => a.indexOf(t) === i);
+  const group = (title: Node | string, types: ElementType[], empty: string) => h('div', { class: 'tc-status-group' },
+    h('h5', null, title), types.length ? h('div', { class: 'status-list' }, types.map(statusRow)) : h('p', { class: 'small muted' }, empty));
+  return h('section', { class: 'tc-statuses' }, head, statusRules(),
+    group(hl.attackerName ? h('span', null, h('b', null, hl.attackerName), '’s moves can inflict') : 'Your moves can inflict', mine,
+      'No elemental moves in this playbook, so no statuses (Physical and Support moves never inflict one).'),
+    group(h('span', null, h('b', null, hl.foeName ?? 'The opponent'), ' may inflict (from its types)'), theirs, ''),
+    h('details', { class: 'tc-all-statuses' }, h('summary', null, 'All 8 status effects'), h('div', { class: 'status-list' }, TYPES.map(statusRow))));
 }

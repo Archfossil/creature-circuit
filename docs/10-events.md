@@ -32,22 +32,22 @@ Day and night each have **35** weight of eligible events: 20 of time-specific ev
 |---|---|---|---|---|---|---|---|---|
 | 1 | 🧳 Roaming Trader | `trader` | Creatures | 3 | Day | Always | No | Gives up a creature |
 | 2 | 🩺 Creature Caretaker | `caretaker` | Creatures | 3 | Night | Always | No | Free |
-| 3 | 🍲 Wandering Cook | `cook` | Service | 3 | Any | An active creature is hurt or fatigued | No | 🪙 4 |
+| 3 | 🍲 Wandering Cook | `cook` | Service | 3 | Any | An active creature is hurt or fatigued | No | 💰 4 |
 | 4 | 🥺 A Lost Creature | `lost` | Creatures | 2 | Night | Always | Yes (two good options) | Free |
 | 5 | 🐫 Merchant Caravan | `caravan` | Service | 3 | Night | Always | No | Half the item's price |
 | 6 | ⛈️ Sudden Storm | `storm` | Hazard | 2 | Any | Always | **Yes** | 1 Initiative or 1 Vitality each |
-| 7 | 🥋 Sparring Master | `sparring` | Service | 3 | Day | Always | No | 🪙 5 |
-| 8 | 🔮 Fortune Teller | `fortune` | Service | 2 | Any | No Star Charm effect already active | No | 🪙 3 |
+| 7 | 🥋 Sparring Master | `sparring` | Service | 3 | Day | Always | No | 💰 5 |
+| 8 | 🔮 Fortune Teller | `fortune` | Service | 2 | Any | No Star Charm effect already active | No | 💰 3 |
 | 9 | 🧺 Windfall | `windfall` | Find | 3 | Night | Always | Yes (one option) | Free |
 | 10 | 🤺 Rival Challenge | `rival` | Battle | 2 | Day | At least one active creature can fight | No | Trainer-battle stakes |
-| 11 | 📜 Wise Hermit | `hermit` | Service | 2 | Any | Always | No | 🪙 8 |
-| 12 | 🦝 Pickpocket! | `pickpocket` | Hazard | 2 | Any | You have 🪙 3+ | **Yes** | Coins at risk |
+| 11 | 📜 Wise Hermit | `hermit` | Service | 2 | Any | Always | No | 💰 8 |
+| 12 | 🦝 Pickpocket! | `pickpocket` | Hazard | 2 | Any | You have 💰 3+ | **Yes** | Coins at risk |
 | 13 | 🙏 Passing Pilgrim | `pilgrim` | Find | 2 | Day | Always | Yes (one option) | Free |
 | 14 | ♨️ Hidden Hot Spring | `springs` | Rest | 2 | Any | Always | No | 1 Initiative |
-| 15 | 🎲 Dice Gambler | `gambler` | Gamble | 2 | Any | You have 🪙 5+ | No | 🪙 5 or 10 stake |
-| 16 | 🪕 Traveling Bard | `bard` | Creatures | 3 | Night | Always | Yes (two good options) | Free or 🪙 3 |
+| 15 | 🎲 Dice Gambler | `gambler` | Gamble | 2 | Any | You have 💰 5+ | No | 💰 5 or 10 stake |
+| 16 | 🪕 Traveling Bard | `bard` | Creatures | 3 | Night | Always | Yes (two good options) | Free or 💰 3 |
 | 17 | 🧓 Old Trainer's Advice | `mentor` | Creatures | 2 | Day | Always | No | 1 Initiative |
-| 18 | 🧭 Local Guide | `guide` | Service | 2 | Day | Always | No | 🪙 3 |
+| 18 | 🧭 Local Guide | `guide` | Service | 2 | Day | Always | No | 💰 3 |
 | 19 | 😾 Team Squabble | `squabble` | Creatures | 2 | Night | 2+ creatures in the active team | **Yes** | Morale, or 1 Initiative |
 | 20 | 🔍 Codex Scholar | `scholar` | Find | 2 | Day | Always | Yes (one option) | Free |
 | 21 | 🎒 Lost Satchel | `satchel` | Find | 2 | Day | Always | Yes (moral choice) | Free |
@@ -55,7 +55,7 @@ Day and night each have **35** weight of eligible events: 20 of time-specific ev
 | 23 | 🤢 Bad Berries | `berries` | Hazard | 2 | Night | At least one active creature isn't KO'd | **Yes** | A Salve, 1 Initiative, or Vitality and Morale |
 | 24 | 🧒 Eager Apprentice | `apprentice` | Creatures | 2 | Day | At least one active creature isn't KO'd | No | Free |
 | 25 | 🎈 Hot Air Balloon | `balloon` | Travel | 2 | Day | On the mainland | No | Free |
-| 26 | 🚌 Night Coach | `coach` | Travel | 2 | Night | On the mainland | No | 🪙 4 |
+| 26 | 🚌 Night Coach | `coach` | Travel | 2 | Night | On the mainland | No | 💰 4 |
 | 27 | 🌟 Star Shepherd | `shepherd` | Cloud Island | 3 | Night | On Cloud Island | No | Free, or 1 Initiative |
 | 28 | 🌈 Moonbow | `moonbow` | Cloud Island | 2 | Night | On Cloud Island | Yes (two good options) | Free |
 | 29 | 🐋 Sky Whale | `skywhale` | Cloud Island | 2 | Any | On Cloud Island, with a follower | Yes (two good options) | Free, or 1 Initiative |
@@ -110,7 +110,7 @@ A caretaker offers to change one creature's Nature. Three random Natures are off
 | Service | 3 | Any | An active creature (not KO'd) is missing Vitality or has Fatigue | No |
 
 **Choices**
-- **Share a meal · 🪙 4:** every active creature that isn't KO'd gets full Vitality and Health, and its Fatigue is cleared. KO'd creatures still need a stable.
+- **Share a meal · 💰 4:** every active creature that isn't KO'd gets full Vitality and Health, and its Fatigue is cleared. KO'd creatures still need a stable.
 - **No thanks:** nothing happens.
 
 ### 4. 🥺 A Lost Creature · `lost`
@@ -131,7 +131,7 @@ A young Common creature from the area, one level below your Tier's usual level (
 |---|---|---|---|---|
 | Service | 3 | Night | Always | No |
 
-A caravan sells one item at **half price** (rounded down, at least 🪙 1): a Hot Spring Elixir, Moonberry, Star Charm or Lure Incense.
+A caravan sells one item at **half price** (rounded down, at least 💰 1): a Hot Spring Elixir, Moonberry, Star Charm or Lure Incense.
 
 **Choices**
 - **Buy (item):** pay and get the item.
@@ -154,7 +154,7 @@ A caravan sells one item at **half price** (rounded down, at least 🪙 1): a Ho
 | Service | 3 | Day | Always | No |
 
 **Choices**
-- **Train · 🪙 5:** pick a creature (not KO'd). It gains +10 XP, which is one level.
+- **Train · 💰 5:** pick a creature (not KO'd). It gains +10 XP, which is one level.
 - **No thanks:** nothing happens.
 
 ### 8. 🔮 Fortune Teller · `fortune`
@@ -164,7 +164,7 @@ A caravan sells one item at **half price** (rounded down, at least 🪙 1): a Ho
 | Service | 2 | Any | No Star Charm effect is already active | No |
 
 **Choices**
-- **Hear your fortune · 🪙 3:** your next wild encounter rolls +1 rarity die (the same effect as a Star Charm).
+- **Hear your fortune · 💰 3:** your next wild encounter rolls +1 rarity die (the same effect as a Star Charm).
 - **No thanks:** nothing happens.
 
 ### 9. 🧺 Windfall · `windfall`
@@ -195,18 +195,18 @@ A named rival (Juniper, Ozzie, Marisol, Dex or Calla) challenges you.
 | Service | 2 | Any | Always | No |
 
 **Choices**
-- **Study the scroll · 🪙 8:** pick a creature. It gains 1 free progression point to spend on its chart.
+- **Study the scroll · 💰 8:** pick a creature. It gains 1 free progression point to spend on its chart.
 - **No thanks:** nothing happens.
 
 ### 12. 🦝 Pickpocket! · `pickpocket`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
-| Hazard | 2 | Any | You have 🪙 3 or more | **Yes** |
+| Hazard | 2 | Any | You have 💰 3 or more | **Yes** |
 
 **Choices**
 - **Send (follower) after it** (or chase it yourself with no follower): roll d6 + the follower's Speed. On **7 or more**, you catch it and gain d6 coins. Otherwise you lose d6 coins.
-- **Let it go:** lose 🪙 3.
+- **Let it go:** lose 💰 3.
 
 ### 13. 🙏 Passing Pilgrim · `pilgrim`
 
@@ -231,12 +231,12 @@ A named rival (Juniper, Ozzie, Marisol, Dex or Calla) challenges you.
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
-| Gamble | 2 | Any | You have 🪙 5 or more | No |
+| Gamble | 2 | Any | You have 💰 5 or more | No |
 
 Your d6 against the gambler's d6.
 
 **Choices**
-- **Bet 🪙 5** / **Bet 🪙 10:** a higher roll wins the stake (Merchants earn their usual bonus on it). A lower roll loses it. A tie keeps it.
+- **Bet 💰 5** / **Bet 💰 10:** a higher roll wins the stake (Merchants earn their usual bonus on it). A lower roll loses it. A tie keeps it.
 - **Not tonight:** nothing happens.
 
 ### 16. 🪕 Traveling Bard · `bard`
@@ -247,7 +247,7 @@ Your d6 against the gambler's d6.
 
 **Choices**
 - **Listen:** every active creature gets +1 Morale.
-- **Request a ballad · 🪙 3:** all your partner creatures (in totems too) get +1 Morale, and your follower gets +1 Loyalty.
+- **Request a ballad · 💰 3:** all your partner creatures (in totems too) get +1 Morale, and your follower gets +1 Loyalty.
 
 ### 17. 🧓 Old Trainer's Advice · `mentor`
 
@@ -266,7 +266,7 @@ Your d6 against the gambler's d6.
 | Service | 2 | Day | Always | No |
 
 **Choices**
-- **Hire them · 🪙 3:** +1 Initiative this turn.
+- **Hire them · 💰 3:** +1 Initiative this turn.
 - **No thanks:** nothing happens.
 
 ### 19. 😾 Team Squabble · `squabble`
@@ -292,7 +292,7 @@ Two random active creatures are fighting over the warm spot by the fire.
 
 **Choices**
 - **Copy their notes:** up to 2 Common species from this biome that you haven't seen yet are added to your Codex, so you can carve their Effigies.
-- **Sell a copy · +🪙 3:** offered instead when you've already seen everything here.
+- **Sell a copy · +💰 3:** offered instead when you've already seen everything here.
 
 ### 21. 🎒 Lost Satchel · `satchel`
 
@@ -336,7 +336,7 @@ One random active creature (not KO'd) ate bad berries.
 | Creatures | 2 | Day | At least one active creature isn't KO'd | No |
 
 **Choices**
-- **Show them a drill:** pick a creature (not KO'd). It gains +3 XP and +1 Morale, and you get 🪙 2.
+- **Show them a drill:** pick a creature (not KO'd). It gains +3 XP and +1 Morale, and you get 💰 2.
 - **Not today:** nothing happens.
 
 ### 25. 🎈 Hot Air Balloon · `balloon`
@@ -360,7 +360,7 @@ A balloon pilot offers a ride on the morning winds. Three cities are picked at r
 An overnight coach bound for one random city (never the one you're in) offers a seat.
 
 **Choices**
-- **Ride to (city) · 🪙 4:** you wake up in that city. Your Initiative is untouched.
+- **Ride to (city) · 💰 4:** you wake up in that city. Your Initiative is untouched.
 - **No thanks:** nothing happens.
 
 #### Getting around
@@ -369,10 +369,10 @@ The map is big, so besides these two events a few items move a trainer further t
 
 | Item | Where | Price | What it does |
 |---|---|---|---|
-| 🚲 Bike | Lumber Hollow | 🪙 25 (kept; own one) | Once a turn, roll a d6 and ride up to that many steps for free. Stays on land (no ferries, portal or rope), keeps every gate, and never stops at a Legendary's grounds. A roll you don't ride right away waits until the turn ends. |
-| 🚕 Taxi Ticket | City markets | 🪙 10 | In a city: ride to any other city. Your remaining Initiative drops to 0. |
-| 🪶 Homing Feather | Dustmere, Quillhaven | 🪙 8 | From anywhere on the mainland: back to your home city (a Wanderer picks any city they've rested at). Your remaining Initiative drops to 0. |
-| 🥜 Trail Mix | City markets, Mistfall, Ridgeway; sometimes found while exploring | 🪙 6 | +1 Initiative (up to 5), once a turn. |
+| 🚲 Bike | Lumber Hollow | 💰 25 (kept; own one) | Once a turn, roll a d6 and ride up to that many steps for free. Stays on land (no ferries, portal or rope), keeps every gate, and never stops at a Legendary's grounds. A roll you don't ride right away waits until the turn ends. |
+| 🚕 Taxi Ticket | City markets | 💰 10 | In a city: ride to any other city. Your remaining Initiative drops to 0. |
+| 🕊️ Homing Feather | Dustmere, Quillhaven | 💰 8 | From anywhere on the mainland: back to your home city (a Wanderer picks any city they've rested at). Your remaining Initiative drops to 0. |
+| 🥜 Trail Mix | City markets, Mistfall, Ridgeway; sometimes found while exploring | 💰 6 | +1 Initiative (up to 5), once a turn. |
 
 ### Cloud Island events
 
@@ -558,7 +558,7 @@ Add an entry to the `EVENTS` list in `src/engine/events.ts`:
     title: 'My Event', icon: '✨',
     text: 'What the player reads.',
     choices: [
-      { id: 'buy', label: `Do the thing · 🪙 ${d.price}`, detail: 'What it does.', disabled: afford(s, d.price as number) },
+      { id: 'buy', label: `Do the thing · 💰 ${d.price}`, detail: 'What it does.', disabled: afford(s, d.price as number) },
       // a choice that needs a creature: pick: true, canPick: notKO, preview: (c) => ({ after: … })
       DECLINE,
     ],

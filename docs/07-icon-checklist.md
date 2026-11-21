@@ -17,6 +17,26 @@ Every emoji in the game is a placeholder. This list covers each one that needs a
 
 **Priority:** ★★★ seen every turn · ★★ seen often · ★ occasional.
 
+## Replace first: stand-in emoji
+
+Windows 10's emoji font can't draw Emoji 13 or later, so these icons showed as blank boxes there. They have been swapped for older emoji that every system can show, but the stand-ins are rough fits. Replace these first, whatever their section's priority. They're marked **(stand-in)** in the sections below.
+
+| Was | Now | Icon names | Where |
+|---|---|---|---|
+| 🪙 | 💰 | `coin` | HUD coin pill, every price, reward and wager (★★★, the most urgent; 💰 also means the Merchant style) |
+| 🫐 | 🍒 / 🍑 | `item-dewberry` / `item-duskberry` | Treats in markets and the bag |
+| 🪶 | 🕊️ | `item-homing-feather` | Travel item, its city picker and toast |
+| 🪆 | 🎎 | `item-effigy` | Creature Effigy totem |
+| 🪵 | ⚫ / 🍯 | `mat-ember-charcoal` / `mat-heartwood-resin` | Carving materials |
+| 🪨 | ⬜ / 🌄 | `mat-river-chalk` / `biome-canyon` | Carving material, Canyon biome |
+| 🪷 | 💮 | `mat-marsh-lotus` | Carving material |
+| 🪢 | ➰ | `key-canopy-rope` | Key item, the Forest Floor descent prompt |
+| 🪨 | 💥 | `status-stagger` | Stagger status |
+| ⯪ | ☆ | `die-star-half` | Half rarity star on the dice |
+| · | 🚫 | `die-star-blank` | Blank rarity die face |
+
+Until the custom icons arrive, new placeholder emoji should come from Emoji 12 or earlier so they show on Windows 10.
+
 ---
 
 ## 0. Game logo & app icon ★★★
@@ -29,7 +49,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 
 ## 1. HUD & resources ★★★
 
-- [ ] `coin`: 🪙: Coins. HUD coin pill, every price, reward and wager.
+- [ ] `coin`: 💰: Coins. HUD coin pill, every price, reward and wager. **(stand-in)**
 - [ ] `initiative`: ⚡: Initiative, the action points. Costs on buttons and tiles ("1⚡").
 - [ ] `menu`: ☰: Main menu button (top right).
 - [ ] `merit`: 🏅: Merits earned (season results).
@@ -104,7 +124,7 @@ Shown on map node previews, Codex pages and filters, and material "found in" lis
 - [ ] `biome-badlands`: 🏜️
 - [ ] `biome-coast`: 🏖️
 - [ ] `biome-volcanic`: 🌋
-- [ ] `biome-canyon`: 🪨
+- [ ] `biome-canyon`: 🌄 **(stand-in)**
 - [ ] `biome-cloud`: ☁️ (Cloud Island)
 - [ ] `biome-deepwood`: 🌑 (the Forest Floor)
 - [ ] `biome-prism`: 🌈 (the Rainbow Plains)
@@ -145,7 +165,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Treats**
 - [ ] `item-sunberry`: 🍓 Sunberry
-- [ ] `item-dewberry`: 🫐 Dewberry
+- [ ] `item-dewberry`: 🍒 Dewberry **(stand-in)**
 - [ ] `item-moonberry`: 🍇 Moonberry
 
 **Charms**
@@ -155,21 +175,21 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 **Travel**
 - [ ] `item-bike`: 🚲 Bike (also the action-bar button)
 - [ ] `item-taxi-ticket`: 🚕 Taxi Ticket (also the action-bar button)
-- [ ] `item-homing-feather`: 🪶 Homing Feather
+- [ ] `item-homing-feather`: 🕊️ Homing Feather **(stand-in)**
 - [ ] `item-trail-mix`: 🥜 Trail Mix
 
 **Totems**
 - [ ] `item-totem`: 🗿 Plain Totem
 - [ ] `item-totem-typed`: 🗿 Typed Totem. One base design; ideally 8 variants tinted or marked per type.
-- [ ] `item-effigy`: 🪆 Creature Effigy
+- [ ] `item-effigy`: 🎎 Creature Effigy **(stand-in)**
 - [ ] `item-unknown`: ❔ Fallback for an unknown item
 
 **Offering materials (13)**
 - [ ] `mat-pine-resin`: 🌲 Pine Resin
 - [ ] `mat-glacier-salt`: 🧂 Glacier Salt
-- [ ] `mat-ember-charcoal`: 🪵 Ember Charcoal
-- [ ] `mat-river-chalk`: 🪨 River Chalk
-- [ ] `mat-marsh-lotus`: 🪷 Marsh Lotus
+- [ ] `mat-ember-charcoal`: ⚫ Ember Charcoal **(stand-in)**
+- [ ] `mat-river-chalk`: ⬜ River Chalk **(stand-in)**
+- [ ] `mat-marsh-lotus`: 💮 Marsh Lotus **(stand-in)**
 - [ ] `mat-sage-bundle`: 🌾 Sage Bundle
 - [ ] `mat-sea-glass`: 🔷 Sea Glass
 - [ ] `mat-iron-filings`: ⚙️ Iron Filings
@@ -181,8 +201,8 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Exotic finds (the Forest Floor; Heartwood Resin and Glowcap also on the Rainbow Plains)**
 - [ ] `item-root-salve`: 🌿 Root Salve
-- [ ] `item-duskberry`: 🫐 Duskberry (needs a distinct icon from Dewberry)
-- [ ] `mat-heartwood-resin`: 🪵 Heartwood Resin (needs a distinct icon from Ember Charcoal)
+- [ ] `item-duskberry`: 🍑 Duskberry (needs a distinct icon from Dewberry) **(stand-in)**
+- [ ] `mat-heartwood-resin`: 🍯 Heartwood Resin (needs a distinct icon from Ember Charcoal) **(stand-in)**
 - [ ] `mat-glowcap`: 🍄 Glowcap
 
 **Universal offerings (Cloud Island)**
@@ -192,7 +212,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Key items**
 - [ ] `key-fog-lantern`: 🏮 Fog Lantern (with a Check button that reveals the wisp)
-- [ ] `key-canopy-rope`: 🪢 Canopy Rope
+- [ ] `key-canopy-rope`: ➰ Canopy Rope **(stand-in)**
 - [ ] `key-ferry-pass`: ⛴️ Ferry Pass
 - [ ] `key-root-whistle`: 🎐 Root Whistle
 - [ ] `key-summit-pick`: ⛏️ Summit Pick
@@ -225,8 +245,8 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Dice faces**
 - [ ] `die-star-full`: ★ Rarity star (full)
-- [ ] `die-star-half`: ⯪ Rarity star (half)
-- [ ] `die-star-blank`: · Blank rarity die face
+- [ ] `die-star-half`: ☆ Rarity star (half) **(stand-in)**
+- [ ] `die-star-blank`: 🚫 Blank rarity die face **(stand-in)**
 - Weather die faces reuse the weather icons ([section 5](#5-weather-11--seasons-4-)), so they need no separate art.
 
 **Dice bodies** (drawn with CSS for now; the number or face sits on top)
@@ -243,13 +263,13 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 ## 8. Status effects (8) ★★
 
-Shown as status tags in battle and in ☰ Menu → Status Effects.
+Shown as status tags in battle, in ☰ Menu → Status Effects, and as small badges on each type in the Type Chart (with a status section below it).
 
 - [ ] `status-burn`: 🔥 Burn
 - [ ] `status-soak`: 💧 Soak
 - [ ] `status-shock`: ⚡ Shock
 - [ ] `status-snare`: 🌿 Snare
-- [ ] `status-stagger`: 🪨 Stagger
+- [ ] `status-stagger`: 💥 Stagger **(stand-in)**
 - [ ] `status-sunder`: ⚙️ Sunder
 - [ ] `status-beguile`: 💗 Beguile
 - [ ] `status-daze`: ✨ Daze
@@ -426,7 +446,8 @@ The same emoji currently stands for different things. Each meaning should get it
 | 🏟️ | Arena · Circuit Stadium · Arbiter challenge |
 | ⚡ | Initiative · Shock status · turn-order step · tour card |
 | 🌿 | Snare status · overworld Ability |
-| 🪨 | Canyon biome · River Chalk · Stagger status |
+| 💰 | Coins · Merchant style |
+| 💥 | Damage step · Stagger status |
 | ⚙️ | Iron Filings · Sunder status · Settings |
 | 🌲 | Forest biome · Pine Resin · Ranger style |
 | 🌼 | Meadow biome · Wildflower |

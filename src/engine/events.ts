@@ -62,7 +62,7 @@ interface EventDef {
 // ── helpers ─────────────────────────────────────────────────────
 const team = (s: GameState) => [...s.roster, ...s.reserve];
 const DECLINE: EventChoice = { id: 'decline', label: 'No thanks', detail: 'Go on your way.' };
-const afford = (s: GameState, coins: number) => (s.coins >= coins ? undefined : `Needs 🪙 ${coins}`);
+const afford = (s: GameState, coins: number) => (s.coins >= coins ? undefined : `Needs 💰 ${coins}`);
 const notKO = (c: CreatureInst) => (c.ko ? 'KO\'d. Rest at a stable first.' : null);
 /** Change Morale within 0–10. */
 function cheer(c: CreatureInst, n: number) { c.morale = Math.max(0, Math.min(10, c.morale + n)); }
@@ -161,7 +161,7 @@ const EVENTS: EventDef[] = [
     view: (s, d) => ({
       title: 'Wandering Cook', icon: '🍲',
       text: 'A cook with a steaming pot on their back offers your active team a hearty meal: all Vitality and Health restored, Fatigue cleared. KO\'d creatures still need a stable.',
-      choices: [{ id: 'eat', label: `Share a meal · 🪙 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
+      choices: [{ id: 'eat', label: `Share a meal · 💰 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice) => {
       if (choice !== 'eat') return { text: 'The cook shrugs and ladles a bowl for themself.', tone: 'info' };
@@ -210,7 +210,7 @@ const EVENTS: EventDef[] = [
       return {
         title: 'Merchant Caravan', icon: '🐫',
         text: `A caravan stops for the night and is clearing stock: a ${it.name} for half price. ${it.text}`,
-        choices: [{ id: 'buy', label: `Buy ${it.icon} ${it.name} · 🪙 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
+        choices: [{ id: 'buy', label: `Buy ${it.icon} ${it.name} · 💰 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
       };
     },
     resolve: (s, d, choice) => {
@@ -243,7 +243,7 @@ const EVENTS: EventDef[] = [
     view: (s, d) => ({
       title: 'Sparring Master', icon: '🥋',
       text: 'A retired champion offers a private training session for one creature: +10 XP (one level).',
-      choices: [{ id: 'train', label: `Train · 🪙 ${d.price}`, pick: true, canPick: notKO, disabled: afford(s, d.price as number) }, DECLINE],
+      choices: [{ id: 'train', label: `Train · 💰 ${d.price}`, pick: true, canPick: notKO, disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice, c) => {
       if (choice !== 'train' || !c) return { text: 'The master returns to their meditation.', tone: 'info' };
@@ -259,7 +259,7 @@ const EVENTS: EventDef[] = [
     view: (s, d) => ({
       title: 'Fortune Teller', icon: '🔮',
       text: 'A fortune teller peers into a cracked crystal. "Rare things await you…" Pay, and your next wild encounter rolls an extra rarity die.',
-      choices: [{ id: 'pay', label: `Hear your fortune · 🪙 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
+      choices: [{ id: 'pay', label: `Hear your fortune · 💰 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice) => {
       if (choice !== 'pay') return { text: '"Suit yourself," she says, already shuffling.', tone: 'info' };
@@ -305,7 +305,7 @@ const EVENTS: EventDef[] = [
     view: (s, d) => ({
       title: 'Wise Hermit', icon: '📜',
       text: 'A hermit shares an old training scroll. One creature gains a free point to spend on its progression chart.',
-      choices: [{ id: 'study', label: `Study the scroll · 🪙 ${d.price}`, pick: true, disabled: afford(s, d.price as number) }, DECLINE],
+      choices: [{ id: 'study', label: `Study the scroll · 💰 ${d.price}`, pick: true, disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice, c) => {
       if (choice !== 'study' || !c) return { text: 'The hermit rolls the scroll back up.', tone: 'info' };
@@ -381,8 +381,8 @@ const EVENTS: EventDef[] = [
       title: 'Dice Gambler', icon: '🎲',
       text: 'A grinning gambler rattles a cup of dice. "Your d6 against mine. Higher roll doubles the stake; a tie, you keep it."',
       choices: [
-        { id: 'bet5', label: 'Bet 🪙 5', disabled: afford(s, 5) },
-        { id: 'bet10', label: 'Bet 🪙 10', disabled: afford(s, 10) },
+        { id: 'bet5', label: 'Bet 💰 5', disabled: afford(s, 5) },
+        { id: 'bet10', label: 'Bet 💰 10', disabled: afford(s, 10) },
         { id: 'decline', label: 'Not tonight', detail: 'Keep your coins.' },
       ],
     }),
@@ -390,8 +390,8 @@ const EVENTS: EventDef[] = [
       if (choice === 'decline') return { text: 'The gambler shrugs and finds another mark.', tone: 'info' };
       const stake = choice === 'bet10' ? 10 : 5;
       const mine = roll(6), theirs = roll(6);
-      if (mine > theirs) { const got = earnCoins(s, stake); return { text: `You roll ${mine}, they roll ${theirs}. You win 🪙 ${got}!`, tone: 'good', rolls: [mine, theirs] }; }
-      if (mine < theirs) { s.coins -= stake; return { text: `You roll ${mine}, they roll ${theirs}. You lose 🪙 ${stake}.`, tone: 'bad', rolls: [mine, theirs] }; }
+      if (mine > theirs) { const got = earnCoins(s, stake); return { text: `You roll ${mine}, they roll ${theirs}. You win 💰 ${got}!`, tone: 'good', rolls: [mine, theirs] }; }
+      if (mine < theirs) { s.coins -= stake; return { text: `You roll ${mine}, they roll ${theirs}. You lose 💰 ${stake}.`, tone: 'bad', rolls: [mine, theirs] }; }
       return { text: `Both roll ${mine}. A tie: you keep your stake.`, tone: 'info', rolls: [mine, theirs] };
     },
   },
@@ -403,7 +403,7 @@ const EVENTS: EventDef[] = [
       text: 'A bard sets up by your campfire and plays a rousing tune about the Creature Circuit.',
       choices: [
         { id: 'listen', label: 'Listen', detail: 'Your active team gains +1 Morale.' },
-        { id: 'tip', label: `Request a ballad about your team · 🪙 ${d.price}`, detail: 'All your partner creatures (in totems too) gain +1 Morale, and your follower +1 Loyalty.', disabled: afford(s, d.price as number) },
+        { id: 'tip', label: `Request a ballad about your team · 💰 ${d.price}`, detail: 'All your partner creatures (in totems too) gain +1 Morale, and your follower +1 Loyalty.', disabled: afford(s, d.price as number) },
       ],
     }),
     resolve: (s, d, choice) => {
@@ -442,7 +442,7 @@ const EVENTS: EventDef[] = [
     view: (s, d) => ({
       title: 'Local Guide', icon: '🧭',
       text: 'A local knows every shortcut in the area and offers to show you the quickest trails today.',
-      choices: [{ id: 'hire', label: `Hire them · 🪙 ${d.price}`, detail: '+1 Initiative this turn.', disabled: afford(s, d.price as number) }, DECLINE],
+      choices: [{ id: 'hire', label: `Hire them · 💰 ${d.price}`, detail: '+1 Initiative this turn.', disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice) => {
       if (choice !== 'hire') return { text: 'You’ll find your own way, thanks.', tone: 'info' };
@@ -487,7 +487,7 @@ const EVENTS: EventDef[] = [
       return {
         title: 'Night Coach', icon: '🚌',
         text: `A coach rattles up the road, lanterns swinging. The driver is bound for ${c.name} overnight and offers you a seat. You'd wake up there.`,
-        choices: [{ id: 'ride', label: `Ride to ${c.name} · 🪙 ${d.price}`, detail: `${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}. Your Initiative is untouched.`, disabled: afford(s, d.price as number) }, DECLINE],
+        choices: [{ id: 'ride', label: `Ride to ${c.name} · 💰 ${d.price}`, detail: `${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}. Your Initiative is untouched.`, disabled: afford(s, d.price as number) }, DECLINE],
       };
     },
     resolve: (s, d, choice) => {
@@ -535,7 +535,7 @@ const EVENTS: EventDef[] = [
       text: (d.species as string[]).length
         ? 'A field researcher sketching by the trail offers to copy a few pages of notes on the creatures around here into your Codex.'
         : 'A field researcher compares notes with you. Your Codex already covers everything around here, so they pay you for a copy of yours.',
-      choices: [{ id: 'accept', label: (d.species as string[]).length ? 'Copy their notes' : 'Sell a copy · +🪙 3' }],
+      choices: [{ id: 'accept', label: (d.species as string[]).length ? 'Copy their notes' : 'Sell a copy · +💰 3' }],
     }),
     resolve: (s, d) => {
       const ids = d.species as string[];
@@ -549,9 +549,9 @@ const EVENTS: EventDef[] = [
     create: () => ({ coins: 2 + roll(6) }),
     view: (_s, d) => ({
       title: 'Lost Satchel', icon: '🎒',
-      text: `You find a satchel by the trail with 🪙 ${d.coins} inside and a name stitched on the strap.`,
+      text: `You find a satchel by the trail with 💰 ${d.coins} inside and a name stitched on the strap.`,
       choices: [
-        { id: 'keep', label: `Keep it · +🪙 ${d.coins}`, detail: 'Your follower gives you a look. (−1 Morale)' },
+        { id: 'keep', label: `Keep it · +💰 ${d.coins}`, detail: 'Your follower gives you a look. (−1 Morale)' },
         { id: 'return', label: 'Track down the owner', detail: 'They give you a Calm Tea, and your team is proud of you (+1 Morale).' },
       ],
     }),
@@ -560,7 +560,7 @@ const EVENTS: EventDef[] = [
         const got = earnCoins(s, d.coins as number);
         const f = follower(s);
         if (f) cheer(f, -1);
-        return { text: `You pocket 🪙 ${got}.${f ? ` ${nameOf(f)} looks away.` : ''}`, tone: 'info' };
+        return { text: `You pocket 💰 ${got}.${f ? ` ${nameOf(f)} looks away.` : ''}`, tone: 'info' };
       }
       addItem(s, 'calm-tea');
       for (const c of s.roster) cheer(c, 1);
@@ -615,7 +615,7 @@ const EVENTS: EventDef[] = [
       title: 'Eager Apprentice', icon: '🧒',
       text: 'A young would-be trainer begs to watch one of your creatures run its drills. They even offer to pay.',
       choices: [
-        { id: 'show', label: 'Show them a drill', detail: `The creature gains +${d.xp} XP and +1 Morale, and the kid tips 🪙 ${d.tip}.`, pick: true, canPick: notKO },
+        { id: 'show', label: 'Show them a drill', detail: `The creature gains +${d.xp} XP and +1 Morale, and the kid tips 💰 ${d.tip}.`, pick: true, canPick: notKO },
         { id: 'decline', label: 'Not today', detail: 'They wander off, disappointed.' },
       ],
     }),
@@ -624,7 +624,7 @@ const EVENTS: EventDef[] = [
       const lv = gainXp(c, d.xp as number);
       cheer(c, 1);
       const got = earnCoins(s, d.tip as number);
-      return { text: `${nameOf(c)} shows off: +${d.xp} XP${lv ? `, now Lv ${c.level}` : ''}, and the kid tips you 🪙 ${got}.`, tone: 'good' };
+      return { text: `${nameOf(c)} shows off: +${d.xp} XP${lv ? `, now Lv ${c.level}` : ''}, and the kid tips you 💰 ${got}.`, tone: 'good' };
     },
   },
 

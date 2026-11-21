@@ -15,7 +15,7 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **Tier:** 1 + (Merits ÷ 2, rounded down), up to 5. 0–1 Merits is Tier 1, 2–3 is Tier 2, 4–5 is Tier 3, 6–7 is Tier 4, and 8 is Tier 5.
 - **Challenging:** a city action from the arena (in the city itself, except Amber's, which is on Kilauea island). It costs **1 Initiative** (Ranger 2, Urbanite 0). The team needs at least one creature that isn't KO'd. Some Arbiters have an extra **access condition** (see each card).
 - **The battle:** a trainer battle against 2–3 creatures of the Arbiter's type, with the arena effect active all battle. The Arbiter's AI is sharper than wild creatures' and trainers' (only the Champions are sharper), so it rarely picks a poor move.
-- **Winning:** the Merit, **🪙 10 × Tier** (Merchant style adds its 25%), and trainer-battle XP (+3 for every creature that fought, on top of the usual XP).
+- **Winning:** the Merit, **💰 10 × Tier** (Merchant style adds its 25%), and trainer-battle XP (+3 for every creature that fought, on top of the usual XP).
 - **Losing:** no coins lost and no penalty beyond the battle itself (unlike roaming trainers). If the whole team is knocked out, the usual wipe applies: back home, half your coins, Initiative gone. You can try again on a later turn.
 - **Already beaten:** an Arbiter whose Merit you hold won't battle again.
 
@@ -23,11 +23,11 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 
 | Tier | Merits held | Team size | Levels | Highest stage | Apex creatures | Prize |
 |---|---|---|---|---|---|---|
-| 1 | 0–1 | 2 | Lv 3, last Lv 4 | Stage 1 | No | 🪙 10 |
-| 2 | 2–3 | 3 | Lv 5, last Lv 6 | Stage 2 | No | 🪙 20 |
-| 3 | 4–5 | 3 | Lv 7, last Lv 8 | Stage 2 | Last creature only | 🪙 30 |
-| 4 | 6–7 | 3 | Lv 9, last Lv 10 | Stage 3 | Yes | 🪙 40 |
-| 5 | 8 | 3 | Lv 11, last Lv 12 | Stage 3 | Yes | 🪙 50 |
+| 1 | 0–1 | 2 | Lv 3, last Lv 4 | Stage 1 | No | 💰 10 |
+| 2 | 2–3 | 3 | Lv 5, last Lv 6 | Stage 2 | No | 💰 20 |
+| 3 | 4–5 | 3 | Lv 7, last Lv 8 | Stage 2 | Last creature only | 💰 30 |
+| 4 | 6–7 | 3 | Lv 9, last Lv 10 | Stage 3 | Yes | 💰 40 |
+| 5 | 8 | 3 | Lv 11, last Lv 12 | Stage 3 | Yes | 💰 50 |
 
 **Team building:**
 - **Pool:** every species with the Arbiter's type, either half of a dual type, excluding Legendaries.
@@ -308,7 +308,7 @@ Observations from the current code, to review when balancing. Tick them off or m
 - [ ] **Dahlia's Trail at Tier 5** needs 8 signs at 1 in 4 per explore: about 32 explores (Initiative), plus hostile events that can cost signs. Long enough?
 - [ ] **The Gauntlet grows to 10 trainers at Tier 5,** which costs at least 10 Initiative (2 turns or more), plus Stable rests. Leaving Stella for last makes her by far the most expensive Arbiter to reach.
 - [ ] **Losing costs nothing** against Arbiters (except a full wipe). Repeated attempts are cheap apart from the Initiative.
-- [ ] **The prize scales with Tier** (🪙 10–50), so later Merits pay more.
+- [ ] **The prize scales with Tier** (💰 10–50), so later Merits pay more.
 - [ ] **Placeholder species** are in Arbiter pools until the roster is filled, so Arbiter teams will change as creatures are swapped in (see [the creature checklist](./08-creature-checklist.md)).
 
 ---

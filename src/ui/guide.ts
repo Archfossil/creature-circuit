@@ -32,7 +32,7 @@ export const GUIDE: GuideCategory[] = [
         'The map is big. Besides walking one step per Initiative:',
         '- 🚲 Bike (Lumber Hollow): once a turn, roll a d6 and ride up to that many steps for free. No exploring on the way or where you stop.',
         '- 🚕 Taxi Ticket (city markets): from a city to any other city, but it uses up the rest of your Initiative.',
-        '- 🪶 Homing Feather: fly back to your home city from anywhere (a Wanderer picks any city they’ve rested at). Also uses up your Initiative.',
+        '- 🕊️ Homing Feather: fly back to your home city from anywhere (a Wanderer picks any city they’ve rested at). Also uses up your Initiative.',
         '- 🥜 Trail Mix: +1 Initiative, once a turn.',
         '- Events: a 🎈 Hot Air Balloon by day and a 🚌 Night Coach by night offer rides to faraway cities.',
         'None of these work on Cloud Island or the Forest Floor, and Bike rides keep to land and the usual gates.',
@@ -111,6 +111,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'types', title: 'Types', body: [
         'Each Elemental move shows how it lands on the current opponent: 2× Super effective, ½ Resisted, No effect…',
         'In battle, 🔺 Types (or T) opens the chart for the matchup. The full chart is in ☰ Menu → Type Chart.',
+        'The small badge on each type is the status its Elemental attacks can inflict. Below the chart, a battle’s chart lists the statuses your moves can inflict and the ones the opponent’s types may inflict, before any of them happen.',
         'Physical attacks ignore the type chart.',
       ] },
       { id: 'stamina', title: 'Stamina & Fatigue', body: [

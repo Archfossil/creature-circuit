@@ -125,7 +125,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
 **In game:** "Markets sell at 25% off, and you earn 25% more coins whenever you earn coins (at least +1)." / "−1 to every recruitment roll."
 
 **Exact rules**
-- **Perk, prices:** every Market price is × 0.75, rounded up, with a minimum of 🪙 1. This stacks with the **Baby-Doll Eyes** follower Ability: both together give × 0.5625.
+- **Perk, prices:** every Market price is × 0.75, rounded up, with a minimum of 💰 1. This stacks with the **Baby-Doll Eyes** follower Ability: both together give × 0.5625.
 - **Perk, coins:** whenever coins are earned, add 25% (rounded up, at least +1). This covers:
   - battle wins (wild, trainer and Arbiter),
   - coin finds while exploring,

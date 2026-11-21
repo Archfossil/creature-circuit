@@ -52,8 +52,8 @@ export const ITEMS: Record<string, Item> = {
   'energy-tonic': { id: 'energy-tonic', name: 'Energy Tonic', kind: 'restore', price: 30, icon: '⚗️', text: 'Permanently +1 energy of the creature\'s primary type.' },
   // treats (morale & loyalty)
   'sunberry': { id: 'sunberry', name: 'Sunberry', kind: 'treat', price: 2, icon: '🍓', text: 'A treat: +1 Morale, +1 Loyalty.' },
-  'dewberry': { id: 'dewberry', name: 'Dewberry', kind: 'treat', price: 2, icon: '🫐', text: 'A treat: +1 Morale, +1 Loyalty.' },
-  'duskberry': { id: 'duskberry', name: 'Duskberry', kind: 'treat', price: 4, icon: '🫐', text: 'A Forest Floor treat: +2 Morale, +1 Loyalty.' },
+  'dewberry': { id: 'dewberry', name: 'Dewberry', kind: 'treat', price: 2, icon: '🍒', text: 'A treat: +1 Morale, +1 Loyalty.' },
+  'duskberry': { id: 'duskberry', name: 'Duskberry', kind: 'treat', price: 4, icon: '🍑', text: 'A Forest Floor treat: +2 Morale, +1 Loyalty.' },
   'moonberry': { id: 'moonberry', name: 'Moonberry', kind: 'treat', price: 5, icon: '🍇', text: 'A rare treat: +2 Morale, +2 Loyalty.' },
   // charms
   'lure-incense': { id: 'lure-incense', name: 'Lure Incense', kind: 'charm', price: 6, icon: '🕯️', text: 'Your next explore is a guaranteed wild encounter.' },
@@ -61,16 +61,16 @@ export const ITEMS: Record<string, Item> = {
   // travel: getting around the big map faster (world.ts → travel items & rides)
   'bike': { id: 'bike', name: 'Bike', kind: 'travel', unique: true, price: 25, icon: '🚲', text: 'Once a turn, roll a d6 and ride up to that many steps for free, without exploring on the way or where you stop. Not on Cloud Island or the Forest Floor, and not over the sea.' },
   'taxi-ticket': { id: 'taxi-ticket', name: 'Taxi Ticket', kind: 'travel', price: 10, icon: '🚕', text: 'In a city: ride to any other city. Uses up the rest of your Initiative this turn.' },
-  'homing-feather': { id: 'homing-feather', name: 'Homing Feather', kind: 'travel', price: 8, icon: '🪶', text: 'From anywhere on the mainland, fly back to your home city (a Wanderer may pick any city they’ve rested at). Uses up the rest of your Initiative this turn.' },
+  'homing-feather': { id: 'homing-feather', name: 'Homing Feather', kind: 'travel', price: 8, icon: '🕊️', text: 'From anywhere on the mainland, fly back to your home city (a Wanderer may pick any city they’ve rested at). Uses up the rest of your Initiative this turn.' },
   'trail-mix': { id: 'trail-mix', name: 'Trail Mix', kind: 'travel', price: 6, icon: '🥜', text: '+1 Initiative this turn (up to 5). One handful a turn.' },
   // totems
   'totem': { id: 'totem', name: 'Plain Totem', kind: 'totem', price: 4, icon: '🗿', text: 'A generic carving. +1 to any recruitment.' },
   // offering materials (found by biome)
   'pine-resin': material('pine-resin', 'Pine Resin', '🌲', { grass: 2, charm: 1 }, 'Sticky, fragrant. Forest creatures love it.'),
   'glacier-salt': material('glacier-salt', 'Glacier Salt', '🧂', { astral: 2, water: 1 }, 'Crystals from ancient ice.'),
-  'ember-charcoal': material('ember-charcoal', 'Ember Charcoal', '🪵', { fire: 2, rock: 1 }, 'Still warm to the touch.'),
-  'river-chalk': material('river-chalk', 'River Chalk', '🪨', { water: 2, rock: 1 }, 'Smooth chalk from riverbeds.'),
-  'marsh-lotus': material('marsh-lotus', 'Marsh Lotus', '🪷', { water: 2, grass: 1 }, 'Blooms only in still water.'),
+  'ember-charcoal': material('ember-charcoal', 'Ember Charcoal', '⚫', { fire: 2, rock: 1 }, 'Still warm to the touch.'),
+  'river-chalk': material('river-chalk', 'River Chalk', '⬜', { water: 2, rock: 1 }, 'Smooth chalk from riverbeds.'),
+  'marsh-lotus': material('marsh-lotus', 'Marsh Lotus', '💮', { water: 2, grass: 1 }, 'Blooms only in still water.'),
   'sage-bundle': material('sage-bundle', 'Sage Bundle', '🌾', { electric: 1, fire: 1, charm: 1 }, 'Burned as incense on the plains.'),
   'sea-glass': material('sea-glass', 'Sea Glass', '🔷', { steel: 1, water: 2 }, 'Frosted glass from the tide.'),
   'iron-filings': material('iron-filings', 'Iron Filings', '⚙️', { steel: 2, electric: 1 }, 'Mystery ore from the Iron Coast.'),
@@ -83,12 +83,12 @@ export const ITEMS: Record<string, Item> = {
   'cloud-silk': material('cloud-silk', 'Cloud Silk', '☁️', universal(1), 'Threads spun from a passing cloud. Every creature finds it soothing: +1 to recruit any creature.'),
   'stardust': material('stardust', 'Stardust', '✨', universal(2), 'Glittering dust that drifts down on Cloud Island. +2 to recruit any creature.'),
   // exotic Forest Floor finds: slight improvements over the usual ones
-  'heartwood-resin': material('heartwood-resin', 'Heartwood Resin', '🪵', { grass: 3, charm: 2, rock: 1 }, 'Amber sap from the oldest trunks on the Forest Floor. A richer Pine Resin.'),
+  'heartwood-resin': material('heartwood-resin', 'Heartwood Resin', '🍯', { grass: 3, charm: 2, rock: 1 }, 'Amber sap from the oldest trunks on the Forest Floor. A richer Pine Resin.'),
   'glowcap': material('glowcap', 'Glowcap', '🍄', { charm: 3, grass: 2, astral: 1 }, 'A mushroom that glows in the dark of the Forest Floor. A richer Moon Moss.'),
   'moonbow-prism': material('moonbow-prism', 'Moonbow Prism', '🌈', universal(3), 'A rare shard of a rainbow seen by moonlight. +3 to recruit any creature.'),
   // key items
   'fog-lantern': { id: 'fog-lantern', name: 'Fog Lantern', kind: 'key', price: 12, icon: '🏮', text: 'Catch a wisp in it and it lights the misty way to Lantern Glade and the Rainbow Plains. Check it to see where a wisp waits.' },
-  'canopy-rope': { id: 'canopy-rope', name: 'Canopy Rope', kind: 'key', price: 12, icon: '🪢', text: 'Lets you descend to Dahlia\'s arena on the forest floor.' },
+  'canopy-rope': { id: 'canopy-rope', name: 'Canopy Rope', kind: 'key', price: 12, icon: '➰', text: 'Lets you descend to Dahlia\'s arena on the forest floor.' },
   'ferry-pass': { id: 'ferry-pass', name: 'Ferry Pass', kind: 'key', price: 15, icon: '⛴️', text: 'Ride the ferry to Black Sand Cove on Kilauea island, from Mangrove Port or Kilauea Forge.' },
   'root-whistle': { id: 'root-whistle', name: 'Root Whistle', kind: 'key', price: 14, icon: '🎐', text: 'Asks the mangrove roots to open the path to Katy.' },
   'summit-pick': { id: 'summit-pick', name: 'Summit Pick', kind: 'key', price: 18, icon: '⛏️', text: 'Climb to Sunspire Summit.' },
@@ -103,7 +103,7 @@ export const isUnique = (it: Item) => it.kind === 'key' || !!it.unique;
 
 export function itemInfo(id: string): Item {
   if (ITEMS[id]) return ITEMS[id];
-  if (id.startsWith('effigy:')) return { id, name: 'Effigy', kind: 'totem', price: 0, icon: '🪆', text: '+5 for its creature, -3 for others.' };
+  if (id.startsWith('effigy:')) return { id, name: 'Effigy', kind: 'totem', price: 0, icon: '🎎', text: '+5 for its creature, -3 for others.' };
   return { id, name: id, kind: 'material', price: 0, icon: '❔', text: '' };
 }
 
@@ -133,7 +133,7 @@ export const BIOME_INFO: Record<Biome, { label: string; color: string; icon: str
   river: { label: 'River', color: '#5fb8d6', icon: '🌊' }, road: { label: 'Road', color: '#c9b48a', icon: '🛤️' },
   swamp: { label: 'Swamp', color: '#557a4a', icon: '🐊' }, desert: { label: 'Desert', color: '#e2c27a', icon: '🌵' },
   badlands: { label: 'Badlands', color: '#c98f5a', icon: '🏜️' }, coast: { label: 'Coast', color: '#d9cfb0', icon: '🏖️' },
-  volcanic: { label: 'Volcanic', color: '#4a3a38', icon: '🌋' }, canyon: { label: 'Canyon', color: '#c4703a', icon: '🪨' },
+  volcanic: { label: 'Volcanic', color: '#4a3a38', icon: '🌋' }, canyon: { label: 'Canyon', color: '#c4703a', icon: '🌄' },
   cloud: { label: 'Cloud', color: '#f4a9d8', icon: '☁️' },
   deepwood: { label: 'Forest Floor', color: '#1f3524', icon: '🌑' },
   prism: { label: 'Rainbow Plains', color: '#d8e8b0', icon: '🌈' },

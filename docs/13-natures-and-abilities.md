@@ -144,7 +144,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 #### 2. Baby-Doll Eyes · `babyEyes`
 
-**Exact rule:** Market prices × 0.75, rounded up, minimum 🪙 1.
+**Exact rule:** Market prices × 0.75, rounded up, minimum 💰 1.
 
 **Interactions:** stacks with the Merchant trainer style: both together give × 0.5625 (about 44% off).
 

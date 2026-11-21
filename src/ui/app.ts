@@ -31,6 +31,8 @@ import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 interface BattleLogEntry { round: number; text: string; tone?: string; detail?: string; side?: 0 | 1 }
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3', '#a51d2d', '#1f3a93'];
+/** Rarity die faces (placeholders until the custom die-star icons arrive). */
+const STAR_FACE = { full: '★', half: '☆', blank: '🚫' } as const;
 const DEFAULT_NAMES = ['Rowan', 'Juno', 'Kai', 'Mira', 'Ash', 'Tess'];
 
 /**
@@ -810,7 +812,7 @@ export class App {
           h('img', { src: trainerPortrait(playerLook(b.trainer.name, b.trainer.color, b.trainer.look)), alt: '' }),
           h('div', { class: 'trainer-info' },
             h('b', null, b.trainer.name, stillPlaying(b) ? '' : ' · finished'),
-            h('small', null, `${here ? '📍 Here with you' : `At ${NODE_BY_ID[b.location].name}`} · 🪙 ${b.coins} · ${b.merits.length}/8 Merits · ${b.roster.length + b.reserve.length} creatures`),
+            h('small', null, `${here ? '📍 Here with you' : `At ${NODE_BY_ID[b.location].name}`} · 💰 ${b.coins} · ${b.merits.length}/8 Merits · ${b.roster.length + b.reserve.length} creatures`),
             h('div', { class: 'row gap-s wrap' },
               h('button', { class: 'btn ghost sm', onclick: () => { close(); this.giftSheet(b); } }, '📦 Send a gift'),
               h('button', { class: 'btn ghost sm', title: here ? 'Trade coins, items and creatures' : 'Trade coins and items by courier (meet on the same spot to trade creatures)', onclick: () => { close(); this.tradeSheet(b); } }, here ? '🤝 Trade' : '🤝 Trade items'),
@@ -825,7 +827,7 @@ export class App {
     const step = (d: number) => () => { offer.coins = Math.max(0, Math.min(owner.coins, offer.coins + d)); changed(); };
     const itemStep = (id: string, d: number) => () => { offer.items[id] = Math.max(0, Math.min(owner.inventory[id], (offer.items[id] ?? 0) + d)); changed(); };
     return h('div', { class: 'offer' },
-      h('div', { class: 'school-pay' }, h('span', null, '🪙 Coins'),
+      h('div', { class: 'school-pay' }, h('span', null, '💰 Coins'),
         h('button', { class: 'btn ghost sm', onclick: step(-5) }, '−5'), h('button', { class: 'btn ghost sm', onclick: step(-1) }, '−1'),
         h('b', { class: 'school-coins' }, String(offer.coins)),
         h('button', { class: 'btn ghost sm', onclick: step(1) }, '+1'), h('button', { class: 'btn ghost sm', onclick: step(5) }, '+5'),
@@ -894,7 +896,7 @@ export class App {
   /** A readable list of what's in an offer (creature shown as a card). */
   offerSummary(owner: GameState, o: I.Offer, label: string) {
     const c = o.creature ? [...owner.roster, ...owner.reserve].find((x) => x.uid === o.creature) : undefined;
-    const bits = [...Object.entries(o.items).filter(([, n]) => n).map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`), ...(o.coins ? [`🪙 ${o.coins}`] : [])];
+    const bits = [...Object.entries(o.items).filter(([, n]) => n).map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`), ...(o.coins ? [`💰 ${o.coins}`] : [])];
     return h('div', { class: 'offer-summary' }, h('b', null, `${label}: `), bits.join(', ') || (c ? '' : 'nothing'), c ? miniCard(c) : '');
   }
 
@@ -908,7 +910,7 @@ export class App {
       h('p', { class: 'small muted' }, 'Choose a wager (the winner takes it). A team that’s fully knocked out is helped home to rest, without losing coins.'),
       h('div', { class: 'row gap-s wrap' }, wagers.map((w) => h('button', { class: 'btn primary', onclick: async () => {
         close();
-        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 🪙 ${w}` : ', just for honour'}. You’ll pick your creatures’ moves each round.`), 'Accept the duel', 'Decline');
+        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 💰 ${w}` : ', just for honour'}. You’ll pick your creatures’ moves each round.`), 'Accept the duel', 'Decline');
         await this.backTo(a);
         if (!ok) { toast(`${b.trainer.name} declined the challenge.`, 'info'); return; }
         const battle = I.startChallenge(a, b);
@@ -918,7 +920,7 @@ export class App {
         save(a);
         this.world.setPawnAt(a.location); this.world.focus(a.location, true);
         this.showRivals(); this.renderHud();
-      } }, w ? `Wager 🪙 ${w}` : 'No wager')))));
+      } }, w ? `Wager 💰 ${w}` : 'No wager')))));
   }
 
   /**
@@ -1088,7 +1090,7 @@ export class App {
       // active effects (Nabe, lucky stars, incense, a wisp): one icon each, tap for details
       effects.length ? h('button', { class: 'hud-pill effects', title: effects.map((e) => `${e.icon} ${e.name}: ${e.text}`).join('\n'), 'aria-label': 'Active effects', onclick: () => this.effectsSheet() },
         effects.map((e) => h('span', null, e.icon)), h('small', { class: 'hide-xs' }, effects.length === 1 ? effects[0].name : 'Active')) : null,
-      h('div', { class: 'hud-pill coins' }, '🪙 ', h('b', null, s.coins)),
+      h('div', { class: 'hud-pill coins' }, '💰 ', h('b', null, s.coins)),
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
         h('span', { class: `merit ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '' })))),
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.trainerId(), 'aria-label': 'Trainer ID', title: 'Trainer ID: your home town, style and records' }, '📇'),
@@ -1341,7 +1343,7 @@ export class App {
         // two beats: the explore roll reveals that something's here, then the find roll reveals what
         await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], s.location === FOREST_FLOOR ? 'Something exotic glints in the dark!' : 'You discovered something!', 700, { read: true });
         const names = out.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`);
-        if (out.coins) names.push(`🪙 ${out.coins} coins`);
+        if (out.coins) names.push(`💰 ${out.coins} coins`);
         await rollDice('Find', [{ sides: 6, value: out.itemRoll, tone: 'good', label: 'Find d6' }], `Found ${names.join(', ')}!`, 900, { read: true });
         sfx.good();
         toast(`Found ${names.join(', ')}${isCloudNode(s.location) ? ' (held in your Cloud satchel until you escape)' : ''}`, 'good', 3200);
@@ -1349,7 +1351,7 @@ export class App {
       } else if (out.t === 'itemChoice') {
         // Keen Nose: three finds to choose from
         await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], 'Your follower’s Keen Nose picks up three scents…', 500, { read: true });
-        const label = (f: W.Find) => [...f.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`), ...(f.coins ? [`🪙 ${f.coins} coins`] : [])].join(' + ');
+        const label = (f: W.Find) => [...f.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`), ...(f.coins ? [`💰 ${f.coins} coins`] : [])].join(' + ');
         const pickIt = await new Promise<W.Find>((resolve) => {
           const close = openSheet('👃 Keen Nose · pick one find', h('div', null,
             h('p', { class: 'small' }, `${follower(s) ? nameOf(follower(s)!) : 'Your follower'} sniffs out three things nearby. You can only carry one away.`),
@@ -1363,7 +1365,7 @@ export class App {
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
         await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], s.location === FOREST_FLOOR ? 'Something moves in the dark…' : 'Something rustles nearby…', 700, { read: true });
-        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].biome === 'prism' ? '(+1 rarity: the Rainbow Plains)' : NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
+        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].biome === 'prism' ? '(+1 rarity: the Rainbow Plains)' : NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
         this.busy = false;
         await this.runBattle(out.battle, { kind: 'wild', intro: `A wild ${nameOf(out.battle.sides[1].team[0])} appeared!` });
         return;
@@ -1497,7 +1499,7 @@ export class App {
         }
         case 'clash':
           note(`Clash! Speeds tied: you rolled ${e.rolls[0]} (d${e.dice[0]}), the foe rolled ${e.rolls[1]} (d${e.dice[1]}).`, { detail: e.loser === null ? 'Even clash: no damage, and a coin flip decided turn order.' : `${e.loser === 0 ? 'You' : 'The foe'} rolled lower: ${e.dmg} damage (the difference) and acted second.` });
-          if (e.coin && e.first !== undefined) note(`🪙 Coin flip: ${whoOn(e.first)} won and acts first.`, { side: e.first, tone: e.first === 0 ? 'good' : 'bad' });
+          if (e.coin && e.first !== undefined) note(`💰 Coin flip: ${whoOn(e.first)} won and acts first.`, { side: e.first, tone: e.first === 0 ? 'good' : 'bad' });
           break;
         case 'tired': note(`${whoOn(e.side)} · Fatigue check: ${e.fail ? 'catching breath!' : 'kept going.'}`, { side: e.side, tone: e.fail ? 'bad' : undefined, detail: `d10 rolled ${e.value} vs Fatigue ${e.fatigue} (${e.fail ? 'at or under' : 'over'} it).` }); break;
         case 'damage': {
@@ -1879,7 +1881,7 @@ export class App {
     closeAllSheets();
     save(s); this.renderHud();
     try {
-      await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: x.star === 'full' ? '★' : x.star === 'half' ? '⯪' : '·', tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 900, { read: true });
+      await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 900, { read: true });
     } finally { this.busy = false; }
     await this.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
   }
@@ -1958,7 +1960,7 @@ export class App {
     const body = h('div');
     const render = () => {
       body.replaceChildren(
-        h('div', { class: 'row between' }, h('span', { class: 'chip' }, '🪙 ', h('b', null, s.coins), ' coins'), W.ability(s) === 'babyEyes' ? h('span', { class: 'chip good' }, 'Baby-Doll Eyes: −25%') : null),
+        h('div', { class: 'row between' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins), ' coins'), W.ability(s) === 'babyEyes' ? h('span', { class: 'chip good' }, 'Baby-Doll Eyes: −25%') : null),
         h('p', { class: 'small muted' }, 'Items are never used in battle — use them from your Bag between fights.'),
         h('div', { class: 'shop' }, stock.map((id) => {
           const it = itemInfo(id);
@@ -1968,7 +1970,7 @@ export class App {
           return h('div', { class: `shop-row ${isKey ? 'key' : ''}` },
             h('span', { class: 'shop-ico' }, it.icon),
             h('div', null, h('b', null, it.name), h('small', null, it.text), owned ? h('small', { class: 'muted' }, ` · owned ${isKey ? '✓' : owned}`) : null),
-            h('button', { class: 'btn sm primary', disabled: s.coins < p || (isKey && owned > 0), onclick: () => { if (W.buy(s, id)) { toast(`Bought ${it.name}`, 'good', 1500); save(s); this.renderHud(); render(); } } }, `🪙 ${p}`));
+            h('button', { class: 'btn sm primary', disabled: s.coins < p || (isKey && owned > 0), onclick: () => { if (W.buy(s, id)) { toast(`Bought ${it.name}`, 'good', 1500); save(s); this.renderHud(); render(); } } }, `💰 ${p}`));
         })));
     };
     openSheet(town ? `${NODE_BY_ID[s.location].name} · Market` : 'Market', body, { wide: true });
@@ -2000,11 +2002,11 @@ export class App {
           const on = mats.includes(m);
           return h('button', { class: `pick ${on ? 'sel' : ''}`, disabled: !on && mats.length >= need, onclick: () => { mats = on ? mats.filter((x) => x !== m) : [...mats, m]; render(); } }, `${itemInfo(m).icon} ${itemInfo(m).name} ×${s.inventory[m]}`);
         })) : h('p', { class: 'small muted' }, 'You have no carving materials. Explore wild nodes to find them.'),
-        h('div', { class: 'row end gap' }, h('span', { class: 'chip' }, '🪙 ', s.coins),
+        h('div', { class: 'row end gap' }, h('span', { class: 'chip' }, '💰 ', s.coins),
           h('button', { class: 'btn primary', disabled: mats.length < need || s.coins < cost, onclick: () => {
             const id = W.carveTotem(s, kind, target, mats);
             if (id) { toast(`Carved a ${W.itemDisplayName(id)}!`, 'good'); mats = []; save(s); this.renderHud(); render(); }
-          } }, `Carve · 🪙 ${cost}`)));
+          } }, `Carve · 💰 ${cost}`)));
     };
     openSheet('Carving Shrine', body, { wide: true });
     render();
@@ -2029,7 +2031,7 @@ export class App {
     const body = h('div', { class: 'arbiter', style: `--tc:${TYPE_COLOR[c.type]}` },
       h('div', { class: 'city-hero' }, h('img', { src: typeIcon(c.type) }), h('div', null, h('h3', null, `Arbiter ${c.arbiter}`), h('small', null, `${c.arena.name} · ${TYPE_LABEL[c.type]} specialist`))),
       h('p', null, c.arena.text),
-      h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Your Tier: ${tier}`), h('span', { class: 'chip' }, `${tier === 1 ? 2 : 3} creatures · Lv ~${1 + tier * 2}`), h('span', { class: 'chip' }, `Prize: ${c.accolade} + 🪙${10 * tier}`)),
+      h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Your Tier: ${tier}`), h('span', { class: 'chip' }, `${tier === 1 ? 2 : 3} creatures · Lv ~${1 + tier * 2}`), h('span', { class: 'chip' }, `Prize: ${c.accolade} + 💰${10 * tier}`)),
       h('p', { class: 'small muted' }, 'Arbiters scale to your Tier, so you may challenge them in any order.'),
       h('div', { class: 'row end gap' }, h('button', { class: 'btn ghost', onclick: () => closeAllSheets() }, 'Not yet'), h('button', { class: 'btn primary', onclick: async () => {
         if (!this.spend()) return;
@@ -2104,7 +2106,7 @@ export class App {
         h('div', null, h('small', null, 'Signs needed'), h('b', null, `${t.need} (3 + Tier ${tierOf(s)})`)),
         h('div', null, h('small', null, 'Explore die'), h('b', null, `🎲 d${W.floorDie(s)}`))),
       beaten ? '' : h('div', { class: 'gauntlet-pips', 'aria-label': `${t.steps} of ${t.need} signs` }, Array.from({ length: t.need }, (_, k) => h('span', { class: k < t.steps ? 'on' : k === t.steps ? 'next' : '' }))),
-      rule('🪢', 'Getting down', 'Climb down from Gloomshade with a ', h('b', null, 'Canopy Rope'), ` (sold in ${W.keyTownName(s, 'canopy-rope')} this season). The Forest Floor is one node: you explore it again and again (🔍 Explore, the usual Initiative).`),
+      rule('➰', 'Getting down', 'Climb down from Gloomshade with a ', h('b', null, 'Canopy Rope'), ` (sold in ${W.keyTownName(s, 'canopy-rope')} this season). The Forest Floor is one node: you explore it again and again (🔍 Explore, the usual Initiative).`),
       rule('🎲', beaten ? 'Exploring the dark (d6, now Dahlia is beaten)' : 'Exploring the dark (d8)', h('b', null, '1–2'), ' nothing, and your active team loses 1 Morale: they fear the dark. ', h('b', null, '3–4'), ' a wild creature (night creatures, it’s always dark). ', h('b', null, '5–6'), ' an exotic find. ', h('b', null, '7–8'), ' a sign of ', h('b', null, 'Dahlia’s Trail'), '.', beaten ? ' With Dahlia beaten, the die is a d6: the same table without the trail, so no explore is wasted on it.' : ''),
       rule('🏮', 'Dahlia’s Trail', `Find ${t.need} signs (3, +1 per Tier) and her arena appears. Challenge her right there with 🏟️ Dahlia.`),
       rule('🚪', 'Leaving loses the trail', h('b', null, 'Leaving the Forest Floor, by choice or by being sent home after a defeat, loses every sign.'), ' You’ll have to start over.'),
@@ -2120,7 +2122,7 @@ export class App {
     return new Promise((resolve) => {
       let done = false;
       const finish = (go: boolean) => { if (done) return; done = true; close(); resolve(go); };
-      const close = openSheet('🪢 Climb down to the Forest Floor?', h('div', null,
+      const close = openSheet('➰ Climb down to the Forest Floor?', h('div', null,
         this.floorRules(),
         h('p', { class: 'small muted' }, 'You can read these rules again any time down there: tap the 🌲 Forest Floor chip at the top left.'),
         h('div', { class: 'row end gap sticky-foot' },
@@ -2235,9 +2237,9 @@ export class App {
         h('div', { class: 'school-pay' },
           h('span', null, 'Pay'),
           h('button', { class: 'btn ghost sm', onclick: step(-10) }, '−10'), h('button', { class: 'btn ghost sm', onclick: step(-2) }, '−2'),
-          h('b', { class: 'school-coins' }, `🪙 ${coins}`),
+          h('b', { class: 'school-coins' }, `💰 ${coins}`),
           h('button', { class: 'btn ghost sm', onclick: step(2) }, '+2'), h('button', { class: 'btn ghost sm', onclick: step(10) }, '+10'),
-          h('small', { class: 'muted' }, `You have 🪙 ${s.coins}`)),
+          h('small', { class: 'muted' }, `You have 💰 ${s.coins}`)),
         h('p', { class: 'small' }, `→ ${coins} XP over ${turns} turn${turns === 1 ? '' : 's'}`, target ? ` · ${nameOf(target)} would gain about ${levelsFor(target)} level${levelsFor(target) === 1 ? '' : 's'}` : '', '. It’s away from your team until you pick it up, and its mood about the stay is rolled when you do.'),
         h('div', { class: 'row end' },
           h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: () => {
@@ -2248,7 +2250,7 @@ export class App {
             toast(`${nameOf(target)} starts training: ${t.xp} XP over ${t.turns} turns. You’ll be told when it’s done.`, 'good', 4500);
             pickUid = null;
             render();
-          } }, why && target ? why : `Enrol for 🪙 ${coins}`)));
+          } }, why && target ? why : `Enrol for 💰 ${coins}`)));
     };
     render();
     openSheet('Battle School', body, { wide: true });
@@ -2267,11 +2269,11 @@ export class App {
           const why = W.releaseBlock(s, c.uid);
           const sp = speciesOf(c);
           const pay = W.researchPayout(c);
-          const card = miniCard(c, { badge: `🪙 ${pay}`, onClick: async () => {
+          const card = miniCard(c, { badge: `💰 ${pay}`, onClick: async () => {
             if (why) { toast(why, 'info'); return; }
             const ok = await confirmSheet(`Release ${nameOf(c)}?`,
-              `${nameOf(c)} (Lv ${c.level}, ${sp.rarity}) goes to the Research Facility for good. You receive 🪙 ${pay} (Lv ${c.level} × ${W.RESEARCH_RATE[sp.rarity]}).${sp.rarity === 'legendary' ? ' It returns to its legendary grounds on the map.' : ''}`,
-              `Release for 🪙 ${pay}`);
+              `${nameOf(c)} (Lv ${c.level}, ${sp.rarity}) goes to the Research Facility for good. You receive 💰 ${pay} (Lv ${c.level} × ${W.RESEARCH_RATE[sp.rarity]}).${sp.rarity === 'legendary' ? ' It returns to its legendary grounds on the map.' : ''}`,
+              `Release for 💰 ${pay}`);
             if (!ok) return;
             const r = W.releaseToResearch(s, c.uid);
             if (!r) return;
@@ -2350,11 +2352,11 @@ export class App {
       const why = W.travelBlock(s);
       const targets = W.featherTargets(s);
       if (why || !targets.length) { toast(why ?? 'You’re already home.', 'info'); return; }
-      this.cityPicker('🪶 Homing Feather', `It carries you to ${s.trainer.style === 'balanced' ? 'any city you’ve rested at' : 'your home city'}. This uses up the rest of your Initiative this turn.`, targets, async (to) => {
+      this.cityPicker('🕊️ Homing Feather', `It carries you to ${s.trainer.style === 'balanced' ? 'any city you’ve rested at' : 'your home city'}. This uses up the rest of your Initiative this turn.`, targets, async (to) => {
         const from = s.location;
         if (!W.useFeather(s, to)) return;
         save(s); await this.glide([from, to]); this.renderHud();
-        toast(`🪶 The feather sets you down in ${CITIES[to].name}.`, 'good');
+        toast(`🕊️ The feather sets you down in ${CITIES[to].name}.`, 'good');
       });
     }
   }
@@ -2529,7 +2531,7 @@ export class App {
       for (const id of Object.keys(s.inventory)) groups[itemInfo(id).kind]?.push(id);
       const labels: Record<string, string> = { restore: 'Restoratives', treat: 'Treats', charm: 'Charms', travel: 'Travel', totem: 'Totems', material: 'Offering & Carving Materials', key: 'Key Items' };
       body.replaceChildren(
-        h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '🪙 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure active') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
+        h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure active') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
         ...Object.entries(groups).filter(([, v]) => v.length).map(([k, ids]) => h('section', null, h('h4', null, labels[k]),
           h('div', { class: 'bag-grid' }, ids.map((id) => {
             const it = itemInfo(id);

@@ -792,7 +792,7 @@ export function releaseToResearch(s: GameState, uid: string): { coins: number; t
   list.splice(list.indexOf(c), 1);
   if (s.following === uid) s.following = s.roster[0]?.uid ?? null;
   const coins = earnCoins(s, researchPayout(c));
-  let text = `${nameOf(c)} is in the researchers’ care now. You receive 🪙 ${coins}.`;
+  let text = `${nameOf(c)} is in the researchers’ care now. You receive 💰 ${coins}.`;
   const home = returnLegendary(s, c);
   if (home) text += ` The researchers return it to ${home}, where it waits for its next challenger.`;
   log(s, `Released ${nameOf(c)} (Lv ${c.level}) to the Research Facility for ${coins} coins.`);
@@ -811,7 +811,7 @@ export function enrollBlock(s: GameState, uid: string, coins: number): string | 
   const all = [...s.roster, ...s.reserve];
   if (!all.some((c) => c.uid === uid)) return 'Not one of your creatures.';
   if (all.length <= 1) return 'You can’t send away your only creature.';
-  if (!Number.isInteger(coins) || coins < SCHOOL_XP_PER_TURN) return `Training costs at least 🪙 ${SCHOOL_XP_PER_TURN}.`;
+  if (!Number.isInteger(coins) || coins < SCHOOL_XP_PER_TURN) return `Training costs at least 💰 ${SCHOOL_XP_PER_TURN}.`;
   if (coins > s.coins) return 'Not enough coins.';
   return null;
 }

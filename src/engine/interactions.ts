@@ -25,7 +25,7 @@ export const giftable = (id: string) => itemInfo(id).kind !== 'key';
 /** Why `from` can't hand over this offer to `to` (null = fine). `back` is what `from` receives in return. */
 export function offerProblem(from: GameState, o: Offer, to: GameState, back: Offer = emptyOffer()): string | null {
   if (!Number.isInteger(o.coins) || o.coins < 0) return 'Coins must be a whole number.';
-  if (o.coins > from.coins) return `${from.trainer.name} doesn’t have 🪙 ${o.coins}.`;
+  if (o.coins > from.coins) return `${from.trainer.name} doesn’t have 💰 ${o.coins}.`;
   for (const [id, n] of Object.entries(o.items)) {
     if (!n) continue;
     if (!giftable(id)) return `${itemInfo(id).name} can’t be given away.`;
@@ -60,7 +60,7 @@ const describe = (s: GameState, o: Offer) => {
   const parts: string[] = [];
   if (o.creature) parts.push(nameOf(owned(s).find((c) => c.uid === o.creature)!));
   for (const [id, n] of Object.entries(o.items)) if (n) parts.push(`${n} × ${itemInfo(id).name}`);
-  if (o.coins) parts.push(`🪙 ${o.coins}`);
+  if (o.coins) parts.push(`💰 ${o.coins}`);
   return parts.join(', ') || 'nothing';
 };
 
@@ -147,7 +147,7 @@ export function settleChallenge(a: GameState, b: GameState, battle: Battle, wage
   const stake = Math.min(wager, aWon ? b.coins : bWon ? a.coins : 0);
   if (stake > 0) {
     if (aWon) { b.coins -= stake; a.coins += stake; } else { a.coins -= stake; b.coins += stake; }
-    out.push(`${aWon ? a.trainer.name : b.trainer.name} wins the 🪙 ${stake} wager.`);
+    out.push(`${aWon ? a.trainer.name : b.trainer.name} wins the 💰 ${stake} wager.`);
   }
   const foeLevel = Math.max(...a.roster.map((c) => c.level));
   for (const uid of battle.foeParticipants ?? []) {
@@ -156,7 +156,7 @@ export function settleChallenge(a: GameState, b: GameState, battle: Battle, wage
   }
   for (const c of b.roster) if (!c.ko) c.health = Math.max(c.health, 1);
   const result = aWon ? `${a.trainer.name} beat you in a duel at ${NODE_BY_ID[a.location].name}.` : bWon ? `You beat ${a.trainer.name} in a duel at ${NODE_BY_ID[a.location].name}!` : `Your duel with ${a.trainer.name} ended without a winner.`;
-  notify(b, `⚔️ ${result}${stake ? ` (🪙 ${stake} ${bWon ? 'won' : 'lost'})` : ''} Your creatures that fought earned XP.`);
+  notify(b, `⚔️ ${result}${stake ? ` (💰 ${stake} ${bWon ? 'won' : 'lost'})` : ''} Your creatures that fought earned XP.`);
   log(b, result);
   if (a.roster.every((c) => c.ko)) { helpHome(a); out.push(`${a.trainer.name}’s team is helped home to rest.`); }
   if (b.roster.every((c) => c.ko)) { helpHome(b); out.push(`${b.trainer.name}’s team is helped home to rest.`); }
