@@ -30,6 +30,10 @@ export interface TrainerStats {
   battlesWon: number; recruited: number; explored: number;
   /** Wild and Legendary creatures met in battle. */
   encountered?: number;
+  /** Initiative spent on odd jobs. */
+  worked?: number;
+  /** Items made at a Workbench. */
+  crafted?: number;
   /** Wins, losses and getaways per kind of battle. */
   record?: Partial<Record<BattleKind, WinLoss>>;
   /** How often the trainer's creatures have used moves of each type. */
@@ -69,6 +73,8 @@ export interface GameState {
     rangerRefunds?: number;
     firstMoveUsed: boolean;
     lure: boolean;
+    /** Hush Smoke: the next explore can't turn up a creature or trainer. */
+    repel?: boolean;
     starCharm: boolean;
     beaten: string[];       // legendary node ids already resolved
     salemNight: boolean;    // waited for aurora this turn

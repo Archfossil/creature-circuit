@@ -6,7 +6,7 @@ import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from 
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
-import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS } from '../src/data/content';
+import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
@@ -2960,5 +2960,111 @@ describe('city market and shrine: free to browse, pay on the first purchase', ()
     expect(W.facilityPaid(s, 'market')).toBe(true);
     W.endTurn(s);
     expect(W.facilityPaid(s, 'market')).toBe(false);
+  });
+});
+
+describe('Hush Smoke', () => {
+  const withRolls = <T>(r: number, fn: () => T): T => { const real = Math.random; Math.random = () => r; try { return fn(); } finally { Math.random = real; } };
+  const meadow = () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    s.location = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === 'meadow')!.id;
+    return s;
+  };
+  it('turns the encounter faces into a quiet Nothing (3) and a find (4), and is spent', () => {
+    for (const [r, face] of [[0.01, 1], [0.34, 3], [0.5, 4], [0.7, 5], [0.99, 6]] as const) {
+      const s = meadow();
+      s.initiative = 5; s.inventory['hush-smoke'] = 1;
+      W.useItem(s, 'hush-smoke', s.roster[0].uid);
+      expect(s.flags.repel).toBe(true);
+      const out = withRolls(r, () => W.reexplore(s))!;
+      expect(out.t, `face ${face}`).toMatch(face <= 3 ? /nothing/ : /item/);
+      expect('hushed' in out && out.hushed === true).toBe(face === 3 || face === 4);
+      expect(s.flags.repel).toBe(false);
+    }
+  });
+  it('is sold in city markets, and Lure Incense and Hush Smoke put each other out', () => {
+    const city = MAP_NODES.find((n) => n.kind === 'city')!.id;
+    expect(W.marketStock(city)).toContain('hush-smoke');
+    const s = meadow();
+    s.inventory['hush-smoke'] = 1; s.inventory['lure-incense'] = 1;
+    W.useItem(s, 'lure-incense', s.roster[0].uid);
+    W.useItem(s, 'hush-smoke', s.roster[0].uid);
+    expect([s.flags.lure, s.flags.repel]).toEqual([false, true]);
+    expect(W.activeEffects(s).map((e) => e.id)).toEqual(['repel']);
+  });
+});
+
+describe('Workbench crafting', () => {
+  const inCity = () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    s.location = MAP_NODES.find((n) => n.kind === 'city')!.id;
+    return s;
+  };
+  const recipe = (id: string) => RECIPES.find((r) => r.id === id)!;
+  it('every recipe can be made from ordinary (non-universal, non-exotic) materials', () => {
+    const ordinary = Object.values(ITEMS).filter((it) => it.kind === 'material' && Object.keys(it.allure ?? {}).length < 8 && Object.values(it.allure ?? {}).every((v) => v! <= 2));
+    for (const r of RECIPES) for (const t of r.slots) expect(ordinary.some((m) => W.fitsSlot(m.id, t)), `${r.id} ${t}`).toBe(true);
+  });
+  it('crafts with a material per slot, consuming them, and checks counts', () => {
+    const s = inCity();
+    s.inventory = { 'pine-resin': 1, 'river-chalk': 1 };
+    expect(W.validIngredients(s, recipe('salve'), ['river-chalk', 'pine-resin'])).toBe(false); // wrong slot order
+    expect(W.craft(s, 'salve', ['pine-resin', 'river-chalk'])).toBe('salve');
+    expect(s.inventory['salve']).toBe(2);
+    expect(s.inventory['pine-resin'] ?? 0).toBe(0);
+    expect(s.stats.crafted).toBe(2);
+    // one Marsh Lotus can't fill both of its slots
+    s.inventory['marsh-lotus'] = 1;
+    expect(W.craft(s, 'salve', ['marsh-lotus', 'marsh-lotus'])).toBe(null);
+    s.inventory['marsh-lotus'] = 2;
+    expect(W.craft(s, 'salve', ['marsh-lotus', 'marsh-lotus'])).toBe('salve');
+  });
+  it('picks the cheapest materials, keeping universal ones for last', () => {
+    const s = inCity();
+    s.inventory = { 'stardust': 3, 'ember-charcoal': 1, 'iron-filings': 1 };
+    expect(W.autoIngredients(s, recipe('hush-smoke'))).toEqual(['ember-charcoal', 'iron-filings']);
+    s.inventory = { 'stardust': 3 };
+    expect(W.autoIngredients(s, recipe('elixir'))).toEqual(['stardust', 'stardust', 'stardust']);
+    s.inventory = { 'stardust': 1 };
+    expect(W.autoIngredients(s, recipe('star-charm'))).toBe(null);
+  });
+  it('only works in cities and towns', () => {
+    const s = inCity();
+    s.inventory = { 'wildflower': 1, 'pine-resin': 1 };
+    s.location = MAP_NODES.find((n) => n.kind === 'wild')!.id;
+    expect(W.canCraftHere(s)).toBe(false);
+    expect(W.craft(s, 'calm-tea', ['pine-resin', 'wildflower'])).toBe(null);
+    s.location = MAP_NODES.find((n) => n.kind === 'town')!.id;
+    expect(W.craft(s, 'calm-tea', ['pine-resin', 'wildflower'])).toBe('calm-tea');
+  });
+});
+
+describe('Odd jobs', () => {
+  const at = (kind: 'city' | 'town' | 'wild', style: 'balanced' | 'haggler' = 'balanced') => {
+    const s = newGame('T', style, 'thunder', 'puddlit', '#fff');
+    s.location = MAP_NODES.find((n) => n.kind === kind)!.id;
+    return s;
+  };
+  it('spends all Initiative, a d4 of coins for each point', () => {
+    const s = at('town');
+    s.initiative = 3; s.coins = 0;
+    const r = W.doWork(s)!;
+    expect(r.rolls).toHaveLength(3);
+    for (const v of r.rolls) { expect(v).toBeGreaterThanOrEqual(1); expect(v).toBeLessThanOrEqual(4); }
+    expect(s.coins).toBe(r.rolls.reduce((a, b) => a + b, 0));
+    expect(s.initiative).toBe(0);
+    expect(W.doWork(s)).toBe(null); // nothing left to spend
+  });
+  it('a Merchant earns their bonus on the total', () => {
+    const s = at('city', 'haggler');
+    s.initiative = 2; s.coins = 0;
+    const real = Math.random; Math.random = () => 0.99;
+    try { expect(W.doWork(s)!.coins).toBe(8 + 2); } finally { Math.random = real; }
+  });
+  it('only in cities and towns', () => {
+    const s = at('wild');
+    expect(W.workBlock(s)).toMatch(/cities and towns/);
+    expect(W.doWork(s)).toBe(null);
+    expect(s.initiative).toBe(5);
   });
 });

@@ -1,7 +1,7 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
-import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay } from '../data/content';
+import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, type Recipe } from '../data/content';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Match, BattleKind } from './state';
 import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
@@ -95,6 +95,7 @@ export function activeEffects(s: GameState): ActiveEffect[] {
   }
   if (s.flags.starCharm) out.push({ id: 'starCharm', icon: '⭐', name: 'Lucky stars', text: 'Your next wild encounter rolls an extra rarity die (a Star Charm or the Fortune Teller).' });
   if (s.flags.lure) out.push({ id: 'lure', icon: '🕯️', name: 'Lure Incense', text: 'Your next explore is a guaranteed wild encounter.' });
+  if (s.flags.repel) out.push({ id: 'repel', icon: '💨', name: 'Hush Smoke', text: 'Your next explore can’t turn up a creature or trainer: a 3 finds Nothing and a 4 finds an item.' });
   if (wispLit(s)) out.push({ id: 'wisp', icon: '💫', name: 'Wisp in your Fog Lantern', text: 'The misty way from Fogbank Path to Lantern Glade is lit. It drifts home when you leave the Glade and the Rainbow Plains.' });
   return out;
 }
@@ -217,11 +218,11 @@ export function eatTrailMix(s: GameState): boolean {
 // ── Exploration ─────────────────────────────────────────────────
 /** `die`: the explore die (6, or 8 on the Forest Floor). `dark`: a Forest Floor "nothing" (the team loses Morale). */
 export type Outcome =
-  | { t: 'nothing'; roll: number; die?: number; dark?: boolean; refund?: boolean }
+  | { t: 'nothing'; roll: number; die?: number; /** Hush Smoke turned this encounter face into Nothing or a find. */ hushed?: boolean; dark?: boolean; refund?: boolean }
   | { t: 'encounter'; roll: number; stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle; die?: number }
   | { t: 'trainer'; roll: number; name: string; battle: Battle }
-  | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number; die?: number }
-  | { t: 'itemChoice'; roll: number; options: Find[]; die?: number }
+  | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number; die?: number; hushed?: boolean }
+  | { t: 'itemChoice'; roll: number; options: Find[]; die?: number; hushed?: boolean }
   /** Forest Floor: a sign of Dahlia's Trail. `found`: enough signs to reach her arena. */
   | { t: 'trail'; roll: number; die: number; steps: number; need: number; found: boolean }
   | { t: 'legendary'; battle: Battle }
@@ -277,6 +278,12 @@ function exploreRoll(s: GameState): Outcome {
   let r = roll(6);
   const ab = ability(s);
   if (s.flags.lure) { s.flags.lure = false; r = 3 + (r % 2); }
+  // Hush Smoke: the encounter faces split into a quiet Nothing (3) and a find (4); Sweet Scent is masked too
+  if (s.flags.repel) {
+    s.flags.repel = false;
+    if (r <= 3) return { t: 'nothing', roll: r, hushed: r === 3 || undefined };
+    return { ...discoverItem(s, node, r, node.biome === 'prism' ? exoticFind : rollFind), hushed: r === 4 || undefined } as Outcome;
+  }
   const encounterRange = ab === 'sweetScent' ? [3, 5] : [3, 4];
   if (r < encounterRange[0]) return { t: 'nothing', roll: r };
   if (r <= encounterRange[1]) {
@@ -296,7 +303,7 @@ function rollFind(s: GameState, node: MapNode): Find {
   let coins = 0;
   if (ir <= 2) items.push({ id: ir === 1 ? 'sunberry' : (Math.random() < 0.2 ? 'moonberry' : 'dewberry'), n: mult });
   else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: mult });
-  else if (ir === 5) items.push({ id: pick(['salve', 'calm-tea', 'lure-incense', 'totem', 'trail-mix']), n: 1 });
+  else if (ir === 5) items.push({ id: pick(['salve', 'calm-tea', 'lure-incense', 'hush-smoke', 'totem', 'trail-mix']), n: 1 });
   else { if (Math.random() < 0.5) items.push({ id: 'totem', n: 1 }); coins = roll(6); }
   return { itemRoll: ir, items, coins };
 }
@@ -347,6 +354,12 @@ function exploreFloor(s: GameState): Outcome {
   const die = floorDie(s);
   let r = roll(die);
   if (s.flags.lure) { s.flags.lure = false; r = 3 + (r % 2); }
+  // Hush Smoke: a 3 is a quiet Nothing (no fear of the dark), a 4 an exotic find; it's spent on any roll
+  if (s.flags.repel) {
+    s.flags.repel = false;
+    if (r === 3) return { t: 'nothing', roll: r, die, hushed: true };
+    if (r >= 4 && r <= 6) return { ...discoverItem(s, node, r, exoticFind, die), hushed: r === 4 || undefined } as Outcome;
+  }
   const encounterTo = ability(s) === 'sweetScent' ? 5 : 4;
   if (r <= 2) {
     for (const c of s.roster) if (!c.ko) c.morale = Math.max(0, c.morale - 1);
@@ -1049,7 +1062,7 @@ export function spendCityAction(s: GameState): boolean {
 }
 
 /** A city facility that's free to browse and costs a city action on the first purchase each turn. */
-export type Facility = 'market' | 'shrine';
+export type Facility = 'market' | 'shrine' | 'workbench';
 const facilityKey = (s: GameState, f: Facility) => `${f}:${s.location}`;
 /** Whether this city's market or shrine is already paid for this turn (then buying more is free). */
 export const facilityPaid = (s: GameState, f: Facility) => !!s.flags.paid?.includes(facilityKey(s, f));
@@ -1112,8 +1125,82 @@ export const keyTownName = (s: GameState, item: string) => NODE_BY_ID[keyTownOf(
 
 export function marketStock(nodeId: string): string[] {
   const n = NODE_BY_ID[nodeId];
-  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'star-charm', 'taxi-ticket', 'trail-mix', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
+  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'hush-smoke', 'star-charm', 'taxi-ticket', 'trail-mix', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
   return TOWNS[nodeId]?.sells ?? [];
+}
+
+// ── Odd jobs (every city and town) ──────────────────────────────
+/** Coins die rolled for each Initiative spent on odd jobs. */
+export const WORK_DIE = 4;
+/** Why odd jobs aren't available here and now, or null if they are. */
+export function workBlock(s: GameState): string | null {
+  if (!['city', 'town'].includes(here(s).kind) || isCloudNode(s.location)) return 'Odd jobs are only found in cities and towns.';
+  if (s.initiative < 1) return 'Odd jobs need Initiative: each point left rolls a d4 for coins.';
+  return null;
+}
+/**
+ * Take odd jobs: spend all remaining Initiative, rolling a d4 of coins for each point (through
+ * earnCoins, so a Haggler's bonus applies to the total). Like camping, it uses up the rest of the turn.
+ */
+export function doWork(s: GameState): { rolls: number[]; coins: number } | null {
+  if (workBlock(s)) return null;
+  const rolls = Array.from({ length: s.initiative }, () => roll(WORK_DIE));
+  s.initiative = 0;
+  const coins = earnCoins(s, rolls.reduce((a, b) => a + b, 0));
+  s.stats.worked = (s.stats.worked ?? 0) + rolls.length;
+  log(s, `Took odd jobs in ${here(s).name} and earned ${coins} coins.`);
+  return { rolls, coins };
+}
+
+// ── Workbench crafting (every city and town) ────────────────────
+/** Can this material fill a recipe slot of this type? Any allure for the type counts. */
+export const fitsSlot = (material: string, type: ElementType) => (itemInfo(material).allure?.[type] ?? 0) > 0;
+/** Workbenches stand in every city and town (not on Cloud Island). */
+export const canCraftHere = (s: GameState) => ['city', 'town'].includes(here(s).kind) && !isCloudNode(s.location);
+/** Owned materials that could fill this slot. */
+export const slotOptions = (s: GameState, type: ElementType) =>
+  Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && itemInfo(id).kind === 'material' && fitsSlot(id, type));
+
+/** How precious a material is: its total allure (universal and exotic ones are worth more). */
+const materialWorth = (id: string) => Object.values(itemInfo(id).allure ?? {}).reduce((a, b) => a + (b ?? 0), 0);
+
+/** Do these materials fill this recipe's slots, in order, out of what's in the bag? */
+export function validIngredients(s: GameState, r: Recipe, mats: string[]): boolean {
+  if (mats.length !== r.slots.length || !mats.every((m, i) => fitsSlot(m, r.slots[i]))) return false;
+  const need: Record<string, number> = {};
+  for (const m of mats) need[m] = (need[m] ?? 0) + 1;
+  return Object.entries(need).every(([m, n]) => (s.inventory[m] ?? 0) >= n);
+}
+
+/**
+ * The cheapest way to fill a recipe from the bag (least precious materials first, then the
+ * most plentiful), or null if it can't be made. A small search: recipes have at most 3 slots.
+ */
+export function autoIngredients(s: GameState, r: Recipe): string[] | null {
+  let best: string[] | null = null, bestCost = Infinity;
+  const go = (i: number, picked: string[], cost: number) => {
+    if (cost >= bestCost) return;
+    if (i === r.slots.length) { best = picked; bestCost = cost; return; }
+    const opts = slotOptions(s, r.slots[i]).sort((a, b) => materialWorth(a) - materialWorth(b) || s.inventory[b] - s.inventory[a]);
+    for (const m of opts) {
+      if (picked.filter((x) => x === m).length >= s.inventory[m]) continue;
+      // a little extra cost per same-item reuse keeps scarce stacks for later
+      go(i + 1, [...picked, m], cost + materialWorth(m) + picked.filter((x) => x === m).length * 0.1);
+    }
+  };
+  go(0, [], 0);
+  return best;
+}
+
+/** Craft a recipe with these materials (one per slot). Returns the item made, or null. */
+export function craft(s: GameState, recipeId: string, mats: string[]): string | null {
+  const r = RECIPES.find((x) => x.id === recipeId);
+  if (!r || !canCraftHere(s) || !validIngredients(s, r, mats)) return null;
+  for (const m of mats) addItem(s, m, -1);
+  addItem(s, r.out, r.n);
+  s.stats.crafted = (s.stats.crafted ?? 0) + r.n;
+  log(s, `Crafted ${r.n > 1 ? `${r.n} ` : ''}${itemInfo(r.out).name} from ${mats.map((m) => itemInfo(m).name).join(', ')}.`);
+  return r.out;
 }
 
 export function carveTotem(s: GameState, kind: 'type' | 'effigy', target: string, materials: string[]): string | null {
@@ -1150,7 +1237,8 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
     const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;
     c.morale = Math.min(10, c.morale + mor); addLoyalty(c, loy); msg = `${nameOf(c)} happily munches the ${it.name}! (+${mor} Morale, +${loy} Loyalty)`;
   }
-  else if (id === 'lure-incense') { s.flags.lure = true; msg = 'You light the incense. Wild creatures will come to you.'; }
+  else if (id === 'lure-incense') { s.flags.lure = true; s.flags.repel = false; msg = 'You light the incense. Wild creatures will come to you.'; }
+  else if (id === 'hush-smoke') { s.flags.repel = true; s.flags.lure = false; msg = 'You wave the smoke around. Nothing will come near on your next explore.'; }
   else if (id === 'star-charm') { s.flags.starCharm = true; msg = 'The Star Charm glimmers. Your next encounter rolls an extra star die.'; }
   else return 'That can\'t be used here.';
   addItem(s, id, -1);

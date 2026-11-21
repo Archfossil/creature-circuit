@@ -57,6 +57,7 @@ export const ITEMS: Record<string, Item> = {
   'moonberry': { id: 'moonberry', name: 'Moonberry', kind: 'treat', price: 5, icon: '🍇', text: 'A rare treat: +2 Morale, +2 Loyalty.' },
   // charms
   'lure-incense': { id: 'lure-incense', name: 'Lure Incense', kind: 'charm', price: 6, icon: '🕯️', text: 'Your next explore is a guaranteed wild encounter.' },
+  'hush-smoke': { id: 'hush-smoke', name: 'Hush Smoke', kind: 'charm', price: 5, icon: '💨', text: 'Your next explore can’t turn up a creature or trainer: its encounter faces become Nothing and a find instead.' },
   'star-charm': { id: 'star-charm', name: 'Star Charm', kind: 'charm', price: 8, icon: '⭐', text: 'Roll +1 rarity die on your next encounter.' },
   // travel: getting around the big map faster (world.ts → travel items & rides)
   'bike': { id: 'bike', name: 'Bike', kind: 'travel', unique: true, price: 25, icon: '🚲', text: 'Once a turn, roll a d6 and ride up to that many steps for free, without exploring on the way or where you stop. Not on Cloud Island or the Forest Floor, and not over the sea.' },
@@ -106,6 +107,21 @@ export function itemInfo(id: string): Item {
   if (id.startsWith('effigy:')) return { id, name: 'Effigy', kind: 'totem', price: 0, icon: '🎎', text: '+5 for its creature, -3 for others.' };
   return { id, name: id, kind: 'material', price: 0, icon: '❔', text: '' };
 }
+
+/**
+ * Workbench recipes (every city and town): each slot takes one offering material that has some
+ * allure for that type (a universal material fits any slot). The output is a general consumable.
+ */
+export interface Recipe { id: string; out: string; n: number; slots: ElementType[]; text: string }
+export const RECIPES: Recipe[] = [
+  { id: 'salve', out: 'salve', n: 2, slots: ['grass', 'water'], text: 'Pound a sticky plant into wet clay.' },
+  { id: 'calm-tea', out: 'calm-tea', n: 1, slots: ['grass', 'charm'], text: 'Steep fragrant leaves and petals.' },
+  { id: 'trail-mix', out: 'trail-mix', n: 1, slots: ['grass', 'rock'], text: 'Roast seeds on a hot stone.' },
+  { id: 'lure-incense', out: 'lure-incense', n: 1, slots: ['charm', 'fire'], text: 'Smoulder something sweet.' },
+  { id: 'hush-smoke', out: 'hush-smoke', n: 1, slots: ['fire', 'steel'], text: 'Burn something acrid in a tin.' },
+  { id: 'star-charm', out: 'star-charm', n: 1, slots: ['astral', 'electric'], text: 'Charge a cold crystal with a spark.' },
+  { id: 'elixir', out: 'elixir', n: 1, slots: ['water', 'fire', 'astral'], text: 'Heat spring water with salts until it glows.' },
+];
 
 export const BIOME_MATERIALS: Record<Biome, string[]> = {
   forest: ['pine-resin', 'moon-moss'], grove: ['moon-moss', 'wildflower'], meadow: ['wildflower', 'sage-bundle'],

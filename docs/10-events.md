@@ -131,7 +131,7 @@ A young Common creature from the area, one level below your Tier's usual level (
 |---|---|---|---|---|
 | Service | 3 | Night | Always | No |
 
-A caravan sells one item at **half price** (rounded down, at least 💰 1): a Hot Spring Elixir, Moonberry, Star Charm or Lure Incense.
+A caravan sells one item at **half price** (rounded down, at least 💰 1): a Hot Spring Elixir, Moonberry, Star Charm, Lure Incense or Hush Smoke.
 
 **Choices**
 - **Buy (item):** pay and get the item.

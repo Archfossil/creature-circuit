@@ -23,7 +23,7 @@ import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAI
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
-import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
+import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -1345,7 +1345,7 @@ export class App {
         toast(`Arrived at ${n.name}`, 'info');
         if (n.kind === 'city' || n.kind === 'town') save(s);
       } else if (out.t === 'nothing') {
-        if (out.roll) await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: out.dark ? 'bad' : 'info', label: '1–2 Nothing' }], out.dark ? 'Nothing but the dark. Your team shivers. (−1 Morale)' : 'Nothing but wind and birdsong.', 600, { read: true });
+        if (out.roll) await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: out.dark ? 'bad' : 'info', label: out.hushed ? '💨 3 Hushed: Nothing' : '1–2 Nothing' }], out.dark ? 'Nothing but the dark. Your team shivers. (−1 Morale)' : out.hushed ? 'Something stirs, then slinks off from the Hush Smoke.' : 'Nothing but wind and birdsong.', 600, { read: true });
         if (out.refund) { toast(`🌲 Ranger’s instinct: +1 Initiative back (${W.rangerRefundsLeft(s)} more this turn).`, 'good', 2600); this.renderHud(); }
         if (out.dark) this.renderHud();
       } else if (out.t === 'trail') {
@@ -1355,7 +1355,7 @@ export class App {
         else toast(`🌲 Dahlia’s Trail: ${out.steps}/${out.need}. Keep exploring.`, 'info', 2600);
       } else if (out.t === 'item') {
         // two beats: the explore roll reveals that something's here, then the find roll reveals what
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], s.location === FOREST_FLOOR ? 'Something exotic glints in the dark!' : 'You discovered something!', 700, { read: true });
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: out.hushed ? '💨 4 Hushed: Item' : '5–6 Item' }], s.location === FOREST_FLOOR ? 'Something exotic glints in the dark!' : out.hushed ? 'With nothing around to bother you, you poke about and find something!' : 'You discovered something!', 700, { read: true });
         const names = out.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`);
         if (out.coins) names.push(`💰 ${out.coins} coins`);
         await rollDice('Find', [{ sides: 6, value: out.itemRoll, tone: 'good', label: 'Find d6' }], `Found ${names.join(', ')}!`, 900, { read: true });
@@ -1364,7 +1364,7 @@ export class App {
         log(s, `Found ${names.join(', ')} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'itemChoice') {
         // Keen Nose: three finds to choose from
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: '5–6 Item' }], 'Your follower’s Keen Nose picks up three scents…', 500, { read: true });
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: out.hushed ? '💨 4 Hushed: Item' : '5–6 Item' }], 'Your follower’s Keen Nose picks up three scents…', 500, { read: true });
         const label = (f: W.Find) => [...f.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`), ...(f.coins ? [`💰 ${f.coins} coins`] : [])].join(' + ');
         const pickIt = await new Promise<W.Find>((resolve) => {
           const close = openSheet('👃 Keen Nose · pick one find', h('div', null,
@@ -1868,6 +1868,8 @@ export class App {
         // free to browse: the first purchase (or carving) each turn costs the city action
         tile('🛒', 'Market', 'Restores, treats, charms and totems. Free to browse.', !cost ? costTag : W.facilityPaid(s, 'market') ? '✓ paid' : `${costTag} to buy`, () => this.market()),
         tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies. Free to look.', !cost ? costTag : W.facilityPaid(s, 'shrine') ? '✓ paid' : `${costTag} to carve`, () => this.shrine()),
+        tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials. Free to look.', !cost ? costTag : W.facilityPaid(s, 'workbench') ? '✓ paid' : `${costTag} to craft`, () => this.workbench()),
+        this.workTile(),
         tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
         id === 'aurora' ? tile('🌀', 'Cloud Island Portal', W.portalOpen(s)
           ? `Open ${seasonForTurn(s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}).`}`
@@ -2014,6 +2016,81 @@ export class App {
         })));
     };
     openSheet(town ? `${NODE_BY_ID[s.location].name} · Market` : 'Market', body, { wide: true });
+    render();
+  }
+
+  /** Odd jobs (cities and towns): spend all remaining Initiative for a d4 of coins each (`W.doWork`). */
+  workTile() {
+    const s = this.s;
+    return tile('🧰', 'Odd Jobs', `Haul crates, mind stalls, run errands: uses all the Initiative you have left, and each point earns a d${W.WORK_DIE} of coins.`, s.initiative ? `${s.initiative}⚡ (all)` : '', () => this.work(), !!W.workBlock(s));
+  }
+  async work() {
+    const s = this.s;
+    const why = W.workBlock(s);
+    if (why) { toast(why, 'info', 3000); return; }
+    const n = s.initiative;
+    const ok = await confirmSheet('Take odd jobs?', `This uses all ${n} Initiative you have left: ${n} d${W.WORK_DIE} of coins (${n}–${n * W.WORK_DIE}).${s.trainer.style === 'haggler' ? ' As a Merchant you earn 25% more (at least +1).' : ''} You can still do anything free afterwards, then end your turn.`, `Work · ${n}⚡`);
+    if (!ok) return;
+    const r = W.doWork(s);
+    if (!r) return;
+    closeAllSheets();
+    this.renderHud();
+    await rollDice('Odd Jobs', r.rolls.map((v) => ({ sides: W.WORK_DIE, value: v, tone: v >= 3 ? 'good' : 'info' as const })), `Earned 💰 ${r.coins} coins.`, 800, { read: true });
+    sfx.good();
+    toast(`🧰 A hard day’s work: +💰 ${r.coins}`, 'good', 2600);
+    save(s);
+    this.renderHud();
+  }
+
+  /**
+   * The Workbench: turn offering materials into consumables (`RECIPES`; `W.craft`). Each slot takes a
+   * material with allure for its type, picked automatically (cheapest first) and changeable. In a
+   * city it's free to look and the first craft each turn costs the city action; in a town it's free.
+   */
+  workbench(free = false) {
+    const s = this.s;
+    const body = h('div');
+    let picks: Record<string, string[] | null> = {};
+    const render = () => {
+      const act = W.cityActionCost(s);
+      const owed = !free && act > 0 && !W.facilityPaid(s, 'workbench');
+      const hasMats = Object.keys(s.inventory).some((k) => s.inventory[k] > 0 && itemInfo(k).kind === 'material');
+      body.replaceChildren(
+        ...(free || act === 0 ? [] : [h('p', { class: `small facility-note ${owed ? '' : 'paid'}` }, owed
+          ? `Looking is free. Your first craft here this turn costs ${act}⚡ (you have ${s.initiative}); after that, craft as much as you like.`
+          : '✓ Paid for this turn: craft as much as you like.')]),
+        h('p', { class: 'small' }, 'Each slot takes one offering material with some allure for that type (shown on the material in your Bag). Universal materials such as Cloud Silk fit any slot. The cheapest materials you own are picked for you; change them if you’d rather keep one.'),
+        ...(hasMats ? [] : [h('p', { class: 'small muted' }, 'You have no offering materials. Find them by exploring: each biome has its own.')]),
+        h('div', { class: 'shop' }, RECIPES.map((r) => {
+          const it = itemInfo(r.out);
+          if (!(r.id in picks)) picks[r.id] = W.autoIngredients(s, r) ?? r.slots.map((t) => W.slotOptions(s, t)[0] ?? '');
+          const mats = picks[r.id]!;
+          const ok = W.validIngredients(s, r, mats);
+          return h('div', { class: 'shop-row craft-row' },
+            h('span', { class: 'shop-ico' }, it.icon),
+            h('div', null,
+              h('b', null, it.name, r.n > 1 ? ` ×${r.n}` : ''), h('small', null, `${r.text} ${it.text}`),
+              (s.inventory[r.out] ?? 0) ? h('small', { class: 'muted' }, ` · owned ${s.inventory[r.out]}`) : null,
+              h('div', { class: 'craft-slots' }, r.slots.map((t, i) => {
+                const opts = W.slotOptions(s, t);
+                return h('label', { class: 'craft-slot' }, typeChip(t, true),
+                  opts.length
+                    ? h('select', { onchange: (e: Event) => { mats[i] = (e.target as HTMLSelectElement).value; render(); } },
+                        opts.map((m) => h('option', { value: m, selected: m === mats[i] }, `${itemInfo(m).icon} ${itemInfo(m).name} ×${s.inventory[m]}`)))
+                    : h('small', { class: 'muted' }, `no ${TYPE_LABEL[t]} material`));
+              })),
+              !ok && mats.every(Boolean) ? h('small', { class: 'bad-text' }, 'Not enough of that material for every slot.') : null),
+            h('button', { class: 'btn sm primary', disabled: !ok || (owed && s.initiative < act), onclick: () => {
+              const paid = free ? 'already' : W.payFacility(s, 'workbench');
+              if (!paid) { toast('Not enough Initiative for that.', 'bad'); return; }
+              if (!W.craft(s, r.id, mats)) { if (paid === 'paid') W.refundFacility(s, 'workbench'); return; }
+              sfx.good();
+              toast(`Crafted ${it.icon} ${it.name}${r.n > 1 ? ` ×${r.n}` : ''}${paid === 'paid' ? ` (−${act}⚡)` : ''}`, 'good', 1800);
+              picks = {}; save(s); this.renderHud(); render();
+            } }, 'Craft', owed ? ` · ${act}⚡` : ''));
+        })));
+    };
+    openSheet(free ? `${NODE_BY_ID[s.location].name} · Workbench` : 'Workbench', body, { wide: true });
     render();
   }
 
@@ -2229,6 +2306,8 @@ export class App {
         tile('🐴', 'Stable', 'Full recovery for your team, KOs included. No Chanko Nabe buff: that’s a city specialty.', `${W.stableCost(s)}⚡`, () => this.stable()),
         this.swapTile(),
         (() => { const keys = W.townKeyItems(s, s.location); return tile('🛒', 'Market', keys.length ? `Sells the ${keys.map((k) => itemInfo(k).name).join(' and the ')}. ${keys.map((k) => itemInfo(k).text).join(' ')}` : 'Local goods.', '0⚡', () => this.market(true)); })(),
+        tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials.', '0⚡', () => this.workbench(true)),
+        this.workTile(),
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
         t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
@@ -2467,7 +2546,7 @@ export class App {
     openSheet('Active effects', h('div', null,
       list.length ? h('div', { class: 'list' }, list.map((e) => h('div', { class: 'effect-row' }, h('span', { class: 'effect-ico' }, e.icon), h('div', null, h('b', null, e.name), h('small', null, e.text)))))
         : h('p', { class: 'muted' }, 'Nothing active right now.'),
-      h('p', { class: 'small muted' }, 'A Chanko Nabe lasts until your next battle. Lucky stars and Lure Incense are used up by your next encounter or explore.')));
+      h('p', { class: 'small muted' }, 'A Chanko Nabe lasts until your next battle. Lucky stars are used up by your next encounter; Lure Incense and Hush Smoke by your next explore.')));
   }
 
   /** Check the Fog Lantern: a wisp held in it, or where the next one waits (marked on the map from now on). */
@@ -2578,7 +2657,7 @@ export class App {
       for (const id of Object.keys(s.inventory)) groups[itemInfo(id).kind]?.push(id);
       const labels: Record<string, string> = { restore: 'Restoratives', treat: 'Treats', charm: 'Charms', travel: 'Travel', totem: 'Totems', material: 'Offering & Carving Materials', key: 'Key Items' };
       body.replaceChildren(
-        h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure active') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
+        h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure active') : null, s.flags.repel ? h('span', { class: 'chip good' }, '💨 Hush Smoke active') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
         ...Object.entries(groups).filter(([, v]) => v.length).map(([k, ids]) => h('section', null, h('h4', null, labels[k]),
           h('div', { class: 'bag-grid' }, ids.map((id) => {
             const it = itemInfo(id);
@@ -2923,7 +3002,7 @@ export class App {
       h('h4', null, '📊 Journey'),
       h('div', { class: 'tid-facts' },
         fact('creatures encountered', st.encountered ?? 0), fact('recruited', st.recruited), fact('Codex seen / recruited', `${s.dex.seen.length} / ${s.dex.caught.length}`),
-        fact('foes knocked out', st.foesKO ?? 0), fact('times explored', st.explored), fact('items found', st.itemsFound ?? 0),
+        fact('foes knocked out', st.foesKO ?? 0), fact('times explored', st.explored), fact('items found', st.itemsFound ?? 0), fact('items crafted', st.crafted ?? 0), fact('Initiative spent on odd jobs', st.worked ?? 0),
         fact('places visited', s.visited.length), fact('steps travelled', st.steps ?? 0), fact('coins earned', st.coinsEarned ?? 0)),
       h('h4', null, '⚔️ Battle record'),
       h('table', { class: 'tid-record' },
@@ -3238,7 +3317,7 @@ function materialDetail(it: Item) {
   const allure = (Object.entries(it.allure ?? {}) as [ElementType, number][]).sort((a, b) => b[1] - a[1]);
   return h('div', { class: 'mat-detail' },
     h('span', { class: 'row gap-s' }, allure.map(([t, v]) => h('span', { class: 'chip sm' }, typeIconImg(t, 14), ` ${TYPE_LABEL[t]} +${v}`))),
-    h('small', { class: 'muted' }, `Recruiting bonus for creatures of those types (the best match counts). Found in: ${materialBiomes(it.id).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ')}. Also used to carve totems.`));
+    h('small', { class: 'muted' }, `Recruiting bonus for creatures of those types (the best match counts). Found in: ${materialBiomes(it.id).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ')}. Also used to carve totems and to craft at a Workbench (it fits ${allure.map(([t]) => TYPE_LABEL[t]).join(' or ')} slots).`));
 }
 function tile(icon: string, title: string, text: string, cost: string, fn: () => void, disabled = false) {
   return h('button', { class: 'tile', disabled, onclick: fn }, h('span', { class: 'tile-ico' }, icon), h('div', null, h('b', null, title), h('small', null, text)), cost ? h('span', { class: 'cost' }, cost) : null);

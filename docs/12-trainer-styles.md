@@ -38,9 +38,9 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 |---|---|---|---|---|
 | Move to an adjacent node | 1 | 1 | 1 | **0** for the first move, then 1 |
 | Re-explore a wild node | 1 | 1 (a Nothing refunds 1, up to Tier times a turn) | **2** | 1 |
-| City action (city Market, Carving Shrine, Trainer Hall, Arbiter challenge) | 1 | **2** | **0** | 1 |
+| City action (city Market, Carving Shrine, Workbench, Trainer Hall, Arbiter challenge) | 1 | **2** | **0** | 1 |
 
-The city Market and Carving Shrine are free to browse. The city action is paid on the first purchase (or carving) there each turn, and further purchases at that facility in that city are free for the rest of the turn (`payFacility` in `world.ts`).
+The city Market, Carving Shrine and Workbench are free to browse. The city action is paid on the first purchase (or carving, or craft) there each turn, and further purchases at that facility in that city are free for the rest of the turn (`payFacility` in `world.ts`).
 
 | Stable (city or town) | 1 | **2** | **0** | **2** |
 
@@ -87,6 +87,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
 - **Drawback:** city actions cost **2** Initiative instead of 1:
   - the city Market,
   - the Carving Shrine,
+  - the city Workbench (town Workbenches are free),
   - the Trainer Hall,
   - challenging an Arbiter,
   - Stables, in both cities and towns.
@@ -102,7 +103,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
 **In game:** "City actions cost no Initiative." / "Re-exploring costs 2 Initiative."
 
 **Exact rules**
-- **Perk:** city actions cost **0** Initiative: the city Market, Carving Shrine, Trainer Hall, Arbiter challenges, and Stables (city and town).
+- **Perk:** city actions cost **0** Initiative: the city Market, Carving Shrine, Workbench, Trainer Hall, Arbiter challenges, and Stables (city and town).
 - **Drawback:** every re-explore of a wild node costs **2** Initiative.
 
 **Notes:** entering a new wild node still explores it as normal (that's part of moving). Only re-exploring costs more.
@@ -133,6 +134,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
   - battle wins (wild, trainer and Arbiter),
   - coin finds while exploring,
   - Research Facility payouts,
+  - Odd Jobs (once, on the total of the d4s),
   - event coins: the Pickpocket chase, the Dice Gambler, the Codex Scholar, the Lost Satchel and the Eager Apprentice.
 - **Drawback:** −1 on every recruitment roll.
 

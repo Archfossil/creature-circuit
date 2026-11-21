@@ -202,7 +202,7 @@ const EVENTS: EventDef[] = [
   {
     id: 'caravan', weight: 3, time: 'night',
     create: () => {
-      const item = pick(['elixir', 'moonberry', 'star-charm', 'lure-incense']);
+      const item = pick(['elixir', 'moonberry', 'star-charm', 'lure-incense', 'hush-smoke']);
       return { item, price: Math.max(1, Math.floor(ITEMS[item].price / 2)) };
     },
     view: (s, d) => {

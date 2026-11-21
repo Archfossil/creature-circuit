@@ -85,6 +85,8 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `stable-town`: 🐴: Town Stable (no hot pot).
 - [ ] `market`: 🛒: Market.
 - [ ] `carving-shrine`: 🔄: Carving Shrine (carve Totems and Effigies).
+- [ ] `odd-jobs`: 🧰: Odd Jobs (spend the rest of your Initiative for d4 coins each; city and town tiles).
+- [ ] `workbench`: 🛠️: Workbench (craft consumables from materials; city and town tiles).
 - [ ] `swap-team`: 🔄: Swap Team (active team ↔ totems).
 - [ ] `trainer-hall`: 🤺: Trainer Hall.
 - [ ] `gauntlet`: ⚓: Iron Coast Gauntlet (Stella's trainer gauntlet).
@@ -170,6 +172,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Charms**
 - [ ] `item-lure-incense`: 🕯️ Lure Incense (also the "Lure active" chip)
+- [ ] `item-hush-smoke`: 💨 Hush Smoke (also the "Hush Smoke active" chip, the Hushed dice labels and its active-effect entry)
 - [ ] `item-star-charm`: ⭐ Star Charm (also the "Star Charm active" chip)
 
 **Travel**

@@ -345,6 +345,9 @@ button.status-tag { font-family: inherit; color: inherit; cursor: pointer; }
 .shop-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; background: var(--paper); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .shop-row.key { border-color: var(--accent-2); background: #fff7df; }
 .shop-row b { font-family: var(--font-head); display: block; }
+.craft-slots { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 5px; }
+.craft-slot { display: inline-flex; align-items: center; gap: 4px; }
+.craft-slot select { font: inherit; font-size: 12px; padding: 2px 4px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; max-width: 190px; }
 .shop-row small { font-size: 12px; color: var(--ink-2); }
 .shop-ico, .bi-ico { font-size: 26px; text-align: center; }
 .bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }

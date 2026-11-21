@@ -255,8 +255,8 @@ export const CITIES: Record<string, City> = {
 export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: string; special?: string }> = {
   mistfall: { blurb: 'A mountain waystation where travelers buy lanterns before braving the fog. Catch a wisp in one and it lights the misty way to Lantern Glade.', sells: ['salve', 'calm-tea', 'totem', 'sunberry', 'trail-mix'], key: 'fog-lantern' },
   lumber: { blurb: 'Loggers and woodcarvers in a hollow among the giant trees. A bike-maker’s shed sits by the sawmill.', sells: ['salve', 'totem', 'dewberry', 'pine-resin', 'bike'] },
-  dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'moonberry', 'energy-tonic', 'totem', 'homing-feather'] },
-  ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt', 'trail-mix'], key: 'summit-pick' },
+  dustmere: { blurb: 'A dusty trading post. Rare charms change hands under striped awnings.', sells: ['star-charm', 'lure-incense', 'hush-smoke', 'moonberry', 'energy-tonic', 'totem', 'homing-feather'] },
+  ridgeway: { blurb: 'A climbing town on the ridge. Grizzled guides sell picks for the high summits.', sells: ['salve', 'calm-tea', 'glacier-salt', 'trail-mix', 'hush-smoke'], key: 'summit-pick' },
   saltmarsh: { blurb: 'Where the coast turns to marsh. The ferry office is here.', sells: ['salve', 'sea-glass', 'marsh-lotus', 'totem'], key: 'ferry-pass' },
   blackSand: { blurb: 'Ferry landing on Kilauea\'s black sand. Hot springs bubble beside the dock.', sells: ['elixir', 'volcanic-glass', 'ember-charcoal'], },
   valor: { blurb: 'A hill town of training yards and the Margos Battle School. Leave a creature with the drill masters and it comes back stronger.', sells: ['salve', 'energy-tonic', 'totem', 'dewberry'], special: 'school' },
