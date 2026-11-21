@@ -18,6 +18,7 @@ export const GUIDE: GuideCategory[] = [
         'Each turn you get 5 Initiative (the diamonds on the location card).',
         '- Moving to an adjacent node costs 1. Tap a glowing node, then Travel, or double-tap it. Double-tapping the city or town you’re in opens its menu (Settings can turn both off).',
         '- City actions such as the Stable, Market and Arbiter usually cost Initiative too. The cost is shown on each option.',
+        '- Looking around a city’s Market or Carving Shrine is free. Only your first purchase or carving there each turn costs Initiative; after that, buy or carve as much as you like that turn.',
         '- End Turn when you’re done. Unspent Initiative doesn’t carry over, so camping can turn it into rest (see Places → Camping).',
         'Planning ahead? Tap any node and choose 📍 Mark as next stop. A flag in your colour marks it on the map as a reminder. Only you see it (online you can set it while others play), and it clears when you arrive. Lost track of it? Tap “📍 Your next stop” on your location card to fly the map there.',
       ] },

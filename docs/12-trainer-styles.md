@@ -39,6 +39,9 @@ The trainer ability picked when a game starts (in the trainer creator, under "Tr
 | Move to an adjacent node | 1 | 1 | 1 | **0** for the first move, then 1 |
 | Re-explore a wild node | 1 | 1 (a Nothing refunds 1, up to Tier times a turn) | **2** | 1 |
 | City action (city Market, Carving Shrine, Trainer Hall, Arbiter challenge) | 1 | **2** | **0** | 1 |
+
+The city Market and Carving Shrine are free to browse. The city action is paid on the first purchase (or carving) there each turn, and further purchases at that facility in that city are free for the rest of the turn (`payFacility` in `world.ts`).
+
 | Stable (city or town) | 1 | **2** | **0** | **2** |
 
 These don't change with any style: town Markets (free), Swap Team (free), Explore the Depths (1) and camping.

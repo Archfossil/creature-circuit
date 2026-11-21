@@ -1048,6 +1048,28 @@ export function spendCityAction(s: GameState): boolean {
   return true;
 }
 
+/** A city facility that's free to browse and costs a city action on the first purchase each turn. */
+export type Facility = 'market' | 'shrine';
+const facilityKey = (s: GameState, f: Facility) => `${f}:${s.location}`;
+/** Whether this city's market or shrine is already paid for this turn (then buying more is free). */
+export const facilityPaid = (s: GameState, f: Facility) => !!s.flags.paid?.includes(facilityKey(s, f));
+/**
+ * Pay for using a facility: 'already' if it's paid for this turn, 'paid' if this spent the city action now,
+ * or false if there isn't enough Initiative. Towns' markets are free and don't call this.
+ */
+export function payFacility(s: GameState, f: Facility): 'paid' | 'already' | false {
+  if (facilityPaid(s, f)) return 'already';
+  if (!spendCityAction(s)) return false;
+  (s.flags.paid ??= []).push(facilityKey(s, f));
+  return 'paid';
+}
+/** Undo a payFacility that just paid, when the purchase itself then failed. */
+export function refundFacility(s: GameState, f: Facility) {
+  if (!facilityPaid(s, f)) return;
+  s.flags.paid = s.flags.paid!.filter((k) => k !== facilityKey(s, f));
+  s.initiative += cityActionCost(s);
+}
+
 /**
  * Rest at a stable: full recovery (KOs, Vitality, Health, Stamina, Fatigue) and +1 Morale for the active team.
  * City stables also serve their Chanko Nabe, a battle buff (doubled at your home city). Town stables don't.
@@ -1357,6 +1379,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   s.flags.firstMoveUsed = false;
   s.flags.salemNight = false;
   s.flags.sparred = [];
+  s.flags.paid = [];
   s.flags.challenged = [];
   const season = seasonForTurn(s.turn);
   report.seasonChanged = season !== prevSeason;

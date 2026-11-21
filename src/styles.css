@@ -153,6 +153,8 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .next-stop-chip small { color: var(--muted); font-weight: 700; font-size: 11px; }
 .next-stop-chip b { font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
 .next-stop-chip:hover, .next-stop-chip:focus-visible { background: color-mix(in srgb, var(--tc, #888) 14%, #fff); }
+.facility-note { margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: #fff3d6; border: 1.5px dashed #d0a24a; }
+.facility-note.paid { background: #e5f7ea; border-color: var(--good); }
 .warn { grid-column: 1 / -1; font-size: 12px; font-weight: 800; color: var(--bad); }
 .action-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 5px; }
 .action-bar::-webkit-scrollbar { display: none; }

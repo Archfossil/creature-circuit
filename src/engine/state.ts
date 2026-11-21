@@ -77,6 +77,8 @@ export interface GameState {
     challenged?: string[];
     /** Cities whose Trainer Hall you've already battled in this turn. */
     sparred?: string[];
+    /** City facilities paid for this turn, as "market:<city>" / "shrine:<city>" (browsing is free; the first purchase pays). */
+    paid?: string[];
     /** Explore the Depths: the wild creature that already accepted this offering (counts toward recruiting it). */
     depthsOffering?: { uid: string; item: string };
     /** Iron Coast Gauntlet: trainers beaten so far (cleared when the trainer leaves the city). */

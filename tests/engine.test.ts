@@ -2919,3 +2919,46 @@ describe('extra damage dice and wide crits', () => {
     expect(claw.find((s) => s.title.startsWith('Accuracy'))!.text).toMatch(/natural 5–6 is a critical hit/);
   });
 });
+
+describe('city market and shrine: free to browse, pay on the first purchase', () => {
+  const city = () => { const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#e44'); s.coins = 100; return s; };
+
+  it('the first purchase pays the city action; later ones that turn are free', () => {
+    const s = city();
+    const cost = W.cityActionCost(s);
+    expect(W.facilityPaid(s, 'market')).toBe(false);
+    expect(W.payFacility(s, 'market')).toBe('paid');
+    expect(s.initiative).toBe(5 - cost);
+    expect(W.payFacility(s, 'market')).toBe('already');
+    expect(s.initiative).toBe(5 - cost);
+    // the shrine is paid separately
+    expect(W.facilityPaid(s, 'shrine')).toBe(false);
+  });
+
+  it('not enough Initiative: no charge and no purchase', () => {
+    const s = city();
+    s.initiative = 0;
+    expect(W.payFacility(s, 'shrine')).toBe(false);
+    expect(W.facilityPaid(s, 'shrine')).toBe(false);
+  });
+
+  it('a refund undoes a payment whose purchase failed', () => {
+    const s = city();
+    expect(W.payFacility(s, 'shrine')).toBe('paid');
+    W.refundFacility(s, 'shrine');
+    expect(s.initiative).toBe(5);
+    expect(W.facilityPaid(s, 'shrine')).toBe(false);
+  });
+
+  it('payment is per city and resets at the end of the turn', () => {
+    const s = city();
+    W.payFacility(s, 'market');
+    const here = s.location;
+    s.location = 'aurora';
+    expect(W.facilityPaid(s, 'market')).toBe(false);
+    s.location = here;
+    expect(W.facilityPaid(s, 'market')).toBe(true);
+    W.endTurn(s);
+    expect(W.facilityPaid(s, 'market')).toBe(false);
+  });
+});

@@ -1865,8 +1865,9 @@ export class App {
       h('div', { class: 'tiles' },
         tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.trainer.style === 'balanced' ? ` (doubled — a Wanderer is at home anywhere${W.restedCities(s).includes(id) ? '' : '. Resting here also lets you return here if your team is wiped'})` : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
         this.swapTile(),
-        tile('🛒', 'Market', 'Restores, treats, charms and totems.', costTag, () => this.market()),
-        tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies.', costTag, () => this.shrine()),
+        // free to browse: the first purchase (or carving) each turn costs the city action
+        tile('🛒', 'Market', 'Restores, treats, charms and totems. Free to browse.', !cost ? costTag : W.facilityPaid(s, 'market') ? '✓ paid' : `${costTag} to buy`, () => this.market()),
+        tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies. Free to look.', !cost ? costTag : W.facilityPaid(s, 'shrine') ? '✓ paid' : `${costTag} to carve`, () => this.shrine()),
         tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
         id === 'aurora' ? tile('🌀', 'Cloud Island Portal', W.portalOpen(s)
           ? `Open ${seasonForTurn(s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}).`}`
@@ -1977,17 +1978,24 @@ export class App {
     render();
   }
 
+  /**
+   * Browse a market. City markets are free to look at; the first purchase each turn costs the city action
+   * (`W.payFacility`), and later ones that turn are free. Town markets (`free`) never cost Initiative.
+   */
   market(free = false) {
-    if (!free && !this.spend()) return;
-    this.renderHud();
     const s = this.s;
     const stock = [...W.marketStock(s.location)];
     const town = TOWNS[s.location];
     if (town) for (const k of W.townKeyItems(s, s.location).reverse()) if (!stock.includes(k)) stock.unshift(k);
     const body = h('div');
     const render = () => {
+      const cost = W.cityActionCost(s);
+      const owed = !free && cost > 0 && !W.facilityPaid(s, 'market'); // the first purchase here this turn still costs Initiative
       body.replaceChildren(
         h('div', { class: 'row between' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins), ' coins'), W.ability(s) === 'babyEyes' ? h('span', { class: 'chip good' }, 'Baby-Doll Eyes: −25%') : null),
+        ...(free || cost === 0 ? [] : [h('p', { class: `small facility-note ${owed ? '' : 'paid'}` }, owed
+          ? `Browsing is free. Your first purchase here this turn costs ${cost}⚡ (you have ${s.initiative}); after that, buy as much as you like.`
+          : '✓ Paid for this turn: buy as much as you like.')]),
         h('p', { class: 'small muted' }, 'Items are never used in battle — use them from your Bag between fights.'),
         h('div', { class: 'shop' }, stock.map((id) => {
           const it = itemInfo(id);
@@ -1997,16 +2005,20 @@ export class App {
           return h('div', { class: `shop-row ${isKey ? 'key' : ''}` },
             h('span', { class: 'shop-ico' }, it.icon),
             h('div', null, h('b', null, it.name), h('small', null, it.text), owned ? h('small', { class: 'muted' }, ` · owned ${isKey ? '✓' : owned}`) : null),
-            h('button', { class: 'btn sm primary', disabled: s.coins < p || (isKey && owned > 0), onclick: () => { if (W.buy(s, id)) { toast(`Bought ${it.name}`, 'good', 1500); save(s); this.renderHud(); render(); } } }, `💰 ${p}`));
+            h('button', { class: 'btn sm primary', disabled: s.coins < p || (isKey && owned > 0) || (owed && s.initiative < cost), onclick: () => {
+              const paid = free ? 'already' : W.payFacility(s, 'market');
+              if (!paid) { toast('Not enough Initiative for that.', 'bad'); return; }
+              if (!W.buy(s, id)) { if (paid === 'paid') W.refundFacility(s, 'market'); return; }
+              toast(`Bought ${it.name}${paid === 'paid' ? ` (−${cost}⚡)` : ''}`, 'good', 1500); save(s); this.renderHud(); render();
+            } }, `💰 ${p}`, owed ? ` · ${cost}⚡` : ''));
         })));
     };
     openSheet(town ? `${NODE_BY_ID[s.location].name} · Market` : 'Market', body, { wide: true });
     render();
   }
 
+  /** The Carving Shrine: free to look at; the first carving each turn costs the city action (`W.payFacility`). */
   shrine() {
-    if (!this.spend()) return;
-    this.renderHud();
     const s = this.s;
     let kind: 'type' | 'effigy' = 'type';
     let target: string = 'fire';
@@ -2016,7 +2028,12 @@ export class App {
       const materials = Object.keys(s.inventory).filter((k) => itemInfo(k).kind === 'material');
       const need = kind === 'type' ? 1 : 2;
       const cost = kind === 'type' ? 6 : 10;
+      const act = W.cityActionCost(s);
+      const owed = act > 0 && !W.facilityPaid(s, 'shrine');
       body.replaceChildren(
+        ...(act === 0 ? [] : [h('p', { class: `small facility-note ${owed ? '' : 'paid'}` }, owed
+          ? `Looking is free. Your first carving here this turn costs ${act}⚡ (you have ${s.initiative}); after that, carve as much as you like.`
+          : '✓ Paid for this turn: carve as much as you like.')]),
         h('p', { class: 'small' }, 'Carved totems lure specific creatures. Type totems: +3 for that type, −1 for others. Effigies: +5 for one species, −3 for all others (in bad taste!). A Plain Totem gives +1 to anyone.'),
         ...(kind === 'effigy' ? [h('p', { class: 'small muted' }, 'You can carve an Effigy of any creature in your Creature Codex: anything you’ve seen in the wild or in a trainer’s team. ', h('button', { class: 'link', onclick: () => this.codex() }, 'Open Codex'))] : []),
         h('div', { class: 'seg' }, h('button', { class: kind === 'type' ? 'sel' : '', onclick: () => { kind = 'type'; target = 'fire'; mats = []; render(); } }, 'Type Totem'), h('button', { class: kind === 'effigy' ? 'sel' : '', onclick: () => { kind = 'effigy'; target = codexOrder(s.dex.seen)[0]; mats = []; render(); } }, 'Effigy')),
@@ -2030,10 +2047,13 @@ export class App {
           return h('button', { class: `pick ${on ? 'sel' : ''}`, disabled: !on && mats.length >= need, onclick: () => { mats = on ? mats.filter((x) => x !== m) : [...mats, m]; render(); } }, `${itemInfo(m).icon} ${itemInfo(m).name} ×${s.inventory[m]}`);
         })) : h('p', { class: 'small muted' }, 'You have no carving materials. Explore wild nodes to find them.'),
         h('div', { class: 'row end gap' }, h('span', { class: 'chip' }, '💰 ', s.coins),
-          h('button', { class: 'btn primary', disabled: mats.length < need || s.coins < cost, onclick: () => {
+          h('button', { class: 'btn primary', disabled: mats.length < need || s.coins < cost || (owed && s.initiative < act), onclick: () => {
+            const paid = W.payFacility(s, 'shrine');
+            if (!paid) { toast('Not enough Initiative for that.', 'bad'); return; }
             const id = W.carveTotem(s, kind, target, mats);
-            if (id) { toast(`Carved a ${W.itemDisplayName(id)}!`, 'good'); mats = []; save(s); this.renderHud(); render(); }
-          } }, `Carve · 💰 ${cost}`)));
+            if (!id) { if (paid === 'paid') W.refundFacility(s, 'shrine'); return; }
+            toast(`Carved a ${W.itemDisplayName(id)}!${paid === 'paid' ? ` (−${act}⚡)` : ''}`, 'good'); mats = []; save(s); this.renderHud(); render();
+          } }, `Carve · 💰 ${cost}`, owed ? ` · ${act}⚡` : '')));
     };
     openSheet('Carving Shrine', body, { wide: true });
     render();
