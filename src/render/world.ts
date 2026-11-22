@@ -143,6 +143,8 @@ const PAN_KEYS: Record<string, [number, number]> = {
   w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1],
   a: [-1, 0], arrowleft: [-1, 0], d: [1, 0], arrowright: [1, 0],
 };
+/** Map zoom keys → +1 zooms out (pulls the camera back), -1 zooms in. */
+const ZOOM_KEYS: Record<string, number> = { q: 1, e: -1 };
 
 export class WorldView implements SceneView {
   scene = new THREE.Scene();
@@ -957,7 +959,7 @@ export class WorldView implements SceneView {
       this.goalDist = THREE.MathUtils.clamp(this.goalDist * (1 + Math.sign(e.deltaY) * 0.1), 16, 120);
     }, { passive: false });
 
-    // W-A-S-D / arrow keys pan the map while held (desktop). Ignored while typing,
+    // W-A-S-D / arrow keys pan and Q / E zoom the map while held (desktop). Ignored while typing,
     // with a sheet open, during a battle, or with a modifier held (so browser shortcuts still work).
     const blocked = (e: KeyboardEvent) => {
       if (!this.interactive || this.title || e.ctrlKey || e.metaKey || e.altKey) return true;
@@ -967,7 +969,7 @@ export class WorldView implements SceneView {
     };
     addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
-      if (!(k in PAN_KEYS) || blocked(e)) return;
+      if (!(k in PAN_KEYS || k in ZOOM_KEYS) || blocked(e)) return;
       e.preventDefault(); // arrows would otherwise scroll the page
       this.panKeys.add(k);
     });
@@ -977,15 +979,22 @@ export class WorldView implements SceneView {
 
   private panKeys = new Set<string>();
 
-  /** Move the camera goal while pan keys are held, faster when zoomed out. */
+  /** Move the camera goal while pan keys are held (faster when zoomed out), and zoom while Q / E are. */
   private keyPan(dt: number) {
     if (!this.panKeys.size) return;
     if (this.title || document.querySelector('.sheet-wrap, .battle-ui')) { this.panKeys.clear(); return; }
-    let x = 0, z = 0;
-    for (const k of this.panKeys) { const d = PAN_KEYS[k]; if (d) { x += d[0]; z += d[1]; } }
+    dt = Math.min(dt, 0.1);
+    let x = 0, z = 0, zoom = 0;
+    for (const k of this.panKeys) {
+      const d = PAN_KEYS[k];
+      if (d) { x += d[0]; z += d[1]; }
+      zoom += ZOOM_KEYS[k] ?? 0;
+    }
+    // zoom by a steady ratio (about ×3.3 a second), within the scroll wheel's limits
+    if (zoom) this.goalDist = THREE.MathUtils.clamp(this.goalDist * Math.exp(zoom * 1.2 * dt), 16, 120);
     const len = Math.hypot(x, z);
     if (!len) return;
-    const step = this.dist * 0.9 * Math.min(dt, 0.1) / len;
+    const step = this.dist * 0.9 * dt / len;
     this.goal.x += x * step;
     this.goal.z += z * step;
     this.clampGoal();
