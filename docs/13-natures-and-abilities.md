@@ -201,7 +201,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 ### How Swap Moves work
 
 - **When:** a creature is **swapped in** during battle (from round 2). The incoming creature is the **Alpha**; the one it replaces is the **partner**. The Alpha's Swap Move fires straight away.
-- **Chosen per direction:** the trainer sets one Swap Move for each teammate on a creature's card (`CreatureInst.swapMoves`, keyed by the partner's uid). It's used when this creature swaps in for that partner. So Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup, and from Puddlit swapping in for Sproutle. It can also be changed from the battle's swap screen.
+- **Chosen per direction:** the trainer sets one Swap Move for each teammate on a creature's card (`CreatureInst.swapMoves`, keyed by the partner's uid). The card lists only creatures on the active team; creatures resting in totems aren't shown (a creature in a totem shows a note instead), and choices already set are kept for when they're back on the team. It's used when this creature swaps in for that partner. So Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup, and from Puddlit swapping in for Sproutle. It can also be changed from the battle's swap screen.
 - **Default:** a slot that's unset, or whose move is no longer allowed, uses a neutral Swap Move picked at random for that pair and direction (`defaultSwapMove`). It's seeded by the two creatures' uids, so it's the same every battle and on every browser, until the trainer sets one. Opposing trainers and wild creatures use theirs the same way.
 - **Which moves a pair can set** (`swapLock` in `engine/swaps.ts`):
   - **Neutral** moves: every pair, at any Teamwork.

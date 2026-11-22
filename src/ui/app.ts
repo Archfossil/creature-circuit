@@ -652,10 +652,15 @@ export class App {
   }
 
   /** The other creatures of whichever trainer owns `c` (for the Teamwork on its card). */
-  teammatesOf(c: CreatureInst): CreatureInst[] {
+  /**
+   * The creatures a card lists Swap Moves for: the owner's active team only (totems would bloat every
+   * card as a collection grows). Null for a creature resting in a totem.
+   */
+  teammatesOf(c: CreatureInst): CreatureInst[] | null {
     const owners = [this.s, ...(activeMatchOf()?.players ?? [])];
     const owner = owners.find((p) => p && [...p.roster, ...p.reserve].some((x) => x.uid === c.uid));
-    return owner ? [...owner.roster, ...owner.reserve] : [];
+    if (!owner) return [];
+    return owner.roster.some((x) => x.uid === c.uid) ? owner.roster : null;
   }
 
   /** Another trainer's trade or duel offer, answered from this browser. */

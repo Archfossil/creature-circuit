@@ -133,7 +133,7 @@ export const GUIDE: GuideCategory[] = [
         '- Travelling together: every pair on your active team gains 0.2 Teamwork each turn. You’re told at the start of a turn when a pair reaches a new point.',
         '- Swapping in battle: a pair gains +1 Teamwork the first time one swaps in for the other in a battle. Swapping them back and forth again in the same battle adds nothing more.',
         '- Cap: a pair’s Teamwork can’t go above half the lower Loyalty of the two (Loyalty 4 → Teamwork 2, at most 5). Keep both creatures happy: if that Loyalty falls, the Teamwork falls too, and you’re told at the start of the next turn. Legendaries lose Loyalty every turn, so keeping one in step with its team takes real care.',
-        'Each creature’s card lists its Swap Move and Teamwork for every teammate. Tap Change there (or on the swap screen) to pick another.',
+        'Each creature’s card lists its Swap Move and Teamwork for every teammate on your active team. Tap Change there (or on the swap screen) to pick another. Creatures resting in totems aren’t listed, but any Swap Moves you set for them are kept.',
       ] },
       { id: 'instincts', title: 'Instincts', body: [
         'Every creature has an 🔆 Instinct: a passive that works on its own in battle, alongside its Nature (stats) and its Ability (the overworld). You’ll find it on the creature’s card.',

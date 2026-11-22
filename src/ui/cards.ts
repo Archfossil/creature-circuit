@@ -260,8 +260,12 @@ export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
 /**
  * Swap Moves: one row per teammate, with the move this creature uses when it swaps in for that
  * teammate, their Teamwork and its bonus. `edit` opens the picker (when the card is editable).
+ * Only active-team creatures are listed; `mates` is null for a creature resting in a totem (a note instead).
  */
-function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: CreatureInst) => void) {
+function swapSection(c: CreatureInst, mates: CreatureInst[] | null, edit?: (partner: CreatureInst) => void) {
+  if (!mates) return h('section', { class: 'ic-sec swap-sec' },
+    h('h4', { title: TEAMWORK_HELP }, '🔁 Swap Moves'),
+    h('p', { class: 'small muted' }, `${nameOf(c)} is resting in a totem. Its Swap Moves show here while it’s on your active team (any you’ve set are kept).`));
   const others = mates.filter((m) => m.uid !== c.uid);
   const cap = teamworkCap(c);
   return h('section', { class: 'ic-sec swap-sec' },
@@ -314,7 +318,7 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
  * A creature's index card (front: stats, playbook, nature; back: progression chart). `editable` allows
  * playbook edits and chart unlocks; `onEdit` hears about each change (online: sent to the server).
  */
-export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; /** The trainer's other creatures, to show Teamwork with each. */ teammates?: CreatureInst[] } = {}) {
+export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; /** The trainer's active team, to show Swap Moves and Teamwork with each (null: it's resting in a totem). */ teammates?: CreatureInst[] | null } = {}) {
   const wrap = h('div', { class: 'card-flip' });
   let back = false;
   const render = () => {
@@ -324,7 +328,7 @@ export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; edi
   return wrap;
 }
 
-function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; teammates?: CreatureInst[] }, changed: () => void) {
+function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; teammates?: CreatureInst[] | null }, changed: () => void) {
   const sp = speciesOf(c);
   const st = stats(c);
   const e = energy(c);
@@ -364,7 +368,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
     h('section', { class: 'ic-sec two' },
       h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.'), retrained(c.ability, ABILITIES[sp.ability]?.name)),
       inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.'), retrained(c.instinct, INSTINCT_BY_ID[sp.instinct]?.name)) : null),
-    swapSection(c, opts.teammates ?? [], opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
+    swapSection(c, opts.teammates === undefined ? [] : opts.teammates, opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
     h('section', { class: 'ic-sec' },
       h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),
       h('p', { class: 'small' }, nat.text),
