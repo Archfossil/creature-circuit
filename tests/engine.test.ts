@@ -2321,6 +2321,9 @@ describe('Creature Codex', () => {
     const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
     const ace = createCreature('calderex', 10);
     ace.playbook = ['quick-jab']; // Sure-hit, so every round lands
+    // and always first: on a speed tie the foe's Emberfish can win the Clash and knock the ace out
+    // with a 4× Water hit before it acts (about 1 run in 1,000), ending the battle early
+    ace.bonus.speed = (ace.bonus.speed ?? 0) + 10;
     s.roster = [ace];
     const [first, second, bench] = [createCreature('emberfish', 2), createCreature('pebbark', 2), createCreature('zapup', 2)];
     first.vitality = 0; first.health = 1; // any hit knocks it out; the second stays healthy so it survives its first round

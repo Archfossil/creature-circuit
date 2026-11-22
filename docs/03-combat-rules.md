@@ -164,6 +164,8 @@ When a type is "Strong" against another it deals double (2x) damage. When a type
 
 Because creatures can have two types, but attacks can only be one certain type, it is possible to get super effectiveness or immunity. If the attack is effective against both types of a creature, it deals 4x damage. If the attack is resisted by both of the creatures types, that creature takes no damage at all.
 
+> **Balance watch: 4× hits ignore level.** The multiplier applies after the attacker's Focus and the defender's Ward, and damage carries over from Health into Vitality hearts, so one 4× hit can knock out a creature many levels higher. Seen in testing: a Lv 2 Emberfish's Tideblaze Strike (Water) came to 8 damage before the multiplier against a Lv 10 Calderex (Fire / Rock), and the resulting 32 knocked it out from full in one hit. In the engine test that pits them, this happened in about 1 run in 1,000, whenever the Emberfish won a speed tie and acted first. Worth deciding whether that's an exciting upset or too swingy. Possible levers: cap 4× at 3×, apply the multiplier before Ward, or stop a single hit from taking more than one or two Vitality hearts.
+
 | Type | Initial | Strong Against (Deals 2x) | Weak Against (Takes 2x) |
 | :---: | :---: | :---: | :---: |
 | Astral | A | Electric <br> Fire | Charm <br> Steel |
