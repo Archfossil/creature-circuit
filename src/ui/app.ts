@@ -810,6 +810,8 @@ export class App {
     await this.showInbox();
     // Teamwork that grew while travelling last turn
     if (s.teamworkNews?.length) { toast(`🤝 Teamwork grew on the road: ${s.teamworkNews.join(' · ')}.`, 'good', 6000); s.teamworkNews = []; save(s); }
+    // Teamwork that fell with a Loyalty (a pair's cap is half the lower Loyalty of the two)
+    if (s.teamworkFell?.length) { toast(`🤝 Teamwork fell as Loyalty dropped: ${s.teamworkFell.join(' · ')}.`, 'bad', 7000); s.teamworkFell = []; save(s); }
     // one event per trainer per turn, from the second round, rolled here at the start of the turn
     if (s.turn >= 2 && s.eventTurn !== s.turn) { s.eventTurn = s.turn; E.rollEvent(s); save(s); this.renderHud(); }
     if (s.event) await this.eventFlow();
@@ -1741,11 +1743,11 @@ export class App {
         const cur = activeOf(b.sides[0]);
         const close = openSheet('Swap — choose the incoming Alpha', h('div', null,
           h('p', { class: 'small' }, `The incoming creature is the Alpha: it uses the Swap Move set for swapping in for ${nameOf(cur)} (change it here or on its card). The swap resolves at ${nameOf(cur)}'s speed.`),
-          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2. A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A creature’s Teamwork is capped at half its level.`),
+          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2. A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A pair’s Teamwork is capped at half the lower Loyalty of the two.`),
           h('div', { class: 'list' }, b.sides[0].team.map((c, i) => {
             if (c.ko || c === cur) return null;
             const pv = swapPreview(b, 0, i);
-            const grows = pv.earned ? 'Already earned its Teamwork this battle.' : pv.capped ? 'Teamwork is at its cap (half its level): level up to grow it.' : `This swap earns +${TEAMWORK_PER_SWAP} Teamwork (once per battle).`;
+            const grows = pv.earned ? 'Already earned its Teamwork this battle.' : pv.capped ? 'Teamwork is at the pair’s cap (half the lower Loyalty of the two): raise that Loyalty to grow it.' : `This swap earns +${TEAMWORK_PER_SWAP} Teamwork (once per battle).`;
             return h('div', { class: 'swap-row' },
               miniCard(c, { onClick: () => { close(); act({ kind: 'swap', to: i }); } }),
               h('div', { class: 'small' },

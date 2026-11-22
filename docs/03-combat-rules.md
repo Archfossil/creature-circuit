@@ -78,7 +78,7 @@ Swap Moves are team-up swaps, enabling an incoming "Alpha" creature to leverage 
 
 The trainer sets a Swap Move for each pair and direction on the creature cards (Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup). Each species has a favourite that's used until then. Typed Swap Moves need one of the pair to have that type, and the stronger ones need Teamwork.
 
-Each creature has **Teamwork** with each other creature in your roster. Pairs gain 0.2 Teamwork for every turn they travel together on the active team, and +1 the first time one swaps in for the other in a battle (once per battle). A creature's Teamwork with any partner is capped at half its level. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move. The full list and exact rules are in [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
+Each creature has **Teamwork** with each other creature in your roster. Pairs gain 0.2 Teamwork for every turn they travel together on the active team, and +1 the first time one swaps in for the other in a battle (once per battle). A pair's Teamwork is capped at half the lower Loyalty of the two, and falls if that Loyalty does, so the trainer has to keep both creatures' trust. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move. The full list and exact rules are in [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
 
 # Other Metadata
 

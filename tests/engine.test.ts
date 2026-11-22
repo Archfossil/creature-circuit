@@ -15,7 +15,7 @@ import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STY
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
-import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether } from '../src/engine/teamwork';
+import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether, settleTeamwork } from '../src/engine/teamwork';
 import { swapPreview } from '../src/engine/battle';
 import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
@@ -3095,11 +3095,13 @@ describe('Odd jobs', () => {
 });
 
 describe('Teamwork', () => {
-  const pair = (level: number) => {
+  /** Two creatures with the given Loyalty (the Teamwork cap is half the lower of the two). */
+  const pair = (loyalty: number, level = 6) => {
     const a = createCreature('puddlit', level), b = createCreature('zapup', level);
+    a.loyalty = b.loyalty = loyalty;
     return [a, b] as const;
   };
-  it('grows 0.2 a turn for pairs travelling together, capped at half the level', () => {
+  it('grows 0.2 a turn for pairs travelling together, capped at half their Loyalty', () => {
     const [a, b] = pair(4);
     for (let i = 0; i < 5; i++) travelTogether([a, b]);
     expect(teamworkOf(a, b)).toBe(1);
@@ -3109,17 +3111,39 @@ describe('Teamwork', () => {
     expect(teamworkCap(a)).toBe(2);
     expect(teamworkBonus(a, b)).toBe(1);
   });
-  it('each creature has its own cap, so a pair can differ', () => {
-    const a = createCreature('puddlit', 2), b = createCreature('zapup', 8);
+  it('a pair is capped by the lower Loyalty of the two, whatever their levels', () => {
+    const a = createCreature('puddlit', 2), b = createCreature('zapup', 12);
+    a.loyalty = 8; b.loyalty = 2;
     addTeamwork(a, b, 3);
+    expect(teamworkCap(a)).toBe(4);
+    expect(teamworkCap(a, b)).toBe(1);
     expect(teamworkOf(a, b)).toBe(1);
-    expect(teamworkOf(b, a)).toBe(3);
-    expect(addTeamwork(createCreature('puddlit', 1), createCreature('zapup', 1), 0.2)?.rose).toBe(false);
+    expect(teamworkOf(b, a)).toBe(1);
+    // no Loyalty, no Teamwork
+    expect(addTeamwork(createCreature('puddlit', 10), createCreature('zapup', 10), 1)).toBeNull();
+  });
+  it('Teamwork falls when a Loyalty does, and the end of the turn says so', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    const lg = createCreature('zapup', 6);
+    const me = s.roster[0];
+    s.roster.push(lg);
+    me.loyalty = lg.loyalty = 6;
+    addTeamwork(me, lg, 3);
+    expect(teamworkOf(me, lg)).toBe(3);
+    lg.loyalty = 2; // e.g. a Legendary's drain
+    expect(teamworkOf(me, lg)).toBe(1);
+    expect(settleTeamwork(s.roster)).toHaveLength(1);
+    expect(me.teamwork[lg.uid]).toBe(1); // stored value brought down too
+    lg.loyalty = 6;
+    expect(teamworkOf(me, lg)).toBe(1); // regaining Loyalty doesn't restore it
+    lg.loyalty = 0;
+    W.endTurn(s);
+    expect(s.teamworkFell?.[0]).toMatch(/Teamwork 0/);
   });
   it('the end of a turn grows the active team’s Teamwork and saves the news for the next turn', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
-    s.roster[0].level = 4;
     s.roster.push(createCreature('zapup', 4));
+    for (const c of s.roster) { c.loyalty = 6; c.morale = 9; }
     for (let i = 0; i < 5; i++) W.endTurn(s);
     expect(teamworkOf(s.roster[0], s.roster[1])).toBe(1);
     expect(s.teamworkNews?.length).toBe(1);
@@ -3145,10 +3169,10 @@ describe('Teamwork', () => {
     expect(teamworkOf(b, a)).toBe(1);
     expect(bt.teamworkGains).toHaveLength(1);
   });
-  it('old saves keep their Teamwork (was `affinity`), capped at half the level', () => {
+  it('old saves keep their Teamwork (was `affinity`), capped at half the Loyalty', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
     const c = s.roster[0] as ReturnType<typeof createCreature> & { affinity?: Record<string, number> };
-    c.level = 4;
+    c.loyalty = 4;
     c.affinity = { other: 9 };
     delete (c as { teamwork?: unknown }).teamwork;
     const m = migrate(JSON.parse(JSON.stringify(s)))!;
@@ -3158,7 +3182,12 @@ describe('Teamwork', () => {
 });
 
 describe('Swap Moves', () => {
-  const trio = () => [createCreature('puddlit', 6), createCreature('zapup', 6), createCreature('sproutle', 6)] as const;
+  /** Three Lv 6 creatures with Loyalty 6, so their Teamwork can reach 3. */
+  const trio = () => {
+    const t = [createCreature('puddlit', 6), createCreature('zapup', 6), createCreature('sproutle', 6)] as const;
+    for (const c of t) c.loyalty = 6;
+    return t;
+  };
   const typedFor = (c: ReturnType<typeof createCreature>, tier: number) => SWAP_MOVES.find((m) => m.type === speciesOf(c).types[0] && m.teamwork === tier)!;
   it('are set per direction: each creature has its own move for each teammate', () => {
     const [a, b, c] = trio();
@@ -3205,6 +3234,7 @@ describe('Swap Moves', () => {
       // an Alpha of the move's type (any for neutral ones), with the Teamwork to set it
       const sp = SPECIES.find((x) => x.rarity !== 'legendary' && (!m.type || x.types.includes(m.type)))!;
       const a = createCreature(sp.id, 6), b = createCreature('zapup', 6);
+      a.loyalty = b.loyalty = 6;
       a.teamwork[b.uid] = 3;
       expect(setSwapMove(a, b, m.id), m.id).toBe(true);
       const foe = createCreature('sproutle', 6);

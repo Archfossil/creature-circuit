@@ -660,7 +660,7 @@ export function swapPreview(b: Battle, si: 0 | 1, to: number) {
   const m = swapMoveOf(alpha, partner);
   const v = swapVals(alpha, partner, { a: stats(alpha, side.buff), f: statsOf(b, fi) });
   const earned = (b.teamworkPairs ?? []).includes(pairKey(alpha, partner));
-  const capped = teamworkOf(alpha, partner) >= teamworkCap(alpha) && teamworkOf(partner, alpha) >= teamworkCap(partner);
+  const capped = teamworkOf(alpha, partner) >= teamworkCap(alpha, partner) && teamworkOf(partner, alpha) >= teamworkCap(alpha, partner);
   return { move: m, power: m.name, teamwork: teamworkOf(alpha, partner), bonus: v.bonus, earned, capped, effect: describeSwap(m, v) };
 }
 

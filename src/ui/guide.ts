@@ -132,7 +132,7 @@ export const GUIDE: GuideCategory[] = [
         '🤝 Teamwork is how well two of your creatures work together. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move (more damage, more borrowed Armor and Ward, more healing).',
         '- Travelling together: every pair on your active team gains 0.2 Teamwork each turn. You’re told at the start of a turn when a pair reaches a new point.',
         '- Swapping in battle: a pair gains +1 Teamwork the first time one swaps in for the other in a battle. Swapping them back and forth again in the same battle adds nothing more.',
-        '- Cap: a creature’s Teamwork with any partner can’t go above half its level, so it keeps growing as your team levels up.',
+        '- Cap: a pair’s Teamwork can’t go above half the lower Loyalty of the two (Loyalty 4 → Teamwork 2, at most 5). Keep both creatures happy: if that Loyalty falls, the Teamwork falls too, and you’re told at the start of the next turn. Legendaries lose Loyalty every turn, so keeping one in step with its team takes real care.',
         'Each creature’s card lists its Swap Move and Teamwork for every teammate. Tap Change there (or on the swap screen) to pick another.',
       ] },
       { id: 'readouts', title: 'Move readouts', body: [

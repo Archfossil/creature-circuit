@@ -33,7 +33,7 @@ export interface CreatureInst {
   fatigue: number;
   ko: boolean;
   playbook: string[];
-  /** Teamwork with each partner (by uid): grows travelling together and swapping in battle, up to half the level (see teamwork.ts). */
+  /** Teamwork with each partner (by uid): grows travelling together and swapping in battle, up to half the lower Loyalty of the pair (see teamwork.ts). */
   teamwork: Record<string, number>;
   /** Swap Moves the trainer set (by partner uid): the one this creature uses when it swaps in for that partner (see swaps.ts). */
   swapMoves: Record<string, string>;

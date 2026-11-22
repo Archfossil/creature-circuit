@@ -10,7 +10,7 @@ import { STAT_LABEL, createCreature, fullRestore, speciesOf, nameOf, maxVitality
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
-import { travelTogether, riseText } from './teamwork';
+import { travelTogether, settleTeamwork, riseText } from './teamwork';
 
 export const ability = (s: GameState) => { const f = follower(s); return f ? speciesOf(f).ability : null; };
 /** Today's weather where the trainer stands. In Winter, Aurora Peak is always under Aurora Night. */
@@ -1455,6 +1455,12 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   }
   moraleAndLoyalty(s, report);
   // Teamwork: the creatures on the active team grow closer travelling together (announced at the start of the next turn)
+  // Loyalty has just changed: Teamwork above a pair's new cap (half the lower Loyalty) drops to it
+  const falls = settleTeamwork(s.roster).map(riseText);
+  if (falls.length) {
+    s.teamworkFell = [...(s.teamworkFell ?? []), ...falls];
+    for (const t of falls) log(s, `Teamwork fell with Loyalty. ${t}.`);
+  }
   const rises = travelTogether(s.roster).map(riseText);
   if (rises.length) {
     s.teamworkNews = [...(s.teamworkNews ?? []), ...rises];

@@ -209,8 +209,10 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 - **Teamwork** (`CreatureInst.teamwork`, rules in `engine/teamwork.ts`): each creature has a Teamwork score with every partner. The swap bonus is **the Alpha's Teamwork with the partner ÷ 2, rounded down**, using the value from *before* this swap. It's added wherever a move's effect says "+ bonus".
   - **Travelling together:** every pair on the active team gains **0.2** at the end of each turn. When a pair reaches a new whole point, it's announced at the start of the next turn.
   - **Swapping:** a pair gains **+1** the first time one swaps in for the other in a battle. Later swaps between the same pair in that battle add nothing, so swapping back and forth doesn't farm it. Gains are announced when the battle ends.
-  - **Cap:** a creature's Teamwork with any partner is at most **half its level** (Lv 4 → 2, Lv 12 → 6). Each creature has its own cap, so a pair's two values can differ.
-  - Across levels 1–12 the bonus runs from 0 (under 2 Teamwork) to +3 (6 Teamwork, Lv 12).
+  - **Cap:** a pair's Teamwork is at most **half the lower Loyalty of the two** (`teamworkCap`): Loyalty 2 → 1, Loyalty 4 → 2, Loyalty 10 → 5. Level doesn't matter. A new recruit (Loyalty 0) earns no Teamwork until it starts trusting the trainer, and the typed Swap Moves need both creatures at Loyalty 2 (Teamwork 1) or 4 (Teamwork 2).
+  - **Falling:** if a Loyalty drops, the pair's Teamwork drops to the new cap at the end of the turn and stays there (regaining Loyalty doesn't restore it; it has to be earned again). The trainer is told at the start of the next turn (`GameState.teamworkFell`).
+  - **Legendaries** lose Loyalty every turn, so their Teamwork keeps sliding unless treats keep their Loyalty up. That makes them costly partners to keep in step, but a Legendary Alpha with Teamwork is a strong part of a championship team.
+  - The bonus runs from 0 (under 2 Teamwork) to +2 (4–5 Teamwork, both at Loyalty 8+).
 - **The swap resolves at the outgoing creature's Speed**, plus the move's Speed bonus (Slipstream +3, Live Wire +2).
 - **Stat boosts** from a Swap Move last while the Alpha stays in, and are capped at ±3 like every battle modifier.
 - **Code:** the moves are data in `src/data/swapMoves.ts` (`before` effects, an optional `hit`, `after` effects). `doSwap()` in `src/engine/battle.ts` runs them, and `describeSwap()` writes the text the card and swap screen show from the same data.
@@ -253,6 +255,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 - [ ] **Accuracy:** only the d8-to-hit moves can miss (Tag Strike, Starfall Relay, Live Wire, Phoenix Handoff, Landslide Tag, Tide Relay); the rest always hit.
 - [ ] **Rally's Teamwork bonus is all-or-nothing** (+1 under 2 Teamwork, +2 from 2), unlike the other moves' 0–3 scale. Kindle Swap works the same way.
+- [ ] **Teamwork now follows Loyalty, not level:** the bonus tops out at +2 (it was +3 at Lv 12), and typed Swap Moves unlock with Loyalty 2 and 4 in both creatures. Check that pairs reach Teamwork 1 early enough, since new recruits start at Loyalty 0, and how quickly a Legendary's Teamwork slides.
 - [x] **Teamwork no longer rewards swapping back and forth:** a pair earns it from a swap once per battle; travelling together on the active team is the steady source.
 - [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may out-damage a creature's own moves at Lv 1–3.
 - [ ] **Status on a 1–2 is twice as likely** as a regular elemental move's 1. Watch whether typed Swap Moves become the main way to inflict statuses.

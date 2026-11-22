@@ -175,6 +175,7 @@ Low (${MORALE_LOW} or less): you get a warning. After that, every turn that ends
 const LOYALTY_HELP = `Loyalty (0–${LOYALTY_MAX}): trust built over time.
 Gain: +1 at the end of each turn while Morale is ${MORALE_HIGH}+; treats add Loyalty too.
 Use: reaching each Nature perk's threshold unlocks it for good. Perks never re-lock. At the Capstone, attacks deal +1 damage per 5 Loyalty.
+Teamwork: a pair's Teamwork can't go above half the lower Loyalty of the two, and falls if that Loyalty does.
 Lose: −1 each time it survives a low-Morale check. At 0 Loyalty, a low-Morale check always means it leaves.`;
 
 /** A sheet explaining Morale and Loyalty, with this creature's current standing. */
@@ -201,7 +202,7 @@ export const fmtTeamwork = (v: number) => (Math.round(v * 10) / 10).toString();
 
 export const TEAMWORK_HELP = `Teamwork is how well two of your creatures work together. When one swaps in for the other in battle, its Swap Move gets +1 for every ${TEAMWORK_PER_BONUS} Teamwork it has with that partner, and stronger Swap Moves unlock at Teamwork 1 and 2.
 It grows by ${TEAMWORK_PER_TURN} each turn both travel on your active team, and by ${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle (once per battle).
-A creature's Teamwork with any partner is capped at half its level.`;
+A pair's Teamwork is capped at half the lower Loyalty of the two (Loyalty 4 → Teamwork 2), so keep both creatures' trust. If that Loyalty falls, the Teamwork falls with it: Legendaries, whose Loyalty drains every turn, are costly partners to keep in step.`;
 
 const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -264,16 +265,17 @@ function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: Cr
   const others = mates.filter((m) => m.uid !== c.uid);
   const cap = teamworkCap(c);
   return h('section', { class: 'ic-sec swap-sec' },
-    h('h4', { title: TEAMWORK_HELP }, '🔁 Swap Moves ', h('span', { class: 'muted' }, `🤝 Teamwork max ${fmtTeamwork(cap)} (half its level)`)),
+    h('h4', { title: TEAMWORK_HELP }, '🔁 Swap Moves ', h('span', { class: 'muted' }, `🤝 Teamwork max ${fmtTeamwork(cap)} (half its Loyalty)`)),
     h('p', { class: 'small muted' }, `When ${nameOf(c)} swaps in (as the Alpha) for a teammate, it uses the Swap Move set for that teammate. Favourite: `, h('b', null, fav.name), ' (', ...alphaText(swapText(fav, { A: nameOf(c), aType: speciesOf(c).types[0] }), nameOf(c), 'the partner'), ')'),
     others.length ? h('div', { class: 'swap-list' }, others.map((m) => {
       const mv = swapMoveOf(c, m);
-      const t = teamworkOf(c, m), bonus = teamworkBonus(c, m);
+      const t = teamworkOf(c, m), bonus = teamworkBonus(c, m), pairCap = teamworkCap(c, m);
+      const low = m.loyalty < c.loyalty ? m : c; // whose Loyalty sets the pair's cap
       return h('div', { class: 'swap-slot' },
         h('div', { class: 'swap-slot-head' },
           h('span', null, '↪ for ', h('b', null, nameOf(m))),
-          h('span', { class: `chip ${bonus ? 'good' : ''}`, title: `${nameOf(c)}’s Teamwork with ${nameOf(m)}: ${bonus ? `+${bonus} to its Swap Move` : `no bonus yet (+1 at ${TEAMWORK_PER_BONUS})`}${t >= cap ? '. At its cap: level up to grow it.' : ''}` },
-            '🤝 ', fmtTeamwork(t), bonus ? ` · +${bonus}` : ''),
+          h('span', { class: `chip ${bonus ? 'good' : ''}`, title: `${nameOf(c)}’s Teamwork with ${nameOf(m)}: ${bonus ? `+${bonus} to its Swap Move` : `no bonus yet (+1 at ${TEAMWORK_PER_BONUS})`}. Max ${fmtTeamwork(pairCap)}, half ${nameOf(low)}’s Loyalty (${low.loyalty})${t >= pairCap ? `: raise ${nameOf(low)}’s Loyalty to grow it` : ''}.` },
+            '🤝 ', fmtTeamwork(t), `/${fmtTeamwork(pairCap)}`, bonus ? ` · +${bonus}` : ''),
           edit ? h('button', { class: 'link', onclick: () => edit(m) }, 'Change') : null),
         h('div', null, mv.type ? typeIconImg(mv.type, 14) : null, ' ', h('b', null, mv.name), mv.id === fav.id ? h('span', { class: 'muted' }, ' · favourite') : null),
         h('small', null, alphaText(swapText(mv, swapVals(c, m)), nameOf(c), nameOf(m))),

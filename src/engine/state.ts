@@ -1,4 +1,5 @@
 import type { StatKey } from '../data/schema';
+import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import { createCreature, speciesOf, NODE_ENERGY } from './creature';
@@ -129,6 +130,8 @@ export interface GameState {
   training?: Training[];
   /** Teamwork that grew while travelling last turn ("A & B: Teamwork 2"), shown at the start of the next turn. */
   teamworkNews?: string[];
+  /** Pairs whose Teamwork dropped at the end of last turn because a Loyalty fell (shown at the start of the next turn). */
+  teamworkFell?: string[];
   /** Notes from other hotseat trainers (gifts, trades, duels), shown at the start of your next turn. */
   inbox?: string[];
   /** The turn whose start-of-turn event has been rolled (so a reload doesn't roll a second one). */
@@ -451,11 +454,12 @@ export function migrate(s: GameState): GameState | null {
     const k = sp.types[1] ?? sp.types[0];
     c.extraEnergy[k] = (c.extraEnergy[k] ?? 0) + NODE_ENERGY;
   }
-  // Teamwork: older saves kept it as `affinity` (0–9); it's capped at half the creature's level now
+  // Teamwork: older saves kept it as `affinity` (0–9); it's capped at half the creature's Loyalty now
+  // (and a pair's at half the lower Loyalty of the two, applied whenever it's read)
   for (const c of [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)]) {
     const legacy = c as CreatureInst & { affinity?: Record<string, number> };
     if (legacy.affinity) {
-      c.teamwork = Object.fromEntries(Object.entries(legacy.affinity).map(([k, v]) => [k, Math.min(v, c.level / 2)]));
+      c.teamwork = Object.fromEntries(Object.entries(legacy.affinity).map(([k, v]) => [k, Math.min(v, teamworkCap(c))]));
       delete legacy.affinity;
     }
     c.teamwork ??= {};
