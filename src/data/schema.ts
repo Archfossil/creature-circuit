@@ -37,7 +37,7 @@ export interface Species {
   /** Recruitment Threshold: target number for totem + offering roll. */
   rt: number;
   ability: string;        // ability id (overworld passive)
-  affinity: string;       // affinity power id (swap-in team-up)
+  affinity: string;       // favourite Swap Move id (data/swapMoves.ts): used until the trainer sets another
   signature?: string;     // move id unlocked via progression
   biomes: Biome[];        // where it can be encountered in the wild
   dex: string;            // flavor text for the index card
@@ -154,13 +154,6 @@ export interface Nature {
 }
 
 export interface Ability { id: string; name: string; text: string }
-export interface AffinityPower {
-  id: string;
-  name: string;
-  text: string;
-  /** How the incoming Alpha's swap-in attack borrows from the benched partner */
-  mode: 'tagStrike' | 'shieldPass' | 'slipstream' | 'siphon' | 'rally';
-}
 
 export interface WeatherDef {
   id: string;

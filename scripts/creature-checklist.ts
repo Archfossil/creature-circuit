@@ -4,7 +4,8 @@ import { writeFileSync } from 'node:fs';
 import { ROSTER, FAMILY_RARITIES, type RosterSlot } from '../src/data/roster';
 import { SPECIES, SPECIES_BY_ID } from '../src/data/species';
 import { TYPE_LABEL } from '../src/data/types';
-import { ABILITIES, AFFINITIES, BIOME_INFO, ACTIVITY_INFO } from '../src/data/content';
+import { ABILITIES, BIOME_INFO, ACTIVITY_INFO } from '../src/data/content';
+import { SWAP_MOVE_BY_ID } from '../src/data/swapMoves';
 import { MOVE_BY_ID } from '../src/data/moves';
 import { MAP_NODES } from '../src/data/map';
 import type { Species } from '../src/data/schema';
@@ -24,7 +25,7 @@ function row(sp: Species, family: string) {
     sp.signature ? `Sig: ${MOVE_BY_ID[sp.signature]?.name ?? sp.signature}` : '',
     sp.rarity === 'legendary' ? (onMap(sp.id) ? `Map: ${onMap(sp.id)!.name}` : 'Map: not placed') : '',
   ].filter(Boolean).join(' · ');
-  return `| ${family} | ${sp.rarity === 'legendary' ? '—' : sp.stage} | **${sp.name}** | \`${sp.id}\` | ${typesOf(sp)} | ${sp.activity ? ACTIVITY_INFO[sp.activity].label : '—'} | ${ABILITIES[sp.ability]?.name ?? sp.ability} | ${AFFINITIES[sp.affinity]?.name ?? sp.affinity} | ${extras || '—'} | ${ph ? 'Placeholder' : 'Hand-made'} | ${box(!ph)} | ☐ |`;
+  return `| ${family} | ${sp.rarity === 'legendary' ? '—' : sp.stage} | **${sp.name}** | \`${sp.id}\` | ${typesOf(sp)} | ${sp.activity ? ACTIVITY_INFO[sp.activity].label : '—'} | ${ABILITIES[sp.ability]?.name ?? sp.ability} | ${SWAP_MOVE_BY_ID[sp.affinity]?.name ?? sp.affinity} | ${extras || '—'} | ${ph ? 'Placeholder' : 'Hand-made'} | ${box(!ph)} | ☐ |`;
 }
 
 const inRoster = new Set(ROSTER.flatMap((s) => [...s.common, ...s.prime, ...s.apex, s.legendary]));
@@ -58,7 +59,8 @@ lines.push(
   '- **Design ☐**: the creature has a real name, concept, flavour text and stat direction. Tick ☑ when approved.',
   '- **Art ☐**: the creature has final art (portrait and model or sprite). Tick ☑ when delivered. No creature has final art yet: every one, hand-made or placeholder, uses the procedural model.',
   '- Hand-made creatures start with Design ☑ because they already have a real name, look and flavour text.',
-  '- **Types, biomes, Out by, Ability, Affinity and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).',
+  '- **Types, biomes, Out by, Ability, Favourite Swap Move and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).',
+  '- **Favourite Swap Move** is one of the five neutral Swap Moves. The creature uses it when it swaps in until the trainer sets another for that partner on its card (see [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves)).',
   '- **Swapping one in (developers):** add the species in `src/data/species.ts`, then point its slot in `HANDMADE_SLOTS` or `HANDMADE_LEGENDARIES` (`src/data/roster.ts`) at it. The placeholder disappears; regenerate this file.',
   '- A new Legendary also needs a roaming node on the map (`src/data/map.ts`).',
   '',
@@ -79,14 +81,14 @@ for (const s of ROSTER) {
   lines.push(`## ${slotName(s)}`, '');
   const sp0 = SPECIES_BY_ID[s.common[0]];
   lines.push(`Spawns in: ${sp0.biomes.map((b) => BIOME_INFO[b].label).join(', ')}.`, '');
-  lines.push('| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const r of FAMILY_RARITIES) for (const id of s[r]) lines.push(row(SPECIES_BY_ID[id], cap(r)));
   lines.push(row(SPECIES_BY_ID[s.legendary], 'Legendary'), '');
 }
 
 if (extras.length) {
   lines.push('---', '', '## Hand-made creatures outside the roster table', '', 'The original hand-made Prime and Apex creatures, from before the roster table existed. They appear in the wild but don’t fill a roster slot. Design could move them into a matching slot (replacing that slot’s placeholder family) or keep them as extras. Either way they need art.', '');
-  lines.push('| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const sp of extras) lines.push(row(sp, cap(sp.rarity)));
   lines.push('');
 }

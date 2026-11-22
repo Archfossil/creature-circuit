@@ -50,7 +50,7 @@ This game has a Master Move List of attacks creatures can learn. To power these 
 
 # Meta-Attributes
 
-Aside from their physical attributes, Creatures will have the following social attributes as well. These are **Loyalty,** **Morale,** and **Affinity.**
+Aside from their physical attributes, Creatures will have the following social attributes as well. These are **Loyalty,** **Morale,** and **Teamwork.**
 
 ## Loyalty
 
@@ -69,18 +69,20 @@ Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers
 >   - **Otherwise:** it stays but loses 1 Loyalty.
 >
 >   At 0 Loyalty any roll leaves, so even a creature with full Loyalty can eventually be lost, but it has to wear its Loyalty down first. A creature never leaves if it's your only one; it only loses Loyalty. If your active team empties, a creature steps out of its totem. Raising Morale above 3 clears the warning.
-> - **Following.** At the start of each turn you're asked who follows you, shown with its Ability, Affinity, Morale and Loyalty. The follower leads every battle and gains +1 Morale every other turn.
+> - **Following.** At the start of each turn you're asked who follows you, shown with its Ability, favourite Swap Move, Morale and Loyalty. The follower leads every battle and gains +1 Morale every other turn.
 > - **Legendaries never fully settle.** A recruited Legendary arrives with 10 Loyalty and loses 1 every turn, whatever its Morale. It gains no Loyalty from Morale, though treats still add some. At 0 Loyalty it leaves and returns to its grounds on the map for another trainer to find. Releasing it at the Research Facility first pays × 5 its level. Expect to hold a Legendary for about 10 turns unless your plan is built around keeping it.
 
-## Affinity
+## Swap Moves
 
-Affinity powers team-up swaps, enabling an incoming "Alpha" creature to leverage attributes fed by a benched partner. When you swap Creatures mid-battle one of the Creatures is designated as the "Alpha" in the arrangement. The Alpha has an affinity ability which is triggered as the two creatures swap, but the exact power of the affinity ability is determined by the other creature. Affinity attacks all work differently, but they might borrow the contributing Creature's stats or type for the specific attack.
+Swap Moves are team-up swaps, enabling an incoming "Alpha" creature to leverage attributes fed by a benched partner. When you swap Creatures mid-battle one of the Creatures is designated as the "Alpha" in the arrangement. The Alpha's Swap Move triggers as the two creatures swap. Swap Moves all work differently, but many borrow the partner's stats or type.
 
-Each creature has **Teamwork** with each other creature in your roster. Pairs gain 0.2 Teamwork for every turn they travel together on the active team, and +1 the first time one swaps in for the other in a battle (once per battle). A creature's Teamwork with any partner is capped at half its level. Every 2 Teamwork the Alpha has with its partner adds +1 to its Affinity Power. The exact rules are in [13 · Natures, Abilities & Affinity Powers](./13-natures-and-abilities.md#affinity-powers).
+The trainer sets a Swap Move for each pair and direction on the creature cards (Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup). Each species has a favourite that's used until then. Typed Swap Moves need one of the pair to have that type, and the stronger ones need Teamwork.
+
+Each creature has **Teamwork** with each other creature in your roster. Pairs gain 0.2 Teamwork for every turn they travel together on the active team, and +1 the first time one swaps in for the other in a battle (once per battle). A creature's Teamwork with any partner is capped at half its level. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move. The full list and exact rules are in [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
 
 # Other Metadata
 
-Other relevant creature information includes their Recruitment Threshold (RT), Level, Experience, and Personality (Nature, Ability, and Affinity Power)
+Other relevant creature information includes their Recruitment Threshold (RT), Level, Experience, and Personality (Nature, Ability, and favourite Swap Move)
 
 ## Recruitment Threshold (RT)
 
@@ -96,15 +98,15 @@ The last node in progression charts for stage 1 and 2 creatures is always to "Ev
 
 Points earned by completing battles against other creatures. The exact amount is determined by comparing the two levels of the participating creatures with a bonus for the winner. When a creature earns enough experience, they gain a level, and can buy a new node from their progression track.
 
-## Personality (Nature, Ability, Affinity Power)
+## Personality (Nature, Ability, favourite Swap Move)
 
 Personality is determined by the Nature of a creature. Nature, like the progression track, has nodes to unlock through Loyalty. It may also feature bonuses for high Morale, or possibly "rebound" abilities for creatures with low morale.
 
 An **Ability** is a passive effect which the Creature applies while in the overworld out of combat. These can be something like "Sweet Scent" which attracts wild creatures to the trainer for battle and possible recruitment, or "Baby-Doll Eyes" which can earn the trainer deals at markets. Only the "Following" creature can make use of their passive ability. At the start of each trainers turn, they determine one of their creature roster to "follow" them which improves their Loyalty, Morale, and allows them to use their Ability. This creature is also deployed first in combat if a fight breaks out. Some trainers who are expecting a challenge might not choose to have any creature following, so as to not give an incoming challenger the ability to start the battle with a type advantage!
 
-**Affinity Powers** are the effect which triggers when the creature swaps out with another in your roster mid-fight. Both creatures will have an Affinity Power, one is chosen to be the "Alpha" and have theirs be the one which triggers. The Affinity Power will specify what parts are borrowed from the other creature.
+**Swap Moves** are the effect which triggers when a creature swaps in for another in your roster mid-fight. The incoming creature is the "Alpha", and it uses the Swap Move the trainer set for swapping in for that partner (or its species' favourite). The Swap Move specifies what's borrowed from the partner.
 
-In a future iteration we may introduce "dual battles" with two or three creatures each which can expand Affinity Powers to team-up attacks.
+In a future iteration we may introduce "dual battles" with two or three creatures each which can expand Swap Moves to team-up attacks.
 
 # Combat Structure
 
@@ -115,7 +117,7 @@ Here is the flow of combat:
 * If there is a Clash, the two creatures roll a dice. The exact dice rolled is determined by the Creature's level. The creature who rolls the lower value takes damage equal to the difference between their roll and the higher value roll. Then, the creature who rolled higher resolves their attack first. If both roll the same number, neither takes damage and a coin flip decides who attacks first. The coin is flipped on screen, and the winner is shown before either attack resolves.
 * Attack resolution follows their own steps detailed below.
 * After creatures make their attacks, if they both still have health remaining, combat continues from the "Trainers Choose an Attack" step. If the battle is against a Legendary Wild Creature they will roll for Evasion at the end of each round. This is done by making a d20 roll and adding the level of the trainer's creature to the roll. If the sum is not 20 or higher, the Legendary will lose interest in the fight and flee next turn when they would otherwise be attacking (using their base Speed to determine when.) The trainer gets a warning that the wild creature looks like they're trying to get away and fundamentally has one turn to stop them somehow. 
-* Starting on the second round of a battle, a trainer can decide to swap in another creature instead (so long as the fight is either 2v2 or 3v3.) If this happens, the Affinity Power is resolved as an attack instead, with all normal considerations taken into account (such as the attack speed, or damage dealt to the creature before it is swapped.)
+* Starting on the second round of a battle, a trainer can decide to swap in another creature instead (so long as the fight is either 2v2 or 3v3.) If this happens, the Alpha's Swap Move is resolved as its action instead, with all normal considerations taken into account (such as the attack speed, or damage dealt to the creature before it is swapped.)
 * When one creature is KO'd (zero vitality, zero health) the victorious creature regains all health (but no Vitality!) and gains Experience based on the level of the other creature. If that was the final creature in the roster for that team, the battle is over.
 * When a battle ends there is a Prize step. Trainer vs. Trainer prizes are d6 coins exchanged from the loser to the winner. Trainer battles can also be made for certain other prizes such as items, or even merits, but these require official acknowledgement by the Creature Circuit first and must be done in an arena setting (using a stadium and unique combat rules for both trainers as if they were fighting the arbiter.)
 
@@ -152,7 +154,7 @@ Passive abilities provide constant, automatic board or combat effects that activ
 * Reflective Coat: Grants a percentage chance to deflect a portion of incoming elemental Focus damage back at the attacker.
 * Adrenaline Surge: When Vigor drops into the danger zone (below 25%), Speed is automatically boosted to help secure a desperate last-turn escape or strike.
 * Pace-Keeper: Lowers the cumulative Fatigue gained when expending high amounts of Stamina during aggressive turns.
-* Synchronized Pulse: Boosts the efficiency of attributes fed by a benched partner during an Affinity team-up swap.
+* Synchronized Pulse: Boosts the efficiency of attributes fed by a benched partner during a Swap Move.
 
 # Type Chart
 

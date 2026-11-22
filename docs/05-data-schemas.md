@@ -7,7 +7,7 @@ These are the JSON templates for the game's content. The TypeScript versions, wh
 | [`species.ts`](../src/data/species.ts) | 52 example creatures (8 types × 6, the Emberfish line, 2 legendaries) |
 | [`moves.ts`](../src/data/moves.ts) | Master Move List: physical, support, 4 elemental moves per type, 8 signature moves |
 | [`map.ts`](../src/data/map.ts) | Margos: 8 cities, 6 towns, Circuit Stadium, 2 legendary nodes, the wild routes and the type pool for each biome |
-| [`content.ts`](../src/data/content.ts) | Natures, abilities, affinity powers, items, offering materials, weather and the seasonal weather dice |
+| [`content.ts`](../src/data/content.ts) | Natures, abilities, items, offering materials, weather and the seasonal weather dice |
 
 To add content, add an entry that follows the template below. Nothing else needs to change: the UI, the procedural 3D models, the encounter tables and the arbiter teams all read from these lists.
 
@@ -45,7 +45,7 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `rt` | Recruitment Threshold. The offering roll is 2d6 + totem + offerings, against `rt + floor(level / 3)`. |
 | `biomes` | Biomes the species prefers. A wild node offers it when its biome's type pool (`BIOME_TYPES` in `map.ts`) includes the species' first type, and it is preferred over same-type species without that biome. The Creature Codex lists these nodes. |
 | `ability` | An overworld passive (see `ABILITIES`). It is active only while the creature is **Following**. |
-| `affinity` | The swap-in team-up power (see `AFFINITIES`). It triggers when this creature is swapped in as the **Alpha**. |
+| `affinity` | The species' favourite Swap Move (a neutral one from `SWAP_MOVES` in `swapMoves.ts`). Used when it swaps in as the **Alpha** until the trainer sets another for that partner. |
 | `signature` | A Signature Move, unlocked through a progression-chart node. |
 | `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
@@ -86,11 +86,12 @@ Each creature the player owns is saved as an instance of a species:
   "health": 4, "vitality": 3, "stamina": 6, "fatigue": 0, "ko": false,
   "playbook": ["ember", "splash-jet", "quick-jab"],
   "teamwork": { "<other uid>": 1.4 },
+  "swapMoves": { "<other uid>": "tide-relay" },
   "wins": 3, "losses": 0
 }
 ```
 
-`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`). `teamwork` is the creature's Teamwork with each partner, by uid: it grows 0.2 a turn on the active team and +1 per battle from swapping, capped at half the level (see `engine/teamwork.ts`; older saves called it `affinity` and are migrated on load). `bond` (optional) marks the starter: it never leaves from low Morale and can't be released or given away.
+`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`). `swapMoves` holds the Swap Move the trainer set for each partner (by uid): the one this creature uses when it swaps in for that partner; unset means the species' favourite (see `engine/swaps.ts`). `teamwork` is the creature's Teamwork with each partner, by uid: it grows 0.2 a turn on the active team and +1 per battle from swapping, capped at half the level (see `engine/teamwork.ts`; older saves called it `affinity` and are migrated on load). `bond` (optional) marks the starter: it never leaves from low Morale and can't be released or given away.
 
 The save also holds:
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`.

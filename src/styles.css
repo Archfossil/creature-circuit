@@ -248,6 +248,19 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .mini-panel { background: var(--paper); border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; }
 .mini-panel h5 { font-size: 14px; }
 .mini-panel p { font-size: 13px; margin: 3px 0; }
+/* Swap Moves on the creature card: one slot per teammate */
+.swap-list { display: grid; gap: 6px; }
+.swap-slot { background: var(--paper); border: 2px solid var(--ink); border-radius: 12px; padding: 6px 10px; display: grid; gap: 2px; font-size: 13px; }
+.swap-slot small { color: var(--ink-2); }
+.swap-slot-head { display: flex; align-items: center; gap: 6px; }
+/* Swap Move picker */
+.swap-pick { display: grid; gap: 6px; }
+.swap-opt { display: grid; gap: 2px; text-align: left; background: var(--paper); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; cursor: pointer; font: inherit; color: inherit; }
+.swap-opt:hover:not(:disabled) { border-color: var(--ink); }
+.swap-opt.on { border-color: var(--ink); background: #dcf7e8; }
+.swap-opt.locked { opacity: 0.55; cursor: not-allowed; }
+.swap-opt-head { display: flex; align-items: center; gap: 6px; }
+.swap-opt-head .chip { margin-left: auto; }
 .perks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .perk { font: inherit; border: 2px dashed var(--line); background: var(--paper); border-radius: 10px; padding: 6px; text-align: left; display: grid; gap: 2px; cursor: pointer; }
 .perk b { font-family: var(--font-head); font-size: 13px; }

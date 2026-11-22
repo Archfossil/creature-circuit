@@ -22,7 +22,8 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 - **Design ☐**: the creature has a real name, concept, flavour text and stat direction. Tick ☑ when approved.
 - **Art ☐**: the creature has final art (portrait and model or sprite). Tick ☑ when delivered. No creature has final art yet: every one, hand-made or placeholder, uses the procedural model.
 - Hand-made creatures start with Design ☑ because they already have a real name, look and flavour text.
-- **Types, biomes, Out by, Ability, Affinity and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
+- **Types, biomes, Out by, Ability, Favourite Swap Move and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
+- **Favourite Swap Move** is one of the five neutral Swap Moves. The creature uses it when it swaps in until the trainer sets another for that partner on its card (see [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves)).
 - **Swapping one in (developers):** add the species in `src/data/species.ts`, then point its slot in `HANDMADE_SLOTS` or `HANDMADE_LEGENDARIES` (`src/data/roster.ts`) at it. The placeholder disappears; regenerate this file.
 - A new Legendary also needs a roaming node on the map (`src/data/map.ts`).
 
@@ -73,7 +74,7 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 
 Spawns in: Tundra, Mountain.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Twinkit** | `twinkit` | Astral | Nocturnal | Star Seeker | Slipstream | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
 | Common | 2 | **Lumenox** | `lumenox` | Astral | Nocturnal | Star Seeker | Slipstream | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
@@ -90,7 +91,7 @@ Spawns in: Tundra, Mountain.
 
 Spawns in: Fey Grove, Forest, Meadow.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Mossprite** | `mossprite` | Charm | Nocturnal | Baby-Doll Eyes | Rally | Sig: Moonveil Kiss | Hand-made | ☑ | ☐ |
 | Common | 2 | **Fernixie** | `fernixie` | Charm | Nocturnal | Baby-Doll Eyes | Rally | Sig: Moonveil Kiss | Hand-made | ☑ | ☐ |
@@ -107,7 +108,7 @@ Spawns in: Fey Grove, Forest, Meadow.
 
 Spawns in: Badlands, Road, Desert.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapup** | `zapup` | Electric | Diurnal | Trailblazer | Slipstream | Sig: Stormcall | Hand-made | ☑ | ☐ |
 | Common | 2 | **Voltusk** | `voltusk` | Electric | Diurnal | Trailblazer | Slipstream | Sig: Stormcall | Hand-made | ☑ | ☐ |
@@ -124,7 +125,7 @@ Spawns in: Badlands, Road, Desert.
 
 Spawns in: Volcanic, Desert.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Cindercub** | `cindercub` | Fire | Diurnal | Forager | Tag Strike | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Common | 2 | **Blazmane** | `blazmane` | Fire | Diurnal | Forager | Tag Strike | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
@@ -141,7 +142,7 @@ Spawns in: Volcanic, Desert.
 
 Spawns in: Forest, Meadow, Swamp.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Sproutle** | `sproutle` | Grass | Diurnal | Forager | Shield Pass | Sig: Overgrowth | Hand-made | ☑ | ☐ |
 | Common | 2 | **Thornback** | `thornback` | Grass | Diurnal | Forager | Shield Pass | Sig: Overgrowth | Hand-made | ☑ | ☐ |
@@ -158,7 +159,7 @@ Spawns in: Forest, Meadow, Swamp.
 
 Spawns in: Canyon, Mountain, Badlands.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pebbark** | `pebbark` | Rock | Day & night | Keen Nose | Shield Pass | Sig: Mesa Breaker | Hand-made | ☑ | ☐ |
 | Common | 2 | **Cragjaw** | `cragjaw` | Rock | Day & night | Keen Nose | Shield Pass | Sig: Mesa Breaker | Hand-made | ☑ | ☐ |
@@ -175,7 +176,7 @@ Spawns in: Canyon, Mountain, Badlands.
 
 Spawns in: Coast, Road, Mountain.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Rivetail** | `rivetail` | Steel | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Foundry Hammer | Hand-made | ☑ | ☐ |
 | Common | 2 | **Ferrocrab** | `ferrocrab` | Steel | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Foundry Hammer | Hand-made | ☑ | ☐ |
@@ -192,7 +193,7 @@ Spawns in: Coast, Road, Mountain.
 
 Spawns in: Lake, River, Swamp, Coast.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Puddlit** | `puddlit` | Water | Day & night | Quick Step | Siphon | Sig: Riptide | Hand-made | ☑ | ☐ |
 | Common | 2 | **Marshfin** | `marshfin` | Water | Day & night | Quick Step | Siphon | Sig: Riptide | Hand-made | ☑ | ☐ |
@@ -209,7 +210,7 @@ Spawns in: Lake, River, Swamp, Coast.
 
 Spawns in: Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Stelbloomkit** | `ph-astral-charm-common-1` | Astral / Charm | Nocturnal | Sweet Scent | Siphon | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
 | Common | 2 | **Stelbloomox** | `ph-astral-charm-common-2` | Astral / Charm | Nocturnal | Sweet Scent | Siphon | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
@@ -226,7 +227,7 @@ Spawns in: Cloud.
 
 Spawns in: Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Stelvoltkit** | `ph-astral-electric-common-1` | Astral / Electric | Day & night | Baby-Doll Eyes | Rally | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
 | Common | 2 | **Stelvoltox** | `ph-astral-electric-common-2` | Astral / Electric | Day & night | Baby-Doll Eyes | Rally | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
@@ -243,7 +244,7 @@ Spawns in: Cloud.
 
 Spawns in: Mountain, Tundra, Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Stelflarekit** | `ph-astral-fire-common-1` | Astral / Fire | Day & night | Keen Nose | Tag Strike | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
 | Common | 2 | **Stelflareox** | `ph-astral-fire-common-2` | Astral / Fire | Day & night | Keen Nose | Tag Strike | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
@@ -260,7 +261,7 @@ Spawns in: Mountain, Tundra, Cloud.
 
 Spawns in: Mountain, Tundra, Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Stelleafkit** | `ph-astral-grass-common-1` | Astral / Grass | Day & night | Star Seeker | Shield Pass | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
 | Common | 2 | **Stelleafox** | `ph-astral-grass-common-2` | Astral / Grass | Day & night | Star Seeker | Shield Pass | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
@@ -277,7 +278,7 @@ Spawns in: Mountain, Tundra, Cloud.
 
 Spawns in: Mountain.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Cragstarkit** | `ph-rock-astral-common-1` | Rock / Astral | Nocturnal | Baby-Doll Eyes | Slipstream | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
 | Common | 2 | **Cragstarox** | `ph-rock-astral-common-2` | Rock / Astral | Nocturnal | Baby-Doll Eyes | Slipstream | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
@@ -294,7 +295,7 @@ Spawns in: Mountain.
 
 Spawns in: Mountain.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Ferrostarkit** | `ph-steel-astral-common-1` | Steel / Astral | Nocturnal | Star Seeker | Siphon | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
 | Common | 2 | **Ferrostarox** | `ph-steel-astral-common-2` | Steel / Astral | Nocturnal | Star Seeker | Siphon | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
@@ -311,7 +312,7 @@ Spawns in: Mountain.
 
 Spawns in: Tundra, Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Aquastarkit** | `ph-water-astral-common-1` | Water / Astral | Nocturnal | Forager | Rally | Sig: Riptide | Placeholder | ☐ | ☐ |
 | Common | 2 | **Aquastarox** | `ph-water-astral-common-2` | Water / Astral | Nocturnal | Forager | Rally | Sig: Riptide | Placeholder | ☐ | ☐ |
@@ -328,7 +329,7 @@ Spawns in: Tundra, Cloud.
 
 Spawns in: Meadow, Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pixivoltkit** | `ph-charm-electric-common-1` | Charm / Electric | Day & night | Sweet Scent | Tag Strike | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pixivoltox** | `ph-charm-electric-common-2` | Charm / Electric | Day & night | Sweet Scent | Tag Strike | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
@@ -345,7 +346,7 @@ Spawns in: Meadow, Cloud.
 
 Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud, Forest Floor.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pixiflarekit** | `ph-charm-fire-common-1` | Charm / Fire | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pixiflareox** | `ph-charm-fire-common-2` | Charm / Fire | Day & night | Baby-Doll Eyes | Shield Pass | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
@@ -362,7 +363,7 @@ Spawns in: Forest, Fey Grove, Meadow, Lake, Cloud, Forest Floor.
 
 Spawns in: Forest, Fey Grove, Meadow, Forest Floor.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pixileafkit** | `ph-charm-grass-common-1` | Charm / Grass | Day & night | Keen Nose | Slipstream | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pixileafox** | `ph-charm-grass-common-2` | Charm / Grass | Day & night | Keen Nose | Slipstream | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
@@ -379,7 +380,7 @@ Spawns in: Forest, Fey Grove, Meadow, Forest Floor.
 
 Spawns in: Forest Floor.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pixistonekit** | `ph-charm-rock-common-1` | Charm / Rock | Nocturnal | Star Seeker | Siphon | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pixistoneox** | `ph-charm-rock-common-2` | Charm / Rock | Nocturnal | Star Seeker | Siphon | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
@@ -396,7 +397,7 @@ Spawns in: Forest Floor.
 
 Spawns in: Mountain, Road, Coast.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Ferrobloomkit** | `ph-steel-charm-common-1` | Steel / Charm | Nocturnal | Baby-Doll Eyes | Rally | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
 | Common | 2 | **Ferrobloomox** | `ph-steel-charm-common-2` | Steel / Charm | Nocturnal | Baby-Doll Eyes | Rally | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
@@ -413,7 +414,7 @@ Spawns in: Mountain, Road, Coast.
 
 Spawns in: Lake, Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Aquabloomkit** | `ph-water-charm-common-1` | Water / Charm | Nocturnal | Star Seeker | Tag Strike | Sig: Riptide | Placeholder | ☐ | ☐ |
 | Common | 2 | **Aquabloomox** | `ph-water-charm-common-2` | Water / Charm | Nocturnal | Star Seeker | Tag Strike | Sig: Riptide | Placeholder | ☐ | ☐ |
@@ -430,7 +431,7 @@ Spawns in: Lake, Cloud.
 
 Spawns in: Desert.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapflarekit** | `ph-electric-fire-common-1` | Electric / Fire | Diurnal | Lucky Charm | Shield Pass | Sig: Stormcall | Placeholder | ☐ | ☐ |
 | Common | 2 | **Zapflareox** | `ph-electric-fire-common-2` | Electric / Fire | Diurnal | Lucky Charm | Shield Pass | Sig: Stormcall | Placeholder | ☐ | ☐ |
@@ -447,7 +448,7 @@ Spawns in: Desert.
 
 Spawns in: Meadow.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapleafkit** | `ph-electric-grass-common-1` | Electric / Grass | Diurnal | Sweet Scent | Slipstream | Sig: Stormcall | Placeholder | ☐ | ☐ |
 | Common | 2 | **Zapleafox** | `ph-electric-grass-common-2` | Electric / Grass | Diurnal | Sweet Scent | Slipstream | Sig: Stormcall | Placeholder | ☐ | ☐ |
@@ -464,7 +465,7 @@ Spawns in: Meadow.
 
 Spawns in: Desert, Badlands.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapstonekit** | `ph-electric-rock-common-1` | Electric / Rock | Diurnal | Baby-Doll Eyes | Siphon | Sig: Stormcall | Placeholder | ☐ | ☐ |
 | Common | 2 | **Zapstoneox** | `ph-electric-rock-common-2` | Electric / Rock | Diurnal | Baby-Doll Eyes | Siphon | Sig: Stormcall | Placeholder | ☐ | ☐ |
@@ -481,7 +482,7 @@ Spawns in: Desert, Badlands.
 
 Spawns in: Road.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapgearkit** | `ph-electric-steel-common-1` | Electric / Steel | Diurnal | Keen Nose | Rally | Sig: Stormcall | Placeholder | ☐ | ☐ |
 | Common | 2 | **Zapgearox** | `ph-electric-steel-common-2` | Electric / Steel | Diurnal | Keen Nose | Rally | Sig: Stormcall | Placeholder | ☐ | ☐ |
@@ -498,7 +499,7 @@ Spawns in: Road.
 
 Spawns in: Cloud.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Aquavoltkit** | `ph-water-electric-common-1` | Water / Electric | Diurnal | Sweet Scent | Tag Strike | Sig: Riptide | Placeholder | ☐ | ☐ |
 | Common | 2 | **Aquavoltox** | `ph-water-electric-common-2` | Water / Electric | Diurnal | Sweet Scent | Tag Strike | Sig: Riptide | Placeholder | ☐ | ☐ |
@@ -515,7 +516,7 @@ Spawns in: Cloud.
 
 Spawns in: Desert, Volcanic, Canyon.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pyroleafkit** | `ph-fire-grass-common-1` | Fire / Grass | Diurnal | Forager | Shield Pass | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pyroleafox** | `ph-fire-grass-common-2` | Fire / Grass | Diurnal | Forager | Shield Pass | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
@@ -532,7 +533,7 @@ Spawns in: Desert, Volcanic, Canyon.
 
 Spawns in: Desert, Volcanic, Canyon.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pyrostonekit** | `ph-fire-rock-common-1` | Fire / Rock | Diurnal | Quick Step | Slipstream | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pyrostoneox** | `ph-fire-rock-common-2` | Fire / Rock | Diurnal | Quick Step | Slipstream | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
@@ -549,7 +550,7 @@ Spawns in: Desert, Volcanic, Canyon.
 
 Spawns in: Desert, Volcanic, Canyon.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pyrogearkit** | `ph-fire-steel-common-1` | Fire / Steel | Diurnal | Lucky Charm | Siphon | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pyrogearox** | `ph-fire-steel-common-2` | Fire / Steel | Diurnal | Lucky Charm | Siphon | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
@@ -566,7 +567,7 @@ Spawns in: Desert, Volcanic, Canyon.
 
 Spawns in: Desert, Volcanic, Canyon.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Pyrotidekit** | `ph-fire-water-common-1` | Fire / Water | Diurnal | Sweet Scent | Rally | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
 | Common | 2 | **Pyrotideox** | `ph-fire-water-common-2` | Fire / Water | Diurnal | Sweet Scent | Rally | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
@@ -583,7 +584,7 @@ Spawns in: Desert, Volcanic, Canyon.
 
 Spawns in: Forest Floor.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Sprigstonekit** | `ph-grass-rock-common-1` | Grass / Rock | Diurnal | Keen Nose | Tag Strike | Sig: Overgrowth | Placeholder | ☐ | ☐ |
 | Common | 2 | **Sprigstoneox** | `ph-grass-rock-common-2` | Grass / Rock | Diurnal | Keen Nose | Tag Strike | Sig: Overgrowth | Placeholder | ☐ | ☐ |
@@ -600,7 +601,7 @@ Spawns in: Forest Floor.
 
 Spawns in: Forest, Fey Grove, Meadow, River, Swamp, Forest Floor.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Spriggearkit** | `ph-grass-steel-common-1` | Grass / Steel | Diurnal | Star Seeker | Shield Pass | Sig: Overgrowth | Placeholder | ☐ | ☐ |
 | Common | 2 | **Spriggearox** | `ph-grass-steel-common-2` | Grass / Steel | Diurnal | Star Seeker | Shield Pass | Sig: Overgrowth | Placeholder | ☐ | ☐ |
@@ -617,7 +618,7 @@ Spawns in: Forest, Fey Grove, Meadow, River, Swamp, Forest Floor.
 
 Spawns in: River, Swamp.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Sprigtidekit** | `ph-grass-water-common-1` | Grass / Water | Diurnal | Trailblazer | Slipstream | Sig: Overgrowth | Placeholder | ☐ | ☐ |
 | Common | 2 | **Sprigtideox** | `ph-grass-water-common-2` | Grass / Water | Diurnal | Trailblazer | Slipstream | Sig: Overgrowth | Placeholder | ☐ | ☐ |
@@ -634,7 +635,7 @@ Spawns in: River, Swamp.
 
 Spawns in: Mountain.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Craggearkit** | `ph-rock-steel-common-1` | Rock / Steel | Day & night | Quick Step | Siphon | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
 | Common | 2 | **Craggearox** | `ph-rock-steel-common-2` | Rock / Steel | Day & night | Quick Step | Siphon | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
@@ -651,7 +652,7 @@ Spawns in: Mountain.
 
 Spawns in: Mountain, Desert, Badlands, Volcanic, Canyon, Forest Floor.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Cragtidekit** | `ph-rock-water-common-1` | Rock / Water | Day & night | Lucky Charm | Rally | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
 | Common | 2 | **Cragtideox** | `ph-rock-water-common-2` | Rock / Water | Day & night | Lucky Charm | Rally | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
@@ -668,7 +669,7 @@ Spawns in: Mountain, Desert, Badlands, Volcanic, Canyon, Forest Floor.
 
 Spawns in: Coast.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Ferrotidekit** | `ph-steel-water-common-1` | Steel / Water | Day & night | Baby-Doll Eyes | Tag Strike | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
 | Common | 2 | **Ferrotideox** | `ph-steel-water-common-2` | Steel / Water | Day & night | Baby-Doll Eyes | Tag Strike | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
@@ -687,7 +688,7 @@ Spawns in: Coast.
 
 The original hand-made Prime and Apex creatures, from before the roster table existed. They appear in the wild but don’t fill a roster slot. Design could move them into a matching slot (replacing that slot’s placeholder family) or keep them as extras. Either way they need art.
 
-| Family | Stage | Name | ID | Types | Out by | Ability | Affinity | Notes | Status | Design | Art |
+| Family | Stage | Name | ID | Types | Out by | Ability | Favourite Swap Move | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Prime | 1 | **Orbuddle** | `orbuddle` | Astral | Nocturnal | Lucky Charm | Shield Pass | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Nebulith** | `nebulith` | Astral / Rock | Nocturnal | Lucky Charm | Shield Pass | — | Hand-made | ☑ | ☐ |

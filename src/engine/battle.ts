@@ -1,12 +1,13 @@
 import type { ArenaTrick, ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, critFrom } from '../data/moves';
-import { AFFINITIES } from '../data/content';
-import { effectiveness, TYPE_LABEL } from '../data/types';
+import { describeSwap, swapChart, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../data/swapMoves';
+import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
-import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
+import { stats, maxHealth, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie } from './dice';
-import { addTeamwork, teamworkBonus, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
+import { addTeamwork, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
+import { swapMoveOf, swapVals } from './swaps';
 
 export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
 
@@ -64,7 +65,7 @@ export type BEvent =
   | { t: 'say'; text: string; tone?: 'good' | 'bad' | 'info' }
   /** A speed tie. `first`: who acts first (the higher roller, or on equal rolls the winner of a coin flip, `coin`). */
   | { t: 'clash'; dice: [number, number]; rolls: [number, number]; loser: 0 | 1 | null; dmg: number; first: 0 | 1; coin?: boolean }
-  | { t: 'use'; side: 0 | 1; name: string; move: string; type?: ElementType; kind: Move['kind'] | 'affinity' }
+  | { t: 'use'; side: 0 | 1; name: string; move: string; type?: ElementType; kind: Move['kind'] | 'swap' }
   | { t: 'roll'; side: 0 | 1; die: number; value: number; need: number; hit: boolean; crit: boolean; label: string; natural?: number; mods?: Part[] }
   | { t: 'damage'; side: 0 | 1; amount: number; eff: number; crit: boolean; snap: Snap; calc?: DamageCalc }
   | { t: 'heal'; side: 0 | 1; amount: number; snap: Snap }
@@ -350,7 +351,7 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
     if (a.kind === 'move') s += (MOVE_BY_ID[a.move] ?? CATCH_BREATH).speed;
     if (a.kind === 'swap') {
       const inc = b.sides[si].team[a.to];
-      if (speciesOf(inc).affinity === 'slipstream') s += 3;
+      s += swapMoveOf(inc, activeOf(b.sides[si])).speed ?? 0;
     }
     if (a.kind === 'flee') s = stats(activeOf(b.sides[si])).speed;
     return s;
@@ -643,44 +644,24 @@ function applyEffects(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   }
 }
 
-// ── Affinity Powers (swap-ins) ──────────────────────────────────
-/** Tag Strike's accuracy die (the only swap power that can miss). */
-export const TAG_STRIKE_DIE = 8;
-/** The damage die of Shield Pass's counter, Slipstream and Siphon. */
-export const SWAP_HIT_DIE = 6;
-/** Armor or Ward that Shield Pass borrows from a partner stat (before the Teamwork bonus): half, rounded up, at least 1. */
-const shieldPassed = (v: number) => Math.max(1, Math.ceil(v / 2));
-/** Rally's Power and Focus boost: +1, or +2 with a Teamwork bonus. */
-const rallyBoost = (bonus: number) => 1 + (bonus > 0 ? 1 : 0);
+// ── Swap Moves (data/swapMoves.ts) ──────────────────────────────
 const pairKey = (a: CreatureInst, b: CreatureInst) => [a.uid, b.uid].sort().join('|');
+const statsOf = (b: Battle, si: 0 | 1): Stats => Object.fromEntries(STAT_KEYS.map((k) => [k, eff(b, si, k)])) as Stats;
 
 /**
- * What swapping `to` in as the Alpha would do right now, for the swap screen: its Teamwork with the
- * creature on the field, the bonus that gives, whether this swap still earns Teamwork this battle,
- * and the power's effect with the numbers filled in.
+ * What swapping `to` in as the Alpha would do right now, for the swap screen: its Swap Move with this
+ * partner, their Teamwork and the bonus it gives, whether this swap still earns Teamwork this battle,
+ * and the move's effect with the numbers filled in.
  */
 export function swapPreview(b: Battle, si: 0 | 1, to: number) {
   const side = b.sides[si];
   const partner = activeOf(side), alpha = side.team[to];
   const fi: 0 | 1 = si === 0 ? 1 : 0;
-  const foe = activeOf(b.sides[fi]);
-  const power = AFFINITIES[speciesOf(alpha).affinity];
-  const teamwork = teamworkOf(alpha, partner);
-  const bonus = teamworkBonus(alpha, partner);
+  const m = swapMoveOf(alpha, partner);
+  const v = swapVals(alpha, partner, { a: stats(alpha, side.buff), f: statsOf(b, fi) });
   const earned = (b.teamworkPairs ?? []).includes(pairKey(alpha, partner));
   const capped = teamworkOf(alpha, partner) >= teamworkCap(alpha) && teamworkOf(partner, alpha) >= teamworkCap(partner);
-  const ps = stats(partner), as = stats(alpha, side.buff), fs = stats(foe, b.sides[fi].buff);
-  const plus = bonus ? ` + ${bonus} Teamwork` : '';
-  const pn = nameOf(partner);
-  let effect: string;
-  switch (power.mode) {
-    case 'tagStrike': effect = `d${TAG_STRIKE_DIE} to hit (needs ${fs.evasion}+). On a hit: d6 + ${pn}’s Focus ${ps.focus}${plus} − Ward ${fs.ward}, as ${TYPE_LABEL[speciesOf(partner).types[0]]} on the type chart.`; break;
-    case 'shieldPass': effect = `+${shieldPassed(ps.armor) + bonus} Armor and +${shieldPassed(ps.ward) + bonus} Ward while it stays in (from ${pn}${plus}), then a sure counter: d${SWAP_HIT_DIE} + Power ${as.power} − Armor ${fs.armor}.`; break;
-    case 'slipstream': effect = `+3 Speed to go first, then a sure hit: d${SWAP_HIT_DIE} + Power ${as.power} + ${Math.floor(ps.speed / 3)} (${pn}’s Speed ÷ 3)${plus} − Armor ${fs.armor}.`; break;
-    case 'siphon': effect = `A sure hit: d${SWAP_HIT_DIE} + Focus ${as.focus} − Ward ${fs.ward}, then heals ${Math.ceil(ps.vigor / 2) + bonus} Health (${pn}’s Vigor ÷ 2${plus}).`; break;
-    default: effect = `Refills both creatures’ Stamina, clears 1 Fatigue from each, and gives +${rallyBoost(bonus)} Power and Focus${bonus ? ' (Teamwork bonus)' : ''}.`;
-  }
-  return { power: power.name, teamwork, bonus, earned, capped, effect };
+  return { move: m, power: m.name, teamwork: teamworkOf(alpha, partner), bonus: v.bonus, earned, capped, effect: describeSwap(m, v) };
 }
 
 function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
@@ -688,72 +669,112 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   const partner = activeOf(side);
   const alpha = side.team[to];
   if (!alpha || alpha.ko) return;
+  const m = swapMoveOf(alpha, partner);
   side.active = to;
   noteFoe(b);
   side.mods = {};
   side.zeroIn = 0;
   if (!b.participants.includes(alpha.uid) && si === 0) b.participants.push(alpha.uid);
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
-  const powerId = speciesOf(alpha).affinity;
-  const power = AFFINITIES[powerId];
   // the bonus uses the Teamwork from before this swap; a pair earns Teamwork from swapping once per battle
-  const bonus = teamworkBonus(alpha, partner);
+  const v = swapVals(alpha, partner);
   const key = pairKey(alpha, partner);
   if (!(b.teamworkPairs ??= []).includes(key)) {
     b.teamworkPairs.push(key);
     const rise = addTeamwork(alpha, partner, TEAMWORK_PER_SWAP);
     if (rise && si === 0) (b.teamworkGains ??= []).push(rise);
   }
-  ev.push({ t: 'use', side: si, name: `${power.name}`, move: powerId, kind: 'affinity', type: speciesOf(partner).types[0] });
+  const chart = swapChart(m, v);
+  ev.push({ t: 'use', side: si, name: m.name, move: m.id, kind: 'swap', type: chart ?? m.type });
   const fi: 0 | 1 = si === 0 ? 1 : 0;
+  // the Alpha's and foe's stats as they stand on the field now
+  v.a = statsOf(b, si);
+  v.f = statsOf(b, fi);
+  for (const e of m.before ?? []) swapEffect(b, si, m, e, v, partner, ev);
+  if (m.hit && !activeOf(b.sides[fi]).ko) { v.a = statsOf(b, si); v.f = statsOf(b, fi); swapHit(b, si, m, v, ev); }
+  if (!b.over) for (const e of m.after ?? []) swapEffect(b, si, m, e, v, partner, ev);
+}
+
+/** Inflict a status on side `fi`'s creature, if it's standing and has none. */
+function inflict(b: Battle, fi: 0 | 1, status: StatusId, ev: BEvent[]) {
   const foe = activeOf(b.sides[fi]);
-  const pst = stats(partner);
-  const hitFoe = (dmg: number, mult = 1) => {
-    const d = mult === 0 ? 0 : Math.max(1, Math.floor(dmg * mult));
-    applyDamage(foe, d);
-    ev.push({ t: 'damage', side: fi, amount: d, eff: mult, crit: false, snap: snap(b, foe) });
-    if (foe.ko) handleKO(b, fi, ev);
-  };
-  switch (power.mode) {
-    case 'tagStrike': {
-      const t = speciesOf(partner).types[0];
-      const v = roll(TAG_STRIKE_DIE);
-      const need = eff(b, fi, 'evasion');
-      ev.push({ t: 'roll', side: si, die: TAG_STRIKE_DIE, value: v, need, hit: v >= need, crit: false, label: `${TYPE_LABEL[t]} Tag Strike` });
-      if (v >= need) hitFoe(roll(6) + pst.focus + bonus - eff(b, fi, 'ward'), effectiveness(t, speciesOf(foe).types));
-      else ev.push({ t: 'say', text: 'The tag strike missed!', tone: 'info' });
-      break;
+  if (foe.ko || b.status[foe.uid]) return;
+  b.status[foe.uid] = { id: status, turns: 3 };
+  ev.push({ t: 'status', side: fi, status, snap: snap(b, foe) });
+  ev.push({ t: 'say', text: `${nameOf(foe)} is afflicted with ${STATUS_INFO[status].name}!`, tone: 'info' });
+}
+
+function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVals, partner: CreatureInst, ev: BEvent[]) {
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const alpha = activeOf(b.sides[si]);
+  switch (e.t) {
+    case 'mod': {
+      if (e.who === 'foe' && activeOf(b.sides[fi]).ko) return;
+      const n = e.n(v);
+      addMod(b, e.who === 'self' ? si : fi, e.stat, n);
+      ev.push({ t: 'buff', side: e.who === 'self' ? si : fi, text: `${n >= 0 ? '+' : '−'}${Math.abs(n)} ${STAT_LABEL[e.stat]}` });
+      return;
     }
-    case 'shieldPass': {
-      const ar = shieldPassed(pst.armor) + bonus, wd = shieldPassed(pst.ward) + bonus;
-      addMod(b, si, 'armor', ar);
-      addMod(b, si, 'ward', wd);
-      ev.push({ t: 'buff', side: si, text: `borrowed +${ar} armor, +${wd} ward` });
-      hitFoe(Math.max(1, roll(SWAP_HIT_DIE) + eff(b, si, 'power') - eff(b, fi, 'armor')));
-      break;
+    case 'heal': {
+      const c = e.who === 'alpha' ? alpha : partner;
+      if (c.ko) return;
+      const n = Math.min(e.n(v), maxHealth(c) - c.health);
+      if (n <= 0) return;
+      c.health += n;
+      if (c === alpha) ev.push({ t: 'heal', side: si, amount: n, snap: snap(b, alpha) });
+      else ev.push({ t: 'say', text: `${nameOf(partner)} recovers ${n} Health on the bench.`, tone: 'good' });
+      return;
     }
-    case 'slipstream':
-      hitFoe(Math.max(1, roll(SWAP_HIT_DIE) + eff(b, si, 'power') + Math.floor(pst.speed / 3) + bonus - eff(b, fi, 'armor')));
-      break;
-    case 'siphon': {
-      const t = speciesOf(alpha).types[0];
-      hitFoe(Math.max(1, roll(SWAP_HIT_DIE) + eff(b, si, 'focus') - eff(b, fi, 'ward')), effectiveness(t, speciesOf(foe).types));
-      const heal = Math.ceil(pst.vigor / 2) + bonus;
-      alpha.health = Math.min(maxHealth(alpha), alpha.health + heal);
-      ev.push({ t: 'heal', side: si, amount: heal, snap: snap(b, alpha) });
-      break;
-    }
-    case 'rally':
+    case 'refill':
       alpha.stamina = maxStamina(alpha);
       partner.stamina = maxStamina(partner);
+      ev.push({ t: 'buff', side: si, text: 'Stamina restored' });
+      ev.push({ t: 'stamina', side: si, snap: snap(b, alpha) });
+      return;
+    case 'ease':
       alpha.fatigue = Math.max(0, alpha.fatigue - 1);
       partner.fatigue = Math.max(0, partner.fatigue - 1);
-      addMod(b, si, 'power', rallyBoost(bonus));
-      addMod(b, si, 'focus', rallyBoost(bonus));
-      ev.push({ t: 'buff', side: si, text: `+${rallyBoost(bonus)} power & focus, stamina restored, −1 fatigue` });
-      ev.push({ t: 'stamina', side: si, snap: snap(b, activeOf(side)) });
-      break;
+      ev.push({ t: 'buff', side: si, text: '−1 Fatigue' });
+      ev.push({ t: 'stamina', side: si, snap: snap(b, alpha) });
+      return;
+    case 'status': {
+      const st = swapStatus(m);
+      if (st) inflict(b, fi, st, ev);
+      return;
+    }
   }
+}
+
+function swapHit(b: Battle, si: 0 | 1, m: SwapMove, v: SwapVals, ev: BEvent[]) {
+  const h = m.hit!;
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const alpha = activeOf(b.sides[si]), foe = activeOf(b.sides[fi]);
+  if (h.acc) {
+    let die = h.acc;
+    if (b.status[alpha.uid]?.id === 'daze') die = Math.max(4, die - 2);
+    const natural = roll(die);
+    const mods = accuracyMods(b, si);
+    const value = natural + mods.reduce((a, p) => a + p.value, 0);
+    const need = eff(b, fi, 'evasion');
+    const hit = value >= need;
+    ev.push({ t: 'roll', side: si, die, value, need, hit, crit: false, label: `${m.name} accuracy`, natural, mods });
+    if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); return; }
+  }
+  const def = h.kind === 'physical' ? 'armor' : 'ward';
+  const parts: Part[] = [...h.parts(v), { label: `${nameOf(foe)}’s ${STAT_LABEL[def]}`, value: -eff(b, fi, def) }];
+  const r = roll(h.die);
+  const raw = Math.max(1, r + parts.reduce((a, p) => a + p.value, 0));
+  const chart = swapChart(m, v);
+  const mult = chart ? effectiveness(chart, speciesOf(foe).types) : 1;
+  const dmg = mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult));
+  applyDamage(foe, dmg);
+  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit: false, snap: snap(b, foe), calc: { dice: [h.die], rolls: [r], parts, raw, mult, crit: false, total: dmg } });
+  if (mult >= 2) ev.push({ t: 'say', text: mult >= 4 ? 'Devastatingly effective!' : 'Super effective!', tone: 'good' });
+  else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
+  else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
+  const st = h.status ? swapStatus(m) : undefined;
+  if (st && r <= 2) inflict(b, fi, st, ev);
+  if (foe.ko) handleKO(b, fi, ev);
 }
 
 /**
@@ -851,7 +872,7 @@ export function foeSendIn(b: Battle, idx: number): BEvent[] {
   ];
 }
 
-/** Player picks a replacement after a KO (no affinity trigger). */
+/** Player picks a replacement after a KO (no Swap Move). */
 export function sendIn(b: Battle, idx: number): BEvent[] {
   const s = b.sides[0];
   s.active = idx;

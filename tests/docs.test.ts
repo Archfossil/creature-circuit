@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { EVENT_IDS, EVENT_TIMES } from '../src/engine/events';
 import { CITIES } from '../src/data/map';
 import { TRAINER_STYLES } from '../src/engine/state';
-import { NATURES, ABILITIES, AFFINITIES } from '../src/data/content';
+import { NATURES, ABILITIES } from '../src/data/content';
+import { SWAP_MOVES } from '../src/data/swapMoves';
 
 describe('docs', () => {
   it('docs/10-events.md documents every event (by its id)', () => {
@@ -33,9 +34,9 @@ describe('docs', () => {
     const missing = TRAINER_STYLES.filter((st) => !doc.includes(`${st.name} · \`${st.id}\``)).map((st) => `${st.name} (${st.id})`);
     expect(missing, `Add these styles to docs/12-trainer-styles.md: ${missing.join(', ')}`).toEqual([]);
   });
-  it('docs/13-natures-and-abilities.md documents every Nature, Ability and Affinity Power', () => {
+  it('docs/13-natures-and-abilities.md documents every Nature, Ability and Swap Move', () => {
     const doc = readFileSync(new URL('../docs/13-natures-and-abilities.md', import.meta.url), 'utf-8');
-    const all = [...NATURES.map((n) => [n.name, n.id]), ...Object.values(ABILITIES).map((a) => [a.name, a.id]), ...Object.values(AFFINITIES).map((a) => [a.name, a.id])];
+    const all = [...NATURES.map((n) => [n.name, n.id]), ...Object.values(ABILITIES).map((a) => [a.name, a.id]), ...SWAP_MOVES.map((a) => [a.name, a.id])];
     const missing = all.filter(([name, id]) => !doc.includes(name) || !doc.includes(`\`${id}\``)).map(([name, id]) => `${name} (${id})`);
     expect(missing, `Add these to docs/13-natures-and-abilities.md: ${missing.join(', ')}`).toEqual([]);
   });

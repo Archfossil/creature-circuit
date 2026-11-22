@@ -1,4 +1,4 @@
-import type { Ability, AffinityPower, Item, Nature, WeatherDef, Biome, ElementType, TimeOfDay, Activity } from './schema';
+import type { Ability, Item, Nature, WeatherDef, Biome, ElementType, TimeOfDay, Activity } from './schema';
 import { TYPES, TYPE_LABEL } from './types';
 
 export const NATURES: Nature[] = [
@@ -27,14 +27,6 @@ export const ABILITIES: Record<string, Ability> = {
   forager: { id: 'forager', name: 'Forager', text: 'Found berries and materials come in pairs.' },
   quickStep: { id: 'quickStep', name: 'Quick Step', text: 'Always escape from wild battles, and get 1 Initiative back when you do.' },
   luckyCharm: { id: 'luckyCharm', name: 'Lucky Charm', text: '+1 to recruitment rolls.' },
-};
-
-export const AFFINITIES: Record<string, AffinityPower> = {
-  tagStrike: { id: 'tagStrike', name: 'Tag Strike', mode: 'tagStrike', text: 'Swaps in with an attack of the benched partner\'s type, powered by the partner\'s Focus.' },
-  shieldPass: { id: 'shieldPass', name: 'Shield Pass', mode: 'shieldPass', text: 'Borrows the partner\'s Armor and Ward while it stays in, then counters.' },
-  slipstream: { id: 'slipstream', name: 'Slipstream', mode: 'slipstream', text: 'Rides the partner\'s Speed to strike first with a physical hit.' },
-  siphon: { id: 'siphon', name: 'Siphon', mode: 'siphon', text: 'Drains the foe, healing using the partner\'s Vigor.' },
-  rally: { id: 'rally', name: 'Rally', mode: 'rally', text: 'Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus.' },
 };
 
 // ── Items ────────────────────────────────────────────────

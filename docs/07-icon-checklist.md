@@ -296,7 +296,7 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 - [ ] `loyalty`: 🤝 Loyalty chip
 - [ ] `loyalty-legendary`: ⏳ Legendary Loyalty, which drains each turn
 - [ ] `ability`: 🌿 Overworld Ability line
-- [ ] `teamwork`: 🤝 Teamwork. The chips in the creature card's Teamwork section and on the battle swap screen, and the "Teamwork grew" toasts at the start of a turn and after a battle.
+- [ ] `teamwork`: 🤝 Teamwork. The chip on each Swap Move slot (creature card and battle swap screen), and the "Teamwork grew" toasts at the start of a turn and after a battle.
 - [ ] `recruited`: 🗿 "Recruited" marker in the Codex and on cards
 - [ ] `perk-unlocked`: ✓ Nature perk unlocked
 - [ ] `perk-locked`: ○ Nature perk not yet unlocked
@@ -310,6 +310,10 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 - [ ] `move-add`: ➕ "Add move?" in a move's details (phones)
 - [ ] `move-remove`: ➖ "Remove move" in a move's details (phones)
 - [ ] `weak-to`: 🛡️ "Weak to" column header on the type chart
+
+**Swap Moves**
+- [ ] `swap-moves`: 🔁 Swap Moves section on the creature card, the favourite Swap Move panel, the follower sheet line and the battle swap screen (shares the battle Swap button's 🔁).
+- Typed Swap Moves show their type's icon in the picker and on the card, so they need no icon of their own.
 
 ## 10. Start-of-turn events (26) ★★
 
@@ -439,6 +443,7 @@ These are text symbols. They could stay as font characters, but are listed for a
 - [ ] `close`: ✕ Close buttons, taken colour swatches
 - [ ] `check`: ✓ Merit earned, done states
 - [ ] `arrow-back` / `arrow-next`: ← → Back/Next buttons (arrows inside sentences can stay as text)
+- [ ] `swap-slot`: ↪ "for (teammate)" on each Swap Move slot of the creature card
 
 ---
 

@@ -17,6 +17,8 @@ import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
 import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether } from '../src/engine/teamwork';
 import { swapPreview } from '../src/engine/battle';
+import { SWAP_MOVES, describeSwap } from '../src/data/swapMoves';
+import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { Box3 } from 'three';
 import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
 
@@ -3149,5 +3151,76 @@ describe('Teamwork', () => {
     const m = migrate(JSON.parse(JSON.stringify(s)))!;
     expect(m.roster[0].teamwork).toEqual({ other: 2 });
     expect('affinity' in m.roster[0]).toBe(false);
+  });
+});
+
+describe('Swap Moves', () => {
+  const trio = () => [createCreature('puddlit', 6), createCreature('zapup', 6), createCreature('sproutle', 6)] as const;
+  const typedFor = (c: ReturnType<typeof createCreature>, tier: number) => SWAP_MOVES.find((m) => m.type === speciesOf(c).types[0] && m.teamwork === tier)!;
+  it('are set per direction: each creature has its own move for each teammate', () => {
+    const [a, b, c] = trio();
+    a.teamwork[b.uid] = 3; a.teamwork[c.uid] = 3; b.teamwork[a.uid] = 3;
+    expect(setSwapMove(a, b, 'rally')).toBe(true);
+    expect(setSwapMove(a, c, 'siphon')).toBe(true);
+    expect(swapMoveOf(a, b).id).toBe('rally');
+    expect(swapMoveOf(a, c).id).toBe('siphon');
+    expect(swapMoveOf(b, a)).toBe(defaultSwapMove(b)); // b's own slot for a is still its favourite
+  });
+  it('typed moves need that type in the pair and enough Teamwork', () => {
+    const [a, b] = trio();
+    const t1 = typedFor(a, 1), t2 = typedFor(a, 2);
+    expect(swapLock(a, b, t1)).toMatch(/Teamwork 1/);
+    a.teamwork[b.uid] = 1;
+    expect(swapLock(a, b, t1)).toBe(null);
+    expect(swapLock(a, b, t2)).toMatch(/Teamwork 2/);
+    const foreign = SWAP_MOVES.find((m) => m.type && !speciesOf(a).types.includes(m.type) && !speciesOf(b).types.includes(m.type))!;
+    a.teamwork[b.uid] = 3;
+    expect(swapLock(a, b, foreign)).toMatch(/creature in the pair/);
+    expect(setSwapMove(a, b, foreign.id)).toBe(false);
+    // the partner's type counts too
+    expect(swapLock(a, b, typedFor(b, 2))).toBe(null);
+  });
+  it('a slot whose move is no longer allowed falls back to the favourite', () => {
+    const [a, b] = trio();
+    a.swapMoves[b.uid] = typedFor(a, 2).id; // set without the Teamwork for it
+    expect(swapMoveOf(a, b)).toBe(defaultSwapMove(a));
+  });
+  it('the battle uses the move set for that pair', () => {
+    const [a, b] = trio();
+    b.teamwork[a.uid] = 2;
+    setSwapMove(b, a, typedFor(b, 2).id);
+    const foe = createCreature('sproutle', 6);
+    const bt = createBattle(side('player', [a, b]), side('wild', [foe]), WEATHER.clear);
+    for (const c of [a, b, foe]) c.health = 999;
+    resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+    expect(swapPreview(bt, 0, 1).move.id).toBe(typedFor(b, 2).id);
+    const used = resolveRound(bt, { kind: 'swap', to: 1 }).find((e) => e.t === 'use' && e.side === 0);
+    expect(used && used.t === 'use' && used.move).toBe(typedFor(b, 2).id);
+  });
+  it('every Swap Move runs in battle and describes itself with real numbers', () => {
+    for (const m of SWAP_MOVES) {
+      // an Alpha of the move's type (any for neutral ones), with the Teamwork to set it
+      const sp = SPECIES.find((x) => x.rarity !== 'legendary' && (!m.type || x.types.includes(m.type)))!;
+      const a = createCreature(sp.id, 6), b = createCreature('zapup', 6);
+      a.teamwork[b.uid] = 3;
+      expect(setSwapMove(a, b, m.id), m.id).toBe(true);
+      const foe = createCreature('sproutle', 6);
+      const bt = createBattle(side('player', [b, a]), side('wild', [foe]), WEATHER.clear);
+      for (const c of [a, b, foe]) c.health = 999;
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      const ev = resolveRound(bt, { kind: 'swap', to: 1 });
+      expect(ev.some((e) => e.t === 'use' && e.move === m.id), m.id).toBe(true);
+      const text = describeSwap(m, swapVals(a, b));
+      expect(text, m.id).not.toMatch(/undefined|NaN/);
+    }
+  });
+  it('online edits set a Swap Move with the same rules', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    const z = createCreature('zapup', 4);
+    s.roster.push(z);
+    const me = s.roster[0];
+    expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: 'siphon' })).toBe(true);
+    expect(swapMoveOf(me, z).id).toBe('siphon');
+    expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: typedFor(me, 2).id })).toBe(false);
   });
 });

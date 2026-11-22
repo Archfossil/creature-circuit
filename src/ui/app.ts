@@ -2,7 +2,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -20,11 +20,12 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { SWAP_MOVE_BY_ID } from '../data/swapMoves';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
-import { ABILITIES, AFFINITIES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
+import { ABILITIES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -1513,13 +1514,13 @@ export class App {
     // a Chanko Nabe kicks in: say so, and keep a chip in the header for the whole battle
     const nabe = !ctx.watch && s.hotpot && b.sides[0].buff && Object.keys(b.sides[0].buff).length ? `${CITIES[s.hotpot.city]?.hotpot.name ?? 'Chanko Nabe'}: ${W.buffText(b.sides[0].buff)} this battle` : null;
     if (nabe) { note(`🍲 ${nabe}.`, { tone: 'good' }); toast(`🍲 ${nabe}!`, 'good', 3000); }
-    const KIND_TEXT: Record<string, string> = { physical: 'Physical · Power vs Armor', elemental: 'Elemental · Focus vs Ward', support: 'Support', affinity: 'Affinity Power' };
+    const KIND_TEXT: Record<string, string> = { physical: 'Physical · Power vs Armor', elemental: 'Elemental · Focus vs Ward', support: 'Support', swap: 'Swap Move' };
     const logEvent = (e: BEvent) => {
       switch (e.t) {
         case 'say': note(e.text, { tone: e.tone }); break;
         case 'arena': note(e.text, { tone: 'bad' }); break;
         case 'ring': note(`Plateau: ${e.left} of ${e.total} rounds left.`, { tone: e.left <= 2 ? 'bad' : undefined }); break;
-        case 'use': note(e.kind === 'affinity' ? `${whoOn(e.side)} swaps in with ${e.name}!` : `${whoOn(e.side)} used ${e.name}.`, { side: e.side, detail: [e.type ? TYPE_LABEL[e.type] : null, KIND_TEXT[e.kind]].filter(Boolean).join(' · ') }); break;
+        case 'use': note(e.kind === 'swap' ? `${whoOn(e.side)} swaps in with ${e.name}!` : `${whoOn(e.side)} used ${e.name}.`, { side: e.side, detail: [e.type ? TYPE_LABEL[e.type] : null, KIND_TEXT[e.kind]].filter(Boolean).join(' · ') }); break;
         case 'roll': {
           const rolled = e.natural ?? e.value;
           if (e.die === 20) { note(`${e.label}: rolled ${rolled}. ${e.hit ? 'It stays to fight.' : 'It loses interest…'}`, { side: e.side }); break; }
@@ -1575,11 +1576,11 @@ export class App {
           case 'ring': showRing(e.left, e.total); await bv.shrinkRing(1 - e.left / e.total); break;
           case 'use': {
             const who = nameOf(b.sides[e.side].team.find((x) => x.uid === disp[e.side].uid)!);
-            say(e.kind === 'affinity' ? `${who} swaps in with ${e.name}!` : `${who} used ${e.name}!`);
-            if (e.kind === 'elemental' || e.kind === 'affinity') sfx.zap(); else if (e.kind === 'support') sfx.heal();
+            say(e.kind === 'swap' ? `${who} swaps in with ${e.name}!` : `${who} used ${e.name}!`);
+            if (e.kind === 'elemental' || e.kind === 'swap') sfx.zap(); else if (e.kind === 'support') sfx.heal();
             if (e.kind === 'physical') await bv.lunge(e.side);
             else if (e.kind === 'elemental' && e.type) await bv.projectile(e.side, e.type);
-            else if (e.kind === 'affinity') await (e.move === 'shieldPass' || e.move === 'rally' ? bv.support(e.side, e.type) : e.type ? bv.projectile(e.side, e.type) : bv.lunge(e.side));
+            else if (e.kind === 'swap') { const hit = SWAP_MOVE_BY_ID[e.move]?.hit; await (!hit ? bv.support(e.side, e.type) : hit.kind === 'elemental' && e.type ? bv.projectile(e.side, e.type) : bv.lunge(e.side)); }
             else await bv.support(e.side, e.type);
             break;
           }
@@ -1739,8 +1740,8 @@ export class App {
       const swapPicker = () => {
         const cur = activeOf(b.sides[0]);
         const close = openSheet('Swap — choose the incoming Alpha', h('div', null,
-          h('p', { class: 'small' }, `The incoming creature is the Alpha: its Affinity Power triggers, borrowing from ${nameOf(cur)}. The swap resolves at ${nameOf(cur)}'s speed.`),
-          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its power. A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A creature’s Teamwork is capped at half its level.`),
+          h('p', { class: 'small' }, `The incoming creature is the Alpha: it uses the Swap Move set for swapping in for ${nameOf(cur)} (change it here or on its card). The swap resolves at ${nameOf(cur)}'s speed.`),
+          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2. A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A creature’s Teamwork is capped at half its level.`),
           h('div', { class: 'list' }, b.sides[0].team.map((c, i) => {
             if (c.ko || c === cur) return null;
             const pv = swapPreview(b, 0, i);
@@ -1748,7 +1749,8 @@ export class App {
             return h('div', { class: 'swap-row' },
               miniCard(c, { onClick: () => { close(); act({ kind: 'swap', to: i }); } }),
               h('div', { class: 'small' },
-                h('div', null, '🔁 ', h('b', null, pv.power), ` · 🤝 Teamwork ${fmtTeamwork(pv.teamwork)} with ${nameOf(cur)} → `, h('b', null, pv.bonus ? `+${pv.bonus} bonus` : 'no bonus yet')),
+                h('div', null, '🔁 ', h('b', null, pv.power), ` · 🤝 Teamwork ${fmtTeamwork(pv.teamwork)} with ${nameOf(cur)} → `, h('b', null, pv.bonus ? `+${pv.bonus} bonus` : 'no bonus yet'),
+                  ctx.watch ? null : h('button', { class: 'link', onclick: () => { close(); editSwapMove(c, cur, () => swapPicker()); } }, 'Change')),
                 h('div', null, pv.effect),
                 h('div', { class: 'muted' }, grows)));
           }))));
@@ -2632,7 +2634,7 @@ export class App {
 
   /**
    * Choose who follows you. Shown at the start of every turn (Settings → "Choose a follower each turn")
-   * and from the HUD's Following chip. Shows the current follower's Ability, Affinity, Morale and
+   * and from the HUD's Following chip. Shows the current follower's Ability, favourite Swap Move, Morale and
    * Loyalty, and every other creature that could follow. Closing keeps the current follower.
    */
   followerSheet(turnStart: boolean): Promise<void> {
@@ -2655,7 +2657,7 @@ export class App {
             h('small', { class: 'muted' }, 'Following you now'),
             h('h3', null, nameOf(cur), h('small', null, ` · Lv ${cur.level}`)),
             h('p', { class: 'small' }, '🌿 ', h('b', null, `Ability · ${ABILITIES[speciesOf(cur).ability].name}`), ': ', ABILITIES[speciesOf(cur).ability].text, h('span', { class: 'muted' }, ' (active while it follows)')),
-            h('p', { class: 'small' }, '🔁 ', h('b', null, `Affinity · ${AFFINITY_NAME(speciesOf(cur).affinity)}`), ': ', AFFINITIES[speciesOf(cur).affinity]?.text ?? '', h('span', { class: 'muted' }, ' (when swapped in as Alpha)')),
+            h('p', { class: 'small' }, '🔁 ', h('b', null, `Favourite Swap Move · ${SWAP_MOVE_BY_ID[speciesOf(cur).affinity]?.name ?? ''}`), ': ', SWAP_MOVE_BY_ID[speciesOf(cur).affinity]?.text ?? '', h('span', { class: 'muted' }, ' (set a Swap Move for each partner on its card)')),
             social(cur)))
         : h('div', { class: 'follow-current none' }, h('p', null, 'Nobody is following you. You’ll choose who leads each battle, and no overworld Ability is active.'));
       const others = s.roster.filter((c) => c.uid !== cur?.uid);
@@ -3353,4 +3355,3 @@ function probAtLeast(target: number) {
   return ok / 36;
 }
 function snapOf(c: CreatureInst): Snap { return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko }; }
-const AFFINITY_NAME = (id: string) => AFFINITIES[id]?.name ?? id;

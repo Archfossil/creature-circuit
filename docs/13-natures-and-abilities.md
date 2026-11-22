@@ -1,14 +1,14 @@
-# Natures, Abilities & Affinity Powers
+# Natures, Abilities & Swap Moves
 
 The traits every creature carries, shown on its index card:
 
 - **Nature:** a personality that shifts two stats and unlocks three perks as the creature's Loyalty grows. Each *creature* has its own.
 - **Ability:** an overworld power that's active while the creature is **Following** you. Set by *species*.
-- **Affinity Power:** what happens when the creature is **swapped in** during battle. Set by *species*.
+- **Swap Moves:** what happens when the creature is **swapped in** during battle. The trainer sets one for each teammate; each *species* has a favourite.
 
 **Code:**
-- `NATURES`, `ABILITIES` and `AFFINITIES` in `src/data/content.ts` hold the names, numbers and in-game text.
-- The rules are applied in `src/engine/creature.ts` (Natures), `src/engine/world.ts` (Abilities) and `src/engine/battle.ts` (Affinity Powers, in `doSwap`).
+- `NATURES` and `ABILITIES` in `src/data/content.ts`, and `SWAP_MOVES` in `src/data/swapMoves.ts`, hold the names, numbers and in-game text.
+- The rules are applied in `src/engine/creature.ts` (Natures), `src/engine/world.ts` (Abilities) and `src/engine/battle.ts` (Swap Moves, in `doSwap`; which a pair can set is in `src/engine/swaps.ts`).
 
 ---
 
@@ -195,35 +195,68 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 ---
 
-## Affinity Powers
+## Swap Moves
 
-### How Affinity Powers work
+### How Swap Moves work
 
-- **When:** a creature is **swapped in** during battle (from round 2). The incoming creature is the **Alpha**, and its species' Affinity Power triggers straight away, borrowing from the **partner** (the creature being swapped out).
-- **Teamwork** (`CreatureInst.teamwork`, rules in `engine/teamwork.ts`): each creature has a Teamwork score with every partner. The swap bonus is **the Alpha's Teamwork with the partner ÷ 2, rounded down**, using the value from *before* this swap. The swap screen shows each candidate's Teamwork, bonus and effect with the numbers filled in; the creature card lists its Teamwork with every teammate.
+- **When:** a creature is **swapped in** during battle (from round 2). The incoming creature is the **Alpha**; the one it replaces is the **partner**. The Alpha's Swap Move fires straight away.
+- **Chosen per direction:** the trainer sets one Swap Move for each teammate on a creature's card (`CreatureInst.swapMoves`, keyed by the partner's uid). It's used when this creature swaps in for that partner. So Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup, and from Puddlit swapping in for Sproutle. It can also be changed from the battle's swap screen.
+- **Favourite:** each species has a favourite (its `affinity`, one of the five neutral moves). A slot that's unset, or whose move is no longer allowed, uses it. Opposing trainers and wild creatures always use their favourite.
+- **Which moves a pair can set** (`swapLock` in `engine/swaps.ts`):
+  - **Neutral** moves: every pair, at any Teamwork.
+  - **Typed** moves: one of the two creatures must have the move's type. The first of each type needs the Alpha to have **Teamwork 1** with the partner, the second **Teamwork 2**.
+- **Typed hits** inflict their type's status on a **1 or 2** on the damage die (regular elemental moves need a 1). A few typed moves inflict it outright instead.
+- **Teamwork** (`CreatureInst.teamwork`, rules in `engine/teamwork.ts`): each creature has a Teamwork score with every partner. The swap bonus is **the Alpha's Teamwork with the partner ÷ 2, rounded down**, using the value from *before* this swap. It's added wherever a move's effect says "+ bonus".
   - **Travelling together:** every pair on the active team gains **0.2** at the end of each turn. When a pair reaches a new whole point, it's announced at the start of the next turn.
   - **Swapping:** a pair gains **+1** the first time one swaps in for the other in a battle. Later swaps between the same pair in that battle add nothing, so swapping back and forth doesn't farm it. Gains are announced when the battle ends.
   - **Cap:** a creature's Teamwork with any partner is at most **half its level** (Lv 4 → 2, Lv 12 → 6). Each creature has its own cap, so a pair's two values can differ.
   - Across levels 1–12 the bonus runs from 0 (under 2 Teamwork) to +3 (6 Teamwork, Lv 12).
-- **The swap resolves at the outgoing creature's Speed** (Slipstream gets +3 on top).
+- **The swap resolves at the outgoing creature's Speed**, plus the move's Speed bonus (Slipstream +3, Live Wire +2).
+- **Stat boosts** from a Swap Move last while the Alpha stays in, and are capped at ±3 like every battle modifier.
+- **Code:** the moves are data in `src/data/swapMoves.ts` (`before` effects, an optional `hit`, `after` effects). `doSwap()` in `src/engine/battle.ts` runs them, and `describeSwap()` writes the text the card and swap screen show from the same data.
 
-| # | Power | ID | In-game text | Exact effect | Creatures with it |
+### Neutral Swap Moves
+
+| # | Move | ID | Teamwork | In-game text | Exact effect | Favourite of |
+|---|---|---|---|---|---|---|
+| 1 | Tag Strike | `tagStrike` | 0 | "Swaps in with an attack of the partner's type, powered by the partner's Focus." | d8 to hit vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 species |
+| 2 | Shield Pass | `shieldPass` | 0 | "Borrows the partner's Armor and Ward while it stays in, then counters." | +(partner's Armor ÷ 2, rounded up, at least 1, + bonus) Armor and the same for Ward, then a sure counter: d6 + Power − foe's Armor. | 82 species |
+| 3 | Slipstream | `slipstream` | 0 | "Rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d6 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 species |
+| 4 | Siphon | `siphon` | 0 | "Drains the foe, healing using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 species |
+| 5 | Rally | `rally` | 0 | "Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). | 77 species |
+
+### Typed Swap Moves
+
+"Status on a 1–2" means the type's status (Astral Daze, Charm Beguile, Electric Shock, Fire Burn, Grass Snare, Rock Stagger, Steel Sunder, Water Soak) when the damage die shows 1 or 2. Elemental hits use the move's own type on the type chart; physical ones ignore it.
+
+| Type | Move | ID | Teamwork | In-game text | Exact effect |
 |---|---|---|---|---|---|
-| 1 | Tag Strike | `tagStrike` | "Swaps in with an attack of the benched partner's type, powered by the partner's Focus." | Accuracy **d8** vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 |
-| 2 | Shield Pass | `shieldPass` | "Borrows the partner's Armor and Ward while it stays in, then counters." | +(partner's Armor ÷ 2, rounded up, **at least 1**, + bonus) Armor and the same for Ward (they last while it stays in), then a sure counter: **d6** + Power − foe's Armor. | 82 |
-| 3 | Slipstream | `slipstream` | "Rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: **d6** + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 |
-| 4 | Siphon | `siphon` | "Drains the foe, healing using the partner's Vigor." | A sure hit: **d6** + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 |
-| 5 | Rally | `rally` | "Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). | 77 |
+| Astral | Starfall Relay | `starfall-relay` | 1 | "The partner's Focus falls as starlight on the foe." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
+| Astral | Twin Orbit | `twin-orbit` | 2 | "The pair circle each other: the Alpha slips out of reach and the foe loses track." | +1 Evasion; foe −1 Evasion. Then a sure hit: d6 + Focus + bonus − Ward. Status on a 1–2. |
+| Charm | Sweet Handoff | `sweet-handoff` | 1 | "A disarming entrance that beguiles the foe and steadies the Alpha." | Beguile on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
+| Charm | Heartlink | `heartlink` | 2 | "The two mend each other, and the foe's heart goes out of its attacks." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; the partner (benched) heals (Alpha's Vigor ÷ 2, up) + bonus; foe −1 Power. No damage. |
+| Electric | Live Wire | `live-wire` | 1 | "Jumps in crackling and strikes before the foe can react." | +2 Speed for turn order. d8 to hit. d6 + Focus + bonus − Ward. Status on a 1–2. |
+| Electric | Arc Bridge | `arc-bridge` | 2 | "A current arcs between the pair and through the foe, powered by both." | A sure hit: d6 + Focus + (partner's Focus ÷ 2, down) + bonus − Ward. Status on a 1–2. |
+| Fire | Kindle Swap | `kindle-swap` | 1 | "The partner leaves embers behind: the foe burns and the Alpha is fired up." | Burn on the foe (if it has no status). +1 Power (+2 with a Teamwork bonus). No damage. |
+| Fire | Phoenix Handoff | `phoenix-handoff` | 2 | "The Alpha rises from the partner's flames in a blazing strike." | d8 to hit. **d8** + Focus + bonus − Ward. Status on a 1–2. |
+| Grass | Root Relay | `root-relay` | 1 | "Roots pass from partner to Alpha: they snare the foe and feed the Alpha." | Snare on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
+| Grass | Overgrowth | `overgrowth` | 2 | "The partner's strength grows into the Alpha as bark and leaf." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; +1 Armor, +1 Ward. Then a sure hit: d4 + Focus − Ward. |
+| Rock | Landslide Tag | `landslide-tag` | 1 | "The Alpha rides the partner's weight down onto the foe." | d8 to hit. Physical: d6 + Power + (partner's Armor ÷ 2, up) + bonus − Armor. Status on a 1–2. |
+| Rock | Bulwark Swap | `bulwark-swap` | 2 | "Stone walls go up as the Alpha arrives, and it hits back from behind them." | +(2 + bonus) Armor, +1 Ward. Then a sure physical hit: d6 + Power − Armor. |
+| Steel | Iron Relay | `iron-relay` | 1 | "A steel-shod charge that dents the foe's defences." | A sure physical hit: d6 + Power + bonus − Armor. Status on a 1–2. |
+| Steel | Alloy Guard | `alloy-guard` | 2 | "The partner plates the Alpha in metal and strips the foe's." | +(partner's Armor ÷ 2, up, at least 1, + bonus) Armor; foe −1 Armor. Then a sure physical hit: d6 + Power − Armor. |
+| Water | Tide Relay | `tide-relay` | 1 | "The partner's Focus surges in as a wave." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
+| Water | Wellspring | `wellspring` | 2 | "Fresh water for the pair, and a drenching for the foe." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; both refill Stamina; Soak on the foe (if it has no status). No damage. |
 
-**Early-level retune (with the Teamwork cap):** Teamwork now grows slowly and is capped at half the level, so the bonus is 0 for most of the early game. To keep swaps worth it from the start, the base effects went up: Tag Strike rolls d8 to hit instead of d6, the other damaging powers roll d6 instead of d4, Shield Pass always borrows at least 1 Armor and 1 Ward, and Rally also clears 1 Fatigue.
+### Swap Move balance notes
 
-### Affinity balance notes
-
-- [ ] **Only Tag Strike can miss.** The other damaging powers always hit.
-- [x] **Shield Pass's borrowed Armor and Ward last while the Alpha stays in.** The in-game text now says so.
-- [ ] **Rally's Teamwork bonus is all-or-nothing** (+1 under 2 Teamwork, +2 from 2), unlike the other powers' 0–3 scale.
+- [ ] **Accuracy:** only the d8-to-hit moves can miss (Tag Strike, Starfall Relay, Live Wire, Phoenix Handoff, Landslide Tag, Tide Relay); the rest always hit.
+- [ ] **Rally's Teamwork bonus is all-or-nothing** (+1 under 2 Teamwork, +2 from 2), unlike the other moves' 0–3 scale. Kindle Swap works the same way.
 - [x] **Teamwork no longer rewards swapping back and forth:** a pair earns it from a swap once per battle; travelling together on the active team is the steady source.
-- [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may now out-damage a creature's own moves at Lv 1–3.
+- [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may out-damage a creature's own moves at Lv 1–3.
+- [ ] **Status on a 1–2 is twice as likely** as a regular elemental move's 1. Watch whether typed Swap Moves become the main way to inflict statuses.
+- [ ] **No-damage moves** (Rally, Heartlink, Kindle Swap, Wellspring) trade a hit for setup. Check they're picked at all once the typed hits unlock.
+- [ ] **Mono-type pairs** only reach two typed moves; mixed pairs can reach four to eight. That's intended (it rewards varied teams) but worth watching.
 
 ---
 
@@ -257,20 +290,20 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 - [ ] **Natures:** perks add up to about 4 combat stat points. The up and down stats pull in different directions. The theme matches the perks.
 - [ ] **Abilities:** a map effect (not battle) that changes a real decision. Checked against the trainer styles and items that do similar things.
-- [x] **Affinity Powers:** say what's borrowed from the partner, whether it can miss, and how the Teamwork bonus scales. (The swap screen now shows each power's effect with its numbers and Teamwork bonus.)
+- [x] **Swap Moves:** say what's borrowed from the partner, whether it can miss, and how the Teamwork bonus scales. (The card and swap screen show each move's effect with its numbers, written from the move's data.)
 - [ ] The in-game text says exactly what the rules do.
 
 ### Build it (developers)
 
-1. **Data:** add the entry to `NATURES`, `ABILITIES` or `AFFINITIES` in `src/data/content.ts`.
+1. **Data:** add the entry to `NATURES` or `ABILITIES` in `src/data/content.ts`, or to `SWAP_MOVES` in `src/data/swapMoves.ts`.
 2. **Rules:**
    - **A Nature** needs no code: its up, down and perks are read from the data.
    - **An Ability** needs a check where the game decides that thing, like the existing `ability(s) === '…'` checks in `src/engine/world.ts`.
-   - **An Affinity Power** needs a new `mode` handled in `doSwap()` in `src/engine/battle.ts`.
-3. **Give it to creatures:** set `ability` or `affinity` on species in `src/data/species.ts`. Placeholders get theirs in `src/data/roster.ts`. Natures are random, so a new one appears on new creatures automatically.
+   - **A Swap Move** usually needs no code: build it from the existing effects (`mod`, `heal`, `refill`, `ease`, `status`) and a `hit`. A new kind of effect needs a case in `swapEffect()` in `src/engine/battle.ts` and in `describeSwap()`.
+3. **Give it to creatures:** set `ability` or `affinity` (the favourite neutral Swap Move) on species in `src/data/species.ts`. Placeholders get theirs in `src/data/roster.ts`. Natures are random, so a new one appears on new creatures automatically.
 4. **Then:**
    - Add a test.
-   - Update this doc. **A test fails if a Nature, Ability or Affinity Power in the game is missing from this file.**
+   - Update this doc. **A test fails if a Nature, Ability or Swap Move in the game is missing from this file.**
    - Add any new icon to [the icon checklist](./07-icon-checklist.md).
 
 ---

@@ -5,7 +5,8 @@ import { writeFileSync } from 'node:fs';
 import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../src/data/moves';
 import { SPECIES } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
-import type { ElementType, Move } from '../src/data/schema';
+import type { ElementType, Move, Stats } from '../src/data/schema';
+import { SWAP_MOVES, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../src/data/swapMoves';
 
 const OUT = new URL('../docs/09-move-checklist.md', import.meta.url);
 const anchor = (heading: string) => heading.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/ /g, '-');
@@ -67,6 +68,29 @@ const elemental = MOVES.filter((m) => m.kind === 'elemental' && !m.id.startsWith
 const flagged = MOVES.filter((m) => balanceNote(m));
 const sigUsers = (id: string) => SPECIES.filter((s) => s.signature === id).map((s) => s.name);
 
+// ── Swap Moves (data/swapMoves.ts): described with words instead of a particular pair's numbers ──
+const ZERO: Stats = { vigor: 0, power: 0, armor: 0, focus: 0, ward: 0, speed: 0, evasion: 0, stamina: 0 };
+const SAMPLE: SwapVals = { a: ZERO, p: ZERO, bonus: 1, A: 'Alpha', P: 'Partner', aType: 'astral', pType: 'astral' };
+const STAT_WORD: Record<string, string> = { vigor: 'Vigor', power: 'Power', armor: 'Armor', focus: 'Focus', ward: 'Ward', speed: 'Speed', evasion: 'Evasion', stamina: 'Stamina' };
+const swapEffectWord = (m: SwapMove, e: SwapEffect) => {
+  switch (e.t) {
+    case 'mod': { const up = e.n({ ...SAMPLE, bonus: 0 }) >= 0; return `${e.who === 'foe' ? 'foe ' : ''}${up ? '+' : '−'}${STAT_WORD[e.stat]}`; }
+    case 'heal': return `heals ${e.who === 'alpha' ? 'Alpha' : 'Partner'}`;
+    case 'refill': return 'both refill Stamina';
+    case 'ease': return 'both −1 Fatigue';
+    case 'status': return `${STATUS_INFO[swapStatus(m)!].name} outright`;
+  }
+};
+const swapDamage = (m: SwapMove) => {
+  if (!m.hit) return '—';
+  const def = m.hit.kind === 'physical' ? 'Armor' : 'Ward';
+  return `d${m.hit.die} + ${m.hit.parts(SAMPLE).map((p) => p.label).join(' + ')} − ${def}`;
+};
+const swapHitsAs = (m: SwapMove) => (!m.hit ? '—' : m.hit.kind === 'physical' ? 'Physical' : m.hit.chart === 'partner' ? 'Partner’s type' : m.hit.chart === 'alpha' ? 'Alpha’s type' : TYPE_LABEL[m.type!]);
+const favouriteOf = (m: SwapMove) => SPECIES.filter((sp) => sp.affinity === m.id).length;
+const swapRow = (m: SwapMove) => `| ${m.name} | \`${m.id}\` | ${m.type ? TYPE_LABEL[m.type] : 'Neutral'} | ${m.teamwork} | ${!m.hit ? '—' : m.hit.acc ? `d${m.hit.acc}` : 'Sure-hit'} | ${swapDamage(m)} | ${swapHitsAs(m)} | ${m.hit?.status ? `${STATUS_INFO[swapStatus(m)!].name} on 1–2` : '—'} | ${m.speed ? signed(m.speed) : '0'} | ${[...(m.before ?? []), ...(m.after ?? [])].map((e) => swapEffectWord(m, e)).join(', ') || '—'} | ${m.type ? '—' : favouriteOf(m)} | ${m.type ? '☐' : '☑'} | ☐ |`;
+const typedSwaps = SWAP_MOVES.filter((m) => m.type);
+
 const lines: string[] = [];
 lines.push(
   '# Move Checklist: every attack, its numbers, and placeholders to replace',
@@ -84,6 +108,7 @@ lines.push(
   `| **Placeholders to replace** | **${ph.length}** |`,
   `| Attack-grid slots | ${ATTACK_SLOTS.length} (${ATTACK_SLOTS.length - ph.length} hand-made, ${ph.length} placeholders) |`,
   `| Hand-made moves flagged for a balance look | ${flagged.length} |`,
+  `| Swap Moves | ${SWAP_MOVES.length} (${SWAP_MOVES.length - typedSwaps.length} neutral, ${typedSwaps.length} typed; **${typedSwaps.length} awaiting design sign-off**) |`,
   '',
   '## How to read this',
   '',
@@ -114,6 +139,7 @@ lines.push('', '## Contents', '',
   `- [Physical moves](#physical-moves) (${physical.length})`,
   `- [Support moves](#support-moves) (${support.length + 1})`,
   `- [Signature moves](#signature-moves) (${sigs.length})`,
+  `- [Swap Moves](#swap-moves) (${SWAP_MOVES.length})`,
   ...TYPES.map((t) => `- [${TYPE_LABEL[t]} attacks](#${anchor(`${TYPE_LABEL[t]} attacks`)}) (${elemental.filter((m) => m.type === t).length}, ${elemental.filter((m) => m.type === t && m.placeholder).length} placeholders)`),
   flagged.length ? '- [Balance watch list](#balance-watch-list)' : '',
   '', '---', '');
@@ -122,6 +148,18 @@ lines.push('## Physical moves', '', 'Type-free attacks: Power vs Armor, ignore t
 lines.push('## Support moves', '', 'Buffs, debuffs and heals. No damage. Catch Breath is always available and doesn’t take a playbook slot.', '', header, rule, ...[...support, CATCH_BREATH].map(row), '');
 lines.push('## Signature moves', '', 'Unlocked from a creature’s progression chart (★ node). They don’t fill attack-grid slots.', '',
   '| Signature | Learned by |', '|---|---|', ...sigs.map((m) => `| ${m.name} | ${sigUsers(m.id).join(', ') || '—'} |`), '', header, rule, ...sigs.map(row), '');
+
+lines.push('## Swap Moves', '',
+  'What a creature does when it swaps in during battle (it\'s the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature\'s card, and each species has a neutral favourite it uses until then. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).', '',
+  '- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need one of the pair to have that type.',
+  '- **Damage** lists what\'s added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +3 by Lv 12).',
+  '- **Status on 1–2**: typed hits inflict their type\'s status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it\'s inflicted with no roll (if the foe has no status).',
+  '- **Effects** are applied before or after the hit as listed in the move\'s data. Stat boosts last while the Alpha stays in.',
+  '- **Design ☐**: the 16 typed moves are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.',
+  '- **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects; document it in docs/13 (a test checks), then regenerate this file.', '',
+  '| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Favourite of | Design | Balance |',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  ...SWAP_MOVES.map(swapRow), '');
 
 for (const t of TYPES) {
   const list = elemental.filter((m) => m.type === t).sort((a, b) =>

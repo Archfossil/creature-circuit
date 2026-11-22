@@ -1,6 +1,6 @@
 // Teamwork: how well two of your creatures work together. Each creature keeps a Teamwork score with
 // every partner (CreatureInst.teamwork, keyed by the partner's uid). It powers the swap bonus of
-// Affinity Powers: when a creature swaps in as the Alpha, its power adds its Teamwork bonus with the
+// Swap Moves: when a creature swaps in as the Alpha, its Swap Move adds its Teamwork bonus with the
 // partner it replaced (see battle.ts → doSwap).
 //
 // - Travelling together: every pair on the active team gains TEAMWORK_PER_TURN at the end of each turn.
@@ -20,7 +20,7 @@ export const TEAMWORK_PER_BONUS = 2;
 export const teamworkCap = (c: CreatureInst) => c.level / 2;
 /** A creature's Teamwork with a partner (0 if they've never teamed up). */
 export const teamworkOf = (c: CreatureInst, partner: CreatureInst) => c.teamwork?.[partner.uid] ?? 0;
-/** The bonus an Alpha's Affinity Power gets from its Teamwork with the partner it swaps in for. */
+/** The bonus an Alpha's Swap Move gets from its Teamwork with the partner it swaps in for. */
 export const teamworkBonus = (alpha: CreatureInst, partner: CreatureInst) => Math.floor(teamworkOf(alpha, partner) / TEAMWORK_PER_BONUS);
 /** Teamwork as shown to players: whole points (the fraction is progress towards the next one). */
 export const teamworkShown = (v: number) => Math.floor(v + 1e-9);

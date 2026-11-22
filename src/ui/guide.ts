@@ -122,13 +122,16 @@ export const GUIDE: GuideCategory[] = [
         'In battle, the thin blue bar under your Health is Stamina. The diamond beside it is Fatigue: grey at 0, a red number when fatigued. The opponent’s nameplate shows its Fatigue diamond too. Hover or tap one to see the odds of losing a turn.',
         'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
       ] },
-      { id: 'teamwork', title: 'Swapping & Teamwork', body: [
-        'From round 2 you can swap (S). The creature coming in is the Alpha: its 🔁 Affinity Power fires at once, borrowing from the partner it replaces (Tag Strike, Shield Pass, Slipstream, Siphon or Rally). The swap screen shows what each one will do right now.',
-        '🤝 Teamwork is how well two of your creatures work together. Every 2 Teamwork the Alpha has with its partner adds +1 to its power (more damage, more borrowed Armor and Ward, more healing; Rally gives +2 Power and Focus instead of +1).',
+      { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
+        'From round 2 you can swap (S). The creature coming in is the Alpha, and it uses a 🔁 Swap Move at once, often borrowing from the partner it replaces. The swap screen shows what each swap will do right now.',
+        'You choose the Swap Moves. Each creature’s card has a slot for every teammate: the move it uses when it swaps in for that one. So Sproutle swapping in for Puddlit can use a different move from Sproutle swapping in for Zapup (or Puddlit swapping in for Sproutle). Unset slots use the creature’s favourite.',
+        '- Neutral Swap Moves (Tag Strike, Shield Pass, Slipstream, Siphon, Rally) are open to every pair.',
+        '- Each type has two more. A pair can use one if either creature has that type; the first needs Teamwork 1 with that partner, the second Teamwork 2. Typed hits inflict their type’s status on a 1–2.',
+        '🤝 Teamwork is how well two of your creatures work together. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move (more damage, more borrowed Armor and Ward, more healing).',
         '- Travelling together: every pair on your active team gains 0.2 Teamwork each turn. You’re told at the start of a turn when a pair reaches a new point.',
         '- Swapping in battle: a pair gains +1 Teamwork the first time one swaps in for the other in a battle. Swapping them back and forth again in the same battle adds nothing more.',
         '- Cap: a creature’s Teamwork with any partner can’t go above half its level, so it keeps growing as your team levels up.',
-        'Each creature’s card lists its Teamwork with your other creatures and the bonus it gives.',
+        'Each creature’s card lists its Swap Move and Teamwork for every teammate. Tap Change there (or on the swap screen) to pick another.',
       ] },
       { id: 'readouts', title: 'Move readouts', body: [
         'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion (plus any ⌖ Zeroing In, and what a miss would add), then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',

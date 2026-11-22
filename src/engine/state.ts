@@ -459,6 +459,7 @@ export function migrate(s: GameState): GameState | null {
       delete legacy.affinity;
     }
     c.teamwork ??= {};
+    c.swapMoves ??= {};
   }
   // Special bond: older saves mark the starter (the first species recruited, or what it evolved into)
   const mine = [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)];

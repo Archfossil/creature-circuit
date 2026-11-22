@@ -5,11 +5,14 @@ import type { StatKey } from '../data/schema';
 import type { GameState } from './state';
 import { NODE_BY_ID } from '../data/map';
 import { energy, fits, learnable, trainStat, unlockNode, TRAINABLE } from './creature';
+import { setSwapMove } from './swaps';
 
 export type CreatureEdit =
   | { uid: string; op: 'unlock'; node: string }
   | { uid: string; op: 'train'; stat: StatKey }
   | { uid: string; op: 'playbook'; moves: string[] }
+  /** The Swap Move this creature uses when it swaps in for `partner` (a uid). */
+  | { uid: string; op: 'swapMove'; partner: string; move: string }
   /** Mark a node as the trainer's next stop (null clears the marker). */
   | { op: 'waypoint'; node: string | null };
 
@@ -31,6 +34,10 @@ export function applyEdit(s: GameState, e: CreatureEdit): boolean {
       if (!playbookOk(e.moves, learnable(c), (m) => fits(energy(c), m))) return false;
       c.playbook = [...e.moves];
       return true;
+    case 'swapMove': {
+      const partner = [...s.roster, ...s.reserve].find((x) => x.uid === e.partner);
+      return !!partner && typeof e.move === 'string' && setSwapMove(c, partner, e.move);
+    }
     default: return false;
   }
 }
