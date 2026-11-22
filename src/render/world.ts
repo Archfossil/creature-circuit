@@ -138,6 +138,23 @@ function emojiSprite(emoji: string, ring: string) {
 // ── World view ──────────────────────────────────────────────────
 export type Reach = Record<string, 'ok' | 'locked'>;
 
+/**
+ * How the clouds look in each weather effect (WeatherDef.fx). `stretch` lengthens them along the wind
+ * (and thins them across it), `squash` flattens (< 1) or piles them up (> 1), `speed` is their drift.
+ */
+interface CloudLook { color: THREE.Color; opacity: number; stretch: number; squash: number; speed: number }
+const CLOUD_LOOKS: Record<string, Omit<CloudLook, 'color'> & { color: string }> = {
+  none: { color: '#ffffff', opacity: 0.7, stretch: 1, squash: 1, speed: 1.2 },
+  heat: { color: '#fff6e6', opacity: 0.62, stretch: 1.1, squash: 0.75, speed: 0.8 }, // thin and hazy in the heat
+  petals: { color: '#fff4fa', opacity: 0.7, stretch: 1, squash: 1, speed: 1.4 },
+  wind: { color: '#f4f8fb', opacity: 0.5, stretch: 2.1, squash: 0.38, speed: 6 }, // wispy streaks racing by
+  rain: { color: '#8a95a2', opacity: 0.8, stretch: 1.1, squash: 1.15, speed: 1.8 }, // dark and heavy
+  storm: { color: '#6e7784', opacity: 0.84, stretch: 1.2, squash: 1.3, speed: 2.6 }, // darker, taller, faster
+  snow: { color: '#e3e9f0', opacity: 0.76, stretch: 1.05, squash: 1.05, speed: 1 },
+  fog: { color: '#eef2f4', opacity: 0.55, stretch: 1.3, squash: 0.8, speed: 0.6 },
+  aurora: { color: '#dfe6ff', opacity: 0.6, stretch: 1.2, squash: 0.85, speed: 0.8 },
+};
+
 /** Map pan keys (lower-cased KeyboardEvent.key) → [x, z] direction on the ground. */
 const PAN_KEYS: Record<string, [number, number]> = {
   w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1],
@@ -194,6 +211,11 @@ export class WorldView implements SceneView {
   private aurora!: THREE.Mesh;
   private auroraMat!: THREE.ShaderMaterial;
   private clouds: THREE.Group[] = [];
+  /** The clouds' shared material and how they look now; `cloudGoal` is what the weather wants (blended toward each frame). */
+  private cloudMat!: THREE.MeshStandardMaterial;
+  private cloudLook: CloudLook = { ...CLOUD_LOOKS.none, color: new THREE.Color(CLOUD_LOOKS.none.color) };
+  private cloudGoal: CloudLook = { ...CLOUD_LOOKS.none, color: new THREE.Color(CLOUD_LOOKS.none.color) };
+  private cloudsSet = false;
   private lightning = 0;
   private hopping: { from: THREE.Vector3; to: THREE.Vector3; t: number; res: () => void } | null = null;
   private legendGlows: THREE.Mesh[] = [];
@@ -634,22 +656,58 @@ export class WorldView implements SceneView {
     this.scene.add(this.aurora);
   }
 
+  /**
+   * Fluffy low-poly clouds: each is a dome of rounded puffs, big and high in the middle and smaller
+   * towards the edges, slightly see-through so the map shows beneath. They all share one material, so
+   * the weather can recolour and reshape them together (see CLOUD_LOOKS and setWeather).
+   */
   private buildClouds() {
-    const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: 1, transparent: true, opacity: 0.92 });
-    const geo = new THREE.IcosahedronGeometry(1, 0);
+    this.cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: 1, transparent: true, opacity: CLOUD_LOOKS.none.opacity });
+    const geo = new THREE.IcosahedronGeometry(1, 1); // one subdivision: rounder puffs, still faceted
     for (let i = 0; i < 9; i++) {
       const c = new THREE.Group();
-      const n = 4 + Math.floor(hash(i, 3) * 3);
+      const n = 8 + Math.floor(hash(i, 3) * 5); // 8–12 puffs
+      const half = 3.4 + hash(i, 4) * 1.2; // half the cloud's length
       for (let k = 0; k < n; k++) {
-        const m = new THREE.Mesh(geo, mat);
-        m.position.set((k - n / 2) * 1.6, hash(i, k) * 0.8, (hash(k, i) - 0.5) * 1.8);
-        m.scale.set(1.6 + hash(i * k, 1), 1 + hash(k, 2) * 0.5, 1.4);
-        m.castShadow = true;
+        const x = ((k + 0.5) / n * 2 - 1) * half + (hash(i, k + 20) - 0.5) * 0.8;
+        const middle = 1 - Math.min(1, Math.abs(x) / half); // 1 in the middle, 0 at the ends
+        const r = 0.9 + middle * 1.1 + hash(i * 7, k) * 0.45; // bigger puffs in the middle
+        const m = new THREE.Mesh(geo, this.cloudMat);
+        m.position.set(x, middle * 1.1 + hash(i, k) * 0.5, (hash(k, i) - 0.5) * 2.2);
+        m.scale.set(r * 1.15, r * 0.8, r);
+        m.rotation.set(hash(k, 7) * 3, hash(i, k + 9) * 3, 0);
+        m.castShadow = k === Math.floor(n / 2); // only the core shades the map, so thick clouds don't darken it
+        c.add(m);
+      }
+      // a few small puffs on top for a cauliflower crown
+      for (let k = 0; k < 3; k++) {
+        const m = new THREE.Mesh(geo, this.cloudMat);
+        const r = 0.8 + hash(i, k + 40) * 0.5;
+        m.position.set((k - 1) * half * 0.35 + (hash(k, i + 40) - 0.5) * 0.6, 1.7 + hash(i, k + 50) * 0.4, (hash(i + 3, k) - 0.5) * 1.2);
+        m.scale.set(r * 1.1, r * 0.85, r);
         c.add(m);
       }
       c.position.set((-90 + i * 22) * S, 20 + hash(i, 9) * 6, (-60 + hash(i, 5) * 120) * S);
       this.clouds.push(c);
       this.scene.add(c);
+    }
+  }
+
+  /** Blend the clouds toward the weather's look (colour, see-through-ness, stretch and squash). */
+  private updateClouds(dt: number) {
+    const k = Math.min(1, dt * 0.6); // a few seconds to change over
+    const a = this.cloudLook, g = this.cloudGoal;
+    a.color.lerp(g.color, k);
+    a.opacity += (g.opacity - a.opacity) * k;
+    a.stretch += (g.stretch - a.stretch) * k;
+    a.squash += (g.squash - a.squash) * k;
+    a.speed += (g.speed - a.speed) * k;
+    this.cloudMat.color.copy(a.color);
+    this.cloudMat.opacity = a.opacity;
+    for (const c of this.clouds) {
+      c.scale.set(a.stretch, a.squash, 1 / Math.sqrt(a.stretch));
+      c.position.x += dt * a.speed;
+      if (c.position.x > 110 * S) c.position.x = -110 * S;
     }
   }
 
@@ -855,6 +913,13 @@ export class WorldView implements SceneView {
     this.sun.intensity = sunI; this.hemi.intensity = hemiI;
     this.sun.color.set(cloud ? (night ? '#c9a6ff' : '#ffd6f0') : this.fx === 'aurora' || night ? '#b9c8ff' : this.fx === 'heat' ? '#ffd9a0' : '#fff1d6');
     this.auroraMat.uniforms.uStrength.value = this.fx === 'aurora' ? 1.1 : (season === 'winter' ? 0.35 : 0.12) + (night ? 0.15 : 0);
+    // the clouds take on the weather: dark in rain, wispy in wind, pale in fog…
+    const look = CLOUD_LOOKS[this.fx] ?? CLOUD_LOOKS.none;
+    Object.assign(this.cloudGoal, look, { color: this.cloudGoal.color.set(look.color) });
+    if (!this.cloudsSet) { // the first weather of a session: no blend from the default
+      this.cloudsSet = true;
+      Object.assign(this.cloudLook, look, { color: this.cloudLook.color.set(look.color) });
+    }
     const pm = this.particles.material as THREE.PointsMaterial;
     this.particles.visible = ['rain', 'storm', 'snow', 'petals', 'wind'].includes(this.fx);
     if (this.fx === 'rain' || this.fx === 'storm') { pm.color.set('#cfe6ff'); pm.size = 0.14; pm.opacity = 0.75; }
@@ -1041,8 +1106,7 @@ export class WorldView implements SceneView {
     for (const g of this.legendGlows) { g.rotation.y = t; g.position.y = 2.1 + Math.sin(t * 2) * 0.2; }
     const pulse = 1 + Math.sin(t * 5) * 0.06;
     for (const [, r] of this.rings) if (r.visible) r.scale.setScalar((r.userData.base ??= r.scale.x) * pulse);
-    const windX = this.fx === 'wind' ? 6 : 1.2;
-    for (const c of this.clouds) { c.position.x += dt * windX; if (c.position.x > 110 * S) c.position.x = -110 * S; }
+    this.updateClouds(dt);
 
     // pawn hop
     if (this.hopping) {
