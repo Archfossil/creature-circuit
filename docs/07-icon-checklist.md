@@ -102,6 +102,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `wisp`: 💫: A wisp (map marker, lantern check sheet, catch toast, active effect).
 - [ ] `notice-board`: 🗺️: Notice Board (rumors). Also the "Where to look" heading in the Codex.
 - [ ] `enrol`: 📝: Battle School "Enrol a creature" heading.
+- [ ] `retrain`: 🌅: Battle School "Retraining" heading, the "Morning" badge on a creature being retrained, and the "retraining is done" toast.
 - [ ] Notice Board townsfolk portraits (5), shown next to rumors:
   - [ ] `npc-farmer`: 🧑‍🌾
   - [ ] `npc-elder`: 👵
@@ -320,12 +321,14 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 **Instincts**
 - [ ] `instinct`: 🔆 Instinct: the panel on the creature card, the follower sheet and starter lines, and every "Name’s Instinct!" battle log line. One shared icon for all 48 (they may each get their own later; see [14 · Instinct Checklist](./14-instinct-checklist.md)).
 
-## 10. Start-of-turn events (26) ★★
+## 10. Start-of-turn events (28) ★★
 
 Shown large on each event card.
 
 - [ ] `event-roaming-trader`: 🧳
 - [ ] `event-caretaker`: 🩺
+- [ ] `event-trail-tutor`: 🧑‍🏫
+- [ ] `event-drum-circle`: 🥁
 - [ ] `event-wandering-cook`: 🍲
 - [ ] `event-lost-creature`: 🥺
 - [ ] `event-merchant-caravan`: 🐫

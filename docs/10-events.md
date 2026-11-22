@@ -12,16 +12,17 @@ Every event in the game, what it offers, and how to add more. Events are the lit
 - **Day & night:** odd turns are day and even turns are night. Day events only happen on day turns, night events only on night turns, and "Any" events at either. Each event's story matches: campfires, stars and overnight trouble at night; trainers, trades and errands by day.
 - **Answering:** the event card opens at the start of the turn. Most events can be declined. **Forced** events (storm, pickpocket, squabble, bad berries) need a real decision. The player can close the card to check their team first: it waits as a pill at the bottom of the screen, and the turn can't end until it's answered.
 - **Picking a creature:** some choices ask the player to pick one of their creatures. Choices can rule creatures out (e.g. knocked out), and can show a **before → after** stat comparison first (trades, Nature changes).
+- **Changing a creature's traits:** the Caretaker (Nature), the Trail Tutor (Ability) and the Drum Circle (Instinct) each offer three random options for free. Valor Ridge's Battle School can change any of the three on demand, for coins and Loyalty (see [Towns with special services](./02-board-and-map.md#towns-with-special-services)).
 - **Saved state:** a pending event is stored on the save with its rolled details (which species is on offer, the price…), so reloading shows the same event.
 
 ### Chance of each event
 
-Day and night each have **35** weight of eligible events: 20 of time-specific events plus 15 of "Any" events. A weight-3 event therefore comes up about **8.6%** of the turns at its time of day, and a weight-2 event about **5.7%**. Conditions and the no-repeat rule shift this a little in play.
+Day and night each have **39** weight of eligible events: 24 of time-specific events plus 15 of "Any" events. A weight-3 event therefore comes up about **7.7%** of the turns at its time of day, and a weight-2 event about **5.1%**. Conditions and the no-repeat rule shift this a little in play.
 
 | Time | Events | Total weight |
 |---|---|---|
-| Day only | Trader, Sparring Master, Rival, Pilgrim, Old Trainer, Local Guide, Codex Scholar, Lost Satchel, Apprentice, Hot Air Balloon | 22 |
-| Night only | Caretaker, Lost Creature, Caravan, Windfall, Bard, Team Squabble, Shooting Star, Bad Berries, Night Coach | 22 |
+| Day only | Trader, Trail Tutor, Sparring Master, Rival, Pilgrim, Old Trainer, Local Guide, Codex Scholar, Lost Satchel, Apprentice, Hot Air Balloon | 24 |
+| Night only | Caretaker, Drum Circle, Lost Creature, Caravan, Windfall, Bard, Team Squabble, Shooting Star, Bad Berries, Night Coach | 24 |
 | Any time | Cook, Storm, Fortune Teller, Hermit, Pickpocket, Hot Spring, Dice Gambler | 15 |
 
 ---
@@ -56,16 +57,18 @@ Day and night each have **35** weight of eligible events: 20 of time-specific ev
 | 24 | 🧒 Eager Apprentice | `apprentice` | Creatures | 2 | Day | At least one active creature isn't KO'd | No | Free |
 | 25 | 🎈 Hot Air Balloon | `balloon` | Travel | 2 | Day | On the mainland | No | Free |
 | 26 | 🚌 Night Coach | `coach` | Travel | 2 | Night | On the mainland | No | 💰 4 |
-| 27 | 🌟 Star Shepherd | `shepherd` | Cloud Island | 3 | Night | On Cloud Island | No | Free, or 1 Initiative |
-| 28 | 🌈 Moonbow | `moonbow` | Cloud Island | 2 | Night | On Cloud Island | Yes (two good options) | Free |
-| 29 | 🐋 Sky Whale | `skywhale` | Cloud Island | 2 | Any | On Cloud Island, with a follower | Yes (two good options) | Free, or 1 Initiative |
-| 30 | 🌫️ Cloud Bank | `cloudbank` | Cloud Island | 2 | Any | On Cloud Island | **Yes** | 1 Initiative, or Morale at risk |
-| 31 | ☀️ Sunlit Clouds | `sunlit` | Cloud Island | 3 | Day | On Cloud Island | Yes (two good options) | Free |
-| 32 | 👁️ Something in the Dark | `stalker` | Forest Floor | 3 | Any | On the Forest Floor, a creature able to fight | **Yes** | A hard battle, an item, or a trail sign |
-| 33 | 🌱 Grasping Roots | `roots` | Forest Floor | 3 | Any | On the Forest Floor, a creature not KO'd | **Yes** | 1 Initiative, or Vitality and Morale |
-| 34 | 🍄 Spore Cloud | `spores` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | A Calm Tea, or Fatigue and Morale |
-| 35 | 🌫️ Whispers in the Dark | `whispers` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | 2 Initiative, or a trail sign |
-| 36 | 🦇 Shade Thieves | `shadethieves` | Forest Floor | 2 | Any | On the Forest Floor, with a non-key item | **Yes** | An item (and maybe Vitality) |
+| 27 | 🧑‍🏫 Trail Tutor | `tutor` | Creatures | 2 | Day | Always | No | Free |
+| 28 | 🥁 Drum Circle | `drums` | Creatures | 2 | Night | Always | No | Free |
+| 29 | 🌟 Star Shepherd | `shepherd` | Cloud Island | 3 | Night | On Cloud Island | No | Free, or 1 Initiative |
+| 30 | 🌈 Moonbow | `moonbow` | Cloud Island | 2 | Night | On Cloud Island | Yes (two good options) | Free |
+| 31 | 🐋 Sky Whale | `skywhale` | Cloud Island | 2 | Any | On Cloud Island, with a follower | Yes (two good options) | Free, or 1 Initiative |
+| 32 | 🌫️ Cloud Bank | `cloudbank` | Cloud Island | 2 | Any | On Cloud Island | **Yes** | 1 Initiative, or Morale at risk |
+| 33 | ☀️ Sunlit Clouds | `sunlit` | Cloud Island | 3 | Day | On Cloud Island | Yes (two good options) | Free |
+| 34 | 👁️ Something in the Dark | `stalker` | Forest Floor | 3 | Any | On the Forest Floor, a creature able to fight | **Yes** | A hard battle, an item, or a trail sign |
+| 35 | 🌱 Grasping Roots | `roots` | Forest Floor | 3 | Any | On the Forest Floor, a creature not KO'd | **Yes** | 1 Initiative, or Vitality and Morale |
+| 36 | 🍄 Spore Cloud | `spores` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | A Calm Tea, or Fatigue and Morale |
+| 37 | 🌫️ Whispers in the Dark | `whispers` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | 2 Initiative, or a trail sign |
+| 38 | 🦇 Shade Thieves | `shadethieves` | Forest Floor | 2 | Any | On the Forest Floor, with a non-key item | **Yes** | An item (and maybe Vitality) |
 
 **Kinds:** *Cloud Island* and *Forest Floor* events only happen there. *Travel* moves the trainer somewhere far away (see [Getting around](#getting-around)). *Creatures* change or add to your team. *Service* means paying for a benefit. *Find* is a free gift. *Hazard* forces a choice between two costs. *Battle* starts a fight. *Gamble* is a dice bet. *Rest* recovers the team.
 
@@ -374,6 +377,34 @@ The map is big, so besides these two events a few items move a trainer further t
 | 🕊️ Homing Feather | Dustmere, Quillhaven | 💰 8 | From anywhere on the mainland: back to your home city (a Wanderer picks any city they've rested at). Your remaining Initiative drops to 0. |
 | 🥜 Trail Mix | City markets, Mistfall, Ridgeway; sometimes found while exploring | 💰 6 | +1 Initiative (up to 5), once a turn. |
 
+### 27. 🧑‍🏫 Trail Tutor · `tutor`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Creatures | 2 | Day | Always | No |
+
+A trail tutor offers to teach one creature a new overworld Ability. Three random Abilities are offered.
+
+**Choices**
+- **Learn (Ability)** ×3: pick a creature (not one that already has it). Its Ability becomes the new one for good (`CreatureInst.ability`); it no longer has its species' usual one. It works while that creature is Following, like any Ability.
+- **No thanks:** nothing happens.
+
+**Notes:** the free, random version of the Battle School's Ability retraining (no Loyalty cost, no overnight stay).
+
+### 28. 🥁 Drum Circle · `drums`
+
+| Kind | Weight | Time | Appears when | Forced? |
+|---|---|---|---|---|
+| Creatures | 2 | Night | Always | No |
+
+Drummers by a ring of fires invite one creature to dance until dawn, waking a different battle Instinct. Three random Instincts are offered, from any type.
+
+**Choices**
+- **Wake (Instinct)** ×3: pick a creature (not one that already has it). Its Instinct becomes the new one for good (`CreatureInst.instinct`). The choice shows the Instinct's type pool and its in-game text.
+- **No thanks:** nothing happens.
+
+**Notes:** the free, random version of the Battle School's Instinct retraining. Any creature can take any Instinct, not just one from its own types.
+
 ### Cloud Island events
 
 These only happen while the trainer is on Cloud Island (see [Arbiters & Arenas](./11-arbiters-and-arenas.md), Salem). While there, nothing else happens. By day, a trainer on the island is stranded until the portal opens at night. **Items they give go into the Cloud satchel** and are only secured when the trainer escapes the island; a team wipe loses them.
@@ -383,7 +414,7 @@ These only happen while the trainer is on Cloud Island (see [Arbiters & Arenas](
 | Night | Star Shepherd, Moonbow, Sky Whale, Cloud Bank | 9 |
 | Day | Sunlit Clouds, Sky Whale, Cloud Bank | 7 |
 
-### 27. 🌟 Star Shepherd · `shepherd`
+### 29. 🌟 Star Shepherd · `shepherd`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -396,7 +427,7 @@ A glowing figure with a crook herds drifting stardust across the clouds.
 - **Ask for a blessing:** your follower gets +1 Loyalty and +1 Morale.
 - **No thanks:** nothing happens.
 
-### 28. 🌈 Moonbow · `moonbow`
+### 30. 🌈 Moonbow · `moonbow`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -408,7 +439,7 @@ A rainbow arcs across the clouds in moonlight, its end right beside you.
 - **Reach for its end:** roll d6. On 5–6, get a **Moonbow Prism** (+3 to recruit any creature, the rarest offering). Otherwise, get a Cloud Silk.
 - **Watch it with your team:** all your partner creatures (in totems too) get +1 Morale.
 
-### 29. 🐋 Sky Whale · `skywhale`
+### 31. 🐋 Sky Whale · `skywhale`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -420,7 +451,7 @@ An enormous whale of cloud glides past.
 - **Let your follower ride along · 1 Initiative:** the follower gains +6 XP and +1 Morale.
 - **Wave hello:** get 2 Cloud Silk.
 
-### 30. 🌫️ Cloud Bank · `cloudbank`
+### 32. 🌫️ Cloud Bank · `cloudbank`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -432,7 +463,7 @@ A thick bank of cloud swallows the path.
 - **Wait for it to lift · 1 Initiative.**
 - **Let (follower) lead the way:** roll d6 + the follower's Speed. On **7 or more**, find a Stardust. Otherwise, every active creature gets −1 Morale.
 
-### 31. ☀️ Sunlit Clouds · `sunlit`
+### 33. ☀️ Sunlit Clouds · `sunlit`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -448,7 +479,7 @@ Daylight burns the portal shut until night (the trainer is stranded on the islan
 
 These only happen while the trainer is on the Forest Floor below Gloomshade (see [Arbiters & Arenas](./11-arbiters-and-arenas.md), Dahlia). While there, nothing else happens. **They're all hostile and forced:** there's no "No thanks", only a choice of how to suffer. Total weight 12, any time of day (it's always dark down there).
 
-### 32. 👁️ Something in the Dark · `stalker`
+### 34. 👁️ Something in the Dark · `stalker`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -461,7 +492,7 @@ Something big has been stalking you through the roots.
 - **Throw it some food:** lose a random treat or offering material. Disabled if you have none.
 - **Flee into the dark:** −1 sign of Dahlia's Trail.
 
-### 33. 🌱 Grasping Roots · `roots`
+### 35. 🌱 Grasping Roots · `roots`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -473,7 +504,7 @@ Roots seize one random active creature.
 - **Cut it free · 1 Initiative.**
 - **Tear it free:** it loses 1 Vitality (never below 1 heart) and 1 Morale.
 
-### 34. 🍄 Spore Cloud · `spores`
+### 36. 🍄 Spore Cloud · `spores`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -485,7 +516,7 @@ A fungus bursts into a choking spore cloud.
 - **Brew a Calm Tea:** uses one Calm Tea, no harm done. Disabled if you have none.
 - **Follow (follower) out of the cloud:** roll d6 + the follower's Speed. On **7 or more**, you escape. Otherwise, the active team gains 1 Fatigue and −1 Morale.
 
-### 35. 🌫️ Whispers in the Dark · `whispers`
+### 37. 🌫️ Whispers in the Dark · `whispers`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
@@ -497,7 +528,7 @@ Voices mimicking Dahlia's blur the trail.
 - **Retrace your steps · 2 Initiative:** keep the trail.
 - **Follow the voices:** −1 sign of Dahlia's Trail.
 
-### 36. 🦇 Shade Thieves · `shadethieves`
+### 38. 🦇 Shade Thieves · `shadethieves`
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|

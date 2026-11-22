@@ -1,7 +1,7 @@
 import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
-import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
+import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
 import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
@@ -329,8 +329,10 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
   const st = stats(c);
   const e = energy(c);
   const nat = NATURE_BY_ID[c.nature];
-  const ab = ABILITIES[sp.ability];
-  const inst = INSTINCT_BY_ID[sp.instinct];
+  const ab = ABILITIES[abilityOf(c)];
+  const inst = INSTINCT_BY_ID[instinctIdOf(c)];
+  /** "Retrained (Sproutle’s is Forager)" when it differs from its species'. */
+  const retrained = (own: string | undefined, name: string | undefined) => (own ? h('small', { class: 'muted' }, ` Retrained (a ${sp.name} usually has ${name}).`) : null);
   const spent = allocateEnergy(e, c.playbook);
   const free = energyTotal(e) - energyTotal(spent);
   return h('article', { class: 'index-card', style: `--tc:${TYPE_COLOR[sp.types[0]]};--tc2:${TYPE_COLOR[sp.types[1] ?? sp.types[0]]}` },
@@ -360,8 +362,8 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('h4', null, 'Playbook', opts.editable ? h('button', { class: 'link', onclick: () => editPlaybook(c, changed, opts.onEdit) }, 'Edit moves') : null),
       h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
-      h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.')),
-      inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.')) : null),
+      h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.'), retrained(c.ability, ABILITIES[sp.ability]?.name)),
+      inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.'), retrained(c.instinct, INSTINCT_BY_ID[sp.instinct]?.name)) : null),
     swapSection(c, opts.teammates ?? [], opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
     h('section', { class: 'ic-sec' },
       h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),

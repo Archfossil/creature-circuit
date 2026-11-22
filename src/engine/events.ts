@@ -3,12 +3,13 @@
 // resolved with `resolveEvent`. Everything here is pure game logic; the UI only renders `eventView`.
 import type { ElementType, Rarity, TimeOfDay } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
-import { NATURES, NATURE_BY_ID, ITEMS, BIOME_MATERIALS, timeOfDay } from '../data/content';
+import { NATURES, NATURE_BY_ID, ABILITIES, ITEMS, BIOME_MATERIALS, timeOfDay } from '../data/content';
+import { INSTINCTS, INSTINCT_BY_ID } from '../data/instincts';
 import { TYPE_LABEL } from '../data/types';
 import type { GameState } from './state';
 import { addItem, follower, log, tierOf, earnCoins } from './state';
 import type { CreatureInst } from './creature';
-import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, speciesOf, stats, addLoyalty } from './creature';
+import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, speciesOf, stats, addLoyalty, abilityOf, instinctIdOf } from './creature';
 import type { Battle } from './battle';
 import { createBattle } from './battle';
 import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather, travelTo, travelBlock } from './world';
@@ -152,6 +153,60 @@ const EVENTS: EventDef[] = [
       c.perks = after.perks;
       log(s, `${nameOf(c)}'s Nature changed from ${was} to ${n.name}.`);
       return { text: `${nameOf(c)} is now ${n.name} (was ${was}).`, tone: 'good' };
+    },
+  },
+  {
+    id: 'tutor', weight: 2, time: 'day',
+    create: () => ({ abilities: Object.keys(ABILITIES).sort(() => Math.random() - 0.5).slice(0, 3) }),
+    view: (_s, d) => ({
+      title: 'Trail Tutor', icon: '🧑‍🏫',
+      text: 'A weathered trail tutor offers to spend the day teaching one of your creatures a new way of getting around the wilds. By evening it will have swapped its old overworld Ability for a new one.',
+      choices: [
+        ...(d.abilities as string[]).map((id): EventChoice => {
+          const a = ABILITIES[id];
+          return {
+            id: `ability:${id}`, label: `Learn ${a.name}`, detail: a.text, pick: true,
+            canPick: (c) => (abilityOf(c) === id ? `Already has ${a.name}.` : null),
+          };
+        }),
+        DECLINE,
+      ],
+    }),
+    resolve: (s, _d, choice, c) => {
+      if (!choice.startsWith('ability:') || !c) return { text: 'The tutor tips their hat and walks on.', tone: 'info' };
+      const id = choice.slice(8);
+      const was = ABILITIES[abilityOf(c)]?.name ?? abilityOf(c);
+      c.ability = id === speciesOf(c).ability ? undefined : id;
+      if (c.ability === undefined) delete c.ability;
+      log(s, `${nameOf(c)}'s Ability changed from ${was} to ${ABILITIES[id].name}.`);
+      return { text: `${nameOf(c)} learned ${ABILITIES[id].name} (was ${was}).`, tone: 'good' };
+    },
+  },
+  {
+    id: 'drums', weight: 2, time: 'night',
+    create: () => ({ instincts: [...INSTINCTS].sort(() => Math.random() - 0.5).slice(0, 3).map((i) => i.id) }),
+    view: (_s, d) => ({
+      title: 'Drum Circle', icon: '🥁',
+      text: 'Drums carry through the night from a ring of fires. The drummers invite one of your creatures to dance until dawn: by morning a different battle Instinct will have woken in it.',
+      choices: [
+        ...(d.instincts as string[]).map((id): EventChoice => {
+          const i = INSTINCT_BY_ID[id];
+          return {
+            id: `instinct:${id}`, label: `Wake ${i.name}`, detail: `${TYPE_LABEL[i.type]} · ${i.text}`, pick: true,
+            canPick: (c) => (instinctIdOf(c) === id ? `Already has ${i.name}.` : null),
+          };
+        }),
+        DECLINE,
+      ],
+    }),
+    resolve: (s, _d, choice, c) => {
+      if (!choice.startsWith('instinct:') || !c) return { text: 'The drums fade as you head on.', tone: 'info' };
+      const id = choice.slice(9);
+      const was = INSTINCT_BY_ID[instinctIdOf(c)]?.name ?? instinctIdOf(c);
+      c.instinct = id === speciesOf(c).instinct ? undefined : id;
+      if (c.instinct === undefined) delete c.instinct;
+      log(s, `${nameOf(c)}'s Instinct changed from ${was} to ${INSTINCT_BY_ID[id].name}.`);
+      return { text: `${nameOf(c)}'s Instinct is now ${INSTINCT_BY_ID[id].name} (was ${was}).`, tone: 'good' };
     },
   },
   {

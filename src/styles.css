@@ -873,6 +873,12 @@ div.perk { cursor: default; }
 .school-info .bar { height: 8px; border-radius: 6px; background: var(--paper-2, #eee3cc); overflow: hidden; border: 1px solid var(--line); }
 .school-info .bar i { display: block; height: 100%; background: #b05cff; }
 .school-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; }
+.retrain { margin-top: 14px; display: grid; gap: 8px; }
+.retrain-picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.retrain-pick { display: grid; gap: 4px; align-content: start; }
+.retrain-pick select { font: inherit; padding: 5px 8px; border: 2px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); width: 100%; }
+.retrain-pick small { color: var(--ink-2); }
+@media (max-width: 560px) { .retrain-picks { grid-template-columns: 1fr; } }
 .school-coins { font-family: var(--font-head); font-size: 20px; min-width: 70px; text-align: center; }
 @media (max-width: 560px) { .school-row { grid-template-columns: 1fr; } }
 

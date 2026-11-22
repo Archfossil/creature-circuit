@@ -1,18 +1,19 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
-import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, type Recipe } from '../data/content';
+import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, NATURE_BY_ID, ABILITIES, type Recipe } from '../data/content';
+import { INSTINCT_BY_ID } from '../data/instincts';
 import { TYPES, TYPE_LABEL } from '../data/types';
-import type { GameState, Training, Match, BattleKind } from './state';
+import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
-import { STAT_LABEL, createCreature, fullRestore, speciesOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
+import { STAT_LABEL, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
 import { travelTogether, settleTeamwork, riseText } from './teamwork';
 
-export const ability = (s: GameState) => { const f = follower(s); return f ? speciesOf(f).ability : null; };
+export const ability = (s: GameState) => { const f = follower(s); return f ? abilityOf(f) : null; };
 /** Today's weather where the trainer stands. In Winter, Aurora Peak is always under Aurora Night. */
 export const weather = (s: GameState) => (s.location === 'aurora' && seasonForTurn(s.turn) === 'winter' ? WEATHER.aurora : WEATHER[s.weather] ?? WEATHER.clear);
 export const here = (s: GameState): MapNode => NODE_BY_ID[s.location];
@@ -830,13 +831,19 @@ export function enrollBlock(s: GameState, uid: string, coins: number): string | 
   return null;
 }
 
-/** Leave a creature at the Battle School for `coins` coins (XP = coins, turns = coins / 2). */
-export function enrollTraining(s: GameState, uid: string, coins: number): Training | null {
-  if (enrollBlock(s, uid, coins)) return null;
+/** Take a creature off the team to leave it at the school (a totem steps in if the team empties). */
+function leaveAtSchool(s: GameState, uid: string): CreatureInst {
   const list = s.roster.some((c) => c.uid === uid) ? s.roster : s.reserve;
   const c = list.splice(list.findIndex((x) => x.uid === uid), 1)[0];
   if (!s.roster.length && s.reserve.length) s.roster.push(s.reserve.shift()!);
   if (s.following === uid) s.following = s.roster[0]?.uid ?? null;
+  return c;
+}
+
+/** Leave a creature at the Battle School for `coins` coins (XP = coins, turns = coins / 2). */
+export function enrollTraining(s: GameState, uid: string, coins: number): Training | null {
+  if (enrollBlock(s, uid, coins)) return null;
+  const c = leaveAtSchool(s, uid);
   s.coins -= coins;
   const t: Training = { creature: c, school: s.location, xp: coins, turns: trainingTurns(coins), started: s.turn };
   (s.training ??= []).push(t);
@@ -850,8 +857,70 @@ export function trainingProgress(s: GameState, t: Training) {
   return { elapsed, xp: Math.min(t.xp, elapsed * SCHOOL_XP_PER_TURN), done: elapsed >= t.turns };
 }
 
+// ── Retraining (Battle School) ──────────────────────────────────
+// Pick a new Nature, Ability and/or Instinct for a creature. Each change costs coins and 1 Loyalty
+// (the drills are harsh), and the creature stays at the school until the next morning.
+export const RETRAIN_COST = { nature: 6, ability: 8, instinct: 10 } as const;
+export type RetrainPart = keyof typeof RETRAIN_COST;
+export const RETRAIN_PARTS: RetrainPart[] = ['nature', 'ability', 'instinct'];
+/** Loyalty each change costs, taken when the creature is picked up. */
+export const RETRAIN_LOYALTY = 1;
+/** The parts a course actually changes. */
+export const retrainParts = (r: Retrain): RetrainPart[] => RETRAIN_PARTS.filter((k) => r[k]);
+export const retrainCost = (r: Retrain) => retrainParts(r).reduce((a, k) => a + RETRAIN_COST[k], 0);
+/** The next morning: the next day turn after `turn` (odd turns are day). */
+export const nextMorning = (turn: number) => (turn % 2 === 1 ? turn + 2 : turn + 1);
+const currentOf = (c: CreatureInst, k: RetrainPart) => (k === 'nature' ? c.nature : k === 'ability' ? abilityOf(c) : instinctIdOf(c));
+
+/** Why this retraining can't be booked (null = it can). */
+export function retrainBlock(s: GameState, uid: string, r: Retrain): string | null {
+  if (TOWNS[s.location]?.special !== 'school') return 'You need to be at a Battle School.';
+  const all = [...s.roster, ...s.reserve];
+  const c = all.find((x) => x.uid === uid);
+  if (!c) return 'Not one of your creatures.';
+  if (all.length <= 1) return 'You can’t send away your only creature.';
+  const parts = retrainParts(r);
+  if (!parts.length) return 'Choose something to change.';
+  if (r.nature && !NATURE_BY_ID[r.nature]) return 'Unknown Nature.';
+  if (r.ability && !ABILITIES[r.ability]) return 'Unknown Ability.';
+  if (r.instinct && !INSTINCT_BY_ID[r.instinct]) return 'Unknown Instinct.';
+  const same = parts.find((k) => currentOf(c, k) === r[k]);
+  if (same) return `It already has that ${same === 'nature' ? 'Nature' : same === 'ability' ? 'Ability' : 'Instinct'}.`;
+  if (retrainCost(r) > s.coins) return 'Not enough coins.';
+  return null;
+}
+
+/** Leave a creature at the Battle School to be retrained. It's ready the next morning. */
+export function enrollRetraining(s: GameState, uid: string, r: Retrain): Training | null {
+  if (retrainBlock(s, uid, r)) return null;
+  const cost = retrainCost(r);
+  const c = leaveAtSchool(s, uid);
+  s.coins -= cost;
+  const retrain: Retrain = Object.fromEntries(retrainParts(r).map((k) => [k, r[k]]));
+  const t: Training = { creature: c, school: s.location, xp: 0, turns: nextMorning(s.turn) - s.turn, started: s.turn, retrain };
+  (s.training ??= []).push(t);
+  log(s, `Left ${nameOf(c)} at ${NODE_BY_ID[s.location].name}'s Battle School for retraining (${retrainSummary(c, retrain)}), 💰 ${cost}.`);
+  return t;
+}
+
+/** "Nature: Brave → Calm, Instinct: Menace → Hold Fast". */
+export function retrainSummary(c: CreatureInst, r: Retrain): string {
+  const name = (k: RetrainPart, id: string) => (k === 'nature' ? NATURE_BY_ID[id]?.name : k === 'ability' ? ABILITIES[id]?.name : INSTINCT_BY_ID[id]?.name) ?? id;
+  const label = { nature: 'Nature', ability: 'Ability', instinct: 'Instinct' };
+  return retrainParts(r).map((k) => `${label[k]}: ${name(k, currentOf(c, k))} → ${name(k, r[k]!)}`).join(', ');
+}
+
+/** Apply a course's changes: a new Nature keeps the number of perks unlocked; an Ability or Instinct matching the species' is stored as unset. */
+export function applyRetrain(c: CreatureInst, r: Retrain) {
+  if (r.nature) { c.nature = r.nature; c.perks = Math.min(c.perks, NATURE_BY_ID[r.nature].perks.length); }
+  if (r.ability) c.ability = r.ability === speciesOf(c).ability ? undefined : r.ability;
+  if (r.instinct) c.instinct = r.instinct === speciesOf(c).instinct ? undefined : r.instinct;
+  if (c.ability === undefined) delete c.ability;
+  if (c.instinct === undefined) delete c.instinct;
+}
+
 export type TrainingMood = 'great' | 'fine' | 'rough';
-export interface PickupResult { name: string; xp: number; levels: number; mood: TrainingMood; morale: number; loyalty: number; roll: number; legendLeft?: string; text: string }
+export interface PickupResult { name: string; xp: number; levels: number; mood: TrainingMood; morale: number; loyalty: number; roll: number; legendLeft?: string; text: string; /** Set for a retraining course: what changed. */ retrained?: string }
 
 /**
  * Collect a creature from the Battle School (you must be there). It gets the XP earned so far (its
@@ -864,7 +933,8 @@ export function pickUpTraining(s: GameState, uid: string): PickupResult | null {
   if (i < 0 || s.training![i].school !== s.location) return null;
   const t = s.training![i];
   const c = t.creature;
-  const { elapsed, xp } = trainingProgress(s, t);
+  const { elapsed, xp, done } = trainingProgress(s, t);
+  if (t.retrain) return done ? pickUpRetraining(s, i) : null; // not ready until the morning
   s.training!.splice(i, 1);
   const levels = xp > 0 ? gainXp(c, xp) : 0;
   const r = roll(6);
@@ -886,6 +956,32 @@ export function pickUpTraining(s: GameState, uid: string): PickupResult | null {
   if (!s.following) s.following = s.roster[0]?.uid ?? null;
   log(s, `Picked up ${nameOf(c)} from the Battle School: +${xp} XP, ${mood} stay.`);
   return { name: nameOf(c), xp, levels, mood, morale: dm, loyalty: dl, roll: r, legendLeft, text };
+}
+
+/** Collect a retrained creature: apply its changes and take the Loyalty hit. */
+function pickUpRetraining(s: GameState, i: number): PickupResult {
+  const t = s.training![i];
+  const c = t.creature;
+  const { elapsed } = trainingProgress(s, t);
+  s.training!.splice(i, 1);
+  const r = t.retrain!;
+  const what = retrainSummary(c, r);
+  applyRetrain(c, r);
+  const dl = -RETRAIN_LOYALTY * retrainParts(r).length;
+  addLoyalty(c, dl);
+  let text = `${nameOf(c)} is back from retraining (${what}). The drills were harsh: Loyalty ${dl}.`;
+  let legendLeft: string | undefined;
+  if (speciesOf(c).rarity === 'legendary') {
+    addLoyalty(c, -elapsed * LEGENDARY_LOYALTY_DRAIN);
+    if (c.loyalty <= 0) {
+      legendLeft = returnLegendary(s, c) ?? 'the wilds';
+      text += ` Its Loyalty ran out: it has returned to ${legendLeft}.`;
+    }
+  }
+  if (!legendLeft) { if (s.roster.length < 3) s.roster.push(c); else s.reserve.push(c); }
+  if (!s.following) s.following = s.roster[0]?.uid ?? null;
+  log(s, `Picked up ${nameOf(c)} from retraining: ${what}. Loyalty ${dl}.`);
+  return { name: nameOf(c), xp: 0, levels: 0, mood: 'fine', morale: 0, loyalty: dl, roll: 0, legendLeft, text, retrained: what };
 }
 
 function legendaryBattle(s: GameState, node: MapNode): Battle {
@@ -1348,7 +1444,7 @@ export interface TurnReport {
   /** Legendaries that left this turn and went back to their grounds on the map. */
   legendsReturned: { name: string; home: string }[];
   /** Creatures that finished their Battle School training this turn. */
-  trainingDone: { name: string; school: string }[];
+  trainingDone: { name: string; school: string; retrain?: boolean }[];
 }
 
 /** Creatures that would benefit from camping, most in need first (missing Vitality, then Fatigue). KO'd ones need a stable. */
@@ -1493,7 +1589,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   for (const t of s.training ?? []) {
     if (!t.notified && trainingProgress(s, t).done) {
       t.notified = true;
-      report.trainingDone.push({ name: nameOf(t.creature), school: NODE_BY_ID[t.school].name });
+      report.trainingDone.push({ name: nameOf(t.creature), school: NODE_BY_ID[t.school].name, ...(t.retrain ? { retrain: true } : {}) });
       log(s, `${nameOf(t.creature)} finished training at ${NODE_BY_ID[t.school].name}.`);
     }
   }

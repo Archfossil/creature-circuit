@@ -151,8 +151,14 @@ const KEY = 'creature-circuit-save-v1';
 export const SAVE_VERSION = 3;
 
 /** The player's mini customisation (colours are hex; hat/jacket are ids from render/trainerModel). Older saves have none. */
-/** A creature left at a Battle School: it earns `xp` over `turns` turns (2 XP a turn). */
-export interface Training { creature: CreatureInst; school: string; xp: number; turns: number; started: number; notified?: boolean }
+/**
+ * A creature left at a Battle School: it earns `xp` over `turns` turns (2 XP a turn). A retraining
+ * course (`retrain`) earns no XP: it changes the Nature, Ability and/or Instinct named, ready the
+ * next morning (world.ts → enrollRetraining).
+ */
+export interface Training { creature: CreatureInst; school: string; xp: number; turns: number; started: number; notified?: boolean; retrain?: Retrain }
+/** What a retraining course changes (ids; unset = kept). */
+export interface Retrain { nature?: string; ability?: string; instinct?: string }
 
 export interface TrainerLookChoice { skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string }
 

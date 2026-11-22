@@ -4,7 +4,7 @@ import { describeSwap, swapChart, swapStatus, type SwapEffect, type SwapMove, ty
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
-import { stats, maxHealth, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
+import { stats, maxHealth, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, instinctIdOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie } from './dice';
 import { addTeamwork, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
 import { swapMoveOf, swapVals } from './swaps';
@@ -173,7 +173,7 @@ function applyDamage(c: CreatureInst, dmg: number) {
 
 // ── Instincts (data/instincts.ts) ───────────────────────────────
 /** A creature's Instinct: its species' battle passive. */
-export const instinctOf = (c: CreatureInst): Instinct | undefined => INSTINCT_BY_ID[speciesOf(c).instinct];
+export const instinctOf = (c: CreatureInst): Instinct | undefined => INSTINCT_BY_ID[instinctIdOf(c)];
 const passiveOf = (c: CreatureInst) => instinctOf(c)?.passive;
 
 /** Use up a once-a-battle Instinct. False if it was already used this battle. */

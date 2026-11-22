@@ -9,7 +9,7 @@ import { BattleView } from '../render/battle';
 import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, type TrainerLook } from '../render/trainerModel';
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
-import type { GameState, TrainerStyle, BattleKind } from '../engine/state';
+import type { GameState, TrainerStyle, BattleKind, Retrain } from '../engine/state';
 import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
@@ -19,14 +19,14 @@ import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '.
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
-import { INSTINCT_BY_ID, INSTINCT_ICON } from '../data/instincts';
+import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
-import { ABILITIES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
+import { ABILITIES, NATURES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -1134,7 +1134,7 @@ export class App {
     const followerBtn = h('button', { class: 'follower-chip', onclick: () => this.pickFollower() },
       f ? h('img', { src: portrait(f.species), alt: '' }) : h('span', { class: 'none' }, '—'),
       h('div', null, h('small', null, 'Following'), h('b', null, f ? nameOf(f) : 'Nobody')),
-      f ? h('span', { class: 'ability-tag' }, ABILITIES[speciesOf(f).ability].name) : null);
+      f ? h('span', { class: 'ability-tag' }, ABILITIES[abilityOf(f)].name) : null);
     const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale})${c.bond ? '' : ' and may leave'}` : undefined, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
       h('i', { style: `--p:${c.ko ? 0 : (c.vitality * maxHealth(c) + c.health) / (maxHealth(c) * (maxVitality(c) + 1))}` }))));
@@ -2339,7 +2339,7 @@ export class App {
         (() => { const keys = W.townKeyItems(s, s.location); return tile('🛒', 'Market', keys.length ? `Sells the ${keys.map((k) => itemInfo(k).name).join(' and the ')}. ${keys.map((k) => itemInfo(k).text).join(' ')}` : 'Local goods.', '0⚡', () => this.market(true)); })(),
         tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials.', '0⚡', () => this.workbench(true)),
         this.workTile(),
-        t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Pick it up any time.', '', () => this.schoolSheet()) : null,
+        t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Or have it retrained overnight with a new Nature, Ability or Instinct.', '', () => this.schoolSheet()) : null,
         t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
         tile('🗺️', 'Notice Board', 'Local rumors and tips.', '', () => this.rumors())),
@@ -2353,6 +2353,9 @@ export class App {
     const body = h('div', { class: 'school' });
     let pickUid: string | null = null;
     let coins = Math.min(20, s.coins - (s.coins % 2));
+    // retraining: the creature and what to change ('' = keep)
+    let rUid: string | null = null;
+    const pickR: Record<W.RetrainPart, string> = { nature: '', ability: '', instinct: '' };
     const render = () => {
       const here = (s.training ?? []).filter((t) => t.school === s.location);
       const away = (s.training ?? []).filter((t) => t.school !== s.location);
@@ -2370,6 +2373,18 @@ export class App {
         h('h4', null, `🥋 In training here (${here.length})`),
         here.length ? h('div', { class: 'list' }, here.map((t) => {
           const p = W.trainingProgress(s, t);
+          if (t.retrain) return h('div', { class: 'school-row' },
+            miniCard(t.creature, { badge: p.done ? '✓ Ready' : '🌅 Morning' }),
+            h('div', { class: 'school-info' },
+              h('small', null, `Retraining: ${W.retrainSummary(t.creature, t.retrain)}.`),
+              h('small', { class: 'muted' }, p.done ? 'Done. It loses Loyalty when you pick it up (the drills are harsh).' : `Come back in the morning to pick up ${nameOf(t.creature)}!`),
+              h('button', { class: `btn ${p.done ? 'primary' : 'ghost'} sm`, disabled: !p.done, onclick: () => {
+                const r = W.pickUpTraining(s, t.creature.uid);
+                if (!r) return;
+                sfx.good(); save(s); this.renderHud();
+                toast(r.text, r.legendLeft ? 'bad' : 'good', 7000);
+                render();
+              } }, p.done ? 'Pick up' : 'Ready in the morning')));
           return h('div', { class: 'school-row' },
             miniCard(t.creature, { badge: p.done ? '✓ Done' : `${p.elapsed}/${t.turns}` }),
             h('div', { class: 'school-info' },
@@ -2407,7 +2422,54 @@ export class App {
             toast(`${nameOf(target)} starts training: ${t.xp} XP over ${t.turns} turns. You’ll be told when it’s done.`, 'good', 4500);
             pickUid = null;
             render();
-          } }, why && target ? why : `Enrol for 💰 ${coins}`)));
+          } }, why && target ? why : `Enrol for 💰 ${coins}`)),
+        retrainSection());
+    };
+    /** Pick a creature, then a new Nature, Ability and/or Instinct: each has its own price and costs 1 Loyalty. */
+    const retrainSection = () => {
+      const all = [...s.roster, ...s.reserve];
+      if (rUid && !all.some((c) => c.uid === rUid)) rUid = null;
+      const c = all.find((x) => x.uid === rUid);
+      const order: Retrain = Object.fromEntries(W.RETRAIN_PARTS.filter((k) => pickR[k]).map((k) => [k, pickR[k]]));
+      const cost = W.retrainCost(order), parts = W.retrainParts(order);
+      const why = c ? W.retrainBlock(s, c.uid, order) : 'Choose a creature to retrain.';
+      const label: Record<W.RetrainPart, string> = { nature: 'Nature', ability: 'Ability', instinct: 'Instinct' };
+      const current: Record<W.RetrainPart, string> = c ? { nature: c.nature, ability: abilityOf(c), instinct: instinctIdOf(c) } : { nature: '', ability: '', instinct: '' };
+      const options: Record<W.RetrainPart, { id: string; name: string; group?: string; text: string }[]> = {
+        nature: NATURES.map((n) => ({ id: n.id, name: n.name, text: `+${n.up} / −${n.down}` })),
+        ability: Object.values(ABILITIES).map((a) => ({ id: a.id, name: a.name, text: a.text })),
+        instinct: INSTINCTS.map((i) => ({ id: i.id, name: i.name, group: TYPE_LABEL[i.type], text: i.text })),
+      };
+      const picker = (k: W.RetrainPart) => {
+        const opts = options[k];
+        const opt = (o: { id: string; name: string; text: string }) => h('option', { value: o.id, selected: pickR[k] === o.id, disabled: o.id === current[k] }, `${o.name}${o.id === current[k] ? ' (current)' : ''}`);
+        const groups = [...new Set(opts.map((o) => o.group).filter(Boolean))] as string[];
+        const chosen = opts.find((o) => o.id === pickR[k]);
+        return h('div', { class: 'retrain-pick' },
+          h('label', null, h('b', null, `${label[k]} `), h('small', { class: 'muted' }, `💰 ${W.RETRAIN_COST[k]} · −${W.RETRAIN_LOYALTY} Loyalty`)),
+          h('select', { disabled: !c, onchange: (e: Event) => { pickR[k] = (e.target as HTMLSelectElement).value; render(); } },
+            h('option', { value: '', selected: !pickR[k] }, c ? `Keep ${opts.find((o) => o.id === current[k])?.name ?? '—'}` : '—'),
+            groups.length ? groups.map((g) => h('optgroup', { label: g }, opts.filter((o) => o.group === g).map(opt))) : opts.map(opt)),
+          chosen ? h('small', null, chosen.text) : null);
+      };
+      const loyalty = W.RETRAIN_LOYALTY * parts.length;
+      return h('div', { class: 'retrain' },
+        h('h4', null, '🌅 Retraining'),
+        h('p', { class: 'small' }, `The drill masters can rework a creature from the ground up: a new Nature (it keeps the number of perks it has unlocked), a new overworld Ability, or a new battle Instinct. Each change has its own price and costs ${W.RETRAIN_LOYALTY} Loyalty, as the drills are harsh. The creature stays overnight: it’s ready the next morning.`),
+        h('div', { class: 'list' }, all.map((x) => miniCard(x, { selected: x.uid === rUid, onClick: () => { rUid = x.uid; pickR.nature = pickR.ability = pickR.instinct = ''; render(); } }))),
+        h('div', { class: 'retrain-picks' }, W.RETRAIN_PARTS.map(picker)),
+        c && parts.length ? h('p', { class: 'small' }, `→ ${W.retrainSummary(c, order)}. 💰 ${cost}, Loyalty −${loyalty}${c.loyalty < loyalty ? ` (it has ${c.loyalty})` : ''}. Ready on turn ${W.nextMorning(s.turn)} (the next morning).`) : null,
+        h('div', { class: 'row end' },
+          h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: () => {
+            if (!c) return;
+            const t = W.enrollRetraining(s, c.uid, order);
+            if (!t) return;
+            sfx.good(); save(s); this.renderHud();
+            toast(`Come back in the morning to pick up ${nameOf(c)}!`, 'good', 5000);
+            rUid = null;
+            pickR.nature = pickR.ability = pickR.instinct = '';
+            render();
+          } }, why && c ? why : `Retrain for 💰 ${cost}`)));
     };
     render();
     openSheet('Battle School', body, { wide: true });
@@ -2625,7 +2687,7 @@ export class App {
       h('div', { class: 'list' }, s.roster.map((c) => miniCard(c, { badge: c.uid === s.following ? 'Following' : undefined, onClick: () => this.showCreature(c) }))),
       s.reserve.length ? [h('h4', null, `Resting in totems (${s.reserve.length})`), h('div', { class: 'list' }, s.reserve.map((c) => miniCard(c, { onClick: () => this.showCreature(c) }))), h('p', { class: 'small muted' }, 'Swap your active team for free in any city or town (🔄 Swap Team).')] : null);
     if (s.training?.length) body.append(h('h4', null, `🥋 At Battle School (${s.training.length})`),
-      h('p', { class: 'small muted' }, s.training.map((t) => { const p = W.trainingProgress(s, t); return `${nameOf(t.creature)} at ${NODE_BY_ID[t.school].name}: ${p.done ? 'finished, ready to pick up' : `${p.xp}/${t.xp} XP, ${t.turns - p.elapsed} turns to go`}`; }).join(' · ')));
+      h('p', { class: 'small muted' }, s.training.map((t) => { const p = W.trainingProgress(s, t); if (t.retrain) return `${nameOf(t.creature)} at ${NODE_BY_ID[t.school].name}: retraining, ${p.done ? 'ready to pick up' : 'ready in the morning'}`; return `${nameOf(t.creature)} at ${NODE_BY_ID[t.school].name}: ${p.done ? 'finished, ready to pick up' : `${p.xp}/${t.xp} XP, ${t.turns - p.elapsed} turns to go`}`; }).join(' · ')));
     openSheet('Your Team', body, { wide: true });
   }
 
@@ -2652,7 +2714,7 @@ export class App {
         h('button', { class: `chip social ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= 7 ? 'good' : ''}`, title: 'How Morale works', onclick: () => socialHelp(c) }, c.morale <= MORALE_LOW ? '⚠️ ' : '💖 ', 'Morale ', h('b', null, c.morale), '/10'),
         h('button', { class: `chip social ${speciesOf(c).rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: 'How Loyalty works', onclick: () => socialHelp(c) }, speciesOf(c).rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), '/10'));
       const abilityLine = (c: CreatureInst) => {
-        const ab = ABILITIES[speciesOf(c).ability];
+        const ab = ABILITIES[abilityOf(c)];
         return h('small', null, '🌿 ', h('b', null, ab.name), ' · ', ab.text);
       };
       const current = cur
@@ -2661,8 +2723,8 @@ export class App {
           h('div', { class: 'follow-info' },
             h('small', { class: 'muted' }, 'Following you now'),
             h('h3', null, nameOf(cur), h('small', null, ` · Lv ${cur.level}`)),
-            h('p', { class: 'small' }, '🌿 ', h('b', null, `Ability · ${ABILITIES[speciesOf(cur).ability].name}`), ': ', ABILITIES[speciesOf(cur).ability].text, h('span', { class: 'muted' }, ' (active while it follows)')),
-            INSTINCT_BY_ID[speciesOf(cur).instinct] ? h('p', { class: 'small' }, `${INSTINCT_ICON} `, h('b', null, `Instinct · ${INSTINCT_BY_ID[speciesOf(cur).instinct].name}`), ': ', INSTINCT_BY_ID[speciesOf(cur).instinct].text, h('span', { class: 'muted' }, ' (in battle)')) : null,
+            h('p', { class: 'small' }, '🌿 ', h('b', null, `Ability · ${ABILITIES[abilityOf(cur)].name}`), ': ', ABILITIES[abilityOf(cur)].text, h('span', { class: 'muted' }, ' (active while it follows)')),
+            INSTINCT_BY_ID[instinctIdOf(cur)] ? h('p', { class: 'small' }, `${INSTINCT_ICON} `, h('b', null, `Instinct · ${INSTINCT_BY_ID[instinctIdOf(cur)].name}`), ': ', INSTINCT_BY_ID[instinctIdOf(cur)].text, h('span', { class: 'muted' }, ' (in battle)')) : null,
             social(cur)))
         : h('div', { class: 'follow-current none' }, h('p', null, 'Nobody is following you. You’ll choose who leads each battle, and no overworld Ability is active.'));
       const others = s.roster.filter((c) => c.uid !== cur?.uid);
@@ -2790,7 +2852,7 @@ export class App {
     // hotseat: no weather roll here; the first trainer to start the next turn rolls it for everyone
     const r = W.endTurn(s, camping, match ? match.rolls[s.turn + 1] ?? null : undefined);
     // Morale: warnings for creatures that just became unhappy, then any d10 checks for those already warned
-    for (const td of r.trainingDone) toast(`🥋 ${td.name} has finished training at ${td.school}. Pick it up there.`, 'good', 6000);
+    for (const td of r.trainingDone) toast(td.retrain ? `🌅 ${td.name}’s retraining at ${td.school} is done. Pick it up there.` : `🥋 ${td.name} has finished training at ${td.school}. Pick it up there.`, 'good', 6000);
     for (const lg of r.legendsReturned) toast(`✨ ${lg.name} has left your side and returned to ${lg.home}. Another trainer may find it there.`, 'info', 6000);
     for (const c of [...s.roster, ...s.reserve]) {
       if (speciesOf(c).rarity === 'legendary' && c.loyalty <= 3) toast(`✨ ${nameOf(c)}’s Loyalty is fading: it leaves in ${c.loyalty} turn${c.loyalty === 1 ? '' : 's'} unless you give it treats, or release it at Quillhaven’s Research Facility first.`, 'bad', 5000);

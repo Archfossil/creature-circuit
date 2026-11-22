@@ -37,6 +37,10 @@ export interface CreatureInst {
   teamwork: Record<string, number>;
   /** Swap Moves the trainer set (by partner uid): the one this creature uses when it swaps in for that partner (see swaps.ts). */
   swapMoves: Record<string, string>;
+  /** Its own Ability (id in ABILITIES), if retrained away from its species' (Battle School, the Trail Tutor). */
+  ability?: string;
+  /** Its own Instinct (id in INSTINCTS), if retrained away from its species' (Battle School, the Drum Circle). */
+  instinct?: string;
   wins: number;
   losses: number;
 }
@@ -48,6 +52,10 @@ export const STAT_LABEL: Record<StatKey, string> = {
 
 export const speciesOf = (c: CreatureInst): Species => SPECIES_BY_ID[c.species];
 export const nameOf = (c: CreatureInst) => c.nickname || speciesOf(c).name;
+/** A creature's overworld Ability: its own if it was retrained, otherwise its species'. */
+export const abilityOf = (c: CreatureInst): string => c.ability ?? speciesOf(c).ability;
+/** A creature's Instinct id: its own if it was retrained, otherwise its species'. */
+export const instinctIdOf = (c: CreatureInst): string => c.instinct ?? speciesOf(c).instinct;
 
 export function stats(c: CreatureInst, extra?: Partial<Stats>): Stats {
   const sp = speciesOf(c);

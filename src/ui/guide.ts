@@ -197,6 +197,8 @@ export const GUIDE: GuideCategory[] = [
       { id: 'school', title: 'Battle School', body: [
         'At Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn.',
         'You’re told when it’s done. Pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).',
+        '🌅 Retraining: the drill masters can also give a creature any new Nature (💰 6), Ability (💰 8) or Instinct (💰 10). It stays overnight and is ready the next morning. The drills are harsh: it loses 1 Loyalty for each change when you pick it up.',
+        'A new Nature keeps the number of perks it has unlocked. The Creature Caretaker, Trail Tutor and Drum Circle events can change a Nature, Ability or Instinct for free, but only to one of three random options.',
       ] },
       { id: 'rainbow', title: 'Lantern Glade & the Rainbow Plains', body: [
         'Lantern Glade is a town up a misty branch off Fogbank Path (between Mistfall and Hollow Crest). Only a Fog Lantern with a wisp caught in it lights the way.',

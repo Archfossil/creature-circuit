@@ -6,11 +6,11 @@ import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from 
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
-import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES } from '../src/data/content';
+import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
-import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
-import { afflict, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
+import { afflict, instinctOf, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -2129,6 +2129,56 @@ describe('Battle School', () => {
     s.location = 'mistfall';
     expect(W.pickUpTraining(s, c.uid)).toBeNull();
   });
+  it('retraining changes Nature, Ability and Instinct for coins each, overnight, and costs Loyalty', () => {
+    const s = game();
+    const c = s.roster[1];
+    c.loyalty = 5; c.perks = 1;
+    const nature = NATURES.find((n) => n.id !== c.nature)!.id;
+    const ability = Object.keys(ABILITIES).find((a) => a !== speciesOf(c).ability)!;
+    const instinct = INSTINCTS.find((i) => i.id !== speciesOf(c).instinct)!.id;
+    s.turn = 3; // a day turn: ready on the next morning, turn 5
+    const t = W.enrollRetraining(s, c.uid, { nature, ability, instinct })!;
+    expect(s.coins).toBe(50 - W.RETRAIN_COST.nature - W.RETRAIN_COST.ability - W.RETRAIN_COST.instinct);
+    expect(s.roster).not.toContain(c);
+    expect(t.turns).toBe(2);
+    expect(W.pickUpTraining(s, c.uid)).toBeNull(); // not until the morning
+    s.turn = 4;
+    expect(W.pickUpTraining(s, c.uid)).toBeNull();
+    s.turn = 5;
+    const r = W.pickUpTraining(s, c.uid)!;
+    expect(r.retrained).toMatch(/Nature: .* → /);
+    expect([c.nature, abilityOf(c), instinctIdOf(c), c.ability, c.instinct]).toEqual([nature, ability, instinct, ability, instinct]);
+    expect(c.loyalty).toBe(5 - 3 * W.RETRAIN_LOYALTY);
+    expect(c.perks).toBe(1); // keeps the number of perks unlocked
+    expect(c.xp).toBe(0);
+    expect([...s.roster, ...s.reserve]).toContain(c);
+    // the battle uses its own Instinct now
+    const bt = createBattle(side('player', [c]), side('wild', [createCreature('zapup', 1)]), WEATHER.clear);
+    expect(instinctOf(activeOf(bt.sides[0]))?.id).toBe(instinct);
+  });
+  it('retraining is ready the next morning, and rejects no change, the same thing again, or too few coins', () => {
+    expect([W.nextMorning(3), W.nextMorning(4), W.nextMorning(1)]).toEqual([5, 5, 3]);
+    const s = game();
+    const c = s.roster[1];
+    expect(W.retrainBlock(s, c.uid, {})).toMatch(/Choose/);
+    expect(W.retrainBlock(s, c.uid, { nature: c.nature })).toMatch(/already has that Nature/);
+    expect(W.retrainBlock(s, c.uid, { ability: abilityOf(c) })).toMatch(/already has that Ability/);
+    s.coins = 3;
+    expect(W.retrainBlock(s, c.uid, { instinct: INSTINCTS.find((i) => i.id !== instinctIdOf(c))!.id })).toMatch(/coins/);
+    s.coins = 50; s.location = 'mistfall';
+    expect(W.retrainBlock(s, c.uid, { nature: NATURES.find((n) => n.id !== c.nature)!.id })).toMatch(/Battle School/);
+    // the end of the night tells you it's ready
+    s.location = 'valor'; s.turn = 4;
+    W.enrollRetraining(s, c.uid, { nature: NATURES.find((n) => n.id !== c.nature)!.id });
+    expect(W.endTurn(s).trainingDone).toEqual([{ name: nameOf(c), school: 'Valor Ridge', retrain: true }]);
+  });
+  it('choosing its species’ own Ability or Instinct again clears the override', () => {
+    const c = createCreature('puddlit', 3);
+    c.instinct = 'menace';
+    W.applyRetrain(c, { instinct: speciesOf(c).instinct });
+    expect('instinct' in c).toBe(false);
+    expect(instinctIdOf(c)).toBe(speciesOf(c).instinct);
+  });
 });
 
 describe('camping', () => {
@@ -2473,6 +2523,8 @@ describe('turn events', () => {
         const target = ch.pick ? [...s.roster, ...s.reserve].find((c) => !ch.canPick?.(c)) : undefined;
         // a disabled choice (e.g. it needs an item you don't have) can't be taken
         if (ch.disabled) { expect(E.resolveEvent(s, ch.id, target?.uid), `${id}:${ch.id} is disabled`).toBeNull(); continue; }
+        // a pick choice nobody on the team can take (e.g. every creature already has that Nature or Ability) is refused too
+        if (ch.pick && !target) { expect(E.resolveEvent(s, ch.id), `${id}:${ch.id} has no one to pick`).toBeNull(); continue; }
         const r = E.resolveEvent(s, ch.id, target?.uid);
         expect(r, `${id}:${ch.id}`).not.toBeNull();
         expect(r!.text.length).toBeGreaterThan(0);
@@ -2540,6 +2592,22 @@ describe('turn events', () => {
     if (same) expect(E.resolveEvent(s, same.id, c.uid)).toBeNull();
     expect(E.resolveEvent(s, choice.id, c.uid)).not.toBeNull();
     expect(c.nature).toBe(choice.id.slice(7));
+  });
+  it('the Trail Tutor teaches a new Ability, and the Drum Circle wakes a new Instinct', () => {
+    const s = game();
+    const c = s.roster[0];
+    E.rollEvent(s, 'tutor');
+    const learn = E.eventView(s)!.choices.find((x) => x.id.startsWith('ability:') && x.id !== `ability:${abilityOf(c)}`)!;
+    expect(E.resolveEvent(s, learn.id, c.uid)).not.toBeNull();
+    expect(abilityOf(c)).toBe(learn.id.slice(8));
+    s.event = undefined;
+    E.rollEvent(s, 'drums');
+    const view = E.eventView(s)!;
+    const same = view.choices.find((x) => x.id === `instinct:${instinctIdOf(c)}`);
+    if (same) expect(E.resolveEvent(s, same.id, c.uid)).toBeNull();
+    const wake = view.choices.find((x) => x.id.startsWith('instinct:') && x.id !== `instinct:${instinctIdOf(c)}`)!;
+    expect(E.resolveEvent(s, wake.id, c.uid)).not.toBeNull();
+    expect(instinctIdOf(c)).toBe(wake.id.slice(9));
   });
   it('the trader shows its creature, and the before/after preview is exactly what you get', () => {
     const s = game();
