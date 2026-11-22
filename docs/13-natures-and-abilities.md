@@ -4,7 +4,8 @@ The traits every creature carries, shown on its index card:
 
 - **Nature:** a personality that shifts two stats and unlocks three perks as the creature's Loyalty grows. Each *creature* has its own.
 - **Ability:** an overworld power that's active while the creature is **Following** you. Set by *species*.
-- **Swap Moves:** what happens when the creature is **swapped in** during battle. The trainer sets one for each teammate; each *species* has a favourite.
+- **Swap Moves:** what happens when the creature is **swapped in** during battle. The trainer sets one for each teammate; until then a pair uses a neutral one picked at random.
+- **Instinct:** a passive that fires on its own **in battle** (when it takes the field, loses a heart, is hit, and so on). Set by *species*, shared by its family. The 48 Instincts and their exact rules are in [14 · Instinct Checklist](./14-instinct-checklist.md), generated from the game data.
 
 **Code:**
 - `NATURES` and `ABILITIES` in `src/data/content.ts`, and `SWAP_MOVES` in `src/data/swapMoves.ts`, hold the names, numbers and in-game text.
@@ -201,7 +202,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 - **When:** a creature is **swapped in** during battle (from round 2). The incoming creature is the **Alpha**; the one it replaces is the **partner**. The Alpha's Swap Move fires straight away.
 - **Chosen per direction:** the trainer sets one Swap Move for each teammate on a creature's card (`CreatureInst.swapMoves`, keyed by the partner's uid). It's used when this creature swaps in for that partner. So Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup, and from Puddlit swapping in for Sproutle. It can also be changed from the battle's swap screen.
-- **Favourite:** each species has a favourite (its `affinity`, one of the five neutral moves). A slot that's unset, or whose move is no longer allowed, uses it. Opposing trainers and wild creatures always use their favourite.
+- **Default:** a slot that's unset, or whose move is no longer allowed, uses a neutral Swap Move picked at random for that pair and direction (`defaultSwapMove`). It's seeded by the two creatures' uids, so it's the same every battle and on every browser, until the trainer sets one. Opposing trainers and wild creatures use theirs the same way.
 - **Which moves a pair can set** (`swapLock` in `engine/swaps.ts`):
   - **Neutral** moves: every pair, at any Teamwork.
   - **Typed** moves: one of the two creatures must have the move's type. The first of each type needs the Alpha to have **Teamwork 1** with the partner, the second **Teamwork 2**.
@@ -220,13 +221,13 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 ### Neutral Swap Moves
 
-| # | Move | ID | Teamwork | In-game text | Exact effect | Favourite of |
-|---|---|---|---|---|---|---|
-| 1 | Tag Strike | `tagStrike` | 0 | "The Alpha swaps in with an attack of the partner's type, powered by the partner's Focus." | d8 to hit vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 species |
-| 2 | Shield Pass | `shieldPass` | 0 | "The Alpha borrows half of the partner's Armor and Ward for as long as it stays in, then counters with a physical hit." | +(partner's Armor ÷ 2, rounded up, at least 1, + bonus) Armor and the same for Ward, then a sure counter: d6 + Power − foe's Armor. | 82 species |
-| 3 | Slipstream | `slipstream` | 0 | "The Alpha rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d6 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 species |
-| 4 | Siphon | `siphon` | 0 | "The Alpha drains the foe with an attack of its own type, then heals using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 species |
-| 5 | Rally | `rally` | 0 | "The partner cheers the Alpha on: both restore Stamina and shake off some Fatigue, and the Alpha gains Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). | 77 species |
+| # | Move | ID | Teamwork | In-game text | Exact effect |
+|---|---|---|---|---|---|
+| 1 | Tag Strike | `tagStrike` | 0 | "The Alpha swaps in with an attack of the partner's type, powered by the partner's Focus." | d8 to hit vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. |
+| 2 | Shield Pass | `shieldPass` | 0 | "The Alpha borrows half of the partner's Armor and Ward for as long as it stays in, then counters with a physical hit." | +(partner's Armor ÷ 2, rounded up, at least 1, + bonus) Armor and the same for Ward, then a sure counter: d6 + Power − foe's Armor. |
+| 3 | Slipstream | `slipstream` | 0 | "The Alpha rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d6 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. |
+| 4 | Siphon | `siphon` | 0 | "The Alpha drains the foe with an attack of its own type, then heals using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. |
+| 5 | Rally | `rally` | 0 | "The partner cheers the Alpha on: both restore Stamina and shake off some Fatigue, and the Alpha gains Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). |
 
 ### Typed Swap Moves
 
@@ -304,7 +305,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
    - **A Nature** needs no code: its up, down and perks are read from the data.
    - **An Ability** needs a check where the game decides that thing, like the existing `ability(s) === '…'` checks in `src/engine/world.ts`.
    - **A Swap Move** usually needs no code: build it from the existing effects (`mod`, `heal`, `refill`, `ease`, `status`) and a `hit`. A new kind of effect needs a case in `swapEffect()` in `src/engine/battle.ts` and in `describeSwap()`.
-3. **Give it to creatures:** set `ability` or `affinity` (the favourite neutral Swap Move) on species in `src/data/species.ts`. Placeholders get theirs in `src/data/roster.ts`. Natures are random, so a new one appears on new creatures automatically.
+3. **Give it to creatures:** set `ability` (or `instinct`) on species in `src/data/species.ts`. Placeholders get theirs in `src/data/roster.ts`. Swap Moves aren't given to species: trainers set them per pair. Natures are random, so a new one appears on new creatures automatically.
 4. **Then:**
    - Add a test.
    - Update this doc. **A test fails if a Nature, Ability or Swap Move in the game is missing from this file.**

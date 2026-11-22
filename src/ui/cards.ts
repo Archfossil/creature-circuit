@@ -5,7 +5,8 @@ import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesO
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
 import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
-import { defaultSwapMove, setSwapMove, swapLock, swapMoveOf, swapVals } from '../engine/swaps';
+import { setSwapMove, swapLock, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
+import { INSTINCT_BY_ID, INSTINCT_ICON, instinctRules } from '../data/instincts';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
 import type { ElementType, EnergyKey, Move } from '../data/schema';
 import { portrait } from '../render/engine';
@@ -261,12 +262,11 @@ export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
  * teammate, their Teamwork and its bonus. `edit` opens the picker (when the card is editable).
  */
 function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: CreatureInst) => void) {
-  const fav = defaultSwapMove(c);
   const others = mates.filter((m) => m.uid !== c.uid);
   const cap = teamworkCap(c);
   return h('section', { class: 'ic-sec swap-sec' },
     h('h4', { title: TEAMWORK_HELP }, '🔁 Swap Moves ', h('span', { class: 'muted' }, `🤝 Teamwork max ${fmtTeamwork(cap)} (half its Loyalty)`)),
-    h('p', { class: 'small muted' }, `When ${nameOf(c)} swaps in (as the Alpha) for a teammate, it uses the Swap Move set for that teammate. Favourite: `, h('b', null, fav.name), ' (', ...alphaText(swapText(fav, { A: nameOf(c), aType: speciesOf(c).types[0] }), nameOf(c), 'the partner'), ')'),
+    h('p', { class: 'small muted' }, `When ${nameOf(c)} swaps in (as the Alpha) for a teammate, it uses the Swap Move set for that teammate. Until you set one, the pair uses a neutral Swap Move picked at random.`),
     others.length ? h('div', { class: 'swap-list' }, others.map((m) => {
       const mv = swapMoveOf(c, m);
       const t = teamworkOf(c, m), bonus = teamworkBonus(c, m), pairCap = teamworkCap(c, m);
@@ -277,7 +277,7 @@ function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: Cr
           h('span', { class: `chip ${bonus ? 'good' : ''}`, title: `${nameOf(c)}’s Teamwork with ${nameOf(m)}: ${bonus ? `+${bonus} to its Swap Move` : `no bonus yet (+1 at ${TEAMWORK_PER_BONUS})`}. Max ${fmtTeamwork(pairCap)}, half ${nameOf(low)}’s Loyalty (${low.loyalty})${t >= pairCap ? `: raise ${nameOf(low)}’s Loyalty to grow it` : ''}.` },
             '🤝 ', fmtTeamwork(t), `/${fmtTeamwork(pairCap)}`, bonus ? ` · +${bonus}` : ''),
           edit ? h('button', { class: 'link', onclick: () => edit(m) }, 'Change') : null),
-        h('div', null, mv.type ? typeIconImg(mv.type, 14) : null, ' ', h('b', null, mv.name), mv.id === fav.id ? h('span', { class: 'muted' }, ' · favourite') : null),
+        h('div', null, mv.type ? typeIconImg(mv.type, 14) : null, ' ', h('b', null, mv.name), swapMoveSet(c, m) ? null : h('span', { class: 'muted' }, ' · random until you set one')),
         h('small', null, alphaText(swapText(mv, swapVals(c, m)), nameOf(c), nameOf(m))),
         h('small', { class: 'muted' }, alphaText(describeSwap(mv, swapVals(c, m)), nameOf(c), nameOf(m))));
     })) : h('p', { class: 'small muted' }, 'Recruit another creature to set Swap Moves.'),
@@ -330,7 +330,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
   const e = energy(c);
   const nat = NATURE_BY_ID[c.nature];
   const ab = ABILITIES[sp.ability];
-  const fav = defaultSwapMove(c);
+  const inst = INSTINCT_BY_ID[sp.instinct];
   const spent = allocateEnergy(e, c.playbook);
   const free = energyTotal(e) - energyTotal(spent);
   return h('article', { class: 'index-card', style: `--tc:${TYPE_COLOR[sp.types[0]]};--tc2:${TYPE_COLOR[sp.types[1] ?? sp.types[0]]}` },
@@ -361,7 +361,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
       h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.')),
-      h('div', { class: 'mini-panel' }, h('h5', null, '🔁 Favourite Swap Move · ', fav.name), h('p', null, alphaText(swapText(fav, { A: nameOf(c), aType: sp.types[0] }), nameOf(c), 'the partner')), h('small', { class: 'muted' }, 'Used when it swaps in, until you set another for that partner below.'))),
+      inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.')) : null),
     swapSection(c, opts.teammates ?? [], opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
     h('section', { class: 'ic-sec' },
       h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),

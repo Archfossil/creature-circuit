@@ -125,7 +125,7 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
         'From round 2 you can swap (S). The creature coming in is the Alpha, and it uses a 🔁 Swap Move at once, often borrowing from the partner it replaces. The swap screen shows what each swap will do right now.',
-        'You choose the Swap Moves. Each creature’s card has a slot for every teammate: the move it uses when it swaps in for that one. So Sproutle swapping in for Puddlit can use a different move from Sproutle swapping in for Zapup (or Puddlit swapping in for Sproutle). Unset slots use the creature’s favourite.',
+        'You choose the Swap Moves. Each creature’s card has a slot for every teammate: the move it uses when it swaps in for that one. So Sproutle swapping in for Puddlit can use a different move from Sproutle swapping in for Zapup (or Puddlit swapping in for Sproutle). Until you set one, a pair uses a neutral Swap Move picked at random (the same one each battle).',
         'Choosing a Swap Move shows both creatures side by side with their stats, so you can see whose numbers each move uses. The Alpha (swapping in) is highlighted in gold and the partner (swapping out) in silver, there and in every move’s description.',
         '- Neutral Swap Moves (Tag Strike, Shield Pass, Slipstream, Siphon, Rally) are open to every pair.',
         '- Each type has two more. A pair can use one if either creature has that type; the first needs Teamwork 1 with that partner, the second Teamwork 2. Typed hits inflict their type’s status on a 1–2.',
@@ -134,6 +134,13 @@ export const GUIDE: GuideCategory[] = [
         '- Swapping in battle: a pair gains +1 Teamwork the first time one swaps in for the other in a battle. Swapping them back and forth again in the same battle adds nothing more.',
         '- Cap: a pair’s Teamwork can’t go above half the lower Loyalty of the two (Loyalty 4 → Teamwork 2, at most 5). Keep both creatures happy: if that Loyalty falls, the Teamwork falls too, and you’re told at the start of the next turn. Legendaries lose Loyalty every turn, so keeping one in step with its team takes real care.',
         'Each creature’s card lists its Swap Move and Teamwork for every teammate. Tap Change there (or on the swap screen) to pick another.',
+      ] },
+      { id: 'instincts', title: 'Instincts', body: [
+        'Every creature has an 🔆 Instinct: a passive that works on its own in battle, alongside its Nature (stats) and its Ability (the overworld). You’ll find it on the creature’s card.',
+        '- Some fire at a moment: when it takes the field, when it loses a heart, when a physical attack hits it, when it knocks out a foe, when it misses, or at the end of each round.',
+        '- Others bend a rule while it’s out, like accuracy that can’t be lowered, immunity to a status, or hanging on with 1 Health once a battle.',
+        'Wild creatures and other trainers’ creatures have Instincts too. When one fires, the battle log says so, then shows what it did. Stat changes from an Instinct last while that creature stays in.',
+        'Hover an Instinct on a card for its exact rules.',
       ] },
       { id: 'readouts', title: 'Move readouts', body: [
         'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion (plus any ⌖ Zeroing In, and what a miss would add), then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',

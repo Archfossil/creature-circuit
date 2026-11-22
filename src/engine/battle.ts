@@ -8,6 +8,7 @@ import { stats, maxHealth, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf,
 import { roll, clashDie } from './dice';
 import { addTeamwork, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
 import { swapMoveOf, swapVals } from './swaps';
+import { INSTINCT_BY_ID, INSTINCT_ICON, type Instinct, type InstinctEffect, type InstinctMoment } from '../data/instincts';
 
 export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
 
@@ -56,6 +57,8 @@ export interface Battle {
   teamworkGains?: TeamworkRise[];
   /** Side 1's active creature is knocked out and waiting for foeSendIn. */
   foeNeedSwap?: boolean;
+  /** Once-a-battle Instincts already used, as "<uid>:<instinct id>". */
+  instinctUsed?: string[];
 }
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
@@ -142,6 +145,10 @@ function eff(b: Battle, si: 0 | 1, k: StatKey): number {
   if (st === 'snare' && (k === 'speed' || k === 'evasion')) v -= 1;
   if (st === 'stagger' && (k === 'power' || k === 'focus')) v -= 1;
   if (st === 'sunder' && (k === 'armor' || k === 'ward')) v -= 1;
+  // Instincts: weather boosts, last-heart surges
+  const p = passiveOf(c);
+  if (p?.weather?.ids.includes(b.weather.id)) v += p.weather.mods[k] ?? 0;
+  if (p?.lastHeart && c.vitality === 0) v += p.lastHeart[k] ?? 0;
   if (b.arena) {
     const t = b.arena.tier;
     if (si === 1 && b.arena.trick === 'illusion' && k === 'evasion') v += t >= 4 ? 2 : 1;
@@ -162,6 +169,101 @@ function applyDamage(c: CreatureInst, dmg: number) {
   c.health -= dmg;
   while (c.health <= 0 && c.vitality > 0) { c.vitality--; c.health += mh; }
   if (c.health <= 0) { c.health = 0; c.ko = true; }
+}
+
+// ── Instincts (data/instincts.ts) ───────────────────────────────
+/** A creature's Instinct: its species' battle passive. */
+export const instinctOf = (c: CreatureInst): Instinct | undefined => INSTINCT_BY_ID[speciesOf(c).instinct];
+const passiveOf = (c: CreatureInst) => instinctOf(c)?.passive;
+
+/** Use up a once-a-battle Instinct. False if it was already used this battle. */
+function spendOnce(b: Battle, c: CreatureInst, id: string): boolean {
+  const key = `${c.uid}:${id}`;
+  if ((b.instinctUsed ??= []).includes(key)) return false;
+  b.instinctUsed.push(key);
+  return true;
+}
+
+/** Fire side `si`'s active creature's Instinct, if it triggers at this moment. */
+function fireInstinct(b: Battle, si: 0 | 1, on: InstinctMoment, ev: BEvent[]) {
+  if (b.over) return;
+  const c = activeOf(b.sides[si]);
+  const inst = c && instinctOf(c), t = inst?.trigger;
+  if (!inst || !t || t.on !== on || c.ko) return;
+  if (t.chance && roll(6) > t.chance) return;
+  if (t.once && !spendOnce(b, c, inst.id)) return;
+  ev.push({ t: 'say', text: `${INSTINCT_ICON} ${nameOf(c)}’s ${inst.name}!`, tone: si === 0 ? 'good' : 'info' });
+  for (const e of t.effects) {
+    if (b.over) return;
+    instinctEffect(b, si, e, ev);
+  }
+}
+
+function instinctEffect(b: Battle, si: 0 | 1, e: InstinctEffect, ev: BEvent[]) {
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const c = activeOf(b.sides[si]), foe = activeOf(b.sides[fi]);
+  switch (e.t) {
+    case 'mod': {
+      const side = e.who === 'self' ? si : fi;
+      if (activeOf(b.sides[side]).ko) return;
+      addMod(b, side, e.stat, e.n);
+      ev.push({ t: 'buff', side, text: `${e.n >= 0 ? '+' : '−'}${Math.abs(e.n)} ${STAT_LABEL[e.stat]}` });
+      return;
+    }
+    case 'status': afflict(b, fi, e.status, ev); return;
+    case 'heal': {
+      const n = Math.min(e.n, maxHealth(c) - c.health);
+      if (n > 0) { c.health += n; ev.push({ t: 'heal', side: si, amount: n, snap: snap(b, c) }); }
+      return;
+    }
+    case 'refill':
+      c.stamina = maxStamina(c);
+      ev.push({ t: 'buff', side: si, text: 'Stamina restored' });
+      ev.push({ t: 'stamina', side: si, snap: snap(b, c) });
+      return;
+    case 'cure': {
+      const st = b.status[c.uid];
+      if (!st) return;
+      delete b.status[c.uid];
+      ev.push({ t: 'say', text: `${nameOf(c)} shook off ${STATUS_INFO[st.id].name}.`, tone: si === 0 ? 'good' : 'info' });
+      ev.push({ t: 'heal', side: si, amount: 0, snap: snap(b, c) });
+      return;
+    }
+    case 'sting': {
+      if (foe.ko) return;
+      const hit = takeHit(b, fi, e.n);
+      ev.push({ t: 'damage', side: fi, amount: hit.dmg, eff: 1, crit: false, snap: snap(b, foe) });
+      afterHit(b, fi, hit, false, ev);
+      if (foe.ko) handleKO(b, fi, ev);
+      return;
+    }
+  }
+}
+
+/** What a blow did: the damage actually dealt, hearts lost, and whether Hold Fast kept it standing. */
+interface Struck { dmg: number; hearts: number; held: boolean }
+
+/** Deal `dmg` to side `si`'s active creature. A Hold-Fast-like Instinct turns the first knockout blow into a 1-Health survival. */
+function takeHit(b: Battle, si: 0 | 1, dmg: number): Struck {
+  const c = activeOf(b.sides[si]);
+  const before = c.vitality;
+  let held = false;
+  const inst = instinctOf(c);
+  if (inst?.passive?.holdFast && !c.ko && dmg > 0) {
+    const left = c.health + c.vitality * maxHealth(c);
+    if (dmg >= left && spendOnce(b, c, inst.id)) { dmg = left - 1; held = true; }
+  }
+  applyDamage(c, dmg);
+  return { dmg, hearts: before - c.vitality, held };
+}
+
+/** After a blow lands (and its damage is shown): Hold Fast's message, then heart-lost and on-hit Instincts. */
+function afterHit(b: Battle, si: 0 | 1, s: Struck, physical: boolean, ev: BEvent[]) {
+  const c = activeOf(b.sides[si]);
+  if (s.held) ev.push({ t: 'say', text: `${INSTINCT_ICON} ${nameOf(c)}’s ${instinctOf(c)!.name}: it hangs on with 1 Health!`, tone: si === 0 ? 'good' : 'info' });
+  if (c.ko || b.over) return;
+  if (s.hearts > 0) fireInstinct(b, si, 'heartLost', ev);
+  if (physical) fireInstinct(b, si, 'hitPhysical', ev);
 }
 
 // ── AI ──────────────────────────────────────────────────────────
@@ -331,6 +433,8 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
   if (b.over) return ev;
   if (b.foeNeedSwap) ev.push(...foeSendIn(b, -1)); // nobody picked a replacement: the next in line goes
   b.round++;
+  // the leads take the field as round 1 begins (after the trainer picked who leads)
+  if (b.round === 1) for (const si of [0, 1] as const) fireInstinct(b, si, 'enter', ev);
   let ea: Action | { kind: 'flee' } = b.legendary && b.fleeWarned ? { kind: 'flee' } : validFoeAction(b, foeAction) ?? chooseAI(b, 1);
   const startUids = [activeOf(b.sides[0]).uid, activeOf(b.sides[1]).uid];
 
@@ -354,6 +458,7 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
       s += swapMoveOf(inc, activeOf(b.sides[si])).speed ?? 0;
     }
     if (a.kind === 'flee') s = stats(activeOf(b.sides[si])).speed;
+    else if (b.round === 1) s += passiveOf(activeOf(b.sides[si]))?.opener ?? 0;
     return s;
   };
   const sp: [number, number] = [pa.kind === 'run' ? -99 : speedOf(0, pa), speedOf(1, ea)];
@@ -364,20 +469,21 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
   else {
     // Clash!
     const cs: [CreatureInst, CreatureInst] = [activeOf(b.sides[0]), activeOf(b.sides[1])];
-    const dice: [number, number] = [clashDie(cs[0].level), clashDie(cs[1].level)];
+    const dice: [number, number] = [clashDieOf(cs[0]), clashDieOf(cs[1])];
     const rolls: [number, number] = [roll(dice[0]), roll(dice[1])];
     let loser: 0 | 1 | null = null;
     let dmg = 0;
     if (rolls[0] !== rolls[1]) {
       loser = rolls[0] < rolls[1] ? 0 : 1;
       dmg = Math.abs(rolls[0] - rolls[1]);
-      applyDamage(cs[loser], dmg);
     }
     // equal rolls: a coin flip decides who goes first (decided here so the UI can show it before anyone acts)
     const first: 0 | 1 = loser === 0 ? 1 : loser === 1 ? 0 : Math.random() < 0.5 ? 0 : 1;
     ev.push({ t: 'clash', dice, rolls, loser, dmg, first, ...(loser === null ? { coin: true } : {}) });
     if (loser !== null) {
-      ev.push({ t: 'damage', side: loser, amount: dmg, eff: 1, crit: false, snap: snap(b, cs[loser]) });
+      const hit = takeHit(b, loser, dmg);
+      ev.push({ t: 'damage', side: loser, amount: hit.dmg, eff: 1, crit: false, snap: snap(b, cs[loser]) });
+      afterHit(b, loser, hit, false, ev);
       if (cs[loser].ko) handleKO(b, loser, ev);
     }
     order = first === 0 ? [0, 1] : [1, 0];
@@ -455,22 +561,25 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   // accuracy
   let hit = true, crit = false;
   if (m.accuracy !== 'sure') {
-    let die = m.accuracy;
-    if (b.status[c.uid]?.id === 'daze') die = Math.max(4, die - 2);
+    const die = accDie(b, si, m.accuracy);
     const natural = roll(die);
     const mods = accuracyMods(b, si);
     const v = natural + mods.reduce((a, p) => a + p.value, 0);
     const need = eff(b, fi, 'evasion');
     hit = v >= need;
-    crit = hit && critFrom(m, die) > 0 && natural >= critFrom(m, die);
+    const critAt = critOn(b, si, m, die);
+    crit = hit && critAt > 0 && natural >= critAt;
     ev.push({ t: 'roll', side: si, die, value: v, need, hit, crit, label: 'Accuracy', natural, mods });
-    // Zeroing In: the roll uses up any bonus; a miss builds it back up (stacking over a streak of misses)
-    const had = side.zeroIn ?? 0;
-    const gain = hit ? 0 : zeroInOf(m);
-    side.zeroIn = gain ? Math.min(ZERO_IN_MAX, had + gain) : 0;
-    if (had || side.zeroIn) ev.push({ t: 'zero', side: si, bonus: side.zeroIn, gained: side.zeroIn - (gain ? had : 0), snap: snap(b, c) });
+    // Zeroing In: the roll uses up any bonus; a miss builds it back up (stacking over a streak of misses).
+    // Against a Shadow-like Instinct it's neither used nor built.
+    if (!passiveOf(foe)?.shroud) {
+      const had = side.zeroIn ?? 0;
+      const gain = hit ? 0 : zeroGain(b, si, m);
+      side.zeroIn = gain ? Math.min(ZERO_IN_MAX, had + gain) : 0;
+      if (had || side.zeroIn) ev.push({ t: 'zero', side: si, bonus: side.zeroIn, gained: side.zeroIn - (gain ? had : 0), snap: snap(b, c) });
+    }
   }
-  if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); return; }
+  if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); fireInstinct(b, si, 'miss', ev); return; }
 
   if (m.kind === 'support') {
     applyEffects(b, si, m, ev);
@@ -486,30 +595,56 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   const raw = Math.max(1, dmgRoll + parts.reduce((a, p) => a + p.value, 0));
   let dmg = mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult));
   if (crit) dmg *= 2;
-  applyDamage(foe, dmg);
+  const struck = takeHit(b, fi, dmg);
+  dmg = struck.dmg;
   ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe), calc: { dice, rolls, parts, raw, mult, crit, total: dmg } });
   if (mult >= 2) ev.push({ t: 'say', text: mult >= 4 ? 'Devastatingly effective!' : 'Super effective!', tone: 'good' });
   else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
   else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
 
-  // status when any damage die shows a 1
-  if (m.kind === 'elemental' && m.status && rolls.includes(1) && !foe.ko && !b.status[foe.uid]) {
-    b.status[foe.uid] = { id: m.status, turns: 3 };
-    ev.push({ t: 'status', side: fi, status: m.status, snap: snap(b, foe) });
-    ev.push({ t: 'say', text: `${nameOf(foe)} is afflicted with ${STATUS_INFO[m.status].name}!`, tone: 'info' });
-  }
+  // status when any damage die shows a 1 (or a 2, with a Wildfire-like Instinct)
+  const face = passiveOf(c)?.spread ? 2 : 1;
+  if (m.kind === 'elemental' && m.status && rolls.some((r) => r <= face) && !foe.ko) afflict(b, fi, m.status, ev);
   if (m.effect) applyEffects(b, si, m, ev);
+  afterHit(b, fi, struck, m.kind === 'physical', ev);
   if (foe.ko) handleKO(b, fi, ev);
 }
 
-/** Modifiers to an accuracy roll (Beguile, the Darkness arena, Zeroing In). */
+/**
+ * Modifiers to an accuracy roll (Beguile, the Darkness arena, Zeroing In). A steady Instinct (Fixed
+ * Star) ignores the penalties; a foe with a shroud (Shadow) cancels Zeroing In.
+ */
 function accuracyMods(b: Battle, si: 0 | 1): Part[] {
   const c = activeOf(b.sides[si]);
+  const foe = activeOf(b.sides[si === 0 ? 1 : 0]);
+  const steady = !!passiveOf(c)?.steady;
   const out: Part[] = [];
-  if (b.status[c.uid]?.id === 'beguile') out.push({ label: 'Beguile', value: -1 });
-  if (si === 0 && b.arena?.trick === 'darkness') out.push({ label: 'Darkness', value: b.arena.tier >= 4 ? -2 : -1 });
-  if (b.sides[si].zeroIn) out.push({ label: 'Zeroing In', value: b.sides[si].zeroIn! });
+  if (!steady && b.status[c.uid]?.id === 'beguile') out.push({ label: 'Beguile', value: -1 });
+  if (!steady && si === 0 && b.arena?.trick === 'darkness') out.push({ label: 'Darkness', value: b.arena.tier >= 4 ? -2 : -1 });
+  if (b.sides[si].zeroIn && !passiveOf(foe)?.shroud) out.push({ label: 'Zeroing In', value: b.sides[si].zeroIn! });
   return out;
+}
+
+/** The accuracy die after Daze shrinks it (a steady Instinct keeps it whole). */
+function accDie(b: Battle, si: 0 | 1, die: number): number {
+  const c = activeOf(b.sides[si]);
+  return b.status[c.uid]?.id === 'daze' && !passiveOf(c)?.steady ? Math.max(4, die - 2) : die;
+}
+/** The lowest natural roll that crits (0: this move can't crit), widened by a keen Instinct. */
+function critOn(b: Battle, si: 0 | 1, m: Move, die: number): number {
+  const from = critFrom(m, die);
+  return from > 0 ? Math.max(1, from - (passiveOf(activeOf(b.sides[si]))?.keen ?? 0)) : 0;
+}
+/** How much a miss Zeroes In (0 for all-or-nothing moves), plus a Lock-On-like Instinct. */
+function zeroGain(b: Battle, si: 0 | 1, m: Move): number {
+  const base = zeroInOf(m);
+  return base ? base + (passiveOf(activeOf(b.sides[si]))?.zeroPlus ?? 0) : 0;
+}
+const DIE_SIZES = [4, 6, 8, 10, 12, 20];
+/** A creature's Clash die: by level, one size bigger per point of a Hair-Trigger-like Instinct. */
+function clashDieOf(c: CreatureInst): number {
+  const d = clashDie(c.level), up = passiveOf(c)?.clash ?? 0;
+  return up ? DIE_SIZES[Math.min(DIE_SIZES.length - 1, DIE_SIZES.indexOf(d) + up)] : d;
 }
 
 /** Everything added to a move's damage die: the move's flat bonus, attacker stat, defender stat, weather, capstone. */
@@ -550,13 +685,14 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
   const sgn = (n: number) => (n < 0 ? `−${-n}` : `+${n}`);
   const foeName = nameOf(foe);
 
-  const base = eff(b, si, 'speed');
-  const mySpeed = base + m.speed, foeSpeed = eff(b, fi, 'speed');
+  const opener = (s: 0 | 1) => (b.round === 0 ? passiveOf(activeOf(b.sides[s]))?.opener ?? 0 : 0);
+  const base = eff(b, si, 'speed') + opener(si);
+  const mySpeed = base + m.speed, foeSpeed = eff(b, fi, 'speed') + opener(fi);
   steps.push({
     icon: '⚡', title: 'Turn order', tone: mySpeed > foeSpeed ? 'good' : mySpeed < foeSpeed ? 'bad' : 'info',
     text: `Your Speed ${base}${m.speed ? ` ${sgn(m.speed)} (${m.name})` : ''} = ${mySpeed}, vs ${foeName}’s ${foeSpeed} before its own move’s modifier. ` +
       (mySpeed > foeSpeed ? 'You likely act first.' : mySpeed < foeSpeed ? 'You likely act second.'
-        : `Likely a tie, which means a Clash: you roll a d${clashDie(c.level)} and the foe a d${clashDie(foe.level)}. The low roller takes the difference as damage and acts second.`),
+        : `Likely a tie, which means a Clash: you roll a d${clashDieOf(c)} and the foe a d${clashDieOf(foe)}. The low roller takes the difference as damage and acts second.`),
   });
 
   if (m.id === CATCH_BREATH.id) {
@@ -577,7 +713,8 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
 
   if (m.accuracy === 'sure') steps.push({ icon: '🎯', title: 'Accuracy: sure hit', text: 'No roll. This move always lands.', tone: 'good' });
   else {
-    const die = b.status[c.uid]?.id === 'daze' ? Math.max(4, m.accuracy - 2) : m.accuracy;
+    const die = accDie(b, si, m.accuracy);
+    const critAt = critOn(b, si, m, die), shrouded = !!passiveOf(foe)?.shroud;
     const mods = accuracyMods(b, si), modSum = mods.reduce((a, p) => a + p.value, 0);
     const need = eff(b, fi, 'evasion');
     const hits = Array.from({ length: die }, (_, i) => i + 1).filter((v) => v + modSum >= need).length;
@@ -585,8 +722,9 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     steps.push({
       icon: '🎯', title: `Accuracy: d${die}${mods.length ? ` ${partsText(mods)}` : ''}`, tone: pct >= 67 ? 'good' : pct < 40 ? 'bad' : 'info',
       text: `${die !== m.accuracy ? `Daze shrinks the die from d${m.accuracy}. ` : ''}Need ${need}+ to beat ${foeName}’s Evasion ${need}: ${pct}% to hit.` +
-        (critFrom(m, die) ? ` ${critFrom(m, die) === die ? `A natural ${die}` : `A natural ${critFrom(m, die)}–${die}`} is a critical hit: double damage.` : '') +
-        (zeroInOf(m) ? ` A miss zeroes in: +${Math.min(ZERO_IN_MAX, (b.sides[si].zeroIn ?? 0) + zeroInOf(m))} to the next accuracy roll.` : ' All or nothing: a miss never zeroes in.'),
+        (critAt ? ` ${critAt === die ? `A natural ${die}` : `A natural ${critAt}–${die}`} is a critical hit: double damage.` : '') +
+        (shrouded ? ` ${foeName}’s ${instinctOf(foe)!.name} stops you Zeroing In.`
+          : zeroInOf(m) ? ` A miss zeroes in: +${Math.min(ZERO_IN_MAX, (b.sides[si].zeroIn ?? 0) + zeroGain(b, si, m))} to the next accuracy roll.` : ' All or nothing: a miss never zeroes in.'),
     });
   }
 
@@ -609,7 +747,9 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     });
     if (m.kind === 'elemental' && m.status && m.dmgDie > 0) {
       const st = STATUS_INFO[m.status];
-      steps.push({ icon: st.icon, title: `Status chance: ${st.name}`, text: `If ${dice.length > 1 ? 'any damage die' : 'the damage die'} shows a 1 (${Math.round(statusChance(m) * 100)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}` });
+      const spread = passiveOf(c)?.spread;
+      const chance = spread ? 1 - dice.reduce((q, d) => q * Math.max(0, d - 2) / d, 1) : statusChance(m);
+      steps.push({ icon: st.icon, title: `Status chance: ${st.name}`, text: `If ${dice.length > 1 ? 'any damage die' : 'the damage die'} shows a 1${spread ? ` or 2 (${instinctOf(c)!.name})` : ''} (${Math.round(chance * 100)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}` });
     }
   }
   const e = m.effect;
@@ -676,6 +816,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   side.zeroIn = 0;
   if (!b.participants.includes(alpha.uid) && si === 0) b.participants.push(alpha.uid);
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
+  fireInstinct(b, si, 'enter', ev);
   // the bonus uses the Teamwork from before this swap; a pair earns Teamwork from swapping once per battle
   const v = swapVals(alpha, partner);
   const key = pairKey(alpha, partner);
@@ -695,13 +836,26 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   if (!b.over) for (const e of m.after ?? []) swapEffect(b, si, m, e, v, partner, ev);
 }
 
-/** Inflict a status on side `fi`'s creature, if it's standing and has none. */
-function inflict(b: Battle, fi: 0 | 1, status: StatusId, ev: BEvent[]) {
+/**
+ * Inflict a status on side `fi`'s creature, if it's standing and has none. Its Instinct may block it
+ * (an immunity, or shrugging off the first status of the battle). True if it took hold.
+ */
+export function afflict(b: Battle, fi: 0 | 1, status: StatusId, ev: BEvent[]): boolean {
   const foe = activeOf(b.sides[fi]);
-  if (foe.ko || b.status[foe.uid]) return;
+  if (foe.ko || b.status[foe.uid]) return false;
+  const inst = instinctOf(foe), p = inst?.passive;
+  if (p?.immune?.includes(status)) {
+    ev.push({ t: 'say', text: `${INSTINCT_ICON} ${nameOf(foe)}’s ${inst!.name}: it can’t get ${STATUS_INFO[status].name}!`, tone: fi === 0 ? 'good' : 'info' });
+    return false;
+  }
+  if (p?.shrugFirst && spendOnce(b, foe, inst!.id)) {
+    ev.push({ t: 'say', text: `${INSTINCT_ICON} ${nameOf(foe)}’s ${inst!.name} turns ${STATUS_INFO[status].name} aside!`, tone: fi === 0 ? 'good' : 'info' });
+    return false;
+  }
   b.status[foe.uid] = { id: status, turns: 3 };
   ev.push({ t: 'status', side: fi, status, snap: snap(b, foe) });
   ev.push({ t: 'say', text: `${nameOf(foe)} is afflicted with ${STATUS_INFO[status].name}!`, tone: 'info' });
+  return true;
 }
 
 function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVals, partner: CreatureInst, ev: BEvent[]) {
@@ -739,7 +893,7 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
       return;
     case 'status': {
       const st = swapStatus(m);
-      if (st) inflict(b, fi, st, ev);
+      if (st) afflict(b, fi, st, ev);
       return;
     }
   }
@@ -748,17 +902,16 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
 function swapHit(b: Battle, si: 0 | 1, m: SwapMove, v: SwapVals, ev: BEvent[]) {
   const h = m.hit!;
   const fi: 0 | 1 = si === 0 ? 1 : 0;
-  const alpha = activeOf(b.sides[si]), foe = activeOf(b.sides[fi]);
+  const foe = activeOf(b.sides[fi]);
   if (h.acc) {
-    let die = h.acc;
-    if (b.status[alpha.uid]?.id === 'daze') die = Math.max(4, die - 2);
+    const die = accDie(b, si, h.acc);
     const natural = roll(die);
     const mods = accuracyMods(b, si);
     const value = natural + mods.reduce((a, p) => a + p.value, 0);
     const need = eff(b, fi, 'evasion');
     const hit = value >= need;
     ev.push({ t: 'roll', side: si, die, value, need, hit, crit: false, label: `${m.name} accuracy`, natural, mods });
-    if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); return; }
+    if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); fireInstinct(b, si, 'miss', ev); return; }
   }
   const def = h.kind === 'physical' ? 'armor' : 'ward';
   const parts: Part[] = [...h.parts(v), { label: `${nameOf(foe)}’s ${STAT_LABEL[def]}`, value: -eff(b, fi, def) }];
@@ -766,14 +919,15 @@ function swapHit(b: Battle, si: 0 | 1, m: SwapMove, v: SwapVals, ev: BEvent[]) {
   const raw = Math.max(1, r + parts.reduce((a, p) => a + p.value, 0));
   const chart = swapChart(m, v);
   const mult = chart ? effectiveness(chart, speciesOf(foe).types) : 1;
-  const dmg = mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult));
-  applyDamage(foe, dmg);
+  const struck = takeHit(b, fi, mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult)));
+  const dmg = struck.dmg;
   ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit: false, snap: snap(b, foe), calc: { dice: [h.die], rolls: [r], parts, raw, mult, crit: false, total: dmg } });
   if (mult >= 2) ev.push({ t: 'say', text: mult >= 4 ? 'Devastatingly effective!' : 'Super effective!', tone: 'good' });
   else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
   else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
   const st = h.status ? swapStatus(m) : undefined;
-  if (st && r <= 2) inflict(b, fi, st, ev);
+  if (st && r <= 2) afflict(b, fi, st, ev);
+  afterHit(b, fi, struck, h.kind === 'physical', ev);
   if (foe.ko) handleKO(b, fi, ev);
 }
 
@@ -825,6 +979,7 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
     ev.push({ t: 'end', result: b.over });
     return;
   }
+  if (!winner.ko) fireInstinct(b, loser === 0 ? 1 : 0, 'ko', ev);
   if (loser === 1 && b.foeChooses) {
     b.foeNeedSwap = true;
   } else if (loser === 1) {
@@ -834,6 +989,7 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
     ls.zeroIn = 0;
     ev.push({ t: 'send', side: 1, idx: next, snap: snap(b, ls.team[next]) });
     ev.push({ t: 'say', text: `${ls.name} sends out ${nameOf(ls.team[next])}!`, tone: 'info' });
+    fireInstinct(b, 1, 'enter', ev);
   } else {
     b.needSwap = true;
   }
@@ -866,10 +1022,12 @@ export function foeSendIn(b: Battle, idx: number): BEvent[] {
   s.zeroIn = 0;
   b.foeNeedSwap = false;
   noteFoe(b);
-  return [
+  const ev: BEvent[] = [
     { t: 'send', side: 1, idx: i, snap: snap(b, s.team[i]) },
     { t: 'say', text: `${s.name} sends out ${nameOf(s.team[i])}!`, tone: 'info' },
   ];
+  fireInstinct(b, 1, 'enter', ev);
+  return ev;
 }
 
 /** Player picks a replacement after a KO (no Swap Move). */
@@ -880,7 +1038,9 @@ export function sendIn(b: Battle, idx: number): BEvent[] {
   s.zeroIn = 0;
   b.needSwap = false;
   if (!b.participants.includes(s.team[idx].uid)) b.participants.push(s.team[idx].uid);
-  return [{ t: 'send', side: 0, idx, snap: snap(b, s.team[idx]) }];
+  const ev: BEvent[] = [{ t: 'send', side: 0, idx, snap: snap(b, s.team[idx]) }];
+  fireInstinct(b, 0, 'enter', ev);
+  return ev;
 }
 
 function endOfRound(b: Battle, ev: BEvent[]) {
@@ -890,11 +1050,14 @@ function endOfRound(b: Battle, ev: BEvent[]) {
     if (c.ko) continue;
     const st = b.status[c.uid];
     if (st?.id === 'burn') {
-      applyDamage(c, 1);
+      const hit = takeHit(b, si, 1);
       ev.push({ t: 'say', text: `${nameOf(c)} is hurt by its Burn.`, tone: 'info' });
-      ev.push({ t: 'damage', side: si, amount: 1, eff: 1, crit: false, snap: snap(b, c) });
+      ev.push({ t: 'damage', side: si, amount: hit.dmg, eff: 1, crit: false, snap: snap(b, c) });
+      afterHit(b, si, hit, false, ev);
       if (c.ko) { handleKO(b, si, ev); continue; }
     }
+    fireInstinct(b, si, 'roundEnd', ev);
+    if (b.over || c.ko) continue;
     if (st) { st.turns--; if (st.turns <= 0) { delete b.status[c.uid]; ev.push({ t: 'say', text: `${nameOf(c)} shook off ${STATUS_INFO[st.id].name}.` }); ev.push({ t: 'heal', side: si, amount: 0, snap: snap(b, c) }); } }
   }
   if (b.arena && !b.over) arenaTrick(b, ev);
@@ -926,9 +1089,10 @@ function arenaTrick(b: Battle, ev: BEvent[]) {
     const mult = type ? effectiveness(type, speciesOf(c).types) : 1;
     const d = mult === 0 ? 0 : Math.max(1, Math.floor(dmg * mult));
     if (d <= 0) return;
-    applyDamage(c, d);
+    const hit = takeHit(b, si, d);
     ev.push({ t: 'arena', text: text.replace('{n}', nameOf(c)) });
-    ev.push({ t: 'damage', side: si, amount: d, eff: mult, crit: false, snap: snap(b, c) });
+    ev.push({ t: 'damage', side: si, amount: hit.dmg, eff: mult, crit: false, snap: snap(b, c) });
+    afterHit(b, si, hit, false, ev);
     if (c.ko) handleKO(b, si, ev);
   };
   const hasType = (si: 0 | 1, ty: ElementType) => speciesOf(activeOf(b.sides[si])).types.includes(ty);

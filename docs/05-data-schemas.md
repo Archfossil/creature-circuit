@@ -27,7 +27,7 @@ To add content, add an entry that follows the template below. Nothing else needs
   "energy": { "fire": 2, "water": 1 },
   "rt": 5,
   "ability": "forager",
-  "affinity": "slipstream",
+  "instinct": "sunbather",
   "signature": "sig-caldera",
   "biomes": ["volcanic", "coast", "river"],
   "dex": "Swims where hot springs meet the sea…",
@@ -45,7 +45,7 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `rt` | Recruitment Threshold. The offering roll is 2d6 + totem + offerings, against `rt + floor(level / 3)`. |
 | `biomes` | Biomes the species prefers. A wild node offers it when its biome's type pool (`BIOME_TYPES` in `map.ts`) includes the species' first type, and it is preferred over same-type species without that biome. The Creature Codex lists these nodes. |
 | `ability` | An overworld passive (see `ABILITIES`). It is active only while the creature is **Following**. |
-| `affinity` | The species' favourite Swap Move (a neutral one from `SWAP_MOVES` in `swapMoves.ts`). Used when it swaps in as the **Alpha** until the trainer sets another for that partner. |
+| `instinct` | Its battle passive (an id from `INSTINCTS` in `instincts.ts`). Every stage of a family shares one. See [14 · Instinct Checklist](./14-instinct-checklist.md). |
 | `signature` | A Signature Move, unlocked through a progression-chart node. |
 | `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
@@ -60,7 +60,8 @@ Slots already filled by hand-made creatures are mapped in `HANDMADE_SLOTS` (the 
 - **Ids:** `ph-<type>-<type|mono>-<rarity>-<stage>`, or `ph-…-legendary`.
 - **Flag:** `placeholder: true`.
 - **Names:** stitched from type syllables (e.g. Pyrotideling).
-- **Stats, energy, looks, biomes, ability and affinity:** derived from the types and rarity.
+- **Stats, energy, looks, biomes and ability:** derived from the types and rarity.
+- **Instinct:** dealt in turn from one of the family's types' pools (`familyInstinct`), so every Instinct goes to a similar number of families.
 
 Placeholder families appear in the wild like any other species. Placeholder Legendaries have no map node yet, so the Codex says they aren't placed.
 

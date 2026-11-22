@@ -21,6 +21,7 @@ import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, r
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
+import { INSTINCT_BY_ID, INSTINCT_ICON } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
@@ -180,6 +181,7 @@ export class App {
             h('img', { src: portrait(sp.id) }),
             h('div', null, h('h3', null, sp.name), h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t))), h('p', { class: 'small' }, sp.dex),
               h('p', { class: 'small' }, h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
+              INSTINCT_BY_ID[sp.instinct] ? h('p', { class: 'small' }, `${INSTINCT_ICON} `, h('b', null, INSTINCT_BY_ID[sp.instinct].name), ' — ', INSTINCT_BY_ID[sp.instinct].text) : null,
               h('p', { class: 'small muted' }, `Evolves: ${sp.name} → ${SPECIES_BY_ID[sp.evolvesTo!].name} → ${SPECIES_BY_ID[SPECIES_BY_ID[sp.evolvesTo!].evolvesTo!].name}`))),
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'),
             h('button', { class: 'btn primary', onclick: () => {
@@ -2637,7 +2639,7 @@ export class App {
 
   /**
    * Choose who follows you. Shown at the start of every turn (Settings → "Choose a follower each turn")
-   * and from the HUD's Following chip. Shows the current follower's Ability, favourite Swap Move, Morale and
+   * and from the HUD's Following chip. Shows the current follower's Ability, Instinct, Morale and
    * Loyalty, and every other creature that could follow. Closing keeps the current follower.
    */
   followerSheet(turnStart: boolean): Promise<void> {
@@ -2660,7 +2662,7 @@ export class App {
             h('small', { class: 'muted' }, 'Following you now'),
             h('h3', null, nameOf(cur), h('small', null, ` · Lv ${cur.level}`)),
             h('p', { class: 'small' }, '🌿 ', h('b', null, `Ability · ${ABILITIES[speciesOf(cur).ability].name}`), ': ', ABILITIES[speciesOf(cur).ability].text, h('span', { class: 'muted' }, ' (active while it follows)')),
-            h('p', { class: 'small' }, '🔁 ', h('b', null, `Favourite Swap Move · ${SWAP_MOVE_BY_ID[speciesOf(cur).affinity]?.name ?? ''}`), ': ', ...(SWAP_MOVE_BY_ID[speciesOf(cur).affinity] ? alphaText(swapText(SWAP_MOVE_BY_ID[speciesOf(cur).affinity], { A: nameOf(cur), aType: speciesOf(cur).types[0] }), nameOf(cur), 'the partner') : []), h('span', { class: 'muted' }, ' (set a Swap Move for each partner on its card)')),
+            INSTINCT_BY_ID[speciesOf(cur).instinct] ? h('p', { class: 'small' }, `${INSTINCT_ICON} `, h('b', null, `Instinct · ${INSTINCT_BY_ID[speciesOf(cur).instinct].name}`), ': ', INSTINCT_BY_ID[speciesOf(cur).instinct].text, h('span', { class: 'muted' }, ' (in battle)')) : null,
             social(cur)))
         : h('div', { class: 'follow-current none' }, h('p', null, 'Nobody is following you. You’ll choose who leads each battle, and no overworld Ability is active.'));
       const others = s.roster.filter((c) => c.uid !== cur?.uid);

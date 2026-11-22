@@ -87,8 +87,7 @@ const swapDamage = (m: SwapMove) => {
   return `d${m.hit.die} + ${m.hit.parts(SAMPLE).map((p) => p.label).join(' + ')} − ${def}`;
 };
 const swapHitsAs = (m: SwapMove) => (!m.hit ? '—' : m.hit.kind === 'physical' ? 'Physical' : m.hit.chart === 'partner' ? 'Partner’s type' : m.hit.chart === 'alpha' ? 'Alpha’s type' : TYPE_LABEL[m.type!]);
-const favouriteOf = (m: SwapMove) => SPECIES.filter((sp) => sp.affinity === m.id).length;
-const swapRow = (m: SwapMove) => `| ${m.name} | \`${m.id}\` | ${m.type ? TYPE_LABEL[m.type] : 'Neutral'} | ${m.teamwork} | ${!m.hit ? '—' : m.hit.acc ? `d${m.hit.acc}` : 'Sure-hit'} | ${swapDamage(m)} | ${swapHitsAs(m)} | ${m.hit?.status ? `${STATUS_INFO[swapStatus(m)!].name} on 1–2` : '—'} | ${m.speed ? signed(m.speed) : '0'} | ${[...(m.before ?? []), ...(m.after ?? [])].map((e) => swapEffectWord(m, e)).join(', ') || '—'} | ${m.type ? '—' : favouriteOf(m)} | ${m.type ? '☐' : '☑'} | ☐ |`;
+const swapRow = (m: SwapMove) => `| ${m.name} | \`${m.id}\` | ${m.type ? TYPE_LABEL[m.type] : 'Neutral'} | ${m.teamwork} | ${!m.hit ? '—' : m.hit.acc ? `d${m.hit.acc}` : 'Sure-hit'} | ${swapDamage(m)} | ${swapHitsAs(m)} | ${m.hit?.status ? `${STATUS_INFO[swapStatus(m)!].name} on 1–2` : '—'} | ${m.speed ? signed(m.speed) : '0'} | ${[...(m.before ?? []), ...(m.after ?? [])].map((e) => swapEffectWord(m, e)).join(', ') || '—'} | ${m.type ? '☐' : '☑'} | ☐ |`;
 const typedSwaps = SWAP_MOVES.filter((m) => m.type);
 
 const lines: string[] = [];
@@ -150,15 +149,15 @@ lines.push('## Signature moves', '', 'Unlocked from a creature’s progression c
   '| Signature | Learned by |', '|---|---|', ...sigs.map((m) => `| ${m.name} | ${sigUsers(m.id).join(', ') || '—'} |`), '', header, rule, ...sigs.map(row), '');
 
 lines.push('## Swap Moves', '',
-  'What a creature does when it swaps in during battle (it\'s the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature\'s card, and each species has a neutral favourite it uses until then. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).', '',
+  'What a creature does when it swaps in during battle (it\'s the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature\'s card; until then a pair uses a neutral move picked at random. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).', '',
   '- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need one of the pair to have that type.',
-  '- **Damage** lists what\'s added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +3 by Lv 12).',
+  '- **Damage** lists what\'s added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +2 at Teamwork 4; a pair\'s Teamwork is capped at half the lower Loyalty).',
   '- **Status on 1–2**: typed hits inflict their type\'s status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it\'s inflicted with no roll (if the foe has no status).',
   '- **Effects** are applied before or after the hit as listed in the move\'s data. Stat boosts last while the Alpha stays in.',
   '- **Design ☐**: the 16 typed moves are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.',
   '- **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects, with `text` naming the Alpha and partner (`n.A`, `n.P`; see Wording in docs/13); document it in docs/13 (a test checks), then regenerate this file.', '',
-  '| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Favourite of | Design | Balance |',
-  '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  '| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Design | Balance |',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|',
   ...SWAP_MOVES.map(swapRow), '');
 
 for (const t of TYPES) {

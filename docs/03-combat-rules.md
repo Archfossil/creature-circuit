@@ -69,20 +69,20 @@ Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers
 >   - **Otherwise:** it stays but loses 1 Loyalty.
 >
 >   At 0 Loyalty any roll leaves, so even a creature with full Loyalty can eventually be lost, but it has to wear its Loyalty down first. A creature never leaves if it's your only one; it only loses Loyalty. If your active team empties, a creature steps out of its totem. Raising Morale above 3 clears the warning.
-> - **Following.** At the start of each turn you're asked who follows you, shown with its Ability, favourite Swap Move, Morale and Loyalty. The follower leads every battle and gains +1 Morale every other turn.
+> - **Following.** At the start of each turn you're asked who follows you, shown with its Ability, Instinct, Morale and Loyalty. The follower leads every battle and gains +1 Morale every other turn.
 > - **Legendaries never fully settle.** A recruited Legendary arrives with 10 Loyalty and loses 1 every turn, whatever its Morale. It gains no Loyalty from Morale, though treats still add some. At 0 Loyalty it leaves and returns to its grounds on the map for another trainer to find. Releasing it at the Research Facility first pays × 5 its level. Expect to hold a Legendary for about 10 turns unless your plan is built around keeping it.
 
 ## Swap Moves
 
 Swap Moves are team-up swaps, enabling an incoming "Alpha" creature to leverage attributes fed by a benched partner. When you swap Creatures mid-battle one of the Creatures is designated as the "Alpha" in the arrangement. The Alpha's Swap Move triggers as the two creatures swap. Swap Moves all work differently, but many borrow the partner's stats or type.
 
-The trainer sets a Swap Move for each pair and direction on the creature cards (Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup). Each species has a favourite that's used until then. Typed Swap Moves need one of the pair to have that type, and the stronger ones need Teamwork.
+The trainer sets a Swap Move for each pair and direction on the creature cards (Sproutle swapping in for Puddlit can differ from Sproutle swapping in for Zapup). Until then, a pair uses a neutral Swap Move picked at random (the same one every battle). Typed Swap Moves need one of the pair to have that type, and the stronger ones need Teamwork.
 
 Each creature has **Teamwork** with each other creature in your roster. Pairs gain 0.2 Teamwork for every turn they travel together on the active team, and +1 the first time one swaps in for the other in a battle (once per battle). A pair's Teamwork is capped at half the lower Loyalty of the two, and falls if that Loyalty does, so the trainer has to keep both creatures' trust. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move. The full list and exact rules are in [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
 
 # Other Metadata
 
-Other relevant creature information includes their Recruitment Threshold (RT), Level, Experience, and Personality (Nature, Ability, and favourite Swap Move)
+Other relevant creature information includes their Recruitment Threshold (RT), Level, Experience, and Personality (Nature, Ability and Instinct)
 
 ## Recruitment Threshold (RT)
 
@@ -98,13 +98,15 @@ The last node in progression charts for stage 1 and 2 creatures is always to "Ev
 
 Points earned by completing battles against other creatures. The exact amount is determined by comparing the two levels of the participating creatures with a bonus for the winner. When a creature earns enough experience, they gain a level, and can buy a new node from their progression track.
 
-## Personality (Nature, Ability, favourite Swap Move)
+## Personality (Nature, Ability, Instinct)
 
 Personality is determined by the Nature of a creature. Nature, like the progression track, has nodes to unlock through Loyalty. It may also feature bonuses for high Morale, or possibly "rebound" abilities for creatures with low morale.
 
 An **Ability** is a passive effect which the Creature applies while in the overworld out of combat. These can be something like "Sweet Scent" which attracts wild creatures to the trainer for battle and possible recruitment, or "Baby-Doll Eyes" which can earn the trainer deals at markets. Only the "Following" creature can make use of their passive ability. At the start of each trainers turn, they determine one of their creature roster to "follow" them which improves their Loyalty, Morale, and allows them to use their Ability. This creature is also deployed first in combat if a fight breaks out. Some trainers who are expecting a challenge might not choose to have any creature following, so as to not give an incoming challenger the ability to start the battle with a type advantage!
 
-**Swap Moves** are the effect which triggers when a creature swaps in for another in your roster mid-fight. The incoming creature is the "Alpha", and it uses the Swap Move the trainer set for swapping in for that partner (or its species' favourite). The Swap Move specifies what's borrowed from the partner.
+An **Instinct** is a passive which the creature applies on its own in battle. Every species has one, shared by its whole evolution family, and wild creatures and opposing trainers' creatures have them too. Some fire at a moment: when the creature takes the field (Menace lowers the foe's Power), when it loses a Vitality heart (Eruption Burns the foe), when a physical attack hits it (Static Field may Shock the attacker), when it knocks out a foe, when it misses, or at the end of each round. Others bend a rule while it's out: Fixed Star's accuracy can't be lowered, Shadow stops the foe Zeroing In, Steel Coat shrugs off the first status of the fight, Hold Fast survives one knockout blow with 1 Health. Stat changes from an Instinct last while the creature stays in, capped at ±3 like any modifier. All of them, with exact rules: [14 · Instinct Checklist](./14-instinct-checklist.md).
+
+**Swap Moves** are the effect which triggers when a creature swaps in for another in your roster mid-fight. The incoming creature is the "Alpha", and it uses the Swap Move the trainer set for swapping in for that partner (or, until one is set, a neutral move picked at random for that pair). The Swap Move specifies what's borrowed from the partner.
 
 In a future iteration we may introduce "dual battles" with two or three creatures each which can expand Swap Moves to team-up attacks.
 

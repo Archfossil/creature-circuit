@@ -118,38 +118,38 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 ## Swap Moves
 
-What a creature does when it swaps in during battle (it's the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature's card, and each species has a neutral favourite it uses until then. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
+What a creature does when it swaps in during battle (it's the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature's card; until then a pair uses a neutral move picked at random. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
 
 - **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need one of the pair to have that type.
-- **Damage** lists what's added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +3 by Lv 12).
+- **Damage** lists what's added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +2 at Teamwork 4; a pair's Teamwork is capped at half the lower Loyalty).
 - **Status on 1–2**: typed hits inflict their type's status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it's inflicted with no roll (if the foe has no status).
 - **Effects** are applied before or after the hit as listed in the move's data. Stat boosts last while the Alpha stays in.
 - **Design ☐**: the 16 typed moves are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.
 - **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects, with `text` naming the Alpha and partner (`n.A`, `n.P`; see Wording in docs/13); document it in docs/13 (a test checks), then regenerate this file.
 
-| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Favourite of | Design | Balance |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Tag Strike | `tagStrike` | Neutral | 0 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Partner’s type | — | 0 | — | 76 | ☑ | ☐ |
-| Shield Pass | `shieldPass` | Neutral | 0 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, +Ward | 82 | ☑ | ☐ |
-| Slipstream | `slipstream` | Neutral | 0 | Sure-hit | d6 + Alpha’s Power + Partner’s Speed ÷ 3 + Teamwork − Armor | Physical | — | +3 | — | 75 | ☑ | ☐ |
-| Siphon | `siphon` | Neutral | 0 | Sure-hit | d6 + Alpha’s Focus − Ward | Alpha’s type | — | 0 | heals Alpha | 76 | ☑ | ☐ |
-| Rally | `rally` | Neutral | 0 | — | — | — | — | 0 | both refill Stamina, both −1 Fatigue, +Power, +Focus | 77 | ☑ | ☐ |
-| Starfall Relay | `starfall-relay` | Astral | 1 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Astral | Daze on 1–2 | 0 | — | — | ☐ | ☐ |
-| Twin Orbit | `twin-orbit` | Astral | 2 | Sure-hit | d6 + Alpha’s Focus + Teamwork − Ward | Astral | Daze on 1–2 | 0 | +Evasion, foe −Evasion | — | ☐ | ☐ |
-| Sweet Handoff | `sweet-handoff` | Charm | 1 | Sure-hit | d4 + Alpha’s Focus − Ward | Charm | — | 0 | Beguile outright, heals Alpha | — | ☐ | ☐ |
-| Heartlink | `heartlink` | Charm | 2 | — | — | — | — | 0 | heals Alpha, heals Partner, foe −Power | — | ☐ | ☐ |
-| Live Wire | `live-wire` | Electric | 1 | d8 | d6 + Alpha’s Focus + Teamwork − Ward | Electric | Shock on 1–2 | +2 | — | — | ☐ | ☐ |
-| Arc Bridge | `arc-bridge` | Electric | 2 | Sure-hit | d6 + Alpha’s Focus + Partner’s Focus ÷ 2 + Teamwork − Ward | Electric | Shock on 1–2 | 0 | — | — | ☐ | ☐ |
-| Kindle Swap | `kindle-swap` | Fire | 1 | — | — | — | — | 0 | Burn outright, +Power | — | ☐ | ☐ |
-| Phoenix Handoff | `phoenix-handoff` | Fire | 2 | d8 | d8 + Alpha’s Focus + Teamwork − Ward | Fire | Burn on 1–2 | 0 | — | — | ☐ | ☐ |
-| Root Relay | `root-relay` | Grass | 1 | Sure-hit | d4 + Alpha’s Focus − Ward | Grass | — | 0 | Snare outright, heals Alpha | — | ☐ | ☐ |
-| Overgrowth | `overgrowth` | Grass | 2 | Sure-hit | d4 + Alpha’s Focus − Ward | Grass | — | 0 | heals Alpha, +Armor, +Ward | — | ☐ | ☐ |
-| Landslide Tag | `landslide-tag` | Rock | 1 | d8 | d6 + Alpha’s Power + Partner’s Armor ÷ 2 + Teamwork − Armor | Physical | Stagger on 1–2 | 0 | — | — | ☐ | ☐ |
-| Bulwark Swap | `bulwark-swap` | Rock | 2 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, +Ward | — | ☐ | ☐ |
-| Iron Relay | `iron-relay` | Steel | 1 | Sure-hit | d6 + Alpha’s Power + Teamwork − Armor | Physical | Sunder on 1–2 | 0 | — | — | ☐ | ☐ |
-| Alloy Guard | `alloy-guard` | Steel | 2 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, foe −Armor | — | ☐ | ☐ |
-| Tide Relay | `tide-relay` | Water | 1 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Water | Soak on 1–2 | 0 | — | — | ☐ | ☐ |
-| Wellspring | `wellspring` | Water | 2 | — | — | — | — | 0 | heals Alpha, both refill Stamina, Soak outright | — | ☐ | ☐ |
+| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Design | Balance |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Tag Strike | `tagStrike` | Neutral | 0 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Partner’s type | — | 0 | — | ☑ | ☐ |
+| Shield Pass | `shieldPass` | Neutral | 0 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, +Ward | ☑ | ☐ |
+| Slipstream | `slipstream` | Neutral | 0 | Sure-hit | d6 + Alpha’s Power + Partner’s Speed ÷ 3 + Teamwork − Armor | Physical | — | +3 | — | ☑ | ☐ |
+| Siphon | `siphon` | Neutral | 0 | Sure-hit | d6 + Alpha’s Focus − Ward | Alpha’s type | — | 0 | heals Alpha | ☑ | ☐ |
+| Rally | `rally` | Neutral | 0 | — | — | — | — | 0 | both refill Stamina, both −1 Fatigue, +Power, +Focus | ☑ | ☐ |
+| Starfall Relay | `starfall-relay` | Astral | 1 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Astral | Daze on 1–2 | 0 | — | ☐ | ☐ |
+| Twin Orbit | `twin-orbit` | Astral | 2 | Sure-hit | d6 + Alpha’s Focus + Teamwork − Ward | Astral | Daze on 1–2 | 0 | +Evasion, foe −Evasion | ☐ | ☐ |
+| Sweet Handoff | `sweet-handoff` | Charm | 1 | Sure-hit | d4 + Alpha’s Focus − Ward | Charm | — | 0 | Beguile outright, heals Alpha | ☐ | ☐ |
+| Heartlink | `heartlink` | Charm | 2 | — | — | — | — | 0 | heals Alpha, heals Partner, foe −Power | ☐ | ☐ |
+| Live Wire | `live-wire` | Electric | 1 | d8 | d6 + Alpha’s Focus + Teamwork − Ward | Electric | Shock on 1–2 | +2 | — | ☐ | ☐ |
+| Arc Bridge | `arc-bridge` | Electric | 2 | Sure-hit | d6 + Alpha’s Focus + Partner’s Focus ÷ 2 + Teamwork − Ward | Electric | Shock on 1–2 | 0 | — | ☐ | ☐ |
+| Kindle Swap | `kindle-swap` | Fire | 1 | — | — | — | — | 0 | Burn outright, +Power | ☐ | ☐ |
+| Phoenix Handoff | `phoenix-handoff` | Fire | 2 | d8 | d8 + Alpha’s Focus + Teamwork − Ward | Fire | Burn on 1–2 | 0 | — | ☐ | ☐ |
+| Root Relay | `root-relay` | Grass | 1 | Sure-hit | d4 + Alpha’s Focus − Ward | Grass | — | 0 | Snare outright, heals Alpha | ☐ | ☐ |
+| Overgrowth | `overgrowth` | Grass | 2 | Sure-hit | d4 + Alpha’s Focus − Ward | Grass | — | 0 | heals Alpha, +Armor, +Ward | ☐ | ☐ |
+| Landslide Tag | `landslide-tag` | Rock | 1 | d8 | d6 + Alpha’s Power + Partner’s Armor ÷ 2 + Teamwork − Armor | Physical | Stagger on 1–2 | 0 | — | ☐ | ☐ |
+| Bulwark Swap | `bulwark-swap` | Rock | 2 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, +Ward | ☐ | ☐ |
+| Iron Relay | `iron-relay` | Steel | 1 | Sure-hit | d6 + Alpha’s Power + Teamwork − Armor | Physical | Sunder on 1–2 | 0 | — | ☐ | ☐ |
+| Alloy Guard | `alloy-guard` | Steel | 2 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, foe −Armor | ☐ | ☐ |
+| Tide Relay | `tide-relay` | Water | 1 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Water | Soak on 1–2 | 0 | — | ☐ | ☐ |
+| Wellspring | `wellspring` | Water | 2 | — | — | — | — | 0 | heals Alpha, both refill Stamina, Soak outright | ☐ | ☐ |
 
 ## Astral attacks
 

@@ -8,11 +8,12 @@
 import type { Biome, BodyShape, CreatureLook, ElementType, Rarity, StatKey } from './schema';
 import { TYPES, TYPE_COLOR, TYPE_LABEL } from './types';
 import { BIOME_TYPES } from './map';
+import { INSTINCT_POOL } from './instincts';
 
 export interface Def {
   id: string; name: string; types: ElementType[]; rarity: Rarity; stage: 1 | 2 | 3; next?: string;
   bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest'];
-  biomes: Biome[]; ability: string; affinity: string; sig?: string; dex: string;
+  biomes: Biome[]; ability: string; instinct: string; sig?: string; dex: string;
   placeholder?: boolean;
 }
 
@@ -83,7 +84,20 @@ const SIG: Record<ElementType, string> = {
   grass: 'sig-overgrowth', rock: 'sig-mesa', steel: 'sig-foundry', water: 'sig-riptide',
 };
 const ABILITIES = ['sweetScent', 'babyEyes', 'keenNose', 'starSeeker', 'trailblazer', 'forager', 'quickStep', 'luckyCharm'];
-const AFFINITIES = ['tagStrike', 'shieldPass', 'slipstream', 'siphon', 'rally'];
+/**
+ * A generated family's Instinct (data/instincts.ts): from one of its types' pools (alternating between
+ * the two types of a dual family by rarity). Each pool is dealt out in turn, so every Instinct goes to
+ * about as many families; it starts at the 4th, as hand-made families mostly took a type's first three.
+ * Every stage of a family shares it.
+ */
+const instinctTurn: Partial<Record<ElementType, number>> = {};
+function familyInstinct(types: ElementType[], ri: number): string {
+  const t = types[ri % types.length];
+  const pool = INSTINCT_POOL[t];
+  const n = instinctTurn[t] ?? 3;
+  instinctTurn[t] = n + 1;
+  return pool[n % pool.length].id;
+}
 
 /** Mix a hex colour toward black (amt < 0) or white (amt > 0). */
 function shade(hex: string, amt: number) {
@@ -108,6 +122,7 @@ function placeholderFamily(types: ElementType[], rarity: FamilyRarity, ci: numbe
   const [t1, t2] = types;
   const ri = FAMILY_RARITIES.indexOf(rarity);
   const stem = HEAD[t1] + (t2 ? LINK[t2] : '');
+  const instinct = familyInstinct(types, ri);
   return ([1, 2, 3] as const).map((stage) => ({
     id: phId(types, rarity, stage),
     name: cap(stem + SUFFIX[rarity][stage - 1]),
@@ -119,7 +134,7 @@ function placeholderFamily(types: ElementType[], rarity: FamilyRarity, ci: numbe
     crest: stage === 3 && rarity === 'apex' ? 'horns' : CREST[t2 ?? t1],
     biomes: biomesFor(types),
     ability: ABILITIES[(TYPES.indexOf(t1) + ri * 3 + ci) % ABILITIES.length],
-    affinity: AFFINITIES[(ci + ri) % AFFINITIES.length],
+    instinct,
     sig: rarity === 'common' ? SIG[t1] : undefined,
     dex: `Placeholder: the ${comboLabel(types)} ${cap(rarity)} family, stage ${stage} of 3. To be replaced with a real creature.`,
     placeholder: true,
@@ -138,7 +153,7 @@ function placeholderLegendary(types: ElementType[], ci: number): Def {
     crest: 'halo',
     biomes: biomesFor(types),
     ability: ABILITIES[(ci * 5) % ABILITIES.length],
-    affinity: AFFINITIES[ci % AFFINITIES.length],
+    instinct: familyInstinct(types, 3),
     dex: `Placeholder: the ${comboLabel(types)} Legendary. To be replaced with a real creature (and given a roaming node on the map).`,
     placeholder: true,
   };

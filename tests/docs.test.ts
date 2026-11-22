@@ -6,6 +6,7 @@ import { CITIES } from '../src/data/map';
 import { TRAINER_STYLES } from '../src/engine/state';
 import { NATURES, ABILITIES } from '../src/data/content';
 import { SWAP_MOVES } from '../src/data/swapMoves';
+import { INSTINCTS } from '../src/data/instincts';
 
 describe('docs', () => {
   it('docs/10-events.md documents every event (by its id)', () => {
@@ -39,5 +40,10 @@ describe('docs', () => {
     const all = [...NATURES.map((n) => [n.name, n.id]), ...Object.values(ABILITIES).map((a) => [a.name, a.id]), ...SWAP_MOVES.map((a) => [a.name, a.id])];
     const missing = all.filter(([name, id]) => !doc.includes(name) || !doc.includes(`\`${id}\``)).map(([name, id]) => `${name} (${id})`);
     expect(missing, `Add these to docs/13-natures-and-abilities.md: ${missing.join(', ')}`).toEqual([]);
+  });
+  it('docs/14-instinct-checklist.md lists every Instinct (regenerate it with npm run docs:instincts)', () => {
+    const doc = readFileSync(new URL('../docs/14-instinct-checklist.md', import.meta.url), 'utf-8');
+    const missing = INSTINCTS.filter((i) => !doc.includes(`**${i.name}** | \`${i.id}\``)).map((i) => `${i.name} (${i.id})`);
+    expect(missing, `Run npm run docs:instincts: ${missing.join(', ')}`).toEqual([]);
   });
 });

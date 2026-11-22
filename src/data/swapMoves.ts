@@ -4,8 +4,8 @@
 // Alpha; the one it replaces is the partner.
 //
 // Which a pair can use (engine/swaps.ts): a typed Swap Move needs one of the two creatures to have its
-// type, and the stronger ones need Teamwork with that partner. Each species has a favourite (its
-// `affinity`, one of the five neutral moves), used until the trainer picks another.
+// type, and the stronger ones need Teamwork with that partner. Until the trainer picks one, a pair uses
+// a neutral move picked at random for it (engine/swaps.ts → defaultSwapMove).
 //
 // Each move is data: `before` effects, then an optional `hit`, then `after` effects. The battle engine
 // (battle.ts → doSwap) runs them and `describeSwap` writes the text the card and swap screen show,
@@ -18,7 +18,7 @@ import { TYPE_LABEL } from './types';
 export interface SwapVals { a: Stats; p: Stats; f?: Stats; bonus: number; A: string; P: string; aType: ElementType; pType: ElementType }
 /**
  * Who a Swap Move's words are about: the Alpha (A, swapping in) and the partner (P, swapping out), with
- * their main types when known. Off a real pair (the favourite panel, docs) they're "the Alpha" / "the partner".
+ * their main types when known. Off a real pair (docs) they're "the Alpha" / "the partner".
  */
 export interface SwapNames { A: string; P: string; aType?: ElementType; pType?: ElementType }
 /** One labelled number added to a Swap Move's damage roll. */
@@ -86,7 +86,7 @@ const fixed = (n: number) => () => n;
 const typeOf = (t?: ElementType) => (t ? ` (${TYPE_LABEL[t]})` : '');
 
 export const SWAP_MOVES: SwapMove[] = [
-  // ── Neutral: open to every pair (each species' favourite is one of these) ──
+  // ── Neutral: open to every pair (an unset slot uses one of these, picked at random) ──
   { id: 'tagStrike', name: 'Tag Strike', teamwork: 0, text: (n) => `${n.A} swaps in with an attack of ${n.P}’s type${typeOf(n.pType)}, powered by ${n.P}’s Focus.`,
     hit: { acc: 8, die: 6, kind: 'elemental', chart: 'partner', parts: parts(of('p', 'focus')) } },
   { id: 'shieldPass', name: 'Shield Pass', teamwork: 0, text: (n) => `${n.A} borrows half of ${n.P}’s Armor and Ward for as long as it stays in, then counters with a physical hit.`,
@@ -152,7 +152,7 @@ export const SWAP_MOVES: SwapMove[] = [
 
 /**
  * A Swap Move's text for a pair. Leave out a name to get "the Alpha" / "the partner" (e.g. on a card that
- * shows a creature's favourite without a partner in mind).
+ * describes a move without a partner in mind).
  */
 export function swapText(m: SwapMove, n: Partial<SwapNames> = {}): string {
   const s = m.text({ A: n.A ?? 'the Alpha', P: n.P ?? 'the partner', aType: n.aType, pType: n.pType });

@@ -10,7 +10,7 @@ import { WEATHER, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS,
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { speciesOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
-import { createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
+import { afflict, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -19,6 +19,7 @@ import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether, se
 import { swapPreview } from '../src/engine/battle';
 import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
+import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts';
 import { Box3 } from 'three';
 import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
 
@@ -3196,7 +3197,7 @@ describe('Swap Moves', () => {
     expect(setSwapMove(a, c, 'siphon')).toBe(true);
     expect(swapMoveOf(a, b).id).toBe('rally');
     expect(swapMoveOf(a, c).id).toBe('siphon');
-    expect(swapMoveOf(b, a)).toBe(defaultSwapMove(b)); // b's own slot for a is still its favourite
+    expect(swapMoveOf(b, a)).toBe(defaultSwapMove(b, a)); // b's own slot for a is still its random default
   });
   it('typed moves need that type in the pair and enough Teamwork', () => {
     const [a, b] = trio();
@@ -3212,10 +3213,10 @@ describe('Swap Moves', () => {
     // the partner's type counts too
     expect(swapLock(a, b, typedFor(b, 2))).toBe(null);
   });
-  it('a slot whose move is no longer allowed falls back to the favourite', () => {
+  it('a slot whose move is no longer allowed falls back to the pair’s random default', () => {
     const [a, b] = trio();
     a.swapMoves[b.uid] = typedFor(a, 2).id; // set without the Teamwork for it
-    expect(swapMoveOf(a, b)).toBe(defaultSwapMove(a));
+    expect(swapMoveOf(a, b)).toBe(defaultSwapMove(a, b));
   });
   it('the battle uses the move set for that pair', () => {
     const [a, b] = trio();
@@ -3269,5 +3270,109 @@ describe('Swap Moves', () => {
     expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: 'siphon' })).toBe(true);
     expect(swapMoveOf(me, z).id).toBe('siphon');
     expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: typedFor(me, 2).id })).toBe(false);
+  });
+});
+
+describe('Instincts', () => {
+  /** Run `fn` with species `sp` given Instinct `id` for the duration. */
+  const withInstinct = (sp: string, id: string, fn: () => void) => {
+    const was = SPECIES_BY_ID[sp].instinct;
+    SPECIES_BY_ID[sp].instinct = id;
+    try { fn(); } finally { SPECIES_BY_ID[sp].instinct = was; }
+  };
+  const duel = (a: ReturnType<typeof createCreature>, b: ReturnType<typeof createCreature>) => {
+    const bt = createBattle(side('player', [a]), side('wild', [b]), WEATHER.clear);
+    for (const c of [a, b]) c.health = 999;
+    return bt;
+  };
+  it('every species has one, families share it, and every Instinct is used', () => {
+    for (const sp of SPECIES) {
+      expect(INSTINCT_BY_ID[sp.instinct], sp.id).toBeDefined();
+      if (sp.evolvesTo) expect(SPECIES_BY_ID[sp.evolvesTo].instinct, sp.id).toBe(sp.instinct);
+    }
+    for (const i of INSTINCTS) expect(SPECIES.some((sp) => sp.instinct === i.id), i.id).toBe(true);
+    expect(new Set(INSTINCTS.map((i) => i.id)).size).toBe(INSTINCTS.length);
+    expect(new Set(INSTINCTS.map((i) => i.name)).size).toBe(INSTINCTS.length);
+    for (const i of INSTINCTS) { expect(instinctRules(i), i.id).toMatch(/\.$/); expect(instinctRules(i), i.id).not.toMatch(/undefined|NaN/); }
+  });
+  it('fire when the leads take the field, as round 1 begins', () => {
+    withInstinct('pebbark', 'menace', () => {
+      const me = createCreature('pebbark', 5), foe = createCreature('zapup', 5);
+      const bt = duel(me, foe);
+      const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      expect(ev.some((e) => e.t === 'say' && /Menace/.test(e.text))).toBe(true);
+      expect(bt.sides[1].mods.power).toBe(-1);
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      expect(bt.sides[1].mods.power).toBe(-1); // only on taking the field
+    });
+  });
+  it('Hold Fast leaves it at 1 Health once a battle', () => {
+    withInstinct('rubblet', 'hold-fast', () => {
+      const me = createCreature('puddlit', 5), foe = createCreature('rubblet', 5);
+      const bt = duel(me, foe);
+      foe.health = 1; foe.vitality = 0;
+      bt.status[foe.uid] = { id: 'burn', turns: 3 };
+      const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      expect(foe.ko).toBe(false);
+      expect(foe.health).toBe(1);
+      expect(ev.some((e) => e.t === 'say' && /hangs on/.test(e.text))).toBe(true);
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      expect(foe.ko).toBe(true);
+    });
+  });
+  it('Steel Coat shrugs off the first status; immunities block theirs for good', () => {
+    withInstinct('rivetail', 'steel-coat', () => {
+      const bt = duel(createCreature('puddlit', 5), createCreature('rivetail', 5));
+      const ev: BEvent[] = [];
+      expect(afflict(bt, 1, 'burn', ev)).toBe(false);
+      expect(ev.some((e) => e.t === 'say' && /turns Burn aside/.test(e.text))).toBe(true);
+      expect(afflict(bt, 1, 'burn', ev)).toBe(true);
+    });
+    withInstinct('puddlit', 'wet-coat', () => {
+      const bt = duel(createCreature('zapup', 5), createCreature('puddlit', 5));
+      expect(afflict(bt, 1, 'burn', [])).toBe(false);
+      expect(afflict(bt, 1, 'soak', [])).toBe(false);
+      expect(afflict(bt, 1, 'shock', [])).toBe(true);
+    });
+  });
+  it('Fixed Star keeps a Dazed creature’s accuracy die whole; Shadow stops the foe Zeroing In', () => {
+    const me = createCreature('zapup', 5);
+    autoPlaybook(me);
+    const id = me.playbook.find((m) => typeof MOVE_BY_ID[m].accuracy === 'number' && (MOVE_BY_ID[m].accuracy as number) > 4)!;
+    const acc = MOVE_BY_ID[id].accuracy as number;
+    const bt = duel(me, createCreature('puddlit', 5));
+    bt.status[me.uid] = { id: 'daze', turns: 3 };
+    const title = () => movePreview(bt, id).find((s) => s.icon === '🎯')!.title;
+    expect(title()).toMatch(new RegExp(`^Accuracy: d${acc - 2}`));
+    withInstinct('zapup', 'fixed-star', () => expect(title()).toMatch(new RegExp(`^Accuracy: d${acc}\\b`)));
+    delete bt.status[me.uid];
+    bt.sides[0].zeroIn = 2;
+    expect(title()).toMatch(/Zeroing In/);
+    withInstinct('puddlit', 'shadow', () => {
+      expect(title()).not.toMatch(/Zeroing In/);
+      expect(movePreview(bt, id).find((s) => s.icon === '🎯')!.text).toMatch(/Shadow stops you Zeroing In/);
+    });
+  });
+  it('Eruption burns the foe the first time it loses a heart', () => {
+    withInstinct('cindercub', 'eruption', () => withInstinct('zapup', 'overclock', () => {
+      const me = createCreature('cindercub', 5), foe = createCreature('zapup', 5);
+      const bt = duel(me, foe);
+      me.health = 1; me.vitality = 2;
+      bt.status[me.uid] = { id: 'burn', turns: 3 };
+      const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      expect(ev.some((e) => e.t === 'say' && /Eruption/.test(e.text))).toBe(true);
+      expect(bt.status[foe.uid]?.id).toBe('burn');
+      expect(bt.instinctUsed).toContain(`${me.uid}:eruption`);
+    }));
+  });
+  it('a pair with no Swap Move set uses a neutral one picked for that pair, the same every time', () => {
+    const [a, b, c] = [createCreature('puddlit', 5), createCreature('zapup', 5), createCreature('sproutle', 5)];
+    const d = defaultSwapMove(a, b);
+    expect(d.type).toBeUndefined();
+    expect(defaultSwapMove(a, b)).toBe(d);
+    expect(swapMoveOf(a, b)).toBe(d);
+    // across many pairs, more than one neutral move comes up
+    const seen = new Set(Array.from({ length: 30 }, () => defaultSwapMove(createCreature('puddlit', 5), c).id));
+    expect(seen.size).toBeGreaterThan(1);
   });
 });

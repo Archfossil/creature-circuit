@@ -37,7 +37,7 @@ export interface Species {
   /** Recruitment Threshold: target number for totem + offering roll. */
   rt: number;
   ability: string;        // ability id (overworld passive)
-  affinity: string;       // favourite Swap Move id (data/swapMoves.ts): used until the trainer sets another
+  instinct: string;       // Instinct id (data/instincts.ts): its passive in battle
   signature?: string;     // move id unlocked via progression
   biomes: Biome[];        // where it can be encountered in the wild
   dex: string;            // flavor text for the index card
