@@ -3464,6 +3464,15 @@ describe('Overheal', () => {
     expect(ev.some((e) => e.t === 'heal' && e.snap.over && e.snap.over > 0)).toBe(true);
     expect(overhealCap(b)).toBe(Math.ceil(maxHealth(b) / 2));
   });
+  it('a healing move at full Health becomes Overheal too', () => {
+    const me = createCreature('puddlit', 6), foe = createCreature('sproutle', 6);
+    me.playbook = ['second-wind'];
+    const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+    bt.sides[0].mods.speed = 10; me.health = 999; // moves first, and no knockout ending the battle early
+    const ev = resolveRound(bt, { kind: 'move', move: 'second-wind' });
+    expect(ev.some((e) => e.t === 'heal' && e.side === 0 && (e.snap.over ?? 0) > 0)).toBe(true);
+    expect(ev.some((e) => e.t === 'say' && /gains \+1 Overheal/.test(e.text))).toBe(true);
+  });
   it('Overheal soaks up damage before Health does', () => {
     const me = createCreature('puddlit', 5), foe = createCreature('zapup', 5);
     const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);

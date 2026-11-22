@@ -60,7 +60,7 @@ export interface Battle {
   /** Once-a-battle Instincts already used, as "<uid>:<instinct id>". */
   instinctUsed?: string[];
   /**
-   * Overheal by creature uid: Health a Swap Move or Instinct healed beyond full, kept as a buffer that
+   * Overheal by creature uid: Health a move, Swap Move or Instinct healed beyond full, kept as a buffer that
    * soaks up damage before Health does (capped at half max Health; lasts the battle). See `mend`.
    */
   overheal?: Record<string, number>;
@@ -111,8 +111,8 @@ export const overhealCap = (c: CreatureInst) => Math.ceil(maxHealth(c) / 2);
 export const overhealOf = (b: Battle, c: CreatureInst) => b.overheal?.[c.uid] ?? 0;
 
 /**
- * Heal `c` by `n` (Swap Moves and Instincts): Health first, up to full; whatever is left over becomes
- * Overheal, up to the cap. Returns how much went to each. (Healing moves don't overheal: see applyEffects.)
+ * Heal `c` by `n` (healing moves, Swap Moves and Instincts): Health first, up to full; whatever is left
+ * over becomes Overheal, up to the cap. Returns how much went to each. (Arena heals don't overheal.)
  */
 function mend(b: Battle, c: CreatureInst, n: number): { healed: number; over: number } {
   if (c.ko || n <= 0) return { healed: 0, over: 0 };
@@ -436,7 +436,10 @@ export function effectValue(b: Battle, si: 0 | 1, e: Move['effect']): number {
   }
   if (e.heal) {
     const missing = maxHealth(me) - me.health;
-    v += Math.min(e.heal, missing) * (me.vitality <= 1 ? 1.2 : 0.6);
+    const healed = Math.min(e.heal, missing);
+    v += healed * (me.vitality <= 1 ? 1.2 : 0.6);
+    // the rest becomes Overheal: worth less than real Health, but not nothing
+    v += Math.max(0, Math.min(e.heal - healed, overhealCap(me) - overhealOf(b, me))) * 0.3;
   }
   if (e.staminaGain) v += Math.min(e.staminaGain, maxStamina(me) - me.stamina) * (me.fatigue > 0 ? 0.35 : 0.15);
   // set-up pays off over the rounds to come; less so once the battle is well along
@@ -796,7 +799,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     const fx: string[] = [];
     for (const [k, v] of Object.entries(e.self ?? {})) fx.push(`your ${k} ${sgn(v!)}`);
     for (const [k, v] of Object.entries(e.foe ?? {})) fx.push(`foe ${k} ${sgn(v!)}`);
-    if (e.heal) fx.push(`heal ${e.heal} Health`);
+    if (e.heal) fx.push(`heal ${e.heal} Health (beyond full: Overheal)`);
     if (e.staminaGain) fx.push(`+${e.staminaGain} Stamina`);
     if (fx.length) steps.push({ icon: '✨', title: 'Effects', text: `${m.kind === 'support' ? 'On a hit' : 'After the damage'}: ${fx.join(', ')}. Stat changes last until that creature leaves the field, capped at ±3 per stat.`, tone: 'good' });
   }
@@ -815,11 +818,10 @@ function applyEffects(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   for (const [k, v] of Object.entries(e.foe ?? {})) { addMod(b, fi, k as StatKey, v!); fparts.push(`${v} ${k}`); }
   if (fparts.length) ev.push({ t: 'buff', side: fi, text: fparts.join(', ') });
   if (e.heal || e.staminaGain) {
-    const mh = maxHealth(c);
-    const before = c.health;
-    if (e.heal) c.health = Math.min(mh, c.health + e.heal);
+    const r = e.heal ? mend(b, c, e.heal) : { healed: 0, over: 0 };
     if (e.staminaGain) c.stamina = Math.min(maxStamina(c), c.stamina + e.staminaGain);
-    ev.push({ t: 'heal', side: si, amount: c.health - before, snap: snap(b, c) });
+    ev.push({ t: 'heal', side: si, amount: r.healed + r.over, snap: snap(b, c) });
+    if (r.over) ev.push({ t: 'say', text: mendText(b, c, r), tone: si === 0 ? 'good' : 'info' });
   }
 }
 

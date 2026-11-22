@@ -121,7 +121,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'stamina', title: 'Stamina & Fatigue', body: [
         'Each move costs Effort from Stamina. At 0 Stamina a creature gains Fatigue, and a fatigued creature rolls a d10 before acting and may lose its turn.',
         'In battle, the thin blue bar under your Health is Stamina. The diamond beside it is Fatigue: grey at 0, a red number when fatigued. The opponent’s nameplate shows its Fatigue diamond too. Hover or tap one to see the odds of losing a turn.',
-        'Overheal: when a Swap Move or an Instinct heals a creature past full Health, the extra becomes Overheal, a gold stripe at the end of its Health bar. It soaks up damage before Health does, up to half the creature’s max Health, and lasts the rest of the battle. Healing moves don’t overheal.',
+        'Overheal: when a move, a Swap Move or an Instinct heals a creature past full Health, the extra becomes Overheal, a gold stripe at the end of its Health bar. It soaks up damage before Health does, up to half the creature’s max Health, and lasts the rest of the battle.',
         'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
       ] },
       { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
