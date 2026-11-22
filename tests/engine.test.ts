@@ -3378,6 +3378,7 @@ describe('Instincts', () => {
     withInstinct('rubblet', 'hold-fast', () => {
       const me = createCreature('puddlit', 5), foe = createCreature('rubblet', 5);
       const bt = duel(me, foe);
+      bt.sides[0].mods.speed = 10; // no Speed tie: a Clash's damage would use up Hold Fast before the Burn does
       foe.health = 1; foe.vitality = 0;
       bt.status[foe.uid] = { id: 'burn', turns: 3 };
       const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
@@ -3425,7 +3426,7 @@ describe('Instincts', () => {
     withInstinct('cindercub', 'eruption', () => withInstinct('zapup', 'overclock', () => {
       const me = createCreature('cindercub', 5), foe = createCreature('zapup', 5);
       const bt = duel(me, foe);
-      me.health = 1; me.vitality = 2;
+      me.health = 1; me.vitality = 8; // plenty of hearts: one big hit mustn't knock it out (then Eruption rightly can't fire)
       bt.status[me.uid] = { id: 'burn', turns: 3 };
       const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
       expect(ev.some((e) => e.t === 'say' && /Eruption/.test(e.text))).toBe(true);
