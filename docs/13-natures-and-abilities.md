@@ -214,16 +214,17 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 - **The swap resolves at the outgoing creature's Speed**, plus the move's Speed bonus (Slipstream +3, Live Wire +2).
 - **Stat boosts** from a Swap Move last while the Alpha stays in, and are capped at ±3 like every battle modifier.
 - **Code:** the moves are data in `src/data/swapMoves.ts` (`before` effects, an optional `hit`, `after` effects). `doSwap()` in `src/engine/battle.ts` runs them, and `describeSwap()` writes the text the card and swap screen show from the same data.
+- **Wording:** each move's in-game text names who does what. In the game the creatures' names are filled in ("Cragtidekit swaps in with an attack of Sproutle's type (Grass), powered by Sproutle's Focus."). The tables below show the general form, with "the Alpha" (swapping in) and "the partner" (swapping out). Where a move says whose type it uses, the game adds the type in brackets. The grey line under it gives the numbers, naming whose stats they are ("d6 + 2 (Sproutle's Focus) − foe's Ward damage"). When writing a new move, say plainly which creature does each thing, and avoid a bare "it" where it could mean either creature.
 
 ### Neutral Swap Moves
 
 | # | Move | ID | Teamwork | In-game text | Exact effect | Favourite of |
 |---|---|---|---|---|---|---|
-| 1 | Tag Strike | `tagStrike` | 0 | "Swaps in with an attack of the partner's type, powered by the partner's Focus." | d8 to hit vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 species |
-| 2 | Shield Pass | `shieldPass` | 0 | "Borrows the partner's Armor and Ward while it stays in, then counters." | +(partner's Armor ÷ 2, rounded up, at least 1, + bonus) Armor and the same for Ward, then a sure counter: d6 + Power − foe's Armor. | 82 species |
-| 3 | Slipstream | `slipstream` | 0 | "Rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d6 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 species |
-| 4 | Siphon | `siphon` | 0 | "Drains the foe, healing using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 species |
-| 5 | Rally | `rally` | 0 | "Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). | 77 species |
+| 1 | Tag Strike | `tagStrike` | 0 | "The Alpha swaps in with an attack of the partner's type, powered by the partner's Focus." | d8 to hit vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 species |
+| 2 | Shield Pass | `shieldPass` | 0 | "The Alpha borrows half of the partner's Armor and Ward for as long as it stays in, then counters with a physical hit." | +(partner's Armor ÷ 2, rounded up, at least 1, + bonus) Armor and the same for Ward, then a sure counter: d6 + Power − foe's Armor. | 82 species |
+| 3 | Slipstream | `slipstream` | 0 | "The Alpha rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d6 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 species |
+| 4 | Siphon | `siphon` | 0 | "The Alpha drains the foe with an attack of its own type, then heals using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 species |
+| 5 | Rally | `rally` | 0 | "The partner cheers the Alpha on: both restore Stamina and shake off some Fatigue, and the Alpha gains Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). | 77 species |
 
 ### Typed Swap Moves
 
@@ -231,22 +232,22 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 | Type | Move | ID | Teamwork | In-game text | Exact effect |
 |---|---|---|---|---|---|
-| Astral | Starfall Relay | `starfall-relay` | 1 | "The partner's Focus falls as starlight on the foe." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
-| Astral | Twin Orbit | `twin-orbit` | 2 | "The pair circle each other: the Alpha slips out of reach and the foe loses track." | +1 Evasion; foe −1 Evasion. Then a sure hit: d6 + Focus + bonus − Ward. Status on a 1–2. |
-| Charm | Sweet Handoff | `sweet-handoff` | 1 | "A disarming entrance that beguiles the foe and steadies the Alpha." | Beguile on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
-| Charm | Heartlink | `heartlink` | 2 | "The two mend each other, and the foe's heart goes out of its attacks." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; the partner (benched) heals (Alpha's Vigor ÷ 2, up) + bonus; foe −1 Power. No damage. |
-| Electric | Live Wire | `live-wire` | 1 | "Jumps in crackling and strikes before the foe can react." | +2 Speed for turn order. d8 to hit. d6 + Focus + bonus − Ward. Status on a 1–2. |
-| Electric | Arc Bridge | `arc-bridge` | 2 | "A current arcs between the pair and through the foe, powered by both." | A sure hit: d6 + Focus + (partner's Focus ÷ 2, down) + bonus − Ward. Status on a 1–2. |
-| Fire | Kindle Swap | `kindle-swap` | 1 | "The partner leaves embers behind: the foe burns and the Alpha is fired up." | Burn on the foe (if it has no status). +1 Power (+2 with a Teamwork bonus). No damage. |
+| Astral | Starfall Relay | `starfall-relay` | 1 | "As the Alpha swaps in, the partner's Focus falls on the foe as starlight." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
+| Astral | Twin Orbit | `twin-orbit` | 2 | "The Alpha and the partner circle each other: the Alpha slips out of reach, the foe loses track, and the Alpha strikes." | +1 Evasion; foe −1 Evasion. Then a sure hit: d6 + Focus + bonus − Ward. Status on a 1–2. |
+| Charm | Sweet Handoff | `sweet-handoff` | 1 | "The Alpha makes a disarming entrance: it beguiles the foe, lands a light hit and steadies itself." | Beguile on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
+| Charm | Heartlink | `heartlink` | 2 | "The Alpha and the partner mend each other, and the foe's heart goes out of its attacks." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; the partner (benched) heals (Alpha's Vigor ÷ 2, up) + bonus; foe −1 Power. No damage. |
+| Electric | Live Wire | `live-wire` | 1 | "The Alpha jumps in crackling and strikes before the foe can react." | +2 Speed for turn order. d8 to hit. d6 + Focus + bonus − Ward. Status on a 1–2. |
+| Electric | Arc Bridge | `arc-bridge` | 2 | "A current arcs from the partner through the Alpha into the foe, powered by both." | A sure hit: d6 + Focus + (partner's Focus ÷ 2, down) + bonus − Ward. Status on a 1–2. |
+| Fire | Kindle Swap | `kindle-swap` | 1 | "The partner leaves embers behind as it goes: the foe burns and the Alpha is fired up." | Burn on the foe (if it has no status). +1 Power (+2 with a Teamwork bonus). No damage. |
 | Fire | Phoenix Handoff | `phoenix-handoff` | 2 | "The Alpha rises from the partner's flames in a blazing strike." | d8 to hit. **d8** + Focus + bonus − Ward. Status on a 1–2. |
-| Grass | Root Relay | `root-relay` | 1 | "Roots pass from partner to Alpha: they snare the foe and feed the Alpha." | Snare on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
-| Grass | Overgrowth | `overgrowth` | 2 | "The partner's strength grows into the Alpha as bark and leaf." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; +1 Armor, +1 Ward. Then a sure hit: d4 + Focus − Ward. |
+| Grass | Root Relay | `root-relay` | 1 | "Roots pass from the partner to the Alpha: they snare the foe, the Alpha strikes, and the roots feed it." | Snare on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
+| Grass | Overgrowth | `overgrowth` | 2 | "The partner's strength grows into the Alpha as bark and leaf, healing and toughening it before it strikes." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; +1 Armor, +1 Ward. Then a sure hit: d4 + Focus − Ward. |
 | Rock | Landslide Tag | `landslide-tag` | 1 | "The Alpha rides the partner's weight down onto the foe." | d8 to hit. Physical: d6 + Power + (partner's Armor ÷ 2, up) + bonus − Armor. Status on a 1–2. |
 | Rock | Bulwark Swap | `bulwark-swap` | 2 | "Stone walls go up as the Alpha arrives, and it hits back from behind them." | +(2 + bonus) Armor, +1 Ward. Then a sure physical hit: d6 + Power − Armor. |
-| Steel | Iron Relay | `iron-relay` | 1 | "A steel-shod charge that dents the foe's defences." | A sure physical hit: d6 + Power + bonus − Armor. Status on a 1–2. |
-| Steel | Alloy Guard | `alloy-guard` | 2 | "The partner plates the Alpha in metal and strips the foe's." | +(partner's Armor ÷ 2, up, at least 1, + bonus) Armor; foe −1 Armor. Then a sure physical hit: d6 + Power − Armor. |
-| Water | Tide Relay | `tide-relay` | 1 | "The partner's Focus surges in as a wave." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
-| Water | Wellspring | `wellspring` | 2 | "Fresh water for the pair, and a drenching for the foe." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; both refill Stamina; Soak on the foe (if it has no status). No damage. |
+| Steel | Iron Relay | `iron-relay` | 1 | "The Alpha charges in steel-shod and dents the foe's defences." | A sure physical hit: d6 + Power + bonus − Armor. Status on a 1–2. |
+| Steel | Alloy Guard | `alloy-guard` | 2 | "The partner plates the Alpha in metal and strips the foe's, then the Alpha strikes." | +(partner's Armor ÷ 2, up, at least 1, + bonus) Armor; foe −1 Armor. Then a sure physical hit: d6 + Power − Armor. |
+| Water | Tide Relay | `tide-relay` | 1 | "The Alpha swaps in on a wave of the partner's Focus." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
+| Water | Wellspring | `wellspring` | 2 | "The Alpha drinks from the partner's spring: the Alpha heals, both refill Stamina, and the foe is drenched." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; both refill Stamina; Soak on the foe (if it has no status). No damage. |
 
 ### Swap Move balance notes
 

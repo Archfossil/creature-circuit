@@ -17,7 +17,7 @@ import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
 import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether } from '../src/engine/teamwork';
 import { swapPreview } from '../src/engine/battle';
-import { SWAP_MOVES, describeSwap } from '../src/data/swapMoves';
+import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { Box3 } from 'three';
 import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
@@ -3215,6 +3215,20 @@ describe('Swap Moves', () => {
       expect(ev.some((e) => e.t === 'use' && e.move === m.id), m.id).toBe(true);
       const text = describeSwap(m, swapVals(a, b));
       expect(text, m.id).not.toMatch(/undefined|NaN/);
+    }
+  });
+  it('Swap Move text names who swaps in and who swaps out', () => {
+    const a = createCreature('sproutle', 6), b = createCreature('puddlit', 6);
+    a.nickname = 'Leafy'; b.nickname = 'Splash';
+    const v = swapVals(a, b);
+    expect(swapText(SWAP_MOVES.find((m) => m.id === 'tagStrike')!, v)).toBe('Leafy swaps in with an attack of Splash’s type (Water), powered by Splash’s Focus.');
+    for (const m of SWAP_MOVES) {
+      const named = swapText(m, v), plain = swapText(m);
+      expect(named, m.id).toMatch(/Leafy|Splash/);
+      expect(named, m.id).not.toMatch(/undefined|Alpha|partner/);
+      expect(plain, m.id).toMatch(/^[A-Z]/);
+      expect(plain, m.id).not.toMatch(/undefined|Leafy|Splash|\(\)/);
+      expect(describeSwap(m, v), m.id).toMatch(/Leafy/);
     }
   });
   it('online edits set a Swap Move with the same rules', () => {

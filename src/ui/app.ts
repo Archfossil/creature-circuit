@@ -20,7 +20,7 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
-import { SWAP_MOVE_BY_ID } from '../data/swapMoves';
+import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
@@ -1751,7 +1751,8 @@ export class App {
               h('div', { class: 'small' },
                 h('div', null, '🔁 ', h('b', null, pv.power), ` · 🤝 Teamwork ${fmtTeamwork(pv.teamwork)} with ${nameOf(cur)} → `, h('b', null, pv.bonus ? `+${pv.bonus} bonus` : 'no bonus yet'),
                   ctx.watch ? null : h('button', { class: 'link', onclick: () => { close(); editSwapMove(c, cur, () => swapPicker()); } }, 'Change')),
-                h('div', null, alphaText(pv.effect, nameOf(c), nameOf(cur))),
+                h('div', null, alphaText(swapText(pv.move, { A: nameOf(c), P: nameOf(cur), aType: speciesOf(c).types[0], pType: speciesOf(cur).types[0] }), nameOf(c), nameOf(cur))),
+                h('div', { class: 'muted' }, alphaText(pv.effect, nameOf(c), nameOf(cur))),
                 h('div', { class: 'muted' }, grows)));
           }))));
       };
@@ -2657,7 +2658,7 @@ export class App {
             h('small', { class: 'muted' }, 'Following you now'),
             h('h3', null, nameOf(cur), h('small', null, ` · Lv ${cur.level}`)),
             h('p', { class: 'small' }, '🌿 ', h('b', null, `Ability · ${ABILITIES[speciesOf(cur).ability].name}`), ': ', ABILITIES[speciesOf(cur).ability].text, h('span', { class: 'muted' }, ' (active while it follows)')),
-            h('p', { class: 'small' }, '🔁 ', h('b', null, `Favourite Swap Move · ${SWAP_MOVE_BY_ID[speciesOf(cur).affinity]?.name ?? ''}`), ': ', SWAP_MOVE_BY_ID[speciesOf(cur).affinity]?.text ?? '', h('span', { class: 'muted' }, ' (set a Swap Move for each partner on its card)')),
+            h('p', { class: 'small' }, '🔁 ', h('b', null, `Favourite Swap Move · ${SWAP_MOVE_BY_ID[speciesOf(cur).affinity]?.name ?? ''}`), ': ', ...(SWAP_MOVE_BY_ID[speciesOf(cur).affinity] ? alphaText(swapText(SWAP_MOVE_BY_ID[speciesOf(cur).affinity], { A: nameOf(cur), aType: speciesOf(cur).types[0] }), nameOf(cur), 'the partner') : []), h('span', { class: 'muted' }, ' (set a Swap Move for each partner on its card)')),
             social(cur)))
         : h('div', { class: 'follow-current none' }, h('p', null, 'Nobody is following you. You’ll choose who leads each battle, and no overworld Ability is active.'));
       const others = s.roster.filter((c) => c.uid !== cur?.uid);

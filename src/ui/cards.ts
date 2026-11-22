@@ -4,7 +4,7 @@ import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
-import { SWAP_MOVES, describeSwap } from '../data/swapMoves';
+import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
 import { defaultSwapMove, setSwapMove, swapLock, swapMoveOf, swapVals } from '../engine/swaps';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
 import type { ElementType, EnergyKey, Move } from '../data/schema';
@@ -265,7 +265,7 @@ function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: Cr
   const cap = teamworkCap(c);
   return h('section', { class: 'ic-sec swap-sec' },
     h('h4', { title: TEAMWORK_HELP }, '🔁 Swap Moves ', h('span', { class: 'muted' }, `🤝 Teamwork max ${fmtTeamwork(cap)} (half its level)`)),
-    h('p', { class: 'small muted' }, `When ${nameOf(c)} swaps in (as the Alpha) for a teammate, it uses the Swap Move set for that teammate. Favourite: `, h('b', null, fav.name), ` (${fav.text})`),
+    h('p', { class: 'small muted' }, `When ${nameOf(c)} swaps in (as the Alpha) for a teammate, it uses the Swap Move set for that teammate. Favourite: `, h('b', null, fav.name), ' (', ...alphaText(swapText(fav, { A: nameOf(c), aType: speciesOf(c).types[0] }), nameOf(c), 'the partner'), ')'),
     others.length ? h('div', { class: 'swap-list' }, others.map((m) => {
       const mv = swapMoveOf(c, m);
       const t = teamworkOf(c, m), bonus = teamworkBonus(c, m);
@@ -276,7 +276,8 @@ function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: Cr
             '🤝 ', fmtTeamwork(t), bonus ? ` · +${bonus}` : ''),
           edit ? h('button', { class: 'link', onclick: () => edit(m) }, 'Change') : null),
         h('div', null, mv.type ? typeIconImg(mv.type, 14) : null, ' ', h('b', null, mv.name), mv.id === fav.id ? h('span', { class: 'muted' }, ' · favourite') : null),
-        h('small', null, alphaText(describeSwap(mv, swapVals(c, m)), nameOf(c), nameOf(m))));
+        h('small', null, alphaText(swapText(mv, swapVals(c, m)), nameOf(c), nameOf(m))),
+        h('small', { class: 'muted' }, alphaText(describeSwap(mv, swapVals(c, m)), nameOf(c), nameOf(m))));
     })) : h('p', { class: 'small muted' }, 'Recruit another creature to set Swap Moves.'),
     h('p', { class: 'small muted' }, `🤝 Teamwork grows +${TEAMWORK_PER_TURN} a turn while both are on your active team, and +${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle. Every ${TEAMWORK_PER_BONUS} Teamwork adds +1 to the Swap Move.`));
 }
@@ -303,7 +304,7 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
         h('div', { class: 'swap-opt-head' }, m.type ? typeIconImg(m.type, 16) : null, h('b', null, m.name),
           h('span', { class: 'muted' }, m.type ? ` · ${TYPE_LABEL[m.type]}` : ' · Neutral', m.teamwork ? ` · Teamwork ${m.teamwork}` : ''),
           m.id === cur.id ? h('span', { class: 'chip good' }, 'Set') : null),
-        h('small', null, alphaText(m.text, A, P)),
+        h('small', null, alphaText(swapText(m, v), A, P)),
         h('small', { class: 'muted' }, lock ?? alphaText(describeSwap(m, v), A, P)))))), { wide: true });
 }
 
@@ -358,7 +359,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
       h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.')),
-      h('div', { class: 'mini-panel' }, h('h5', null, '🔁 Favourite Swap Move · ', fav.name), h('p', null, fav.text), h('small', { class: 'muted' }, 'Used when it swaps in, until you set another for that partner below.'))),
+      h('div', { class: 'mini-panel' }, h('h5', null, '🔁 Favourite Swap Move · ', fav.name), h('p', null, alphaText(swapText(fav, { A: nameOf(c), aType: sp.types[0] }), nameOf(c), 'the partner')), h('small', { class: 'muted' }, 'Used when it swaps in, until you set another for that partner below.'))),
     swapSection(c, opts.teammates ?? [], opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
     h('section', { class: 'ic-sec' },
       h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),

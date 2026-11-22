@@ -16,6 +16,11 @@ import { TYPE_LABEL } from './types';
 
 /** The numbers a Swap Move works from: the Alpha's (a), partner's (p) and foe's (f, unknown off the battlefield) stats. */
 export interface SwapVals { a: Stats; p: Stats; f?: Stats; bonus: number; A: string; P: string; aType: ElementType; pType: ElementType }
+/**
+ * Who a Swap Move's words are about: the Alpha (A, swapping in) and the partner (P, swapping out), with
+ * their main types when known. Off a real pair (the favourite panel, docs) they're "the Alpha" / "the partner".
+ */
+export interface SwapNames { A: string; P: string; aType?: ElementType; pType?: ElementType }
 /** One labelled number added to a Swap Move's damage roll. */
 export interface SwapPart { label: string; value: number }
 
@@ -53,7 +58,8 @@ export interface SwapMove {
   teamwork: number;
   /** Bonus Speed for the swap's turn order. */
   speed?: number;
-  text: string;
+  /** What happens, in words, naming who swaps in and who swaps out (use `swapText`). The numbers are `describeSwap`'s job. */
+  text: (n: SwapNames) => string;
   before?: SwapEffect[];
   hit?: SwapHit;
   after?: SwapEffect[];
@@ -76,71 +82,82 @@ const healFrom = (who: 'a' | 'p') => (v: SwapVals) => Math.ceil(v[who].vigor / 2
 const mod = (who: 'self' | 'foe', stat: StatKey, n: (v: SwapVals) => number): SwapEffect => ({ t: 'mod', who, stat, n });
 const heal = (who: 'alpha' | 'partner', n: (v: SwapVals) => number): SwapEffect => ({ t: 'heal', who, n });
 const fixed = (n: number) => () => n;
+/** " (Water)" after "Sproutle’s type", when the type is known. */
+const typeOf = (t?: ElementType) => (t ? ` (${TYPE_LABEL[t]})` : '');
 
 export const SWAP_MOVES: SwapMove[] = [
   // ── Neutral: open to every pair (each species' favourite is one of these) ──
-  { id: 'tagStrike', name: 'Tag Strike', teamwork: 0, text: 'Swaps in with an attack of the partner’s type, powered by the partner’s Focus.',
+  { id: 'tagStrike', name: 'Tag Strike', teamwork: 0, text: (n) => `${n.A} swaps in with an attack of ${n.P}’s type${typeOf(n.pType)}, powered by ${n.P}’s Focus.`,
     hit: { acc: 8, die: 6, kind: 'elemental', chart: 'partner', parts: parts(of('p', 'focus')) } },
-  { id: 'shieldPass', name: 'Shield Pass', teamwork: 0, text: 'Borrows the partner’s Armor and Ward while it stays in, then counters.',
+  { id: 'shieldPass', name: 'Shield Pass', teamwork: 0, text: (n) => `${n.A} borrows half of ${n.P}’s Armor and Ward for as long as it stays in, then counters with a physical hit.`,
     before: [mod('self', 'armor', borrow('armor')), mod('self', 'ward', borrow('ward'))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
-  { id: 'slipstream', name: 'Slipstream', teamwork: 0, speed: 3, text: 'Rides the partner’s Speed to strike first with a physical hit.',
+  { id: 'slipstream', name: 'Slipstream', teamwork: 0, speed: 3, text: (n) => `${n.A} rides ${n.P}’s Speed to strike first with a physical hit.`,
     hit: { die: 6, kind: 'physical', parts: parts(of('a', 'power'), (v) => ({ label: `${v.P}’s Speed ÷ 3`, value: Math.floor(v.p.speed / 3) })) } },
-  { id: 'siphon', name: 'Siphon', teamwork: 0, text: 'Drains the foe, healing using the partner’s Vigor.',
+  { id: 'siphon', name: 'Siphon', teamwork: 0, text: (n) => `${n.A} drains the foe with an attack of its own type${typeOf(n.aType)}, then heals using ${n.P}’s Vigor.`,
     hit: { die: 6, kind: 'elemental', chart: 'alpha', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', healFrom('p'))] },
-  { id: 'rally', name: 'Rally', teamwork: 0, text: 'Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus.',
+  { id: 'rally', name: 'Rally', teamwork: 0, text: (n) => `${n.P} cheers ${n.A} on: both restore Stamina and shake off some Fatigue, and ${n.A} gains Power and Focus.`,
     before: [{ t: 'refill' }, { t: 'ease' }, mod('self', 'power', withTw(1)), mod('self', 'focus', withTw(1))] },
 
   // ── Astral ──
-  { id: 'starfall-relay', name: 'Starfall Relay', type: 'astral', teamwork: 1, text: 'The partner’s Focus falls as starlight on the foe.',
+  { id: 'starfall-relay', name: 'Starfall Relay', type: 'astral', teamwork: 1, text: (n) => `As ${n.A} swaps in, ${n.P}’s Focus falls on the foe as starlight.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('p', 'focus')) } },
-  { id: 'twin-orbit', name: 'Twin Orbit', type: 'astral', teamwork: 2, text: 'The pair circle each other: the Alpha slips out of reach and the foe loses track.',
+  { id: 'twin-orbit', name: 'Twin Orbit', type: 'astral', teamwork: 2, text: (n) => `${n.A} and ${n.P} circle each other: ${n.A} slips out of reach, the foe loses track, and ${n.A} strikes.`,
     before: [mod('self', 'evasion', fixed(1)), mod('foe', 'evasion', fixed(-1))],
     hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
   // ── Charm ──
-  { id: 'sweet-handoff', name: 'Sweet Handoff', type: 'charm', teamwork: 1, text: 'A disarming entrance that beguiles the foe and steadies the Alpha.',
+  { id: 'sweet-handoff', name: 'Sweet Handoff', type: 'charm', teamwork: 1, text: (n) => `${n.A} makes a disarming entrance: it beguiles the foe, lands a light hit and steadies itself.`,
     before: [{ t: 'status' }],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', plusTw(1))] },
-  { id: 'heartlink', name: 'Heartlink', type: 'charm', teamwork: 2, text: 'The two mend each other, and the foe’s heart goes out of its attacks.',
+  { id: 'heartlink', name: 'Heartlink', type: 'charm', teamwork: 2, text: (n) => `${n.A} and ${n.P} mend each other, and the foe’s heart goes out of its attacks.`,
     before: [heal('alpha', healFrom('p')), heal('partner', healFrom('a')), mod('foe', 'power', fixed(-1))] },
   // ── Electric ──
-  { id: 'live-wire', name: 'Live Wire', type: 'electric', teamwork: 1, speed: 2, text: 'Jumps in crackling and strikes before the foe can react.',
+  { id: 'live-wire', name: 'Live Wire', type: 'electric', teamwork: 1, speed: 2, text: (n) => `${n.A} jumps in crackling and strikes before the foe can react.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
-  { id: 'arc-bridge', name: 'Arc Bridge', type: 'electric', teamwork: 2, text: 'A current arcs between the pair and through the foe, powered by both.',
+  { id: 'arc-bridge', name: 'Arc Bridge', type: 'electric', teamwork: 2, text: (n) => `A current arcs from ${n.P} through ${n.A} into the foe, powered by both.`,
     hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus'), half('p', 'focus', 'down')) } },
   // ── Fire ──
-  { id: 'kindle-swap', name: 'Kindle Swap', type: 'fire', teamwork: 1, text: 'The partner leaves embers behind: the foe burns and the Alpha is fired up.',
+  { id: 'kindle-swap', name: 'Kindle Swap', type: 'fire', teamwork: 1, text: (n) => `${n.P} leaves embers behind as it goes: the foe burns and ${n.A} is fired up.`,
     before: [{ t: 'status' }, mod('self', 'power', withTw(1))] },
-  { id: 'phoenix-handoff', name: 'Phoenix Handoff', type: 'fire', teamwork: 2, text: 'The Alpha rises from the partner’s flames in a blazing strike.',
+  { id: 'phoenix-handoff', name: 'Phoenix Handoff', type: 'fire', teamwork: 2, text: (n) => `${n.A} rises from ${n.P}’s flames in a blazing strike.`,
     hit: { acc: 8, die: 8, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
   // ── Grass ──
-  { id: 'root-relay', name: 'Root Relay', type: 'grass', teamwork: 1, text: 'Roots pass from partner to Alpha: they snare the foe and feed the Alpha.',
+  { id: 'root-relay', name: 'Root Relay', type: 'grass', teamwork: 1, text: (n) => `Roots pass from ${n.P} to ${n.A}: they snare the foe, ${n.A} strikes, and the roots feed it.`,
     before: [{ t: 'status' }],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', plusTw(1))] },
-  { id: 'overgrowth', name: 'Overgrowth', type: 'grass', teamwork: 2, text: 'The partner’s strength grows into the Alpha as bark and leaf.',
+  { id: 'overgrowth', name: 'Overgrowth', type: 'grass', teamwork: 2, text: (n) => `${n.P}’s strength grows into ${n.A} as bark and leaf, healing and toughening it before it strikes.`,
     before: [heal('alpha', healFrom('p')), mod('self', 'armor', fixed(1)), mod('self', 'ward', fixed(1))],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) } },
   // ── Rock ──
-  { id: 'landslide-tag', name: 'Landslide Tag', type: 'rock', teamwork: 1, text: 'The Alpha rides the partner’s weight down onto the foe.',
+  { id: 'landslide-tag', name: 'Landslide Tag', type: 'rock', teamwork: 1, text: (n) => `${n.A} rides ${n.P}’s weight down onto the foe.`,
     hit: { acc: 8, die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power'), half('p', 'armor')) } },
-  { id: 'bulwark-swap', name: 'Bulwark Swap', type: 'rock', teamwork: 2, text: 'Stone walls go up as the Alpha arrives, and it hits back from behind them.',
+  { id: 'bulwark-swap', name: 'Bulwark Swap', type: 'rock', teamwork: 2, text: (n) => `Stone walls go up as ${n.A} arrives, and it hits back from behind them.`,
     before: [mod('self', 'armor', plusTw(2)), mod('self', 'ward', fixed(1))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
   // ── Steel ──
-  { id: 'iron-relay', name: 'Iron Relay', type: 'steel', teamwork: 1, text: 'A steel-shod charge that dents the foe’s defences.',
+  { id: 'iron-relay', name: 'Iron Relay', type: 'steel', teamwork: 1, text: (n) => `${n.A} charges in steel-shod and dents the foe’s defences.`,
     hit: { die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power')) } },
-  { id: 'alloy-guard', name: 'Alloy Guard', type: 'steel', teamwork: 2, text: 'The partner plates the Alpha in metal and strips the foe’s.',
+  { id: 'alloy-guard', name: 'Alloy Guard', type: 'steel', teamwork: 2, text: (n) => `${n.P} plates ${n.A} in metal and strips the foe’s, then ${n.A} strikes.`,
     before: [mod('self', 'armor', borrow('armor')), mod('foe', 'armor', fixed(-1))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
   // ── Water ──
-  { id: 'tide-relay', name: 'Tide Relay', type: 'water', teamwork: 1, text: 'The partner’s Focus surges in as a wave.',
+  { id: 'tide-relay', name: 'Tide Relay', type: 'water', teamwork: 1, text: (n) => `${n.A} swaps in on a wave of ${n.P}’s Focus.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('p', 'focus')) } },
-  { id: 'wellspring', name: 'Wellspring', type: 'water', teamwork: 2, text: 'Fresh water for the pair, and a drenching for the foe.',
+  { id: 'wellspring', name: 'Wellspring', type: 'water', teamwork: 2, text: (n) => `${n.A} drinks from ${n.P}’s spring: ${n.A} heals, both refill Stamina, and the foe is drenched.`,
     before: [heal('alpha', healFrom('p')), { t: 'refill' }, { t: 'status' }] },
 ];
+
+/**
+ * A Swap Move's text for a pair. Leave out a name to get "the Alpha" / "the partner" (e.g. on a card that
+ * shows a creature's favourite without a partner in mind).
+ */
+export function swapText(m: SwapMove, n: Partial<SwapNames> = {}): string {
+  const s = m.text({ A: n.A ?? 'the Alpha', P: n.P ?? 'the partner', aType: n.aType, pType: n.pType });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 export const SWAP_MOVE_BY_ID: Record<string, SwapMove> = Object.fromEntries(SWAP_MOVES.map((m) => [m.id, m]));
 
@@ -155,19 +172,19 @@ export function swapChart(m: SwapMove, v: Pick<SwapVals, 'aType' | 'pType'>): El
 const signed = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
 function effectText(m: SwapMove, e: SwapEffect, v: SwapVals): string {
   switch (e.t) {
-    case 'mod': { const n = e.n(v); return e.who === 'self' ? `${signed(n)} ${LABEL[e.stat]}` : `foe ${signed(n)} ${LABEL[e.stat]}`; }
+    case 'mod': { const n = e.n(v); return e.who === 'self' ? `${signed(n)} ${LABEL[e.stat]}` : `the foe gets ${signed(n)} ${LABEL[e.stat]}`; }
     case 'heal': return `${e.who === 'alpha' ? v.A : v.P} heals ${e.n(v)}`;
-    case 'refill': return 'both refill Stamina';
-    case 'ease': return 'both lose 1 Fatigue';
+    case 'refill': return `${v.A} and ${v.P} refill Stamina`;
+    case 'ease': return `${v.A} and ${v.P} lose 1 Fatigue`;
     case 'status': { const s = swapStatus(m); return s ? `${STATUS_INFO[s].icon} ${STATUS_INFO[s].name} on the foe (if it has no status)` : ''; }
   }
 }
 
-/** A list of effects in words; the Alpha's own stat boosts are grouped, with "while it stays in" said once. */
+/** A list of effects in words; the Alpha's own stat boosts are grouped: "Sproutle gets +1 Armor, +1 Ward while it stays in". */
 function effectsText(m: SwapMove, es: SwapEffect[], v: SwapVals): string[] {
   const out: string[] = [];
   let boosts: string[] = [];
-  const flush = () => { if (boosts.length) out.push(`${boosts.join(', ')} while it stays in`); boosts = []; };
+  const flush = () => { if (boosts.length) out.push(`${v.A} gets ${boosts.join(', ')} while it stays in`); boosts = []; };
   for (const e of es) {
     if (e.t === 'mod' && e.who === 'self') boosts.push(effectText(m, e, v));
     else { flush(); out.push(effectText(m, e, v)); }
@@ -179,7 +196,7 @@ function effectsText(m: SwapMove, es: SwapEffect[], v: SwapVals): string[] {
 /** The move's effect in words, with the numbers filled in (the foe's are left as words when `v.f` is unknown). */
 export function describeSwap(m: SwapMove, v: SwapVals): string {
   const out: string[] = [];
-  if (m.speed) out.push(`+${m.speed} Speed to act first`);
+  if (m.speed) out.push(`${v.A} gets +${m.speed} Speed to act first`);
   out.push(...effectsText(m, m.before ?? [], v));
   if (m.hit) {
     const h = m.hit;
@@ -187,13 +204,12 @@ export function describeSwap(m: SwapMove, v: SwapVals): string {
     // each number with what it is: "d6 + 2 (Zapup’s Focus) + 1 (Teamwork) − 1 (foe’s Ward)"
     const sum = h.parts(v).map((p) => ` ${p.value >= 0 ? '+' : '−'} ${Math.abs(p.value)} (${p.label})`).join('');
     const foeDef = v.f ? ` − ${v.f[def]} (foe’s ${LABEL[def]})` : ` − foe’s ${LABEL[def]}`;
-    const acc = h.acc ? `d${h.acc} to hit${v.f ? ` (needs ${v.f.evasion}+)` : ' vs Evasion'}, then ` : 'a sure hit: ';
+    const acc = h.acc ? `${v.A} attacks: d${h.acc} to hit${v.f ? ` (needs ${v.f.evasion}+)` : ' vs the foe’s Evasion'}, then ` : `${v.A} attacks (a sure hit): `;
     const chart = swapChart(m, v);
     const st = h.status ? swapStatus(m) : undefined;
     out.push(`${acc}d${h.die}${sum}${foeDef} damage${chart ? `, as ${TYPE_LABEL[chart]}` : ''}${st ? ` (${STATUS_INFO[st].name} on a 1–2)` : ''}`);
   }
   out.push(...effectsText(m, m.after ?? [], v));
   const s = out.filter(Boolean).join('; ');
-  // capitalise a leading word, but not a die ("d8 to hit")
-  return (/^d\d/.test(s) ? s : s.charAt(0).toUpperCase() + s.slice(1)) + '.';
+  return s.charAt(0).toUpperCase() + s.slice(1) + '.';
 }

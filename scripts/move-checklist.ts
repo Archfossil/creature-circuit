@@ -156,7 +156,7 @@ lines.push('## Swap Moves', '',
   '- **Status on 1–2**: typed hits inflict their type\'s status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it\'s inflicted with no roll (if the foe has no status).',
   '- **Effects** are applied before or after the hit as listed in the move\'s data. Stat boosts last while the Alpha stays in.',
   '- **Design ☐**: the 16 typed moves are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.',
-  '- **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects; document it in docs/13 (a test checks), then regenerate this file.', '',
+  '- **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects, with `text` naming the Alpha and partner (`n.A`, `n.P`; see Wording in docs/13); document it in docs/13 (a test checks), then regenerate this file.', '',
   '| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Favourite of | Design | Balance |',
   '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
   ...SWAP_MOVES.map(swapRow), '');
