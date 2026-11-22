@@ -138,6 +138,12 @@ function emojiSprite(emoji: string, ring: string) {
 // ── World view ──────────────────────────────────────────────────
 export type Reach = Record<string, 'ok' | 'locked'>;
 
+/** Map pan keys (lower-cased KeyboardEvent.key) → [x, z] direction on the ground. */
+const PAN_KEYS: Record<string, [number, number]> = {
+  w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1],
+  a: [-1, 0], arrowleft: [-1, 0], d: [1, 0], arrowright: [1, 0],
+};
+
 export class WorldView implements SceneView {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 600);
@@ -950,6 +956,39 @@ export class WorldView implements SceneView {
       e.preventDefault();
       this.goalDist = THREE.MathUtils.clamp(this.goalDist * (1 + Math.sign(e.deltaY) * 0.1), 16, 120);
     }, { passive: false });
+
+    // W-A-S-D / arrow keys pan the map while held (desktop). Ignored while typing,
+    // with a sheet open, during a battle, or with a modifier held (so browser shortcuts still work).
+    const blocked = (e: KeyboardEvent) => {
+      if (!this.interactive || this.title || e.ctrlKey || e.metaKey || e.altKey) return true;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return true;
+      return !!document.querySelector('.sheet-wrap, .battle-ui');
+    };
+    addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (!(k in PAN_KEYS) || blocked(e)) return;
+      e.preventDefault(); // arrows would otherwise scroll the page
+      this.panKeys.add(k);
+    });
+    addEventListener('keyup', (e) => this.panKeys.delete(e.key.toLowerCase()));
+    addEventListener('blur', () => this.panKeys.clear());
+  }
+
+  private panKeys = new Set<string>();
+
+  /** Move the camera goal while pan keys are held, faster when zoomed out. */
+  private keyPan(dt: number) {
+    if (!this.panKeys.size) return;
+    if (this.title || document.querySelector('.sheet-wrap, .battle-ui')) { this.panKeys.clear(); return; }
+    let x = 0, z = 0;
+    for (const k of this.panKeys) { const d = PAN_KEYS[k]; if (d) { x += d[0]; z += d[1]; } }
+    const len = Math.hypot(x, z);
+    if (!len) return;
+    const step = this.dist * 0.9 * Math.min(dt, 0.1) / len;
+    this.goal.x += x * step;
+    this.goal.z += z * step;
+    this.clampGoal();
   }
 
   private clampGoal() {
@@ -981,6 +1020,7 @@ export class WorldView implements SceneView {
     }
     if (this.title) { this.yaw = Math.sin(t * 0.05) * 0.5; }
     else this.yaw += (0 - this.yaw) * Math.min(1, dt * 2);
+    this.keyPan(dt);
     this.target.lerp(this.goal, Math.min(1, dt * 3.5));
     this.dist += (this.goalDist - this.dist) * Math.min(1, dt * 4);
     const cp = Math.cos(this.pitch) * this.dist;
