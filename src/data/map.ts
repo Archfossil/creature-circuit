@@ -39,7 +39,7 @@ const hubs: MapNode[] = [
   { id: 'willowheart', name: 'Willowheart Isle', kind: 'legendary', biome: 'lake', x: -18, z: 17, rarity: 3, level: 8, legendary: 'ph-grass-water-legendary', requires: { tier: 2 } },
   { id: 'dunecrown', name: 'Dunecrown Mesa', kind: 'legendary', biome: 'desert', x: 6, z: 36, rarity: 3, level: 9, legendary: 'ph-electric-rock-legendary', requires: { tier: 3 } },
   { id: 'boglight', name: 'Boglight Hollow', kind: 'legendary', biome: 'swamp', x: 50, z: 32, rarity: 3, level: 10, legendary: 'ph-water-charm-legendary', requires: { tier: 3 } },
-  { id: 'calderaheart', name: 'Caldera Heart', kind: 'legendary', biome: 'volcanic', x: 16, z: 80, rarity: 3, level: 11, legendary: 'ph-fire-steel-legendary', requires: { tier: 4 } },
+  { id: 'calderaheart', name: 'Caldera Heart', kind: 'legendary', biome: 'volcanic', x: -6, z: 76, rarity: 3, level: 11, legendary: 'ph-fire-steel-legendary', requires: { tier: 4 } },
 ];
 
 /**
