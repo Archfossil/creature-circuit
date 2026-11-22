@@ -1616,7 +1616,7 @@ export class App {
             disp[e.side] = e.snap; renderPlate(e.side);
             if (e.amount > 0) { const p = bv.screenOf(e.side); floatText(p.x, p.y, `+${e.amount}`, 'heal'); await bv.heal(e.side); }
             break;
-          case 'status': disp[e.side] = e.snap; renderPlate(e.side); break;
+          case 'status': case 'stamina': disp[e.side] = e.snap; renderPlate(e.side); break;
           case 'zero': {
             disp[e.side] = e.snap; renderPlate(e.side);
             if (e.bonus > 0) { const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, `⌖ Zeroing in +${e.bonus}`, 'buff'); await wait(slow() ? 650 : 300); }

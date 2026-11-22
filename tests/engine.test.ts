@@ -316,6 +316,24 @@ describe('move readout', () => {
     const titles = movePreview(bt, me.playbook[0]).map((x) => x.title);
     expect(titles[1]).toBe('Fatigue check: d10');
   });
+  it('reports every Stamina spend in an event, so the battle plate shows it even when the move hits', () => {
+    const me = createCreature('puddlit', 5);
+    autoPlaybook(me);
+    const id = me.playbook.find((m) => MOVE_BY_ID[m].effort > 0)!;
+    // (a round where the foe's Shock locks it up spends nothing: try fresh battles until it acts)
+    let events: BEvent[] = [], before = 0, fatigue = 0;
+    for (let i = 0; i < 20 && !events.some((e) => e.t === 'use' && e.side === 0); i++) {
+      const bt = createBattle(side('player', [me]), side('wild', [createCreature('zapup', 5)]), WEATHER.clear);
+      me.health = 999;
+      before = me.stamina; fatigue = me.fatigue;
+      events = resolveRound(bt, { kind: 'move', move: id });
+    }
+    const ev = events.find((e): e is Extract<BEvent, { t: 'stamina' }> => e.t === 'stamina' && e.side === 0);
+    expect(ev).toBeDefined();
+    const effort = MOVE_BY_ID[id].effort;
+    if (before - effort > 0) expect(ev!.snap.stamina).toBe(before - effort);
+    else expect(ev!.snap.fatigue).toBe(fatigue + 1);
+  });
 });
 
 describe('starting levels', () => {

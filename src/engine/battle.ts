@@ -68,6 +68,8 @@ export type BEvent =
   /** Zeroing In changed: a miss built it up (bonus > 0) or the next accuracy roll used it (bonus 0). */
   | { t: 'zero'; side: 0 | 1; bonus: number; gained: number; snap: Snap }
   | { t: 'tired'; side: 0 | 1; value: number; fatigue: number; fail: boolean; snap: Snap }
+  /** A creature's Stamina changed (a move's Effort, or a refill), so its plate can show the new value. */
+  | { t: 'stamina'; side: 0 | 1; snap: Snap }
   | { t: 'ko'; side: 0 | 1; uid: string }
   | { t: 'send'; side: 0 | 1; idx: number; snap: Snap }
   | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string; bonus?: number }
@@ -414,11 +416,13 @@ function spendStamina(b: Battle, si: 0 | 1, effort: number, ev: BEvent[]) {
   const c = activeOf(b.sides[si]);
   if (effort <= 0) return;
   c.stamina -= effort;
-  if (c.stamina <= 0) {
+  const fatigued = c.stamina <= 0;
+  if (fatigued) {
     c.fatigue++;
     c.stamina = maxStamina(c);
-    ev.push({ t: 'say', text: `${nameOf(c)} is fatigued (${c.fatigue}).`, tone: 'bad' });
   }
+  ev.push({ t: 'stamina', side: si, snap: snap(b, c) });
+  if (fatigued) ev.push({ t: 'say', text: `${nameOf(c)} is fatigued (${c.fatigue}).`, tone: 'bad' });
 }
 
 function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
@@ -695,6 +699,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
       addMod(b, si, 'power', 1 + (bonus > 0 ? 1 : 0));
       addMod(b, si, 'focus', 1 + (bonus > 0 ? 1 : 0));
       ev.push({ t: 'buff', side: si, text: `+${1 + (bonus > 0 ? 1 : 0)} power & focus, stamina restored` });
+      ev.push({ t: 'stamina', side: si, snap: snap(b, activeOf(side)) });
       break;
   }
 }
