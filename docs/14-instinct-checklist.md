@@ -12,7 +12,7 @@ Every creature has three things that shape it: its **Nature** (stats and perks),
 | Designed and signed off | 0 |
 | **First drafts to review** | **48** |
 | Species with an Instinct | 386 of 386 |
-| Flagged for a balance look | 1 (see [Balance watch list](#balance-watch-list)) |
+| Flagged for a balance look | 2 (see [Balance watch list](#balance-watch-list)) |
 
 ## How Instincts work
 
@@ -57,7 +57,7 @@ Every creature has three things that shape it: its **Nature** (stats and perks),
 |---|---|---|---|---|---|---|---|---|---|
 | **Disarming Smile** | `disarming-smile` | When it takes the field | A sweet look as it arrives takes the foe’s mind off its aim: the foe’s Focus drops by 1. | When it takes the field: the foe gets −1 Focus. | 12 | **Mossprite line**, 3 placeholder families | — | ☐ | ☐ |
 | **Glamour** | `glamour` | When it takes the field | It makes an entrance that’s hard to look at directly: +1 Evasion when it takes the field. | When it takes the field: +1 Evasion while it stays in. | 7 | **Puffwisp line**, 3 placeholder families | — | ☐ | ☐ |
-| **Heartmend** | `heartmend` | When it loses a Vitality heart (once) | The first time it loses a heart, it pulls itself together: it recovers 3 Health and shakes off its status. | When it loses a Vitality heart (first time each battle): it recovers 3 Health; it shakes off its status. | 7 | **Mirageon**, 2 placeholder families | — | ☐ | ☐ |
+| **Heartmend** | `heartmend` | When it loses a Vitality heart (once) | The first time it loses a heart, it pulls itself together: it recovers 3 Health and shakes off its status. | When it loses a Vitality heart (first time each battle): it recovers 3 Health (beyond full Health: Overheal, up to half its max Health); it shakes off its status. | 7 | **Mirageon**, 2 placeholder families | — | ☐ | ☐ |
 | **Captivate** | `captivate` | When a physical attack hits it (1–2 on d6) | Touching it is a mistake: a foe that hits it with a physical attack may be Beguiled (1–2 on a d6). | When a physical attack hits it, on 1–2 on a d6: Beguile on the foe (if it has no status). | 9 | 3 placeholder families | — | ☐ | ☐ |
 | **Pure Heart** | `pure-heart` | Always on | Nothing clouds it: it can never be Beguiled or Dazed. | Immune to Beguile and Daze. | 9 | 3 placeholder families | — | ☐ | ☐ |
 | **Curtain Call** | `curtain-call` | When it knocks out a foe | It takes a bow after every knockout: +1 Evasion. | When it knocks out a foe: +1 Evasion while it stays in. | 5 | 3 placeholder families | — | ☐ | ☐ |
@@ -88,7 +88,7 @@ Every creature has three things that shape it: its **Nature** (stats and perks),
 
 | Instinct | ID | When | In-game text | Exact rules | Species | Families | Balance note | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|
-| **Deep Roots** | `deep-roots` | At the end of each round | It draws strength from the ground: it recovers 1 Health at the end of every round. | At the end of each round: it recovers 1 Health. | 12 | **Sproutle line**, 3 placeholder families | — | ☐ | ☐ |
+| **Deep Roots** | `deep-roots` | At the end of each round | It draws strength from the ground: it recovers 1 Health at the end of every round. | At the end of each round: it recovers 1 Health (beyond full Health: Overheal, up to half its max Health). | 12 | **Sproutle line**, 3 placeholder families | ⚠️ [Watch](#balance-watch-list) | ☐ | ☐ |
 | **Bramble Coat** | `bramble-coat` | When a physical attack hits it | Thorns line its back: a foe that hits it with a physical attack takes 1 damage. | When a physical attack hits it: the foe takes 1 damage. | 7 | **Shadeleaf line**, 3 placeholder families | — | ☐ | ☐ |
 | **Creeping Vines** | `creeping-vines` | When it takes the field | Vines spread out as it arrives: the foe’s Speed drops by 1. | When it takes the field: the foe gets −1 Speed. | 7 | **Canopyre**, 2 placeholder families | — | ☐ | ☐ |
 | **Spore Puff** | `spore-puff` | When a physical attack hits it (1–2 on d6) | A cloud of spores bursts when it’s struck: a foe that hits it with a physical attack may be Snared (1–2 on a d6). | When a physical attack hits it, on 1–2 on a d6: Snare on the foe (if it has no status). | 7 | 3 placeholder families | — | ☐ | ☐ |
@@ -134,6 +134,7 @@ Instincts flagged for a closer look in play, with a change to try. Flags live in
 
 | Instinct | Concern | Possible change |
 |---|---|---|
+| **Deep Roots** (`deep-roots`, Grass) | With Overheal, Deep Roots no longer stops at full Health: a creature at full Health builds 1 Overheal every round, up to half its max Health, so a long fight hands it a free buffer. | If it proves too strong: let Deep Roots heal Health only (no Overheal), or only overheal once a battle. |
 | **Shadow** (`shadow`, Astral) | Possibly too strong. Zeroing In is the built-in answer to a foe that keeps dodging, and Shadow switches it off completely for as long as its creature is on the field. Paired with high Evasion (an Evasion bias or boosts, Glamour-style buffs, Fog), a creature that misses a lot may never catch up. | Instead of cancelling Zeroing In, halve it: against Shadow each miss Zeroes In +0.5 instead of +1, so it takes two misses to earn +1 accuracy. Needs Zeroing In to hold halves (the bonus used on a roll rounds down) and the move readout to say so. |
 
 ## Design space still open

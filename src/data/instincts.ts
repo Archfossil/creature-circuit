@@ -236,7 +236,7 @@ function effectText(e: InstinctEffect): string {
   switch (e.t) {
     case 'mod': return e.who === 'self' ? `${signed(e.n)} ${LABEL[e.stat]} while it stays in` : `the foe gets ${signed(e.n)} ${LABEL[e.stat]}`;
     case 'status': return `${statusName(e.status)} on the foe (if it has no status)`;
-    case 'heal': return `it recovers ${e.n} Health`;
+    case 'heal': return `it recovers ${e.n} Health (beyond full Health: Overheal, up to half its max Health)`;
     case 'refill': return 'its Stamina refills';
     case 'cure': return 'it shakes off its status';
     case 'sting': return `the foe takes ${e.n} damage`;

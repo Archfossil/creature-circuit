@@ -13,6 +13,10 @@ const OUT = new URL('../docs/14-instinct-checklist.md', import.meta.url);
  * generated doc) so the flag survives regenerating.
  */
 const BALANCE_WATCH: Record<string, { concern: string; idea: string }> = {
+  'deep-roots': {
+    concern: 'With Overheal, Deep Roots no longer stops at full Health: a creature at full Health builds 1 Overheal every round, up to half its max Health, so a long fight hands it a free buffer.',
+    idea: 'If it proves too strong: let Deep Roots heal Health only (no Overheal), or only overheal once a battle.',
+  },
   shadow: {
     concern: 'Possibly too strong. Zeroing In is the built-in answer to a foe that keeps dodging, and Shadow switches it off completely for as long as its creature is on the field. Paired with high Evasion (an Evasion bias or boosts, Glamour-style buffs, Fog), a creature that misses a lot may never catch up.',
     idea: 'Instead of cancelling Zeroing In, halve it: against Shadow each miss Zeroes In +0.5 instead of +1, so it takes two misses to earn +1 accuracy. Needs Zeroing In to hold halves (the bonus used on a roll rounds down) and the move readout to say so.',

@@ -1501,8 +1501,10 @@ export class App {
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: x.ko ? 'ko' : '' })))),
         // Health bar and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
         h('div', { class: `pl-bars ${side === 0 ? 'mine' : 'foe'}` },
-          h('div', { class: 'bar hp-bar', title: `Health ${sn.health}/${mh}` }, h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' })),
-          h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`),
+          h('div', { class: 'bar hp-bar', title: `Health ${sn.health}/${mh}${sn.over ? ` · Overheal +${sn.over}: soaks up damage before Health` : ''}` },
+            h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' }),
+            sn.over && !sn.ko ? h('b', { class: 'over', style: `width:${Math.min(100, (sn.over / mh) * 100)}%` }) : null),
+          h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`, sn.over && !sn.ko ? h('span', { class: 'over-num', title: 'Overheal: extra Health beyond full that soaks up damage first' }, ` +${sn.over}`) : null),
           fatigueBadge(sn.fatigue),
           ...(side === 0 ? [
             h('div', { class: 'bar sta-bar', title: `Stamina ${sn.stamina}/${maxStamina(c)}: each move's 💨 Effort comes out of it. Running out adds Fatigue.` },

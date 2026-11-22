@@ -173,7 +173,7 @@ const signed = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
 function effectText(m: SwapMove, e: SwapEffect, v: SwapVals): string {
   switch (e.t) {
     case 'mod': { const n = e.n(v); return e.who === 'self' ? `${signed(n)} ${LABEL[e.stat]}` : `the foe gets ${signed(n)} ${LABEL[e.stat]}`; }
-    case 'heal': return `${e.who === 'alpha' ? v.A : v.P} heals ${e.n(v)}`;
+    case 'heal': return `${e.who === 'alpha' ? v.A : v.P} heals ${e.n(v)} (beyond full Health: Overheal)`;
     case 'refill': return `${v.A} and ${v.P} refill Stamina`;
     case 'ease': return `${v.A} and ${v.P} lose 1 Fatigue`;
     case 'status': { const s = swapStatus(m); return s ? `${STATUS_INFO[s].icon} ${STATUS_INFO[s].name} on the foe (if it has no status)` : ''; }

@@ -59,11 +59,16 @@ export interface Battle {
   foeNeedSwap?: boolean;
   /** Once-a-battle Instincts already used, as "<uid>:<instinct id>". */
   instinctUsed?: string[];
+  /**
+   * Overheal by creature uid: Health a Swap Move or Instinct healed beyond full, kept as a buffer that
+   * soaks up damage before Health does (capped at half max Health; lasts the battle). See `mend`.
+   */
+  overheal?: Record<string, number>;
 }
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
 
-export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number }
+export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number; /** Overheal: extra Health beyond full that soaks up damage first. */ over?: number }
 export type BEvent =
   | { t: 'say'; text: string; tone?: 'good' | 'bad' | 'info' }
   /** A speed tie. `first`: who acts first (the higher roller, or on equal rolls the winner of a coin flip, `coin`). */
@@ -95,7 +100,34 @@ export interface DamageCalc { dice: number[]; rolls: number[]; parts: Part[]; ra
 
 export function snap(b: Battle, c: CreatureInst): Snap {
   const sd = b.sides.find((s) => activeOf(s) === c);
-  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}) };
+  const over = b.overheal?.[c.uid] ?? 0;
+  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}), ...(over ? { over } : {}) };
+}
+
+// ── Overheal ────────────────────────────────────────────────────
+/** The most Overheal a creature can hold: half its max Health, rounded up. */
+export const overhealCap = (c: CreatureInst) => Math.ceil(maxHealth(c) / 2);
+/** A creature's Overheal right now. */
+export const overhealOf = (b: Battle, c: CreatureInst) => b.overheal?.[c.uid] ?? 0;
+
+/**
+ * Heal `c` by `n` (Swap Moves and Instincts): Health first, up to full; whatever is left over becomes
+ * Overheal, up to the cap. Returns how much went to each. (Healing moves don't overheal: see applyEffects.)
+ */
+function mend(b: Battle, c: CreatureInst, n: number): { healed: number; over: number } {
+  if (c.ko || n <= 0) return { healed: 0, over: 0 };
+  const healed = Math.max(0, Math.min(n, maxHealth(c) - c.health));
+  c.health += healed;
+  const have = overhealOf(b, c);
+  const over = Math.max(0, Math.min(n - healed, overhealCap(c) - have));
+  if (over) (b.overheal ??= {})[c.uid] = have + over;
+  return { healed, over };
+}
+/** "Sproutle heals 2." / "Sproutle is overhealed: +2 Overheal (3 in all)." */
+function mendText(b: Battle, c: CreatureInst, r: { healed: number; over: number }): string {
+  const name = nameOf(c);
+  if (!r.over) return `${name} recovers ${r.healed} Health.`;
+  return `${name} ${r.healed ? `recovers ${r.healed} Health and ` : 'is already at full Health: '}gains +${r.over} Overheal (${overhealOf(b, c)} in all), which soaks up damage first.`;
 }
 
 export const activeOf = (s: Side) => s.team[s.active];
@@ -212,8 +244,10 @@ function instinctEffect(b: Battle, si: 0 | 1, e: InstinctEffect, ev: BEvent[]) {
     }
     case 'status': afflict(b, fi, e.status, ev); return;
     case 'heal': {
-      const n = Math.min(e.n, maxHealth(c) - c.health);
-      if (n > 0) { c.health += n; ev.push({ t: 'heal', side: si, amount: n, snap: snap(b, c) }); }
+      const r = mend(b, c, e.n);
+      if (!r.healed && !r.over) return;
+      ev.push({ t: 'heal', side: si, amount: r.healed + r.over, snap: snap(b, c) });
+      if (r.over) ev.push({ t: 'say', text: mendText(b, c, r), tone: si === 0 ? 'good' : 'info' });
       return;
     }
     case 'refill':
@@ -240,8 +274,8 @@ function instinctEffect(b: Battle, si: 0 | 1, e: InstinctEffect, ev: BEvent[]) {
   }
 }
 
-/** What a blow did: the damage actually dealt, hearts lost, and whether Hold Fast kept it standing. */
-interface Struck { dmg: number; hearts: number; held: boolean }
+/** What a blow did: the damage actually dealt, hearts lost, whether Hold Fast kept it standing, and how much Overheal soaked up. */
+interface Struck { dmg: number; hearts: number; held: boolean; soaked: number }
 
 /** Deal `dmg` to side `si`'s active creature. A Hold-Fast-like Instinct turns the first knockout blow into a 1-Health survival. */
 function takeHit(b: Battle, si: 0 | 1, dmg: number): Struck {
@@ -249,17 +283,22 @@ function takeHit(b: Battle, si: 0 | 1, dmg: number): Struck {
   const before = c.vitality;
   let held = false;
   const inst = instinctOf(c);
+  const over = overhealOf(b, c);
   if (inst?.passive?.holdFast && !c.ko && dmg > 0) {
-    const left = c.health + c.vitality * maxHealth(c);
+    const left = over + c.health + c.vitality * maxHealth(c);
     if (dmg >= left && spendOnce(b, c, inst.id)) { dmg = left - 1; held = true; }
   }
-  applyDamage(c, dmg);
-  return { dmg, hearts: before - c.vitality, held };
+  // Overheal soaks up damage first
+  const soaked = Math.min(over, dmg);
+  if (soaked) b.overheal![c.uid] = over - soaked;
+  applyDamage(c, dmg - soaked);
+  return { dmg, hearts: before - c.vitality, held, soaked };
 }
 
 /** After a blow lands (and its damage is shown): Hold Fast's message, then heart-lost and on-hit Instincts. */
 function afterHit(b: Battle, si: 0 | 1, s: Struck, physical: boolean, ev: BEvent[]) {
   const c = activeOf(b.sides[si]);
+  if (s.soaked) ev.push({ t: 'say', text: `${nameOf(c)}’s Overheal soaks up ${s.soaked} damage${overhealOf(b, c) ? ` (${overhealOf(b, c)} left)` : ''}.`, tone: 'info' });
   if (s.held) ev.push({ t: 'say', text: `${INSTINCT_ICON} ${nameOf(c)}’s ${instinctOf(c)!.name}: it hangs on with 1 Health!`, tone: si === 0 ? 'good' : 'info' });
   if (c.ko || b.over) return;
   if (s.hearts > 0) fireInstinct(b, si, 'heartLost', ev);
@@ -872,11 +911,12 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
     case 'heal': {
       const c = e.who === 'alpha' ? alpha : partner;
       if (c.ko) return;
-      const n = Math.min(e.n(v), maxHealth(c) - c.health);
-      if (n <= 0) return;
-      c.health += n;
-      if (c === alpha) ev.push({ t: 'heal', side: si, amount: n, snap: snap(b, alpha) });
-      else ev.push({ t: 'say', text: `${nameOf(partner)} recovers ${n} Health on the bench.`, tone: 'good' });
+      const r = mend(b, c, e.n(v));
+      if (!r.healed && !r.over) return;
+      if (c === alpha) {
+        ev.push({ t: 'heal', side: si, amount: r.healed + r.over, snap: snap(b, alpha) });
+        if (r.over) ev.push({ t: 'say', text: mendText(b, alpha, r), tone: si === 0 ? 'good' : 'info' });
+      } else ev.push({ t: 'say', text: `${mendText(b, partner, r).replace(/\.$/, '')} on the bench.`, tone: 'good' });
       return;
     }
     case 'refill':

@@ -10,7 +10,7 @@ import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfD
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
-import { afflict, instinctOf, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
+import { afflict, instinctOf, overhealCap, overhealOf, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -3443,5 +3443,49 @@ describe('Instincts', () => {
     // across many pairs, more than one neutral move comes up
     const seen = new Set(Array.from({ length: 30 }, () => defaultSwapMove(createCreature('puddlit', 5), c).id));
     expect(seen.size).toBeGreaterThan(1);
+  });
+});
+
+describe('Overheal', () => {
+  const withInstinct = (sp: string, id: string, fn: () => void) => {
+    const was = SPECIES_BY_ID[sp].instinct;
+    SPECIES_BY_ID[sp].instinct = id;
+    try { fn(); } finally { SPECIES_BY_ID[sp].instinct = was; }
+  };
+  it('a Swap Move heal at full Health becomes Overheal, up to half max Health', () => {
+    const a = createCreature('puddlit', 6), b = createCreature('zapup', 6);
+    expect(setSwapMove(b, a, 'siphon')).toBe(true);
+    const bt = createBattle(side('player', [a, b]), side('wild', [createCreature('sproutle', 6)]), WEATHER.clear);
+    bt.sides[0].mods.speed = 10; bt.sides[0].team[0].health = 999; // faster, and no knockout ending the battle early
+    resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+    b.health = maxHealth(b);
+    const ev = resolveRound(bt, { kind: 'swap', to: 1 });
+    expect(ev.some((e) => e.t === 'say' && /Overheal/.test(e.text))).toBe(true);
+    expect(ev.some((e) => e.t === 'heal' && e.snap.over && e.snap.over > 0)).toBe(true);
+    expect(overhealCap(b)).toBe(Math.ceil(maxHealth(b) / 2));
+  });
+  it('Overheal soaks up damage before Health does', () => {
+    const me = createCreature('puddlit', 5), foe = createCreature('zapup', 5);
+    const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+    bt.sides[0].mods.speed = 10; bt.sides[0].team[0].health = 999; // faster, and no knockout ending the battle early // no Clash
+    bt.overheal = { [foe.uid]: 3 };
+    bt.status[foe.uid] = { id: 'burn', turns: 3 };
+    const hp = foe.health;
+    const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+    expect(foe.health).toBe(hp);
+    expect(overhealOf(bt, foe)).toBe(2);
+    expect(ev.some((e) => e.t === 'say' && /Overheal soaks up 1 damage/.test(e.text))).toBe(true);
+  });
+  it('Heartmend after losing a heart (back at full Health) overheals instead of wasting the heal', () => {
+    withInstinct('mossprite', 'heartmend', () => {
+      const me = createCreature('puddlit', 5), foe = createCreature('mossprite', 5);
+      const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+      bt.sides[0].mods.speed = 10; bt.sides[0].team[0].health = 999; // faster, and no knockout ending the battle early
+      foe.health = 1; foe.vitality = 2;
+      bt.status[foe.uid] = { id: 'burn', turns: 3 };
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      expect(foe.health).toBe(maxHealth(foe));
+      expect(overhealOf(bt, foe)).toBe(Math.min(3, overhealCap(foe)));
+    });
   });
 });

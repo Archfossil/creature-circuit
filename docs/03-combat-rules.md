@@ -14,6 +14,8 @@ Each creature has the following attributes with sub-attributes in parenthesis.
 
 The creature's Vigor informs the **Health** and **Vitality** of the creature. (A creature with 3 Vigor has 3 Health and 3 Vitality by default.) Incoming damage is dealt to Health first. When Health hits zero, a point of Vitality is removed and Health is reset. When a creature reaches 0 Vitality and 0 Health, they are defeated.
 
+**Overheal.** Healing from a **Swap Move** or an **Instinct** that would go past full Health isn't wasted: the extra becomes **Overheal**, a buffer of bonus Health that soaks up damage before Health does. A creature can hold up to **half its max Health** (rounded up) in Overheal. It lasts for the rest of the battle (also while benched) until damage uses it up. It's shown as a gold, striped end on the Health bar and a "+N" beside the Health number. Healing *moves* don't overheal, so a heal can't be repeated just to stack a buffer. Typical cases: Siphon healing a creature that swaps in at full Health, and Heartmend firing just after a lost heart has reset Health to full.
+
 When a creature defeats another creature in combat, the winning creature immediately restores all of their Health, but not Vitality. The defeated creature is KO'd and must be revived in a town or city.
 
 Outside of combat, creatures restore all Health, but not Vitality unless you skip turns "Camping" to heal wounded creatures. This will not revive KO'd creatures under normal circumstances, it merely recovers lost Vitality and removes Fatigue (more on Fatigue below.)
