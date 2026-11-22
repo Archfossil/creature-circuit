@@ -1,5 +1,5 @@
 import type { ArenaTrick, ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
-import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, critFrom } from '../data/moves';
+import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom } from '../data/moves';
 import { describeSwap, swapChart, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
@@ -96,7 +96,11 @@ export type BEvent =
 export interface Part { label: string; value: number }
 /** How a move's damage was worked out, so the battle UI can show the formula. */
 /** `dice` are the damage dice rolled (empty for flat damage) and `rolls` what each showed. */
-export interface DamageCalc { dice: number[]; rolls: number[]; parts: Part[]; raw: number; mult: number; crit: boolean; total: number }
+export interface DamageCalc {
+  dice: number[]; rolls: number[]; parts: Part[]; raw: number; mult: number; crit: boolean; total: number;
+  /** Cascade chains, by damage die (same order as `dice`): the die chained with and what each roll showed. Absent when nothing cascaded. */
+  cascade?: ({ die: number; rolls: number[] } | null)[];
+}
 
 export function snap(b: Battle, c: CreatureInst): Snap {
   const sd = b.sides.find((s) => activeOf(s) === c);
@@ -344,10 +348,11 @@ export function chooseAI(b: Battle, si: 0 | 1): Action {
     let score = 0;
     const hit = m.accuracy === 'sure' ? 1 : hitChance(m.accuracy, eff(b, fi, 'evasion') - (b.sides[si].zeroIn ?? 0));
     if (m.kind === 'support') {
-      // buffs, debuffs and heals are worth what the situation makes them worth (see effectValue)
-      score = hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * (finishingBlow ? 0.35 : 1) * (desperate && !m.effect?.heal ? 0.4 : 1);
+      // buffs, debuffs and heals are worth what the situation makes them worth (see effectValue); a status move, what the status is
+      const st = m.status && !statusBlock(b, fi, m.status) ? STATUS_WORTH[m.status] ?? 2 : 0;
+      score = hit * (effectValue(b, si, m.effect) + st) * SUPPORT_WEIGHT * (finishingBlow ? 0.35 : 1) * (desperate && !m.effect?.heal ? 0.4 : 1);
     } else {
-      const atk = m.kind === 'physical' ? eff(b, si, 'power') - eff(b, fi, 'armor') : eff(b, si, 'focus') - eff(b, fi, 'ward');
+      const atk = (m.kind === 'physical' ? eff(b, si, 'power') - eff(b, fi, 'armor') : eff(b, si, 'focus') - eff(b, fi, 'ward')) + purgeBonus(m, b.status[foe.uid]?.id);
       const mult = m.kind === 'elemental' && m.type ? effectiveness(m.type, speciesOf(foe).types) : 1;
       score = hit * Math.max(1, avgRoll(m) + atk) * mult;
       if (m.effect) score += hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * 0.5; // a rider on a hit
@@ -363,6 +368,44 @@ export function chooseAI(b: Battle, si: 0 | 1): Action {
 }
 
 const hitChance = (die: number, need: number) => Math.max(0, Math.min(1, (die - need + 1) / die));
+
+/** Cascade chains stop after this many extra rolls (a safety cap; a d4 chaining 20 times is about 1 in a trillion). */
+const CASCADE_MAX = 20;
+
+/** Roughly what landing each status is worth to the AI, in damage-equivalent points over its 3 rounds. */
+const STATUS_WORTH: Partial<Record<StatusId, number>> = { burn: 3, shock: 2.5, sunder: 2.5, stagger: 2.5, soak: 2, snare: 2, beguile: 2, daze: 2 };
+
+/**
+ * Why side `fi`'s active creature won't take `status` right now (null if it would): it already has a
+ * status, its Instinct makes it immune, or its Instinct will shrug off the first status of the battle.
+ */
+export function statusBlock(b: Battle, fi: 0 | 1, status: StatusId): string | null {
+  const c = activeOf(b.sides[fi]);
+  const had = b.status[c.uid]?.id;
+  if (had) return `${nameOf(c)} already has ${STATUS_INFO[had].name}, and a creature holds one status at a time.`;
+  const inst = instinctOf(c), p = inst?.passive;
+  if (p?.immune?.includes(status)) return `${nameOf(c)}’s ${inst!.name} makes it immune to ${STATUS_INFO[status].name}.`;
+  if (p?.shrugFirst && !(b.instinctUsed ?? []).includes(`${c.uid}:${inst!.id}`)) return `${nameOf(c)}’s ${inst!.name} will shrug off the first status that would afflict it this battle.`;
+  return null;
+}
+
+/**
+ * The status protection a creature has from its Instinct, for its nameplate: what it's immune to,
+ * and whether its shrug-off is still waiting. Null if none.
+ */
+export function statusGuard(b: Battle, c: CreatureInst): { label: string; text: string } | null {
+  const inst = instinctOf(c), p = inst?.passive;
+  if (!inst || !p) return null;
+  const out: string[] = [];
+  if (p.immune?.length) out.push(`immune to ${p.immune.map((s) => STATUS_INFO[s].name).join(' and ')}`);
+  const shrug = p.shrugFirst && !(b.instinctUsed ?? []).includes(`${c.uid}:${inst.id}`);
+  if (shrug) out.push('will shrug off the first status that would afflict it');
+  if (!out.length) return null;
+  return {
+    label: p.immune?.length ? p.immune.map((s) => STATUS_INFO[s].icon).join('') : '🛡',
+    text: `${inst.name}: ${out.join(', and ')}.`,
+  };
+}
 
 /** Scales a support move's situational value (effectValue) against an attack's expected damage. */
 export const SUPPORT_WEIGHT = 1.0;
@@ -624,6 +667,11 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); fireInstinct(b, si, 'miss', ev); return; }
 
   if (m.kind === 'support') {
+    if (m.status) {
+      const had = b.status[foe.uid]?.id;
+      if (had) ev.push({ t: 'say', text: `${nameOf(foe)} already has ${STATUS_INFO[had].name}, so ${m.name} can’t add ${STATUS_INFO[m.status].name}.`, tone: 'info' });
+      else afflict(b, fi, m.status, ev);
+    }
     applyEffects(b, si, m, ev);
     return;
   }
@@ -631,7 +679,20 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   // damage
   const dice = damageDice(m);
   const rolls = dice.map((d) => roll(d));
-  const dmgRoll = rolls.reduce((a, r) => a + r, 0);
+  // Cascade: a damage die on its top face rolls the cascade die and adds it, chaining while that rolls its top face
+  const chains = dice.map((d, i) => {
+    const cd = cascadeDie(m, d);
+    if (!cd || rolls[i] !== d) return null;
+    const out: number[] = [];
+    do out.push(roll(cd)); while (out[out.length - 1] === cd && cd > 1 && out.length < CASCADE_MAX);
+    return { die: cd, rolls: out };
+  });
+  const cascaded = chains.some(Boolean);
+  const dmgRoll = rolls.reduce((a, r) => a + r, 0) + chains.reduce((a, ch) => a + (ch ? ch.rolls.reduce((x, y) => x + y, 0) : 0), 0);
+  if (cascaded) {
+    const total = chains.reduce((a, ch) => a + (ch?.rolls.length ?? 0), 0);
+    ev.push({ t: 'say', text: `Cascade! ${chains.filter(Boolean).map((ch) => `d${ch!.die}: ${ch!.rolls.join(', ')}`).join('; ')}${total > 1 ? ` (${total} in a row!)` : ''}`, tone: si === 0 ? 'good' : 'bad' });
+  }
   const parts = damageParts(b, si, m);
   const mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
   const raw = Math.max(1, dmgRoll + parts.reduce((a, p) => a + p.value, 0));
@@ -639,13 +700,13 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   if (crit) dmg *= 2;
   const struck = takeHit(b, fi, dmg);
   dmg = struck.dmg;
-  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe), calc: { dice, rolls, parts, raw, mult, crit, total: dmg } });
+  ev.push({ t: 'damage', side: fi, amount: dmg, eff: mult, crit, snap: snap(b, foe), calc: { dice, rolls, parts, raw, mult, crit, total: dmg, ...(cascaded ? { cascade: chains } : {}) } });
   if (mult >= 2) ev.push({ t: 'say', text: mult >= 4 ? 'Devastatingly effective!' : 'Super effective!', tone: 'good' });
   else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
   else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
 
-  // status when any damage die shows a 1 (or a 2, with a Wildfire-like Instinct)
-  const face = passiveOf(c)?.spread ? 2 : 1;
+  // status when any damage die shows a 1, up to 1 + Potency (one more with a Wildfire-like Instinct)
+  const face = statusFaces(m, passiveOf(c)?.spread ? 1 : 0);
   if (m.kind === 'elemental' && m.status && rolls.some((r) => r <= face) && !foe.ko) afflict(b, fi, m.status, ev);
   if (m.effect) applyEffects(b, si, m, ev);
   afterHit(b, fi, struck, m.kind === 'physical', ev);
@@ -701,6 +762,9 @@ function damageParts(b: Battle, si: 0 | 1, m: Move): Part[] {
     parts.push({ label: 'Focus', value: eff(b, si, 'focus') }, { label: 'foe Ward', value: -eff(b, fi, 'ward') });
     const wb = m.type ? b.weather.typeBoost?.[m.type] ?? 0 : 0;
     if (wb) parts.push({ label: b.weather.name, value: wb });
+    const st = b.status[activeOf(b.sides[fi]).uid]?.id;
+    const pb = purgeBonus(m, st);
+    if (pb) parts.push({ label: m.purge!.status ? `Purge: ${STATUS_INFO[st!].name}` : `Purge (${STATUS_INFO[st!].name})`, value: pb });
   }
   const cap = c.capstone ? Math.floor(c.loyalty / 5) : 0;
   if (cap) parts.push({ label: 'Capstone', value: cap });
@@ -777,6 +841,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     const dmgFor = (r: number) => (mult === 0 ? 0 : Math.max(1, Math.floor(Math.max(1, r + add) * mult)));
     const dice = damageDice(m);
     const lo = dmgFor(dice.length), hi = dmgFor(dice.reduce((a, d) => a + d, 0));
+    const chain = m.kind === 'physical' && m.cascade ? cascadeDie(m, dice[0] ?? 0) : 0;
     const dt = dice.map((d) => `d${d}`).join(' + ');
     const multText = mult === 1 ? '' : ` × ${mult} (${mult === 0 ? 'immune' : mult > 1 ? 'super effective' : 'resisted'})`;
     const range = (a: number, z: number) => (a === z ? `${a}` : `${a}–${z}`);
@@ -785,14 +850,37 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
       icon: '💥', title: `Damage: ${[dt, partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
       tone: mult > 1 ? 'good' : mult < 1 ? 'bad' : undefined,
       text: `${dice.length ? `Roll ${dice.length > 1 ? `${dt} and add them up` : `a ${dt}`}, then ` : ''}${stat}${multText ? `, then apply the type chart${multText}` : ''}. ` +
-        `Deals ${range(lo, hi)} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)} on a crit` : ''}. ${foeName} has ${foe.health} Health left in its current heart.`,
+        `Deals ${range(lo, hi)}${chain ? '+' : ''} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)}${chain ? '+' : ''} on a crit` : ''}. ${foeName} has ${foe.health} Health left in its current heart.` +
+        (chain ? ` Cascade: a top-face damage roll ${chain === dice[0] ? 'rolls again' : `rolls a d${chain}`} and adds it, and keeps going while that rolls its top face (no upper limit).` : ''),
     });
     if (m.kind === 'elemental' && m.status && m.dmgDie > 0) {
       const st = STATUS_INFO[m.status];
-      const spread = passiveOf(c)?.spread;
-      const chance = spread ? 1 - dice.reduce((q, d) => q * Math.max(0, d - 2) / d, 1) : statusChance(m);
-      steps.push({ icon: st.icon, title: `Status chance: ${st.name}`, text: `If ${dice.length > 1 ? 'any damage die' : 'the damage die'} shows a 1${spread ? ` or 2 (${instinctOf(c)!.name})` : ''} (${Math.round(chance * 100)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}` });
+      const spread = passiveOf(c)?.spread ? 1 : 0;
+      const chance = statusChance(m, spread);
+      const why = [m.potency ? `Potency ${m.potency}` : '', spread ? instinctOf(c)!.name : ''].filter(Boolean).join(' and ');
+      const block = statusBlock(b, fi, m.status);
+      steps.push({
+        icon: st.icon, title: `Status chance: ${st.name}${block ? ' (blocked)' : ''}`, tone: block ? 'bad' : undefined,
+        text: block ? `${block} This hit won’t inflict ${st.name}.`
+          : `If ${dice.length > 1 ? 'any damage die' : 'the damage die'} shows ${statusRollText(m, spread)}${why ? ` (${why})` : ''} (${Math.round(chance * 100)}% chance) and the foe has no status yet, it gets ${st.name} for 3 rounds. ${st.text}`,
+      });
     }
+    if (m.kind === 'elemental' && m.purge) {
+      const fst = b.status[foe.uid]?.id, pb = purgeBonus(m, fst);
+      const want = m.purge.status ? STATUS_INFO[m.purge.status].name : 'any status';
+      steps.push({
+        icon: '🧪', title: `Purge${m.purge.status ? `: ${STATUS_INFO[m.purge.status].name}` : ''} +${m.purge.n}`, tone: pb ? 'good' : undefined,
+        text: pb ? `${foeName} has ${STATUS_INFO[fst!].name}: +${pb} damage (already in the sum above).` : `+${m.purge.n} damage against a foe with ${want}. ${foeName} ${fst ? `has ${STATUS_INFO[fst].name}, not ${want}` : 'has no status'}, so no bonus this time.`,
+      });
+    }
+  }
+  if (m.kind === 'support' && m.status) {
+    const st = STATUS_INFO[m.status];
+    const block = statusBlock(b, fi, m.status);
+    steps.push({
+      icon: st.icon, title: `Status: ${st.name}${block ? ' (blocked)' : ''}`, tone: block ? 'bad' : 'good',
+      text: block ? `${block} A hit won’t inflict ${st.name}.` : `On a hit, ${foeName} gets ${st.name} for 3 rounds. No damage. ${st.text}`,
+    });
   }
   const e = m.effect;
   if (e) {

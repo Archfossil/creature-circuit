@@ -74,7 +74,17 @@ export interface Move {
   /** Physical moves: crit on the top N faces of the accuracy die (default 1, the top face only). */
   critRange?: number;
   dmgFlat: number;
-  status?: StatusId;            // inflicted when any damage die shows a 1 (elemental)
+  /** Elemental attacks: inflicted when any damage die shows a 1 (1 to 1 + Potency). Support moves: inflicted on a hit, no damage roll. */
+  status?: StatusId;
+  /** Potency N (elemental): the status lands on a damage roll of 1 to 1 + N instead of just a 1. */
+  potency?: number;
+  /**
+   * Cascade (physical): a damage die that rolls its highest face rolls again and adds it, and keeps
+   * going while it rolls its highest face. `true` rolls the same die; a number rolls that die instead ("Cascade d10").
+   */
+  cascade?: true | number;
+  /** Purge (elemental): +n damage against a foe that has a status, or only `status` ("Purge: Burn"). The status stays on. */
+  purge?: { n: number; status?: StatusId };
   /** Support effects */
   effect?: { self?: Partial<Record<StatKey, number>>; foe?: Partial<Record<StatKey, number>>; heal?: number; staminaGain?: number };
   text: string;

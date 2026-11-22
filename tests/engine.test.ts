@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES } from '../src/data/roster';
-import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey } from '../src/data/moves';
+import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
@@ -10,7 +10,7 @@ import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfD
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
-import { afflict, instinctOf, overhealCap, overhealOf, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
+import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
@@ -296,17 +296,18 @@ describe('move readout', () => {
           for (let i = 0; i < 40; i++) {
             // creatures roll their own stats, so preview the exact battle that then resolves
             const bt = createBattle(side('player', [createCreature(id, 6)]), side('wild', [createCreature('sproutle', 6)]), WEATHER.clear);
-            const range = /Deals (\d+)(?:–(\d+))? damage/.exec(movePreview(bt, moveId).find((x) => x.title.startsWith('Damage'))!.text)!;
+            const range = /Deals (\d+)(?:–(\d+))?(\+)? damage/.exec(movePreview(bt, moveId).find((x) => x.title.startsWith('Damage'))!.text)!;
             const lo = Number(range[1]), hi = Number(range[2] ?? range[1]);
             activeOf(bt.sides[1]).health = 999; activeOf(bt.sides[1]).playbook = ['tackle']; // no Brace-style buffs before we hit
             bt.sides[1].mods.speed = -20; // act first, so the foe's move can't shift stats before we hit
             const hit = resolveRound(bt, { kind: 'move', move: moveId }).find((e) => e.t === 'damage' && e.side === 1 && e.calc);
             if (hit && hit.t === 'damage' && hit.calc) {
-              expect(hit.calc.raw).toBe(Math.max(1, hit.calc.rolls.reduce((a2, r) => a2 + r, 0) + hit.calc.parts.reduce((a2, x) => a2 + x.value, 0)));
+              const chained = (hit.calc.cascade ?? []).reduce((a2, ch) => a2 + (ch ? ch.rolls.reduce((x, y) => x + y, 0) : 0), 0);
+              expect(hit.calc.raw).toBe(Math.max(1, hit.calc.rolls.reduce((a2, r) => a2 + r, 0) + chained + hit.calc.parts.reduce((a2, x) => a2 + x.value, 0)));
               expect(hit.amount).toBe(hit.calc.total);
               const base = hit.calc.crit ? hit.amount / 2 : hit.amount;
               expect(base, `${id} ${moveId} ${JSON.stringify(hit.calc)}`).toBeGreaterThanOrEqual(lo);
-              expect(base).toBeLessThanOrEqual(hi);
+              if (!range[3]) expect(base).toBeLessThanOrEqual(hi); // Cascade ("+") has no top end
             }
           }
         }
@@ -3496,5 +3497,110 @@ describe('Overheal', () => {
       expect(foe.health).toBe(maxHealth(foe));
       expect(overhealOf(bt, foe)).toBe(Math.min(3, overhealCap(foe)));
     });
+  });
+});
+
+describe('Move keywords: Potency, Cascade, Purge, and status moves', () => {
+  /** A battle where the player's creature (with `moves`) can't be knocked out and the foe only Tackles. */
+  const arena = (moves: string[], foeSp = 'sproutle') => {
+    const me = createCreature('puddlit', 8), foe = createCreature(foeSp, 8);
+    me.playbook = moves; foe.playbook = ['tackle'];
+    const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+    me.health = 999; foe.health = 999;
+    bt.sides[0].mods.speed = 10; bt.sides[1].mods.evasion = -10; // we act first and never miss
+    return { bt, me, foe };
+  };
+
+  it('Potency widens the status roll: Potency 2 on a d6 inflicts on 1–3 (50%)', () => {
+    const m = MOVE_BY_ID['cinder-storm'];
+    expect(m.potency).toBe(2);
+    expect(statusFaces(m)).toBe(3);
+    expect(statusChance(m)).toBeCloseTo(0.5);
+    expect(statusChance(MOVE_BY_ID['ember'])).toBeCloseTo(0.25);
+    expect(moveKeywords(m)[0].name).toBe('Potency 2');
+    expect(m.text).toMatch(/Potency 2: Inflicts Burn on a damage roll of 1–3/);
+  });
+
+  it('a Potency attack inflicts its status on a roll above 1', () => {
+    let seen = false;
+    for (let i = 0; i < 200 && !seen; i++) {
+      const { bt } = arena(['cinder-storm']);
+      const ev = resolveRound(bt, { kind: 'move', move: 'cinder-storm' });
+      const hit = ev.find((e) => e.t === 'damage' && e.side === 1);
+      if (hit && hit.t === 'damage' && hit.calc && hit.calc.rolls[0] > 1) {
+        const burned = ev.some((e) => e.t === 'status' && e.side === 1 && e.status === 'burn');
+        expect(burned).toBe(hit.calc.rolls[0] <= 3);
+        if (burned) seen = true;
+      }
+    }
+    expect(seen).toBe(true);
+  });
+
+  it('Cascade: a top-face damage roll keeps rolling and adding (with the named die)', () => {
+    expect(avgRoll(MOVE_BY_ID['flurry'])).toBeGreaterThan(2.5); // a plain d4 averages 2.5
+    expect(moveKeywords(MOVE_BY_ID['avalanche-slam'])[0].name).toBe('Cascade d10');
+    let chained = false;
+    for (let i = 0; i < 300 && !chained; i++) {
+      const { bt } = arena(['avalanche-slam']);
+      const ev = resolveRound(bt, { kind: 'move', move: 'avalanche-slam' });
+      const hit = ev.find((e) => e.t === 'damage' && e.side === 1);
+      if (!hit || hit.t !== 'damage' || !hit.calc) continue;
+      const ch = hit.calc.cascade?.[0];
+      if (hit.calc.rolls[0] === 6) {
+        expect(ch?.die).toBe(10);
+        // every roll but the last is a 10; the last isn't (or the chain hit its safety cap)
+        ch!.rolls.slice(0, -1).forEach((r) => expect(r).toBe(10));
+        expect(ev.some((e) => e.t === 'say' && /^Cascade!/.test(e.text))).toBe(true);
+        chained = true;
+      } else expect(ch ?? null).toBeNull();
+    }
+    expect(chained).toBe(true);
+  });
+
+  it('Purge adds damage against a foe with the right status, and only then', () => {
+    const m = MOVE_BY_ID['quench'];
+    expect(purgeBonus(m, 'burn')).toBe(4);
+    expect(purgeBonus(m, 'soak')).toBe(0);
+    expect(purgeBonus(MOVE_BY_ID['heartbreaker'], 'soak')).toBe(2); // plain Purge: any status
+    expect(purgeBonus(MOVE_BY_ID['heartbreaker'], undefined)).toBe(0);
+    for (const burned of [true, false]) {
+      const { bt, foe } = arena(['quench']);
+      if (burned) bt.status[foe.uid] = { id: 'burn', turns: 3 };
+      const ev = resolveRound(bt, { kind: 'move', move: 'quench' });
+      const hit = ev.find((e) => e.t === 'damage' && e.side === 1);
+      expect(hit && hit.t === 'damage' && hit.calc!.parts.some((x) => x.label === 'Purge: Burn' && x.value === 4)).toBe(burned);
+    }
+    // the readout says whether it applies
+    const { bt, foe } = arena(['quench']);
+    bt.status[foe.uid] = { id: 'burn', turns: 3 };
+    expect(movePreview(bt, 'quench').find((x) => x.title.startsWith('Purge'))!.tone).toBe('good');
+  });
+
+  it('a status move inflicts its status on a hit, without damage', () => {
+    const { bt } = arena(['smolder']);
+    const ev = resolveRound(bt, { kind: 'move', move: 'smolder' });
+    expect(ev.some((e) => e.t === 'status' && e.side === 1 && e.status === 'burn')).toBe(true);
+    expect(ev.some((e) => e.t === 'damage' && e.side === 1 && e.calc)).toBe(false);
+    // one status at a time
+    const ev2 = resolveRound(bt, { kind: 'move', move: 'smolder' });
+    expect(ev2.some((e) => e.t === 'say' && /already has Burn/.test(e.text))).toBe(true);
+    // every type has one
+    for (const t of TYPES) expect(MOVES.some((m) => m.kind === 'support' && m.type === t && m.status), t).toBe(true);
+  });
+
+  it('the readout and nameplate flag a foe whose Instinct keeps statuses off', () => {
+    const { bt, foe } = arena(['smolder', 'cinder-storm']);
+    foe.instinct = 'wet-coat'; // can never be Burned or Soaked
+    expect(statusBlock(bt, 1, 'burn')).toMatch(/Wet Coat makes it immune to Burn/);
+    expect(statusBlock(bt, 1, 'shock')).toBeNull();
+    expect(movePreview(bt, 'smolder').find((x) => x.title.startsWith('Status'))!.title).toContain('blocked');
+    expect(movePreview(bt, 'cinder-storm').find((x) => x.title.startsWith('Status chance'))!.text).toMatch(/won’t inflict Burn/);
+    expect(statusGuard(bt, foe)!.text).toMatch(/immune to Burn and Soak/);
+    // a shrug-off shows until it's spent
+    foe.instinct = 'steel-coat';
+    expect(statusGuard(bt, foe)!.text).toMatch(/shrug off the first status/);
+    afflict(bt, 1, 'burn', []);
+    expect(statusGuard(bt, foe)).toBeNull();
+    expect(statusBlock(bt, 1, 'burn')).toBeNull();
   });
 });

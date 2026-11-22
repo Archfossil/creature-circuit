@@ -106,6 +106,9 @@ export const GUIDE: GuideCategory[] = [
         '- ⌖ Zeroing In: a miss gives that creature +1 on its next accuracy roll, stacking up to +3 over several misses. The next roll uses it up, and swapping out loses it. Some moves zero in harder (Pounce: +2); all-or-nothing moves (Rampage) never do.',
         '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll. Some (Claw, Rampage) have wide crits marked ✸ on their card, e.g. ✸5+ crits on a 5 or 6.',
         '- Elemental moves use Focus vs Ward and the type chart, and inflict a status when the damage die shows a 1. Some roll an extra die (Meteor: d10+d4); then a 1 on either die inflicts it.',
+        '- Move keywords (hover a keyword on a move card for its rules): Potency N widens the status roll to 1 through 1 + N (Potency 2 on a d6: 1–3, 50%). Cascade (physical): a damage die that rolls its highest face rolls again and adds it, chaining as long as it keeps rolling its highest face; Cascade d10 chains with d10s instead. Purge: extra damage against a foe that already has a status (Purge: Burn only against Burn, for a bigger bonus).',
+        '- Status moves (Smolder, Drench, Live Wire …) roll accuracy and deal no damage: a hit inflicts their status. A creature holds one status at a time.',
+        '- 🛡 on a nameplate: its Instinct keeps statuses off (the icons show what it’s immune to; hover for details). The move readout tells you when a status won’t land.',
         'Damage drains the Health bar, then a Vitality heart. Out of hearts means knocked out.',
       ] },
       { id: 'battlelog', title: 'Battle Log', body: [

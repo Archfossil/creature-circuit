@@ -23,12 +23,27 @@ export const zeroInOf = (m: Move) => (m.accuracy === 'sure' ? 0 : m.zeroIn ?? ZE
 
 /** Every damage die a move rolls: its main die plus any extra dice (empty for none). */
 export const damageDice = (m: Move): number[] => (m.dmgDie ? [m.dmgDie, ...(m.extraDice ?? [])] : []);
-/** Average of a move's damage dice plus its flat bonus, before stats. */
-export const avgRoll = (m: Move) => damageDice(m).reduce((a, d) => a + (d + 1) / 2, 0) + m.dmgFlat;
+/** The die a Cascade move chains with when a damage die rolls its top face (0: no Cascade). */
+export const cascadeDie = (m: Move, die: number) => (m.kind === 'physical' && m.cascade ? (m.cascade === true ? die : m.cascade) : 0);
+/** Average total of a die that keeps rolling and adding while it shows its top face. */
+const explodingAvg = (d: number) => (d < 2 ? 1 : (d * (d + 1)) / (2 * (d - 1)));
+/** Average of one damage die, Cascade included. */
+const dieAvg = (m: Move, d: number) => (d + 1) / 2 + (cascadeDie(m, d) ? explodingAvg(cascadeDie(m, d)) / d : 0);
+/** Average of a move's damage dice plus its flat bonus, before stats (Cascade chains included). */
+export const avgRoll = (m: Move) => damageDice(m).reduce((a, d) => a + dieAvg(m, d), 0) + m.dmgFlat;
 /** A move's damage as text, e.g. "d6+d4+1" ('' for none). */
 export const diceText = (m: Move) => [...damageDice(m).map((d) => `d${d}`), m.dmgFlat ? `${m.dmgFlat}` : ''].filter(Boolean).join('+');
-/** Chance that at least one damage die shows a 1 (which inflicts an elemental move's status). */
-export const statusChance = (m: Move) => (m.dmgDie ? 1 - damageDice(m).reduce((p, d) => p * (1 - 1 / d), 1) : 0);
+/** Highest damage roll that inflicts an elemental attack's status: 1, plus its Potency, plus `extra` (a Wildfire-like Instinct). */
+export const statusFaces = (m: Move, extra = 0) => 1 + (m.potency ?? 0) + extra;
+/** Chance that at least one damage die rolls low enough to inflict an elemental move's status. */
+export const statusChance = (m: Move, extra = 0) =>
+  (m.dmgDie ? 1 - damageDice(m).reduce((p, d) => p * (1 - Math.min(d, statusFaces(m, extra)) / d), 1) : 0);
+/** "a 1" / "1–3": the damage rolls that inflict the status. */
+export const statusRollText = (m: Move, extra = 0) => (statusFaces(m, extra) === 1 ? 'a 1' : `1–${statusFaces(m, extra)}`);
+/** Purge bonus against a foe with status `st` (0 if it doesn't apply). */
+export const purgeBonus = (m: Move, st?: StatusId) => (m.kind === 'elemental' && m.purge && st && (!m.purge.status || m.purge.status === st) ? m.purge.n : 0);
+/** Purge's default sizes: any status, and a named one (a bigger payoff for setting it up). */
+export const PURGE_ANY = 2, PURGE_NAMED = 4;
 /** How many top faces of the accuracy die crit (physical, non-sure-hit moves only). */
 export const critFaces = (m: Move) => (m.kind === 'physical' && m.accuracy !== 'sure' ? Math.max(1, m.critRange ?? 1) : 0);
 /** The lowest natural accuracy roll that crits on this die (never a 1), or 0 if the move can't crit. */
@@ -40,6 +55,17 @@ export const STATUS_FOR: Record<ElementType, StatusId> = {
   grass: 'snare', rock: 'stagger', steel: 'sunder', water: 'soak',
 };
 
+export const STATUS_INFO: Record<StatusId, { name: string; icon: string; text: string }> = {
+  burn: { name: 'Burn', icon: '🔥', text: 'Takes 1 damage at the end of each round.' },
+  soak: { name: 'Soak', icon: '💧', text: '−2 Speed, so it is more likely to act second.' },
+  shock: { name: 'Shock', icon: '⚡', text: 'Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent).' },
+  snare: { name: 'Snare', icon: '🌿', text: '−1 Speed and −1 Evasion, so it is easier to hit.' },
+  stagger: { name: 'Stagger', icon: '💥', text: '−1 Power and −1 Focus: its physical and elemental attacks each deal 1 less damage.' },
+  sunder: { name: 'Sunder', icon: '⚙️', text: '−1 Armor and −1 Ward: it takes 1 more damage from physical and elemental attacks.' },
+  beguile: { name: 'Beguile', icon: '💗', text: '−1 to its accuracy rolls (Sure-hit moves are unaffected).' },
+  daze: { name: 'Daze', icon: '✨', text: 'Its accuracy die shrinks one size (d8 → d6, d6 → d4; never below d4). Sure-hit moves are unaffected.' },
+};
+
 const HANDMADE: Move[] = [
   // ── Physical (type-less, can crit) ─────────────────────────────
   P('tackle', 'Tackle', { cost: { neutral: 1 }, dmgDie: 4 }, 'A reliable body slam.'),
@@ -49,10 +75,24 @@ const HANDMADE: Move[] = [
   P('pounce', 'Pounce', { cost: { neutral: 2 }, dmgDie: 4, dmgFlat: 1, speed: 2, zeroIn: 2 }, 'Leaps in before the foe can react.'),
   P('rampage', 'Rampage', { cost: { neutral: 4 }, dmgDie: 10, effort: 3, speed: -2, accuracy: 8, zeroIn: 0, critRange: 3 }, 'An all-out charge. Exhausting.'),
   P('tail-whip', 'Tail Lash', { cost: { neutral: 2 }, dmgDie: 4, effect: { foe: { armor: -1 } } }, 'A stinging lash of the tail.'),
+  // Cascade: a top-face damage roll rolls again (or rolls the named die) and keeps chaining
+  P('flurry', 'Flurry', { cost: { neutral: 2 }, dmgDie: 4, cascade: true }, 'A blur of quick blows that can snowball.'),
+  P('wild-swing', 'Wild Swing', { cost: { neutral: 3 }, dmgDie: 6, dmgFlat: 1, effort: 2, cascade: 4 }, 'A reckless haymaker. Sometimes it just keeps landing.'),
+  P('avalanche-slam', 'Avalanche Slam', { cost: { neutral: 4 }, dmgDie: 6, dmgFlat: 1, effort: 3, speed: -2, cascade: 10 }, 'Starts as a shove and can end as a landslide.'),
 
   // ── Support (type-less) ────────────────────────────────────────
   S('brace', 'Brace', undefined, { cost: { neutral: 1 }, speed: 4, effect: { self: { armor: 2, ward: 2 } } }, 'Digs in and braces for impact.'),
   S('second-wind', 'Second Wind', undefined, { cost: { neutral: 2 }, effort: 0, speed: 1, effect: { staminaGain: 4, heal: 1 } }, 'A deep, steadying breath.'),
+
+  // ── Status moves (no damage: a hit inflicts the status) ────────
+  S('dizzy-lights', 'Dizzy Lights', 'astral', { cost: { astral: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'daze' }, 'Swirling pinpricks of starlight.'),
+  S('sweet-nothings', 'Sweet Nothings', 'charm', { cost: { charm: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'beguile' }, 'Whispered flattery the foe can’t shake.'),
+  S('live-wire', 'Live Wire', 'electric', { cost: { electric: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'shock' }, 'A crackling touch that locks up muscles.'),
+  S('smolder', 'Smolder', 'fire', { cost: { fire: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'burn' }, 'Breathes on embers until they catch.'),
+  S('creeping-vines', 'Creeping Vines', 'grass', { cost: { grass: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'snare' }, 'Tendrils that wind around the legs.'),
+  S('ground-rumble', 'Ground Rumble', 'rock', { cost: { rock: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'stagger' }, 'Shakes the footing out from under the foe.'),
+  S('corrode', 'Corrode', 'steel', { cost: { steel: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'sunder' }, 'Eats away at hide and plating.'),
+  S('drench', 'Drench', 'water', { cost: { water: 1, neutral: 1 }, accuracy: 6, speed: 1, status: 'soak' }, 'A cold soaking that weighs the foe down.'),
 
   // ── Astral ─────────────────────────────────────────────────────
   E('stardust', 'Stardust', 'astral', { cost: { astral: 1 }, dmgDie: 4 }, 'Glittering motes that can Daze.'),
@@ -62,7 +102,7 @@ const HANDMADE: Move[] = [
 
   // ── Charm ──────────────────────────────────────────────────────
   E('pixie-glint', 'Pixie Glint', 'charm', { cost: { charm: 1 }, dmgDie: 4 }, 'A dazzling wink that can Beguile.'),
-  E('heartbreaker', 'Heartbreaker', 'charm', { cost: { charm: 2, neutral: 1 }, dmgDie: 6 }, 'Wounds the pride as much as the body.'),
+  E('heartbreaker', 'Heartbreaker', 'charm', { cost: { charm: 2, neutral: 1 }, dmgDie: 6, purge: { n: PURGE_ANY } }, 'Wounds the pride as much as the body, and hurts most when the foe is already suffering.'),
   E('lullaby', 'Lullaby', 'charm', { kind: 'support', cost: { charm: 2 }, dmgDie: 0, accuracy: 6, effect: { foe: { speed: -2, focus: -1 } } }, 'A drowsy melody.'),
   E('glamour-burst', 'Glamour Burst', 'charm', { cost: { charm: 4, neutral: 1 }, dmgDie: 10, effort: 3, speed: -1 }, 'An overwhelming flash of fey light.'),
 
@@ -76,7 +116,7 @@ const HANDMADE: Move[] = [
   E('ember', 'Ember', 'fire', { cost: { fire: 1 }, dmgDie: 4 }, 'Hot cinders that can Burn.'),
   E('fire-claw', 'Fire Claw', 'fire', { cost: { fire: 2, neutral: 1 }, dmgDie: 6 }, 'Talons wreathed in flame.'),
   E('heat-haze', 'Heat Haze', 'fire', { kind: 'support', cost: { fire: 2 }, dmgDie: 0, accuracy: 'sure', effect: { self: { evasion: 1, focus: 1 } } }, 'A shimmer of rising heat.'),
-  E('magma-surge', 'Magma Surge', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 3, speed: -2 }, 'A wave of molten rock.'),
+  E('magma-surge', 'Magma Surge', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 3, speed: -2, potency: 1 }, 'A wave of molten rock.'),
 
   // ── Grass ──────────────────────────────────────────────────────
   E('vine-snap', 'Vine Snap', 'grass', { cost: { grass: 1 }, dmgDie: 4 }, 'A whipping vine that can Snare.'),
@@ -100,7 +140,27 @@ const HANDMADE: Move[] = [
   E('splash-jet', 'Splash Jet', 'water', { cost: { water: 1 }, dmgDie: 4 }, 'A pressurized squirt that can Soak.'),
   E('tide-crash', 'Tide Crash', 'water', { cost: { water: 2, neutral: 1 }, dmgDie: 6 }, 'Rolling breaker.'),
   E('mist-cloak', 'Mist Cloak', 'water', { kind: 'support', cost: { water: 2 }, dmgDie: 0, accuracy: 'sure', speed: 3, effect: { self: { evasion: 2 } } }, 'Wraps itself in mist.'),
-  E('maelstrom', 'Maelstrom', 'water', { cost: { water: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -2 }, 'A whirlpool that drags the foe under.'),
+  E('maelstrom', 'Maelstrom', 'water', { cost: { water: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -2, purge: { n: PURGE_ANY } }, 'A whirlpool that drags the foe under, worst of all for a foe already struggling.'),
+
+  // ── Potency: status hitters (3 of one type; status on a damage roll of 1–3) ──
+  E('starglimmer', 'Starglimmer', 'astral', { cost: { astral: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A haze of twinkling light that leaves the foe seeing stars.'),
+  E('bewitching-waltz', 'Bewitching Waltz', 'charm', { cost: { charm: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A twirling dance that’s hard to look away from.'),
+  E('crackle-web', 'Crackle Web', 'electric', { cost: { electric: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A net of sparks that clings and stings.'),
+  E('cinder-storm', 'Cinder Storm', 'fire', { cost: { fire: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A whirl of glowing ash that sets everything smoldering.'),
+  E('thicket-lash', 'Thicket Lash', 'grass', { cost: { grass: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'Thorny stems that whip and tangle.'),
+  E('grit-squall', 'Grit Squall', 'rock', { cost: { rock: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A blast of sand and gravel that rattles the senses.'),
+  E('rust-rain', 'Rust Rain', 'steel', { cost: { steel: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'Flakes of corroding metal that eat into armor.'),
+  E('undertow', 'Undertow', 'water', { cost: { water: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A heavy drag of water that clings and soaks.'),
+
+  // ── Purge: payoffs against a status (2 of the lead type + 1 of the type that inflicts it) ──
+  E('starstruck', 'Starstruck', 'astral', { cost: { astral: 2, charm: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'beguile' } }, 'Strikes a smitten foe while its guard is down.'),
+  E('dream-kiss', 'Dream Kiss', 'charm', { cost: { charm: 2, astral: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'daze' } }, 'A tender blow to a foe already lost in a daze.'),
+  E('conductive-arc', 'Conductive Arc', 'electric', { cost: { electric: 2, water: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'soak' } }, 'Lightning loves a soaked target.'),
+  E('kindling-flare', 'Kindling Flare', 'fire', { cost: { fire: 2, grass: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'snare' } }, 'Sets the tangled vines ablaze.'),
+  E('grounding-roots', 'Grounding Roots', 'grass', { cost: { grass: 2, electric: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'shock' } }, 'Roots drink the charge out of a shocked foe.'),
+  E('shatterpoint', 'Shatterpoint', 'rock', { cost: { rock: 2, steel: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'sunder' } }, 'Finds the cracks in sundered armor.'),
+  E('pile-driver', 'Pile Driver', 'steel', { cost: { steel: 2, rock: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'stagger' } }, 'Hammers a staggering foe into the ground.'),
+  E('quench', 'Quench', 'water', { cost: { water: 2, fire: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'burn' } }, 'Cold water on hot wounds: a burst of scalding steam.'),
 
   // ── Signature moves (unlocked via progression trees) ──────────
   E('sig-borealis', 'Borealis Lance', 'astral', { cost: { astral: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 1, speed: 1 }, 'Signature. A spear of aurora light.'),
@@ -227,17 +287,44 @@ export function zeroInText(m: Move): string {
   return z === 0 ? 'All or nothing: a miss never zeroes in.' : `Pursuit: a miss zeroes in +${z} (not +${ZERO_IN}).`;
 }
 
+/** A move's keywords (Potency, Cascade, Purge) with what each does, e.g. { name: 'Potency 2', text: '…' }. */
+export function moveKeywords(m: Move): { name: string; text: string }[] {
+  const out: { name: string; text: string }[] = [];
+  if (m.kind === 'elemental' && m.potency && m.status) out.push({
+    name: `Potency ${m.potency}`,
+    text: `inflicts ${STATUS_INFO[m.status].name} on a damage roll of ${statusRollText(m)}${m.extraDice?.length ? ' on any die' : ''}, not just a 1 (${Math.round(statusChance(m) * 100)}%).`,
+  });
+  if (m.kind === 'physical' && m.cascade) {
+    const d = m.cascade === true ? 0 : m.cascade;
+    out.push({
+      name: d ? `Cascade d${d}` : 'Cascade',
+      text: `a damage die that rolls its highest face ${d ? `rolls a d${d}` : 'rolls again'} and adds it, and keeps going while that rolls its highest face.`,
+    });
+  }
+  if (m.kind === 'elemental' && m.purge) out.push({
+    name: m.purge.status ? `Purge: ${STATUS_INFO[m.purge.status].name}` : 'Purge',
+    text: `+${m.purge.n} damage against a foe with ${m.purge.status ? STATUS_INFO[m.purge.status].name : 'any status'} (the status stays on).`,
+  });
+  return out;
+}
+
+/** What a status move does on a hit, e.g. "If it lands, the foe gets Burn for 3 rounds (no damage)." */
+export function statusMoveText(m: Move): string {
+  return m.kind === 'support' && m.status ? `If it lands, the foe gets ${STATUS_INFO[m.status].name} for 3 rounds (no damage; nothing happens if it already has a status).` : '';
+}
+
 /** Extra dice and wider crits, spelled out, e.g. "Crits on an accuracy roll of 5–6." */
 export function diceRulesText(m: Move): string {
   const out: string[] = [];
-  if (m.extraDice?.length && m.kind === 'elemental' && m.status) out.push(`Rolls ${diceText(m)}: a 1 on any die inflicts the status (${Math.round(statusChance(m) * 100)}%).`);
+  if (m.extraDice?.length && m.kind === 'elemental' && m.status && !m.potency) out.push(`Rolls ${diceText(m)}: a 1 on any die inflicts the status (${Math.round(statusChance(m) * 100)}%).`);
   else if (m.extraDice?.length) out.push(`Rolls ${diceText(m)}.`);
+  for (const k of moveKeywords(m)) out.push(`${k.name}: ${k.text[0].toUpperCase()}${k.text.slice(1)}`);
   if (critFaces(m) > 1 && typeof m.accuracy === 'number') out.push(`Wide crits: an accuracy roll of ${critFrom(m, m.accuracy)}–${m.accuracy} crits.`);
   return out.join(' ');
 }
 
 // Spell out every effect's exact numbers in the move's text, so cards never go vague or stale.
-for (const m of MOVES) { const fx = [diceRulesText(m), effectText(m), zeroInText(m)].filter(Boolean).join(' '); if (fx) m.text = `${m.text} ${fx}`; }
+for (const m of MOVES) { const fx = [diceRulesText(m), statusMoveText(m), effectText(m), zeroInText(m)].filter(Boolean).join(' '); if (fx) m.text = `${m.text} ${fx}`; }
 
 export const MOVE_BY_ID: Record<string, Move> = Object.fromEntries(MOVES.map((m) => [m.id, m]));
 
@@ -247,13 +334,3 @@ export const CATCH_BREATH: Move = {
   accuracy: 'sure', dmgDie: 0, dmgFlat: 0, effect: { staminaGain: 99 }, text: 'Skip attacking to fully restore Stamina.',
 };
 
-export const STATUS_INFO: Record<StatusId, { name: string; icon: string; text: string }> = {
-  burn: { name: 'Burn', icon: '🔥', text: 'Takes 1 damage at the end of each round.' },
-  soak: { name: 'Soak', icon: '💧', text: '−2 Speed, so it is more likely to act second.' },
-  shock: { name: 'Shock', icon: '⚡', text: 'Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent).' },
-  snare: { name: 'Snare', icon: '🌿', text: '−1 Speed and −1 Evasion, so it is easier to hit.' },
-  stagger: { name: 'Stagger', icon: '💥', text: '−1 Power and −1 Focus: its physical and elemental attacks each deal 1 less damage.' },
-  sunder: { name: 'Sunder', icon: '⚙️', text: '−1 Armor and −1 Ward: it takes 1 more damage from physical and elemental attacks.' },
-  beguile: { name: 'Beguile', icon: '💗', text: '−1 to its accuracy rolls (Sure-hit moves are unaffected).' },
-  daze: { name: 'Daze', icon: '✨', text: 'Its accuracy die shrinks one size (d8 → d6, d6 → d4; never below d4). Sure-hit moves are unaffected.' },
-};

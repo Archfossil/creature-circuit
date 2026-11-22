@@ -2,7 +2,7 @@
 // accuracy, speed, effort, status, effects), marking generated placeholders to replace and flagging
 // moves that stand out from the attack-grid baseline for a balance check. Run: npm run docs:moves
 import { writeFileSync } from 'node:fs';
-import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../src/data/moves';
+import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, statusRollText, moveKeywords, critFaces, critFrom } from '../src/data/moves';
 import { SPECIES } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
 import type { ElementType, Move, Stats } from '../src/data/schema';
@@ -23,7 +23,10 @@ const dmgText = (m: Move) => (m.kind === 'support' ? '—' : diceText(m) || '0')
 const accText = (m: Move) => (m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}${critFaces(m) > 1 ? ` (✸ ${critFrom(m, m.accuracy)}+)` : ''}${zeroInOf(m) === ZERO_IN ? '' : zeroInOf(m) ? ` (⌖ +${zeroInOf(m)})` : ' (⌖ ✕)'}`);
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const fx = (m: Move) => effectText(m).replace(/ Stat changes last until.*$/, '') || '—';
-const statusText = (m: Move) => (m.status ? `${STATUS_INFO[m.status].name}${m.extraDice?.length ? ` (${Math.round(statusChance(m) * 100)}%)` : ''}` : '—');
+const statusText = (m: Move) => (!m.status ? '—'
+  : m.kind === 'support' ? `${STATUS_INFO[m.status].name} on a hit`
+    : `${STATUS_INFO[m.status].name}${m.extraDice?.length || m.potency ? ` (${statusRollText(m)}, ${Math.round(statusChance(m) * 100)}%)` : ''}`);
+const kwText = (m: Move) => moveKeywords(m).map((k) => k.name).join(', ') || '—';
 
 // Baseline: what a generated placeholder with the same total typed cost does (dual types get +1 flat).
 const BASE: Record<number, { single: number; dual: number }> = Object.fromEntries(Object.entries(BY_TOTAL).map(([n, b]) => {
@@ -49,14 +52,14 @@ function balanceNote(m: Move): string {
   return '';
 }
 
-const header = '| Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Effect | Balance note | Source | Design | Balance |';
-const rule = '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|';
+const header = '| Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |';
+const rule = '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|';
 function row(m: Move) {
   const tc = Math.max(1, totalCost(m));
   const dmg = m.kind === 'support' ? '—' : avgDmg(m).toFixed(1);
   const per = m.kind === 'support' ? '—' : (avgDmg(m) / tc).toFixed(2);
   const hits = m.kind === 'physical' ? 'Physical' : m.type ? TYPE_LABEL[m.type] : '—';
-  return `| **${m.name}** | \`${m.id}\` | ${costText(m)} | ${hits} | ${dmgText(m)} | ${dmg} | ${per} | ${accText(m)} | ${signed(m.speed)} | ${m.effort} | ${statusText(m)} | ${fx(m)} | ${balanceNote(m) || '—'} | ${m.placeholder ? 'Placeholder' : 'Hand-made'} | ${m.placeholder ? '☐' : '☑'} | ☐ |`;
+  return `| **${m.name}** | \`${m.id}\` | ${costText(m)} | ${hits} | ${dmgText(m)} | ${dmg} | ${per} | ${accText(m)} | ${signed(m.speed)} | ${m.effort} | ${statusText(m)} | ${kwText(m)} | ${fx(m)} | ${balanceNote(m) || '—'} | ${m.placeholder ? 'Placeholder' : 'Hand-made'} | ${m.placeholder ? '☐' : '☑'} | ☐ |`;
 }
 
 const total = MOVES.length;
@@ -118,6 +121,8 @@ lines.push(
   `- **⌖ Zeroing In**: a miss gives the creature's next accuracy roll +${ZERO_IN}, stacking over a streak of misses up to +${ZERO_IN_MAX}. The next accuracy roll uses it up, and leaving the field loses it. Moves that differ say so after their accuracy: **(⌖ +2)** is a pursuit move that zeroes in harder, **(⌖ ✕)** is all or nothing and never zeroes in.`,
   '- **Speed** is added to the user’s Speed this round to decide who acts first. **Effort** is the Stamina it drains.',
   '- **Status** is inflicted when a damage die rolls a 1 (elemental attacks carry their type’s status). Moves with extra dice (e.g. d10+d4) inflict it if **any** die shows a 1, so the chance is shown next to the status.',
+  '- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Cascade** (physical) rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn\'t count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).',
+  '- **Status moves** are support moves with a Status: they roll accuracy and, on a hit, inflict it outright with no damage.',
   '- **Balance note** compares a hand-made move’s average damage with a generated placeholder of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.',
   '- **Design ☐**: a designed name, flavour and numbers. Hand-made moves start ticked. **Balance ☐**: tick once someone has reviewed its numbers in play.',
   '- **Swapping a placeholder (developers):** add the move to `HANDMADE` in `src/data/moves.ts` with the same typed cost and hit type. It takes over that grid slot and the placeholder disappears. Then regenerate this file.',
@@ -144,7 +149,7 @@ lines.push('', '## Contents', '',
   '', '---', '');
 
 lines.push('## Physical moves', '', 'Type-free attacks: Power vs Armor, ignore the type chart, crit on the accuracy die’s top face (or a wider range, marked ✸).', '', header, rule, ...physical.map(row), '');
-lines.push('## Support moves', '', 'Buffs, debuffs and heals. No damage. Catch Breath is always available and doesn’t take a playbook slot.', '', header, rule, ...[...support, CATCH_BREATH].map(row), '');
+lines.push('## Support moves', '', 'Buffs, debuffs, heals and status moves. No damage. Catch Breath is always available and doesn’t take a playbook slot.', '', header, rule, ...[...support, CATCH_BREATH].map(row), '');
 lines.push('## Signature moves', '', 'Unlocked from a creature’s progression chart (★ node). They don’t fill attack-grid slots.', '',
   '| Signature | Learned by |', '|---|---|', ...sigs.map((m) => `| ${m.name} | ${sigUsers(m.id).join(', ') || '—'} |`), '', header, rule, ...sigs.map(row), '');
 

@@ -2,7 +2,7 @@ import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
-import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, critFaces, critFrom } from '../data/moves';
+import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
 import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
 import { setSwapMove, swapLock, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
@@ -91,9 +91,17 @@ export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boole
       m.accuracy !== 'sure' && zeroInOf(m) !== ZERO_IN
         ? h('span', { class: `mc-zero ${zeroInOf(m) ? 'pursuit' : 'none'}`, title: zeroInOf(m) ? `Pursuit: a miss zeroes in +${zeroInOf(m)} for the next accuracy roll (usually +${ZERO_IN}).` : 'All or nothing: a miss never zeroes in.' }, h('i', { class: 'zi' }, '⌖'), zeroInOf(m) ? `+${zeroInOf(m)}` : '✕')
         : null),
+    // keywords (Potency, Cascade, Purge) and a status move's status, each explained on hover
+    moveKeywords(m).length || (m.kind === 'support' && m.status)
+      ? h('div', { class: 'mc-kws' },
+        m.kind === 'support' && m.status ? h('span', { class: 'mc-kw status', title: `On a hit, the foe gets ${STATUS_INFO[m.status].name} for 3 rounds (no damage). ${STATUS_INFO[m.status].text}` }, STATUS_INFO[m.status].icon, ' ', STATUS_INFO[m.status].name) : null,
+        moveKeywords(m).map((k) => h('span', { class: `mc-kw ${k.name.split(/[ :]/)[0].toLowerCase()}`, title: `${k.name}: ${k.text}` }, k.name)))
+      : null,
     match ? h('div', { class: `mc-eff ${match.cls}`, title: `Type matchup against the opponent: ×${match.mult}` }, match.label)
       : opts.vs && m.kind === 'physical' ? h('div', { class: 'mc-eff phys', title: 'Physical attacks ignore the type chart' }, 'Ignores types') : null,
-    opts.compact ? null : h('div', { class: 'mc-text' }, m.text, m.status ? h('em', null, ` ${m.extraDice?.length ? 'A 1 on any die' : 'Min roll'}: ${STATUS_INFO[m.status].name} (${Math.round(statusChance(m) * 100)}%).`) : null),
+    opts.compact ? null : h('div', { class: 'mc-text' }, m.text, m.status && m.kind !== 'support'
+      ? h('em', null, ` ${statusFaces(m) > 1 ? `A roll of ${statusRollText(m)}${m.extraDice?.length ? ' on any die' : ''}` : m.extraDice?.length ? 'A 1 on any die' : 'Min roll'}: ${STATUS_INFO[m.status].name} (${Math.round(statusChance(m) * 100)}%).`)
+      : null),
     opts.compact ? null : h('div', { class: 'mc-cost' }, energyPips(m.cost as Record<string, number>, true)));
 }
 
@@ -736,7 +744,9 @@ function recommendSheet(c: CreatureInst, confirm: (ids: string[]) => void) {
 /** How statuses work (shared by the Status Effects guide and the Type Chart). */
 function statusRules() {
   return h('ul', { class: 'small status-rules' },
-    h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die (or on any of them, for moves with extra dice like d10+d4), the target gains that attack type’s status.'),
+    h('li', null, h('b', null, 'How they land: '), 'when an elemental attack rolls a 1 on its damage die (or on any of them, for moves with extra dice like d10+d4), the target gains that attack type’s status. Potency widens that: Potency 2 inflicts on a 1–3. Status moves (Smolder, Drench …) inflict theirs outright on a hit.'),
+    h('li', null, h('b', null, 'Immunities: '), 'some Instincts keep statuses off (Wet Coat: no Burn or Soak; Steel Coat shrugs off the first one). A 🛡 on the battle nameplate shows it.'),
+    h('li', null, h('b', null, 'Purge: '), 'some elemental attacks deal extra damage to a foe that already has a status (or one particular status, for more).'),
     h('li', null, h('b', null, 'One at a time: '), 'a creature that already has a status can’t gain another until it wears off.'),
     h('li', null, h('b', null, 'Duration: '), '3 rounds, counted only while the creature is in battle (not while swapped out). Ends early on a KO, and always ends with the battle.'));
 }

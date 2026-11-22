@@ -17,7 +17,7 @@ import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
-import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
@@ -1488,12 +1488,14 @@ export class App {
       const mh = maxHealth(c), mv = maxVitality(c);
       const pct = sn.ko ? 0 : Math.min(100, (sn.health / mh) * 100);
       const recruited = sd.kind === 'wild' && s.dex.caught.includes(c.species);
+      const guard = statusGuard(b, c); // an Instinct that keeps statuses off: say so up front
       plates[side].replaceChildren(
         h('div', { class: 'pl-top' },
           h('b', null, nameOf(c)), h('span', { class: 'lv' }, `Lv ${c.level}`),
           h('span', { class: 'pl-types' }, sp.types.map((t) => typeIconImg(t, 16))),
           recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
           sn.zero ? h('span', { class: 'zero-tag', title: `Zeroing In: +${sn.zero} to its next accuracy roll, from missing. Misses stack it up to +${ZERO_IN_MAX}; leaving the field loses it.` }, h('i', { class: 'zi' }, '⌖'), ` +${sn.zero}`) : null,
+          guard && !sn.ko ? h('span', { class: 'guard-tag', title: `${guard.text} Its Instinct protects it from status effects.`, 'aria-label': `Status protection: ${guard.text}` }, '🛡', guard.label === '🛡' ? '' : ` ${guard.label}`) : null,
           sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
         // Vitality first: hearts are what actually decide the fight
         h('div', { class: 'pl-vit' },
@@ -1549,7 +1551,8 @@ export class App {
           const target = b.sides[e.side].team.find((x) => x.uid === e.snap.uid);
           const eff = e.eff >= 2 ? ' Super effective!' : e.eff > 0 && e.eff < 1 ? ' Not very effective.' : '';
           const k = e.calc;
-          const math = k ? `${k.dice.length ? `${k.dice.map((d, i) => `d${d} rolled ${k.rolls[i]}`).join(' + ')} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
+          const chainText = (i: number) => { const ch = k?.cascade?.[i]; return ch ? ` (cascade d${ch.die}: ${ch.rolls.join(' + ')})` : ''; };
+          const math = k ? `${k.dice.length ? `${k.dice.map((d, i) => `d${d} rolled ${k.rolls[i]}${chainText(i)}`).join(' + ')} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
           const left = target ? ` ${nameOf(target)}: Health ${e.snap.ko ? 'KO' : `${e.snap.health}/${maxHealth(target)}`}, Vitality ${e.snap.vitality}/${maxVitality(target)}.` : '';
           note(`${whoOn(e.side)} took ${e.amount} damage${e.crit ? ' (critical)' : ''}.${eff}`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: `${math}${left}`.trim() || undefined });
           break;
