@@ -327,7 +327,7 @@ button.status-tag { font-family: inherit; color: inherit; cursor: pointer; }
 .mini-badge { position: absolute; top: -8px; right: 10px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 8px; border: 2px solid var(--ink); }
 .mini-up { position: absolute; top: 6px; right: 8px; color: var(--accent); font-weight: 800; animation: pulse 1s infinite; }
 .swap-row { display: grid; gap: 4px; }
-.swap-row > small { padding-left: 8px; color: var(--ink-2); }
+.swap-row > small, .swap-row > .small { padding-left: 8px; color: var(--ink-2); display: grid; gap: 2px; }
 
 /* Tiles */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }

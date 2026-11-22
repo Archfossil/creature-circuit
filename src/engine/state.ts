@@ -127,6 +127,8 @@ export interface GameState {
   rested?: string[];
   /** Creatures left at a Battle School (see world.ts → enrollTraining). */
   training?: Training[];
+  /** Teamwork that grew while travelling last turn ("A & B: Teamwork 2"), shown at the start of the next turn. */
+  teamworkNews?: string[];
   /** Notes from other hotseat trainers (gifts, trades, duels), shown at the start of your next turn. */
   inbox?: string[];
   /** The turn whose start-of-turn event has been rolled (so a reload doesn't roll a second one). */
@@ -448,6 +450,15 @@ export function migrate(s: GameState): GameState | null {
     const sp = speciesOf(c);
     const k = sp.types[1] ?? sp.types[0];
     c.extraEnergy[k] = (c.extraEnergy[k] ?? 0) + NODE_ENERGY;
+  }
+  // Teamwork: older saves kept it as `affinity` (0–9); it's capped at half the creature's level now
+  for (const c of [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)]) {
+    const legacy = c as CreatureInst & { affinity?: Record<string, number> };
+    if (legacy.affinity) {
+      c.teamwork = Object.fromEntries(Object.entries(legacy.affinity).map(([k, v]) => [k, Math.min(v, c.level / 2)]));
+      delete legacy.affinity;
+    }
+    c.teamwork ??= {};
   }
   // Special bond: older saves mark the starter (the first species recruited, or what it evolved into)
   const mine = [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)];

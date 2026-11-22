@@ -296,6 +296,7 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 - [ ] `loyalty`: 🤝 Loyalty chip
 - [ ] `loyalty-legendary`: ⏳ Legendary Loyalty, which drains each turn
 - [ ] `ability`: 🌿 Overworld Ability line
+- [ ] `teamwork`: 🤝 Teamwork. The chips in the creature card's Teamwork section and on the battle swap screen, and the "Teamwork grew" toasts at the start of a turn and after a battle.
 - [ ] `recruited`: 🗿 "Recruited" marker in the Codex and on cards
 - [ ] `perk-unlocked`: ✓ Nature perk unlocked
 - [ ] `perk-locked`: ○ Nature perk not yet unlocked
@@ -468,7 +469,7 @@ The same emoji currently stands for different things. Each meaning should get it
 | 📜 | Journal · Wise Hermit event |
 | 🔮 | Fortune Teller event · elemental goal |
 | ⚖️ | Wanderer style · balanced goal |
-| 🤝 | Trade · Loyalty · Beast Whisperer style |
+| 🤝 | Trade · Loyalty · Beast Whisperer style · Special bond · Teamwork |
 | 🧭 | Pathfinder style · Local Guide event · Solo mode · guide Basics tab |
 | 🗿 | Plain Totem · typed Totems · "Recruited" marker |
 | ★ | Rarity star · Signature node · rare-area marker |

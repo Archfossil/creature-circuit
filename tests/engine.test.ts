@@ -15,6 +15,8 @@ import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STY
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
+import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether } from '../src/engine/teamwork';
+import { swapPreview } from '../src/engine/battle';
 import { Box3 } from 'three';
 import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
 
@@ -3084,5 +3086,68 @@ describe('Odd jobs', () => {
     expect(W.workBlock(s)).toMatch(/cities and towns/);
     expect(W.doWork(s)).toBe(null);
     expect(s.initiative).toBe(5);
+  });
+});
+
+describe('Teamwork', () => {
+  const pair = (level: number) => {
+    const a = createCreature('puddlit', level), b = createCreature('zapup', level);
+    return [a, b] as const;
+  };
+  it('grows 0.2 a turn for pairs travelling together, capped at half the level', () => {
+    const [a, b] = pair(4);
+    for (let i = 0; i < 5; i++) travelTogether([a, b]);
+    expect(teamworkOf(a, b)).toBe(1);
+    expect(teamworkOf(b, a)).toBe(1);
+    for (let i = 0; i < 20; i++) travelTogether([a, b]);
+    expect(teamworkOf(a, b)).toBe(teamworkCap(a));
+    expect(teamworkCap(a)).toBe(2);
+    expect(teamworkBonus(a, b)).toBe(1);
+  });
+  it('each creature has its own cap, so a pair can differ', () => {
+    const a = createCreature('puddlit', 2), b = createCreature('zapup', 8);
+    addTeamwork(a, b, 3);
+    expect(teamworkOf(a, b)).toBe(1);
+    expect(teamworkOf(b, a)).toBe(3);
+    expect(addTeamwork(createCreature('puddlit', 1), createCreature('zapup', 1), 0.2)?.rose).toBe(false);
+  });
+  it('the end of a turn grows the active team’s Teamwork and saves the news for the next turn', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    s.roster[0].level = 4;
+    s.roster.push(createCreature('zapup', 4));
+    for (let i = 0; i < 5; i++) W.endTurn(s);
+    expect(teamworkOf(s.roster[0], s.roster[1])).toBe(1);
+    expect(s.teamworkNews?.length).toBe(1);
+    expect(s.teamworkNews![0]).toMatch(/Teamwork 1/);
+  });
+  it('swapping earns a pair Teamwork once per battle, and the bonus uses the value from before the swap', () => {
+    const [a, b] = pair(6);
+    a.teamwork[b.uid] = 2;
+    const foe = createCreature('sproutle', 6);
+    const bt = createBattle(side('player', [a, b]), side('wild', [foe]), WEATHER.clear);
+    for (const c of [a, b, foe]) c.health = 999;
+    resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+    expect(swapPreview(bt, 0, 1).bonus).toBe(0);
+    expect(swapPreview(bt, 0, 1).earned).toBe(false);
+    resolveRound(bt, { kind: 'swap', to: 1 }); // b in for a: +1 each
+    expect(teamworkOf(a, b)).toBe(3);
+    expect(teamworkOf(b, a)).toBe(1);
+    expect(swapPreview(bt, 0, 0).bonus).toBe(1); // a has 3 with b
+    expect(swapPreview(bt, 0, 0).earned).toBe(true);
+    resolveRound(bt, { kind: 'swap', to: 0 });
+    resolveRound(bt, { kind: 'swap', to: 1 });
+    expect(teamworkOf(a, b)).toBe(3);
+    expect(teamworkOf(b, a)).toBe(1);
+    expect(bt.teamworkGains).toHaveLength(1);
+  });
+  it('old saves keep their Teamwork (was `affinity`), capped at half the level', () => {
+    const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+    const c = s.roster[0] as ReturnType<typeof createCreature> & { affinity?: Record<string, number> };
+    c.level = 4;
+    c.affinity = { other: 9 };
+    delete (c as { teamwork?: unknown }).teamwork;
+    const m = migrate(JSON.parse(JSON.stringify(s)))!;
+    expect(m.roster[0].teamwork).toEqual({ other: 2 });
+    expect('affinity' in m.roster[0]).toBe(false);
   });
 });

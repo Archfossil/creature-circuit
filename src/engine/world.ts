@@ -10,6 +10,7 @@ import { STAT_LABEL, createCreature, fullRestore, speciesOf, nameOf, maxVitality
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
+import { travelTogether, riseText } from './teamwork';
 
 export const ability = (s: GameState) => { const f = follower(s); return f ? speciesOf(f).ability : null; };
 /** Today's weather where the trainer stands. In Winter, Aurora Peak is always under Aurora Night. */
@@ -1453,6 +1454,12 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
     log(s, tended.length ? `You made camp. ${tended.map(nameOf).join(', ')} recovered Vitality and shook off Fatigue.` : 'You made camp, but no one needed tending.');
   }
   moraleAndLoyalty(s, report);
+  // Teamwork: the creatures on the active team grow closer travelling together (announced at the start of the next turn)
+  const rises = travelTogether(s.roster).map(riseText);
+  if (rises.length) {
+    s.teamworkNews = [...(s.teamworkNews ?? []), ...rises];
+    for (const t of rises) log(s, `Teamwork grew. ${t}.`);
+  }
   if (s.turn === 100) {
     if (s.location === 'stadium' && s.merits.length >= 8) { startEndgame(s); report.ended = 'endgame'; }
     else { s.phase = 'over'; report.ended = 'over'; }

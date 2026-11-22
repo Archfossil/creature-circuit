@@ -76,7 +76,7 @@ Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers
 
 Affinity powers team-up swaps, enabling an incoming "Alpha" creature to leverage attributes fed by a benched partner. When you swap Creatures mid-battle one of the Creatures is designated as the "Alpha" in the arrangement. The Alpha has an affinity ability which is triggered as the two creatures swap, but the exact power of the affinity ability is determined by the other creature. Affinity attacks all work differently, but they might borrow the contributing Creature's stats or type for the specific attack.
 
-Each creature has an Affinity with each other creature in your roster. The more they interact and engage and like each other, the higher their affinity, the more powerful their "team-up" effects become.
+Each creature has **Teamwork** with each other creature in your roster. Pairs gain 0.2 Teamwork for every turn they travel together on the active team, and +1 the first time one swaps in for the other in a battle (once per battle). A creature's Teamwork with any partner is capped at half its level. Every 2 Teamwork the Alpha has with its partner adds +1 to its Affinity Power. The exact rules are in [13 · Natures, Abilities & Affinity Powers](./13-natures-and-abilities.md#affinity-powers).
 
 # Other Metadata
 

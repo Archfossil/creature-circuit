@@ -85,12 +85,12 @@ Each creature the player owns is saved as an instance of a species:
   "unlocked": ["a", "c"], "signature": null, "capstone": false,
   "health": 4, "vitality": 3, "stamina": 6, "fatigue": 0, "ko": false,
   "playbook": ["ember", "splash-jet", "quick-jab"],
-  "affinity": { "<other uid>": 2 },
+  "teamwork": { "<other uid>": 1.4 },
   "wins": 3, "losses": 0
 }
 ```
 
-`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`). `bond` (optional) marks the starter: it never leaves from low Morale and can't be released or given away.
+`morale` and `loyalty` both run 0–10. Loyalty is never spent: `perks` counts the Nature perks unlocked as Loyalty reached each threshold, and they never re-lock. `moraleWarned` / `moraleMark` (optional) track the low-Morale warning and whether Morale rose since the last turn (see `moraleAndLoyalty` in `world.ts`). `teamwork` is the creature's Teamwork with each partner, by uid: it grows 0.2 a turn on the active team and +1 per battle from swapping, capped at half the level (see `engine/teamwork.ts`; older saves called it `affinity` and are migrated on load). `bond` (optional) marks the starter: it never leaves from low Morale and can't be released or given away.
 
 The save also holds:
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`.

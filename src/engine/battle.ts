@@ -6,6 +6,7 @@ import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
 import { stats, maxHealth, maxStamina, nameOf, speciesOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie } from './dice';
+import { addTeamwork, teamworkBonus, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
 
 export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
 
@@ -48,6 +49,10 @@ export interface Battle {
   foeChooses?: boolean;
   /** The AI's last move per creature and how many times in a row it used it (to keep it from spamming one move). */
   aiLast?: Record<string, { move: string; streak: number }>;
+  /** Teamwork: the pairs (sorted uids joined by '|') that already earned Teamwork from a swap this battle. */
+  teamworkPairs?: string[];
+  /** Teamwork that side 0's pairs earned from swaps this battle (announced when the battle ends). */
+  teamworkGains?: TeamworkRise[];
   /** Side 1's active creature is knocked out and waiting for foeSendIn. */
   foeNeedSwap?: boolean;
 }
@@ -638,6 +643,46 @@ function applyEffects(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   }
 }
 
+// ── Affinity Powers (swap-ins) ──────────────────────────────────
+/** Tag Strike's accuracy die (the only swap power that can miss). */
+export const TAG_STRIKE_DIE = 8;
+/** The damage die of Shield Pass's counter, Slipstream and Siphon. */
+export const SWAP_HIT_DIE = 6;
+/** Armor or Ward that Shield Pass borrows from a partner stat (before the Teamwork bonus): half, rounded up, at least 1. */
+const shieldPassed = (v: number) => Math.max(1, Math.ceil(v / 2));
+/** Rally's Power and Focus boost: +1, or +2 with a Teamwork bonus. */
+const rallyBoost = (bonus: number) => 1 + (bonus > 0 ? 1 : 0);
+const pairKey = (a: CreatureInst, b: CreatureInst) => [a.uid, b.uid].sort().join('|');
+
+/**
+ * What swapping `to` in as the Alpha would do right now, for the swap screen: its Teamwork with the
+ * creature on the field, the bonus that gives, whether this swap still earns Teamwork this battle,
+ * and the power's effect with the numbers filled in.
+ */
+export function swapPreview(b: Battle, si: 0 | 1, to: number) {
+  const side = b.sides[si];
+  const partner = activeOf(side), alpha = side.team[to];
+  const fi: 0 | 1 = si === 0 ? 1 : 0;
+  const foe = activeOf(b.sides[fi]);
+  const power = AFFINITIES[speciesOf(alpha).affinity];
+  const teamwork = teamworkOf(alpha, partner);
+  const bonus = teamworkBonus(alpha, partner);
+  const earned = (b.teamworkPairs ?? []).includes(pairKey(alpha, partner));
+  const capped = teamworkOf(alpha, partner) >= teamworkCap(alpha) && teamworkOf(partner, alpha) >= teamworkCap(partner);
+  const ps = stats(partner), as = stats(alpha, side.buff), fs = stats(foe, b.sides[fi].buff);
+  const plus = bonus ? ` + ${bonus} Teamwork` : '';
+  const pn = nameOf(partner);
+  let effect: string;
+  switch (power.mode) {
+    case 'tagStrike': effect = `d${TAG_STRIKE_DIE} to hit (needs ${fs.evasion}+). On a hit: d6 + ${pn}’s Focus ${ps.focus}${plus} − Ward ${fs.ward}, as ${TYPE_LABEL[speciesOf(partner).types[0]]} on the type chart.`; break;
+    case 'shieldPass': effect = `+${shieldPassed(ps.armor) + bonus} Armor and +${shieldPassed(ps.ward) + bonus} Ward while it stays in (from ${pn}${plus}), then a sure counter: d${SWAP_HIT_DIE} + Power ${as.power} − Armor ${fs.armor}.`; break;
+    case 'slipstream': effect = `+3 Speed to go first, then a sure hit: d${SWAP_HIT_DIE} + Power ${as.power} + ${Math.floor(ps.speed / 3)} (${pn}’s Speed ÷ 3)${plus} − Armor ${fs.armor}.`; break;
+    case 'siphon': effect = `A sure hit: d${SWAP_HIT_DIE} + Focus ${as.focus} − Ward ${fs.ward}, then heals ${Math.ceil(ps.vigor / 2) + bonus} Health (${pn}’s Vigor ÷ 2${plus}).`; break;
+    default: effect = `Refills both creatures’ Stamina, clears 1 Fatigue from each, and gives +${rallyBoost(bonus)} Power and Focus${bonus ? ' (Teamwork bonus)' : ''}.`;
+  }
+  return { power: power.name, teamwork, bonus, earned, capped, effect };
+}
+
 function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   const side = b.sides[si];
   const partner = activeOf(side);
@@ -651,10 +696,14 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
   const powerId = speciesOf(alpha).affinity;
   const power = AFFINITIES[powerId];
-  const aff = (alpha.affinity[partner.uid] ?? 0);
-  alpha.affinity[partner.uid] = Math.min(9, aff + 1);
-  partner.affinity[alpha.uid] = Math.min(9, (partner.affinity[alpha.uid] ?? 0) + 1);
-  const bonus = Math.floor(aff / 3);
+  // the bonus uses the Teamwork from before this swap; a pair earns Teamwork from swapping once per battle
+  const bonus = teamworkBonus(alpha, partner);
+  const key = pairKey(alpha, partner);
+  if (!(b.teamworkPairs ??= []).includes(key)) {
+    b.teamworkPairs.push(key);
+    const rise = addTeamwork(alpha, partner, TEAMWORK_PER_SWAP);
+    if (rise && si === 0) (b.teamworkGains ??= []).push(rise);
+  }
   ev.push({ t: 'use', side: si, name: `${power.name}`, move: powerId, kind: 'affinity', type: speciesOf(partner).types[0] });
   const fi: 0 | 1 = si === 0 ? 1 : 0;
   const foe = activeOf(b.sides[fi]);
@@ -668,26 +717,27 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   switch (power.mode) {
     case 'tagStrike': {
       const t = speciesOf(partner).types[0];
-      const v = roll(6);
+      const v = roll(TAG_STRIKE_DIE);
       const need = eff(b, fi, 'evasion');
-      ev.push({ t: 'roll', side: si, die: 6, value: v, need, hit: v >= need, crit: false, label: `${TYPE_LABEL[t]} Tag Strike` });
+      ev.push({ t: 'roll', side: si, die: TAG_STRIKE_DIE, value: v, need, hit: v >= need, crit: false, label: `${TYPE_LABEL[t]} Tag Strike` });
       if (v >= need) hitFoe(roll(6) + pst.focus + bonus - eff(b, fi, 'ward'), effectiveness(t, speciesOf(foe).types));
       else ev.push({ t: 'say', text: 'The tag strike missed!', tone: 'info' });
       break;
     }
     case 'shieldPass': {
-      addMod(b, si, 'armor', Math.ceil(pst.armor / 2) + bonus);
-      addMod(b, si, 'ward', Math.ceil(pst.ward / 2) + bonus);
-      ev.push({ t: 'buff', side: si, text: `borrowed +${Math.ceil(pst.armor / 2) + bonus} armor, +${Math.ceil(pst.ward / 2) + bonus} ward` });
-      hitFoe(Math.max(1, roll(4) + eff(b, si, 'power') - eff(b, fi, 'armor')));
+      const ar = shieldPassed(pst.armor) + bonus, wd = shieldPassed(pst.ward) + bonus;
+      addMod(b, si, 'armor', ar);
+      addMod(b, si, 'ward', wd);
+      ev.push({ t: 'buff', side: si, text: `borrowed +${ar} armor, +${wd} ward` });
+      hitFoe(Math.max(1, roll(SWAP_HIT_DIE) + eff(b, si, 'power') - eff(b, fi, 'armor')));
       break;
     }
     case 'slipstream':
-      hitFoe(Math.max(1, roll(4) + eff(b, si, 'power') + Math.floor(pst.speed / 3) + bonus - eff(b, fi, 'armor')));
+      hitFoe(Math.max(1, roll(SWAP_HIT_DIE) + eff(b, si, 'power') + Math.floor(pst.speed / 3) + bonus - eff(b, fi, 'armor')));
       break;
     case 'siphon': {
       const t = speciesOf(alpha).types[0];
-      hitFoe(Math.max(1, roll(4) + eff(b, si, 'focus') - eff(b, fi, 'ward')), effectiveness(t, speciesOf(foe).types));
+      hitFoe(Math.max(1, roll(SWAP_HIT_DIE) + eff(b, si, 'focus') - eff(b, fi, 'ward')), effectiveness(t, speciesOf(foe).types));
       const heal = Math.ceil(pst.vigor / 2) + bonus;
       alpha.health = Math.min(maxHealth(alpha), alpha.health + heal);
       ev.push({ t: 'heal', side: si, amount: heal, snap: snap(b, alpha) });
@@ -696,9 +746,11 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
     case 'rally':
       alpha.stamina = maxStamina(alpha);
       partner.stamina = maxStamina(partner);
-      addMod(b, si, 'power', 1 + (bonus > 0 ? 1 : 0));
-      addMod(b, si, 'focus', 1 + (bonus > 0 ? 1 : 0));
-      ev.push({ t: 'buff', side: si, text: `+${1 + (bonus > 0 ? 1 : 0)} power & focus, stamina restored` });
+      alpha.fatigue = Math.max(0, alpha.fatigue - 1);
+      partner.fatigue = Math.max(0, partner.fatigue - 1);
+      addMod(b, si, 'power', rallyBoost(bonus));
+      addMod(b, si, 'focus', rallyBoost(bonus));
+      ev.push({ t: 'buff', side: si, text: `+${rallyBoost(bonus)} power & focus, stamina restored, −1 fatigue` });
       ev.push({ t: 'stamina', side: si, snap: snap(b, activeOf(side)) });
       break;
   }

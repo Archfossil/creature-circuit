@@ -200,23 +200,30 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 ### How Affinity Powers work
 
 - **When:** a creature is **swapped in** during battle (from round 2). The incoming creature is the **Alpha**, and its species' Affinity Power triggers straight away, borrowing from the **partner** (the creature being swapped out).
-- **Bond:** each pair of creatures builds a bond each time one swaps in for the other: +1 for both, up to 9. The bonus is **Bond ÷ 3, rounded down** (0–3), using the bond *before* this swap. It's shown on the swap screen ("bond N").
+- **Teamwork** (`CreatureInst.teamwork`, rules in `engine/teamwork.ts`): each creature has a Teamwork score with every partner. The swap bonus is **the Alpha's Teamwork with the partner ÷ 2, rounded down**, using the value from *before* this swap. The swap screen shows each candidate's Teamwork, bonus and effect with the numbers filled in; the creature card lists its Teamwork with every teammate.
+  - **Travelling together:** every pair on the active team gains **0.2** at the end of each turn. When a pair reaches a new whole point, it's announced at the start of the next turn.
+  - **Swapping:** a pair gains **+1** the first time one swaps in for the other in a battle. Later swaps between the same pair in that battle add nothing, so swapping back and forth doesn't farm it. Gains are announced when the battle ends.
+  - **Cap:** a creature's Teamwork with any partner is at most **half its level** (Lv 4 → 2, Lv 12 → 6). Each creature has its own cap, so a pair's two values can differ.
+  - Across levels 1–12 the bonus runs from 0 (under 2 Teamwork) to +3 (6 Teamwork, Lv 12).
 - **The swap resolves at the outgoing creature's Speed** (Slipstream gets +3 on top).
 
 | # | Power | ID | In-game text | Exact effect | Creatures with it |
 |---|---|---|---|---|---|
-| 1 | Tag Strike | `tagStrike` | "Swaps in with an attack of the benched partner's type, powered by the partner's Focus." | Accuracy d6 vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 |
-| 2 | Shield Pass | `shieldPass` | "Borrows the partner's Armor and Ward for this round, then counters." | +(partner's Armor ÷ 2, rounded up, + bonus) Armor and the same for Ward (they last while it stays in), then a sure counter: d4 + Power − foe's Armor. | 82 |
-| 3 | Slipstream | `slipstream` | "Rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d4 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 |
-| 4 | Siphon | `siphon` | "Drains the foe, healing using the partner's Vigor." | A sure hit: d4 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 |
-| 5 | Rally | `rally` | "Partner cheers: restores Stamina and raises Power and Focus." | Both creatures' Stamina refills. +1 Power and +1 Focus (+2 each once the bond bonus is 1 or more). | 77 |
+| 1 | Tag Strike | `tagStrike` | "Swaps in with an attack of the benched partner's type, powered by the partner's Focus." | Accuracy **d8** vs the foe's Evasion. On a hit: d6 + partner's Focus + bonus − foe's Ward, using the **partner's** main type on the type chart. | 76 |
+| 2 | Shield Pass | `shieldPass` | "Borrows the partner's Armor and Ward while it stays in, then counters." | +(partner's Armor ÷ 2, rounded up, **at least 1**, + bonus) Armor and the same for Ward (they last while it stays in), then a sure counter: **d6** + Power − foe's Armor. | 82 |
+| 3 | Slipstream | `slipstream` | "Rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: **d6** + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. | 75 |
+| 4 | Siphon | `siphon` | "Drains the foe, healing using the partner's Vigor." | A sure hit: **d6** + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. | 76 |
+| 5 | Rally | `rally` | "Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). | 77 |
+
+**Early-level retune (with the Teamwork cap):** Teamwork now grows slowly and is capped at half the level, so the bonus is 0 for most of the early game. To keep swaps worth it from the start, the base effects went up: Tag Strike rolls d8 to hit instead of d6, the other damaging powers roll d6 instead of d4, Shield Pass always borrows at least 1 Armor and 1 Ward, and Rally also clears 1 Fatigue.
 
 ### Affinity balance notes
 
 - [ ] **Only Tag Strike can miss.** The other damaging powers always hit.
-- [ ] **Shield Pass's borrowed Armor and Ward last while the Alpha stays in,** not just "this round" as the in-game text says. Fix the text or the rule.
-- [ ] **Rally's bond bonus is all-or-nothing** (+1 at bond 0–2, +2 at bond 3+), unlike the other powers' 0–3 scale.
-- [ ] **Bond builds per pair,** so it rewards swapping the same two creatures back and forth.
+- [x] **Shield Pass's borrowed Armor and Ward last while the Alpha stays in.** The in-game text now says so.
+- [ ] **Rally's Teamwork bonus is all-or-nothing** (+1 under 2 Teamwork, +2 from 2), unlike the other powers' 0–3 scale.
+- [x] **Teamwork no longer rewards swapping back and forth:** a pair earns it from a swap once per battle; travelling together on the active team is the steady source.
+- [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may now out-damage a creature's own moves at Lv 1–3.
 
 ---
 
@@ -250,7 +257,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 - [ ] **Natures:** perks add up to about 4 combat stat points. The up and down stats pull in different directions. The theme matches the perks.
 - [ ] **Abilities:** a map effect (not battle) that changes a real decision. Checked against the trainer styles and items that do similar things.
-- [ ] **Affinity Powers:** say what's borrowed from the partner, whether it can miss, and how the bond bonus scales.
+- [x] **Affinity Powers:** say what's borrowed from the partner, whether it can miss, and how the Teamwork bonus scales. (The swap screen now shows each power's effect with its numbers and Teamwork bonus.)
 - [ ] The in-game text says exactly what the rules do.
 
 ### Build it (developers)

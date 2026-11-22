@@ -122,6 +122,14 @@ export const GUIDE: GuideCategory[] = [
         'In battle, the thin blue bar under your Health is Stamina. The diamond beside it is Fatigue: grey at 0, a red number when fatigued. The opponent’s nameplate shows its Fatigue diamond too. Hover or tap one to see the odds of losing a turn.',
         'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
       ] },
+      { id: 'teamwork', title: 'Swapping & Teamwork', body: [
+        'From round 2 you can swap (S). The creature coming in is the Alpha: its 🔁 Affinity Power fires at once, borrowing from the partner it replaces (Tag Strike, Shield Pass, Slipstream, Siphon or Rally). The swap screen shows what each one will do right now.',
+        '🤝 Teamwork is how well two of your creatures work together. Every 2 Teamwork the Alpha has with its partner adds +1 to its power (more damage, more borrowed Armor and Ward, more healing; Rally gives +2 Power and Focus instead of +1).',
+        '- Travelling together: every pair on your active team gains 0.2 Teamwork each turn. You’re told at the start of a turn when a pair reaches a new point.',
+        '- Swapping in battle: a pair gains +1 Teamwork the first time one swaps in for the other in a battle. Swapping them back and forth again in the same battle adds nothing more.',
+        '- Cap: a creature’s Teamwork with any partner can’t go above half its level, so it keeps growing as your team levels up.',
+        'Each creature’s card lists its Teamwork with your other creatures and the bonus it gives.',
+      ] },
       { id: 'readouts', title: 'Move readouts', body: [
         'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion (plus any ⌖ Zeroing In, and what a miss would add), then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',
         'Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.',

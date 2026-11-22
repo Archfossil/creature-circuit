@@ -31,10 +31,10 @@ export const ABILITIES: Record<string, Ability> = {
 
 export const AFFINITIES: Record<string, AffinityPower> = {
   tagStrike: { id: 'tagStrike', name: 'Tag Strike', mode: 'tagStrike', text: 'Swaps in with an attack of the benched partner\'s type, powered by the partner\'s Focus.' },
-  shieldPass: { id: 'shieldPass', name: 'Shield Pass', mode: 'shieldPass', text: 'Borrows the partner\'s Armor and Ward for this round, then counters.' },
+  shieldPass: { id: 'shieldPass', name: 'Shield Pass', mode: 'shieldPass', text: 'Borrows the partner\'s Armor and Ward while it stays in, then counters.' },
   slipstream: { id: 'slipstream', name: 'Slipstream', mode: 'slipstream', text: 'Rides the partner\'s Speed to strike first with a physical hit.' },
   siphon: { id: 'siphon', name: 'Siphon', mode: 'siphon', text: 'Drains the foe, healing using the partner\'s Vigor.' },
-  rally: { id: 'rally', name: 'Rally', mode: 'rally', text: 'Partner cheers: restores Stamina and raises Power and Focus.' },
+  rally: { id: 'rally', name: 'Rally', mode: 'rally', text: 'Partner cheers: restores Stamina, eases Fatigue and raises Power and Focus.' },
 };
 
 // ── Items ────────────────────────────────────────────────

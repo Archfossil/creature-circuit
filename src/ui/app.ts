@@ -2,7 +2,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -17,9 +17,10 @@ import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
-import { resolveRound, sendIn, activeOf, movePreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
@@ -644,7 +645,14 @@ export class App {
     const seat = this.mySeat();
     const net = this.online;
     if (seat < 0 || !net) { this.showCreature(c, true); return; }
-    openSheet(nameOf(c), creatureCard(c, { editable: true, onEdit: (edit) => net.send({ type: 'edit', seat, edit }) }), { wide: true, cls: 'card-sheet' });
+    openSheet(nameOf(c), creatureCard(c, { editable: true, teammates: this.teammatesOf(c), onEdit: (edit) => net.send({ type: 'edit', seat, edit }) }), { wide: true, cls: 'card-sheet' });
+  }
+
+  /** The other creatures of whichever trainer owns `c` (for the Teamwork on its card). */
+  teammatesOf(c: CreatureInst): CreatureInst[] {
+    const owners = [this.s, ...(activeMatchOf()?.players ?? [])];
+    const owner = owners.find((p) => p && [...p.roster, ...p.reserve].some((x) => x.uid === c.uid));
+    return owner ? [...owner.roster, ...owner.reserve] : [];
   }
 
   /** Another trainer's trade or duel offer, answered from this browser. */
@@ -799,6 +807,8 @@ export class App {
     if (s.turn > 1) toast(timeOfDay(s.turn) === 'night' ? '🌙 Night falls: nocturnal creatures are out.' : '☀️ Dawn breaks: diurnal creatures are out.', 'info', 2600);
     if (s.turn === 90) toast('10 turns left! Head toward Circuit Stadium.', 'bad', 5000);
     await this.showInbox();
+    // Teamwork that grew while travelling last turn
+    if (s.teamworkNews?.length) { toast(`🤝 Teamwork grew on the road: ${s.teamworkNews.join(' · ')}.`, 'good', 6000); s.teamworkNews = []; save(s); }
     // one event per trainer per turn, from the second round, rolled here at the start of the turn
     if (s.turn >= 2 && s.eventTurn !== s.turn) { s.eventTurn = s.turn; E.rollEvent(s); save(s); this.renderHud(); }
     if (s.event) await this.eventFlow();
@@ -1712,7 +1722,12 @@ export class App {
         else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[0].team.filter((c) => !c.ko).length > 1) swapPicker();
       };
       addEventListener('keydown', onKey);
-      const finish = (r: Battle['over']) => { removeEventListener('keydown', onKey); resolve(r); };
+      const finish = (r: Battle['over']) => {
+        removeEventListener('keydown', onKey);
+        // Teamwork earned from swaps this battle
+        if (!ctx.watch && b.teamworkGains?.length) toast(`🤝 Teamwork grew: ${b.teamworkGains.map(riseText).join(' · ')}.`, 'good', 6000);
+        resolve(r);
+      };
       const act = async (a: Parameters<typeof resolveRound>[1]) => {
         controls.replaceChildren(h('div', { class: 'waiting' }, ctx.duel ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
         // two-player duel: the other trainer picks their creature's action too
@@ -1725,9 +1740,18 @@ export class App {
         const cur = activeOf(b.sides[0]);
         const close = openSheet('Swap — choose the incoming Alpha', h('div', null,
           h('p', { class: 'small' }, `The incoming creature is the Alpha: its Affinity Power triggers, borrowing from ${nameOf(cur)}. The swap resolves at ${nameOf(cur)}'s speed.`),
-          h('div', { class: 'list' }, b.sides[0].team.map((c, i) => c.ko || c === cur ? null : h('div', { class: 'swap-row' },
-            miniCard(c, { onClick: () => { close(); act({ kind: 'swap', to: i }); } }),
-            h('small', null, '🔁 ', speciesOf(c).affinity && h('b', null, AFFINITY_NAME(speciesOf(c).affinity)), ` · bond ${c.affinity[cur.uid] ?? 0}`))))));
+          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its power. A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A creature’s Teamwork is capped at half its level.`),
+          h('div', { class: 'list' }, b.sides[0].team.map((c, i) => {
+            if (c.ko || c === cur) return null;
+            const pv = swapPreview(b, 0, i);
+            const grows = pv.earned ? 'Already earned its Teamwork this battle.' : pv.capped ? 'Teamwork is at its cap (half its level): level up to grow it.' : `This swap earns +${TEAMWORK_PER_SWAP} Teamwork (once per battle).`;
+            return h('div', { class: 'swap-row' },
+              miniCard(c, { onClick: () => { close(); act({ kind: 'swap', to: i }); } }),
+              h('div', { class: 'small' },
+                h('div', null, '🔁 ', h('b', null, pv.power), ` · 🤝 Teamwork ${fmtTeamwork(pv.teamwork)} with ${nameOf(cur)} → `, h('b', null, pv.bonus ? `+${pv.bonus} bonus` : 'no bonus yet')),
+                h('div', null, pv.effect),
+                h('div', { class: 'muted' }, grows)));
+          }))));
       };
       // two-player duel: the defender picks who replaces their knocked-out creature
       const foeReplace = async () => {
@@ -2600,7 +2624,7 @@ export class App {
 
   showCreature(c: CreatureInst, readOnly = false) {
     if (this.watching) readOnly = true;
-    const close = openSheet(nameOf(c), creatureCard(c, { editable: !readOnly, onChange: () => { save(this.s); if (!readOnly) this.renderHud(); } }), { wide: true, cls: 'card-sheet' });
+    const close = openSheet(nameOf(c), creatureCard(c, { editable: !readOnly, teammates: this.teammatesOf(c), onChange: () => { save(this.s); if (!readOnly) this.renderHud(); } }), { wide: true, cls: 'card-sheet' });
     void close;
   }
 

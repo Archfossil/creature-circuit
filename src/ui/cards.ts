@@ -8,6 +8,7 @@ import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/
 import type { ElementType, EnergyKey, Move } from '../data/schema';
 import { portrait } from '../render/engine';
 import { typeMatchup } from '../engine/battle';
+import { teamworkOf, teamworkCap, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 
 export function typeChip(t: ElementType, small = false) {
   return h('span', { class: `type-chip ${small ? 'sm' : ''}`, style: `--tc:${TYPE_COLOR[t]}` }, h('img', { src: typeIcon(t), alt: '' }), TYPE_LABEL[t]);
@@ -193,11 +194,33 @@ export function socialHelp(c: CreatureInst) {
     nat ? h('p', { class: 'small' }, h('b', null, `${nat.name} perks: `), nat.perks.map((p, i) => `${i < c.perks ? '✓' : '○'} ${p.name} (${p.cost})`).join(' · '), next ? ` · next at ${next.cost} Loyalty` : ' · all unlocked') : null));
 }
 
+/** Teamwork with one decimal (its fraction is progress towards the next whole point). */
+export const fmtTeamwork = (v: number) => (Math.round(v * 10) / 10).toString();
+
+export const TEAMWORK_HELP = `Teamwork is how well two of your creatures work together. When one swaps in for the other in battle, its Affinity Power gets +1 for every ${TEAMWORK_PER_BONUS} Teamwork it has with that partner.
+It grows by ${TEAMWORK_PER_TURN} each turn both travel on your active team, and by ${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle (once per battle).
+A creature's Teamwork with any partner is capped at half its level.`;
+
+/** The creature's Teamwork with each of its teammates, with the swap bonus it gives. */
+function teamworkSection(c: CreatureInst, mates: CreatureInst[]) {
+  const others = mates.filter((m) => m.uid !== c.uid);
+  if (!others.length) return null;
+  const cap = teamworkCap(c);
+  return h('section', { class: 'ic-sec' },
+    h('h4', { title: TEAMWORK_HELP }, '🤝 Teamwork ', h('span', { class: 'muted' }, `max ${fmtTeamwork(cap)} (half its level)`)),
+    h('div', { class: 'row gap-s wrap small' }, others.map((m) => {
+      const v = teamworkOf(c, m), bonus = Math.floor(v / TEAMWORK_PER_BONUS);
+      return h('span', { class: `chip ${bonus ? 'good' : ''}`, title: `${nameOf(c)} swapping in for ${nameOf(m)}: ${bonus ? `+${bonus} to its Affinity Power` : `no bonus yet (+1 at ${TEAMWORK_PER_BONUS} Teamwork)`}${v >= cap ? '. At its cap: level up to grow it.' : ''}` },
+        nameOf(m), ' ', h('b', null, fmtTeamwork(v)), bonus ? ` · +${bonus}` : '');
+    })),
+    h('p', { class: 'small muted' }, `Grows +${TEAMWORK_PER_TURN} a turn while both are on your active team, and +${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle. Every ${TEAMWORK_PER_BONUS} Teamwork adds +1 to the Affinity Power when ${nameOf(c)} swaps in for that partner.`));
+}
+
 /**
  * A creature's index card (front: stats, playbook, nature; back: progression chart). `editable` allows
  * playbook edits and chart unlocks; `onEdit` hears about each change (online: sent to the server).
  */
-export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void } = {}) {
+export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; /** The trainer's other creatures, to show Teamwork with each. */ teammates?: CreatureInst[] } = {}) {
   const wrap = h('div', { class: 'card-flip' });
   let back = false;
   const render = () => {
@@ -207,7 +230,7 @@ export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; edi
   return wrap;
 }
 
-function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void }, changed: () => void) {
+function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; teammates?: CreatureInst[] }, changed: () => void) {
   const sp = speciesOf(c);
   const st = stats(c);
   const e = energy(c);
@@ -244,7 +267,8 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
       h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.')),
-      h('div', { class: 'mini-panel' }, h('h5', null, '🔁 Affinity · ', af.name), h('p', null, af.text), h('small', { class: 'muted' }, 'Triggers when swapped in as Alpha.'))),
+      h('div', { class: 'mini-panel' }, h('h5', null, '🔁 Affinity · ', af.name), h('p', null, af.text), h('small', { class: 'muted' }, 'Triggers when swapped in as Alpha. 🤝 Teamwork with the partner it replaces makes it stronger.'))),
+    teamworkSection(c, opts.teammates ?? []),
     h('section', { class: 'ic-sec' },
       h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),
       h('p', { class: 'small' }, nat.text),

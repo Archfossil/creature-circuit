@@ -33,7 +33,8 @@ export interface CreatureInst {
   fatigue: number;
   ko: boolean;
   playbook: string[];
-  affinity: Record<string, number>;
+  /** Teamwork with each partner (by uid): grows travelling together and swapping in battle, up to half the level (see teamwork.ts). */
+  teamwork: Record<string, number>;
   wins: number;
   losses: number;
 }
@@ -358,7 +359,7 @@ export function createCreature(speciesId: string, level = 1, opts: { nature?: st
     uid: uid(), species: speciesId, level: 1, xp: 0, points: 0,
     nature: opts.nature ?? pick(NATURES).id, morale: 5, loyalty: 0, perks: 0,
     bonus: {}, extraEnergy: {}, unlocked: [],
-    health: 0, vitality: 0, stamina: 0, fatigue: 0, ko: false, playbook: [], affinity: {}, wins: 0, losses: 0,
+    health: 0, vitality: 0, stamina: 0, fatigue: 0, ko: false, playbook: [], teamwork: {}, wins: 0, losses: 0,
   };
   if (level > 1) {
     c.level = level;
