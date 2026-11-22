@@ -529,6 +529,14 @@ describe('morale and loyalty', () => {
     expect(m.roster[0].bond).toBe(true);
     expect([...m.roster, ...m.reserve].filter((c) => c.bond)).toHaveLength(1);
   });
+  it('a placeholder attack retired by a hand-made move is swapped for it in old saves', () => {
+    const s = newGame('U', 'balanced', 'mangrove', 'twinkit', '#000');
+    const old = JSON.parse(JSON.stringify(s));
+    old.roster[0].playbook = ['atk-astral3', 'atk-astral2-charm1', 'no-such-move'];
+    const m = migrate(old)!;
+    expect(m.roster[0].playbook).toEqual(['starglimmer', 'starstruck']);
+    for (const c of [...m.roster, ...m.reserve]) for (const id of c.playbook) expect(MOVE_BY_ID[id]).toBeDefined();
+  });
   it('morale back above the low line clears the warning', () => {
     const s = game();
     const c = s.roster[1];

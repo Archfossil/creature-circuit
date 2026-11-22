@@ -328,6 +328,20 @@ for (const m of MOVES) { const fx = [diceRulesText(m), statusMoveText(m), effect
 
 export const MOVE_BY_ID: Record<string, Move> = Object.fromEntries(MOVES.map((m) => [m.id, m]));
 
+/**
+ * Placeholder attacks retired by a hand-made move in the same grid slot: old id → the move that fills
+ * the slot now. Saves made while the placeholder existed may still have it in a playbook (see migrate).
+ */
+export const RETIRED_MOVES: Record<string, string> = Object.fromEntries(ATTACK_SLOTS
+  .filter((sl) => filled.has(slotKey(sl.cost, sl.type)))
+  .map((sl) => [placeholderAttack(sl).id, HANDMADE.find((m) => m.kind === 'elemental' && !m.id.startsWith('sig-') && slotKey(m.cost, m.type) === slotKey(sl.cost, sl.type))!.id]));
+
+/** A stored move id as it is now: a retired placeholder becomes its replacement; unknown ids give undefined. */
+export function currentMoveId(id: string): string | undefined {
+  const now = RETIRED_MOVES[id] ?? id;
+  return MOVE_BY_ID[now] ? now : undefined;
+}
+
 /** Always-available action that isn't part of the 4-move playbook. */
 export const CATCH_BREATH: Move = {
   id: 'catch-breath', name: 'Catch Breath', kind: 'support', cost: {}, effort: 0, speed: 0,

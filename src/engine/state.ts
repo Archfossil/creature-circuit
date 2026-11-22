@@ -7,6 +7,7 @@ import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
 import { SPECIES_BY_ID } from '../data/species';
+import { currentMoveId } from '../data/moves';
 
 export type TrainerStyle = 'nature' | 'urban' | 'balanced' | 'whisperer' | 'haggler' | 'drill' | 'caretaker' | 'pathfinder';
 
@@ -470,6 +471,11 @@ export function migrate(s: GameState): GameState | null {
     }
     c.teamwork ??= {};
     c.swapMoves ??= {};
+  }
+  // Moves: a placeholder attack replaced by a hand-made one becomes that move; an id that no longer
+  // exists at all is dropped (it would break the creature's card and battles)
+  for (const c of [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)]) {
+    c.playbook = [...new Set(c.playbook.map(currentMoveId).filter((id): id is string => !!id))];
   }
   // Special bond: older saves mark the starter (the first species recruited, or what it evolved into)
   const mine = [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)];

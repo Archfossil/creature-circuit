@@ -372,7 +372,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       energyPips(e, false, spent)),
     h('section', { class: 'ic-sec' },
       h('h4', null, 'Playbook', opts.editable ? h('button', { class: 'link', onclick: () => editPlaybook(c, changed, opts.onEdit) }, 'Edit moves') : null),
-      h('div', { class: 'moves' }, c.playbook.map((id) => moveCard(MOVE_BY_ID[id])))),
+      h('div', { class: 'moves' }, c.playbook.filter((id) => MOVE_BY_ID[id]).map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
       h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.'), retrained(c.ability, ABILITIES[sp.ability]?.name)),
       inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.'), retrained(c.instinct, INSTINCT_BY_ID[sp.instinct]?.name)) : null),
