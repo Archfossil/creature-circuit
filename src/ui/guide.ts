@@ -126,7 +126,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
         'From round 2 you can swap (S). The creature coming in is the Alpha, and it uses a 🔁 Swap Move at once, often borrowing from the partner it replaces. The swap screen shows what each swap will do right now.',
         'You choose the Swap Moves. Each creature’s card has a slot for every teammate: the move it uses when it swaps in for that one. So Sproutle swapping in for Puddlit can use a different move from Sproutle swapping in for Zapup (or Puddlit swapping in for Sproutle). Unset slots use the creature’s favourite.',
-        'Choosing a Swap Move shows both creatures side by side with their stats, so you can see whose numbers each move uses. The Alpha (swapping in) is highlighted, there and in every move’s description.',
+        'Choosing a Swap Move shows both creatures side by side with their stats, so you can see whose numbers each move uses. The Alpha (swapping in) is highlighted in gold and the partner (swapping out) in silver, there and in every move’s description.',
         '- Neutral Swap Moves (Tag Strike, Shield Pass, Slipstream, Siphon, Rally) are open to every pair.',
         '- Each type has two more. A pair can use one if either creature has that type; the first needs Teamwork 1 with that partner, the second Teamwork 2. Typed hits inflict their type’s status on a 1–2.',
         '🤝 Teamwork is how well two of your creatures work together. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move (more damage, more borrowed Armor and Ward, more healing).',

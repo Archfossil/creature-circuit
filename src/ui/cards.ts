@@ -206,8 +206,8 @@ A creature's Teamwork with any partner is capped at half its level.`;
 const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * Swap Move text with the Alpha (the incoming creature: the word "Alpha" and its name) highlighted,
- * and the partner's name marked more quietly, so it's clear who does what. Names are only marked
+ * Swap Move text with the Alpha (the incoming creature: the word "Alpha" and its name) highlighted in
+ * gold and the partner (swapping out) in silver, so it's clear who does what. Names are only marked
  * when the two differ (two creatures can share a name).
  */
 export function alphaText(text: string, alpha: string, partner: string): (string | HTMLElement)[] {
@@ -250,9 +250,9 @@ export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
   return h('div', { class: 'swap-pair' },
     h('div', { class: 'swap-pair-heads' }, who(alpha, 'alpha'), h('span', { class: 'swap-pair-arrow', 'aria-hidden': 'true' }, '⇄'), who(partner, 'partner')),
     h('table', { class: 'swap-pair-table' },
-      h('thead', null, h('tr', null, h('th', { class: 'alpha' }, nameOf(alpha)), h('th', null, ''), h('th', null, nameOf(partner)))),
+      h('thead', null, h('tr', null, h('th', { class: 'alpha' }, nameOf(alpha)), h('th', null, ''), h('th', { class: 'partner' }, nameOf(partner)))),
       h('tbody', null, rows.map(([label, a, b]) => h('tr', null,
-        h('td', { class: 'alpha' }, h('b', null, a)), h('th', null, label), h('td', null, b))))));
+        h('td', { class: 'alpha' }, h('b', null, a)), h('th', null, label), h('td', { class: 'partner' }, h('b', null, b)))))));
 }
 
 /**
