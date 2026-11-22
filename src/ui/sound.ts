@@ -4,14 +4,23 @@ import { settings } from './settings';
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 
+/** Loudest master gain (volume 100). The slider is squared so it feels even to the ear. */
+const MAX_GAIN = 0.44;
+const gainFor = (volume: number) => MAX_GAIN * (Math.max(0, Math.min(100, volume)) / 100) ** 2;
+
+/** Apply a volume change at once, including to sounds already playing. */
+export function applyVolume() {
+  if (master && ctx) master.gain.setTargetAtTime(settings().sound ? gainFor(settings().volume) : 0, ctx.currentTime, 0.02);
+}
+
 function audio(): AudioContext | null {
-  if (!settings().sound) return null;
+  if (!settings().sound || settings().volume <= 0) return null;
   if (!ctx) {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.35;
+    master.gain.value = gainFor(settings().volume);
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume();

@@ -22,6 +22,7 @@ export const GUIDE: GuideCategory[] = [
         '- End Turn when you’re done. Unspent Initiative doesn’t carry over, so camping can turn it into rest (see Places → Camping).',
         'Planning ahead? Tap any node and choose 📍 Mark as next stop. A flag in your colour marks it on the map as a reminder. Only you see it (online you can set it while others play), and it clears when you arrive. Lost track of it? Tap “📍 Your next stop” on your location card to fly the map there.',
         'Moving the map: drag it to pan and pinch or scroll to zoom. On a keyboard, hold W A S D or the arrow keys to pan, and Q or E to zoom out or in.',
+        'Too loud? The top of the ☰ Menu has a mute button and a volume slider (also in Settings).',
       ] },
       { id: 'explore', title: 'Exploring', body: [
         'Entering a wild node explores it with a d6:',

@@ -406,6 +406,10 @@ Shown when creating a trainer.
 - [ ] `menu-trainer-look`: 🧢 Trainer Look
 - [ ] `menu-how-to-play`: ❓ How to Play
 - [ ] `menu-settings`: ⚙️ Settings
+- [ ] `sound-muted`: 🔇 Muted (Menu and Settings volume row)
+- [ ] `sound-low`: 🔈 Volume low
+- [ ] `sound-mid`: 🔉 Volume medium
+- [ ] `sound-high`: 🔊 Volume high
 - [ ] `menu-title-screen`: 🏠 Title Screen
 - [ ] `menu-leave-online`: 🚪 Leave online game
 - [ ] `menu-abandon`: 🗑️ Abandon Journey

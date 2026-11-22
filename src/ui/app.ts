@@ -1,5 +1,5 @@
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec } from './dom';
-import { sfx } from './sound';
+import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
 import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
@@ -3150,8 +3150,39 @@ export class App {
     this.title();
   }
 
+  /** Mute button + volume slider, used at the top of the Menu and in Settings. */
+  soundControls(onChange?: () => void) {
+    const row = h('div', { class: 'sound-row' });
+    const render = () => {
+      const st = settings();
+      const muted = !st.sound || st.volume <= 0;
+      const mute = h('button', { class: `btn sm sound-mute ${muted ? 'muted' : ''}`, 'aria-pressed': muted ? 'true' : 'false', 'aria-label': muted ? 'Unmute sound' : 'Mute sound', title: muted ? 'Unmute' : 'Mute',
+        onclick: () => {
+          if (muted) { setSetting('sound', true); if (settings().volume <= 0) setSetting('volume', 50); }
+          else setSetting('sound', false);
+          applyVolume(); if (muted) sfx.tap(); // a tap confirms unmuting
+          render(); onChange?.();
+        } }, muted ? '🔇' : st.volume < 40 ? '🔈' : st.volume < 75 ? '🔉' : '🔊');
+      const slider = h('input', { type: 'range', min: '0', max: '100', step: '5', value: String(st.sound ? st.volume : 0), 'aria-label': 'Volume',
+        oninput: (e: Event) => {
+          const v = Number((e.target as HTMLInputElement).value);
+          setSetting('volume', v);
+          if (v > 0 && !settings().sound) setSetting('sound', true);
+          applyVolume();
+          label.textContent = v > 0 ? `${v}%` : 'Muted';
+          mute.textContent = v <= 0 ? '🔇' : v < 40 ? '🔈' : v < 75 ? '🔉' : '🔊';
+        },
+        onchange: () => { sfx.tap(); render(); onChange?.(); } }) as HTMLInputElement;
+      slider.value = String(st.sound ? st.volume : 0);
+      const label = h('span', { class: 'sound-pct' }, muted ? 'Muted' : `${st.volume}%`);
+      row.replaceChildren(mute, h('b', null, 'Volume'), slider, label);
+    };
+    render();
+    return row;
+  }
+
   menu() {
-    const close = openSheet('Menu', h('div', { class: 'tiles' },
+    const close = openSheet('Menu', h('div', null, this.soundControls(), h('div', { class: 'tiles' },
       tile('📇', 'Trainer ID', `${this.s.trainer.name} of ${NODE_BY_ID[this.s.trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
       tile('📖', 'Creature Codex', `${this.s.dex.caught.length} recruited · ${this.s.dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
@@ -3160,11 +3191,11 @@ export class App {
       this.lastBattleLog ? tile('⚔️', 'Last Battle Log', 'Every move, roll and hit from your last battle.', '', () => { close(); this.battleLogSheet(); }) : null,
       this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'The full guide, by topic: basics, creatures, battles, places, multiplayer.', '', () => { close(); this.howToPlay(); }),
-      tile('⚙️', 'Settings', 'Sound, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
+      tile('⚙️', 'Settings', 'Sound and volume, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
       tile('📌', 'Save a copy', 'Keep a named snapshot of this game to load later (💾 Saves on the title screen).', '', () => { close(); void this.saveCopyNow(); }),
       tile('🏠', 'Title Screen', 'Your game is autosaved.', '', () => { close(); this.title(); }),
       this.online ? tile('🚪', 'Leave online game', 'Go back to the title screen. You can rejoin with the room code.', '', () => { close(); this.leaveOnline(); })
-        : tile('🗑️', 'Abandon Journey', activeMatchOf()?.players.includes(this.s) ? 'Delete this hotseat game (every trainer’s progress).' : 'Delete this save.', '', async () => { close(); await this.abandon(); })));
+        : tile('🗑️', 'Abandon Journey', activeMatchOf()?.players.includes(this.s) ? 'Delete this hotseat game (every trainer’s progress).' : 'Delete this save.', '', async () => { close(); await this.abandon(); }))));
   }
 
   settingsSheet() {
@@ -3173,9 +3204,10 @@ export class App {
       const st = settings();
       const toggle = (k: 'sound' | 'fastDice' | 'reduceMotion' | 'doubleTapTravel' | 'fastBattle' | 'followerPrompt' | 'turnPing', label: string, text: string) =>
         h('label', { class: 'toggle' }, h('div', null, h('b', null, label), h('small', null, text)),
-          h('input', { type: 'checkbox', role: 'switch', checked: st[k], onchange: (e: Event) => { setSetting(k, (e.target as HTMLInputElement).checked); if (k === 'sound' && st[k] === false) sfx.tap(); render(); } }));
+          h('input', { type: 'checkbox', role: 'switch', checked: st[k], onchange: (e: Event) => { setSetting(k, (e.target as HTMLInputElement).checked); if (k === 'sound') { if (settings().sound && settings().volume <= 0) setSetting('volume', 50); applyVolume(); if (settings().sound) sfx.tap(); } render(); } }));
       body.replaceChildren(
         toggle('sound', 'Sound effects', 'Dice, hits and fanfares (synthesized, no downloads).'),
+        this.soundControls(render),
         toggle('fastDice', 'Fast dice', 'Shorter dice-roll animations for quicker turns.'),
         toggle('fastBattle', 'Fast battles', 'Pick a move and it resolves at once, with no move readout, no damage dice and short pauses. Off: each move shows what it will roll first, and every roll is explained as it happens.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),

@@ -1,9 +1,10 @@
 // Per-device preferences. Storage can be unavailable (private mode), so every access is guarded.
-export interface Settings { sound: boolean; fastDice: boolean; reduceMotion: boolean; doubleTapTravel: boolean; fastBattle: boolean; followerPrompt: boolean; turnPing: boolean }
+export interface Settings { sound: boolean; /** Sound volume, 0–100. */ volume: number; fastDice: boolean; reduceMotion: boolean; doubleTapTravel: boolean; fastBattle: boolean; followerPrompt: boolean; turnPing: boolean }
 
 const KEY = 'creature-circuit-settings-v1';
 const defaults: Settings = {
   sound: true,
+  volume: 80,
   fastDice: false,
   doubleTapTravel: true,
   fastBattle: false,
