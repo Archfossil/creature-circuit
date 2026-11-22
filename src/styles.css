@@ -261,6 +261,25 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .swap-opt.locked { opacity: 0.55; cursor: not-allowed; }
 .swap-opt-head { display: flex; align-items: center; gap: 6px; }
 .swap-opt-head .chip { margin-left: auto; }
+/* Swap Move text: the Alpha (swapping in) highlighted, the partner marked quietly */
+.swap-alpha { font-weight: 800; background: #ffe58a; border-radius: 4px; padding: 0 3px; color: var(--ink); }
+.swap-partner { text-decoration: underline dotted; text-underline-offset: 2px; }
+/* The pair in the Swap Move picker: Alpha highlighted, partner beside it, stats side by side */
+.swap-pair { display: grid; gap: 8px; margin-bottom: 10px; }
+.swap-pair-heads { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.swap-who { display: grid; justify-items: center; gap: 2px; text-align: center; padding: 8px; border-radius: 12px; border: 2px dashed var(--line); background: var(--paper); }
+.swap-who > img { width: 56px; height: 56px; }
+.swap-who > small:first-child { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.swap-who.alpha { border: 3px solid var(--tc); background: color-mix(in srgb, var(--tc) 14%, white); box-shadow: 0 0 0 3px #ffe58a, 0 4px 14px color-mix(in srgb, var(--tc) 45%, transparent); }
+.swap-who.alpha > small:first-child { color: var(--ink); background: #ffe58a; border-radius: 6px; padding: 1px 6px; }
+.swap-who.partner { opacity: .85; }
+.swap-pair-arrow { font-size: 22px; font-weight: 800; }
+.swap-pair-table { width: 100%; max-width: 360px; margin: 0 auto; border-collapse: collapse; font-size: 14px; }
+.swap-pair-table th, .swap-pair-table td { padding: 3px 6px; text-align: center; }
+.swap-pair-table tbody th { font-weight: 700; color: var(--ink-2); }
+.swap-pair-table thead th { font-size: 12px; }
+.swap-pair-table .alpha { background: #fff4c2; }
+.swap-pair-table tr:nth-child(odd) td:not(.alpha) { background: rgba(0,0,0,.03); }
 .perks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .perk { font: inherit; border: 2px dashed var(--line); background: var(--paper); border-radius: 10px; padding: 6px; text-align: left; display: grid; gap: 2px; cursor: pointer; }
 .perk b { font-family: var(--font-head); font-size: 13px; }

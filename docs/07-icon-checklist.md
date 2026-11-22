@@ -313,6 +313,8 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 
 **Swap Moves**
 - [ ] `swap-moves`: 🔁 Swap Moves section on the creature card, the favourite Swap Move panel, the follower sheet line and the battle swap screen (shares the battle Swap button's 🔁).
+- [ ] `swap-alpha`: ⭐ "Alpha · swapping in" tag on the highlighted Alpha in the Swap Move picker (shares the Star Charm's ⭐).
+- [ ] `swap-pair`: ⇄ arrow between the Alpha and its partner at the top of the Swap Move picker.
 - Typed Swap Moves show their type's icon in the picker and on the card, so they need no icon of their own.
 
 ## 10. Start-of-turn events (26) ★★
@@ -460,6 +462,7 @@ The same emoji currently stands for different things. Each meaning should get it
 | 💰 | Coins · Merchant style |
 | 💥 | Damage step · Stagger status |
 | ⚙️ | Iron Filings · Sunder status · Settings |
+| ⭐ | Star Charm · lucky stars · Swap Move Alpha tag |
 | 🌲 | Forest biome · Pine Resin · Ranger style |
 | 🌼 | Meadow biome · Wildflower |
 | ❄️ | Tundra biome · Blizzard weather · Winter season |

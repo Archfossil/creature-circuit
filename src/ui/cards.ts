@@ -203,6 +203,58 @@ export const TEAMWORK_HELP = `Teamwork is how well two of your creatures work to
 It grows by ${TEAMWORK_PER_TURN} each turn both travel on your active team, and by ${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle (once per battle).
 A creature's Teamwork with any partner is capped at half its level.`;
 
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Swap Move text with the Alpha (the incoming creature: the word "Alpha" and its name) highlighted,
+ * and the partner's name marked more quietly, so it's clear who does what. Names are only marked
+ * when the two differ (two creatures can share a name).
+ */
+export function alphaText(text: string, alpha: string, partner: string): (string | HTMLElement)[] {
+  const names = alpha !== partner ? [alpha, partner] : [];
+  const terms = ['Alpha', ...names].sort((a, b) => b.length - a.length).map(escapeRe);
+  const re = new RegExp(`(?<!\\p{L})(${terms.join('|')})(?!\\p{L})`, 'gu');
+  const out: (string | HTMLElement)[] = [];
+  let at = 0;
+  for (const m of text.matchAll(re)) {
+    if (m.index! > at) out.push(text.slice(at, m.index));
+    const who = names.length && m[0] === partner ? 'partner' : 'alpha';
+    out.push(h('span', { class: `swap-${who}`, title: who === 'alpha' ? 'The Alpha: the creature swapping in' : 'The partner: the creature swapping out' }, m[0]));
+    at = m.index! + m[0].length;
+  }
+  if (at < text.length) out.push(text.slice(at));
+  return out;
+}
+
+/**
+ * The pair in a swap, side by side: the Alpha (swapping in, highlighted) and the partner it replaces
+ * (swapping out), with every stat each brings, so the Swap Move numbers can be read against them.
+ */
+export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
+  const sa = stats(alpha), sp = stats(partner);
+  const who = (c: CreatureInst, role: 'alpha' | 'partner') => {
+    const s = speciesOf(c);
+    return h('div', { class: `swap-who ${role}`, style: `--tc:${TYPE_COLOR[s.types[0]]}` },
+      h('small', null, role === 'alpha' ? '⭐ Alpha · swapping in' : 'Partner · swapping out'),
+      h('img', { src: portrait(s.id), alt: '' }),
+      h('b', null, nameOf(c)),
+      h('span', { class: 'row gap-s center' }, s.types.map((t) => typeIconImg(t, 14)), h('small', null, `Lv ${c.level}`)));
+  };
+  const of = (v: number, max: number) => `${Math.max(0, v)}/${max}`;
+  const rows: [string, string | number, string | number][] = [
+    ['Health', of(alpha.health, maxHealth(alpha)), of(partner.health, maxHealth(partner))],
+    ['Vitality', of(alpha.vitality, maxVitality(alpha)), of(partner.vitality, maxVitality(partner))],
+    ['Stamina', of(alpha.stamina, maxStamina(alpha)), of(partner.stamina, maxStamina(partner))],
+    ...STAT_KEYS.filter((k) => k !== 'vigor' && k !== 'stamina').map((k): [string, number, number] => [STAT_LABEL[k], sa[k], sp[k]]),
+  ];
+  return h('div', { class: 'swap-pair' },
+    h('div', { class: 'swap-pair-heads' }, who(alpha, 'alpha'), h('span', { class: 'swap-pair-arrow', 'aria-hidden': 'true' }, '⇄'), who(partner, 'partner')),
+    h('table', { class: 'swap-pair-table' },
+      h('thead', null, h('tr', null, h('th', { class: 'alpha' }, nameOf(alpha)), h('th', null, ''), h('th', null, nameOf(partner)))),
+      h('tbody', null, rows.map(([label, a, b]) => h('tr', null,
+        h('td', { class: 'alpha' }, h('b', null, a)), h('th', null, label), h('td', null, b))))));
+}
+
 /**
  * Swap Moves: one row per teammate, with the move this creature uses when it swaps in for that
  * teammate, their Teamwork and its bonus. `edit` opens the picker (when the card is editable).
@@ -224,7 +276,7 @@ function swapSection(c: CreatureInst, mates: CreatureInst[], edit?: (partner: Cr
             '🤝 ', fmtTeamwork(t), bonus ? ` · +${bonus}` : ''),
           edit ? h('button', { class: 'link', onclick: () => edit(m) }, 'Change') : null),
         h('div', null, mv.type ? typeIconImg(mv.type, 14) : null, ' ', h('b', null, mv.name), mv.id === fav.id ? h('span', { class: 'muted' }, ' · favourite') : null),
-        h('small', null, describeSwap(mv, swapVals(c, m))));
+        h('small', null, alphaText(describeSwap(mv, swapVals(c, m)), nameOf(c), nameOf(m))));
     })) : h('p', { class: 'small muted' }, 'Recruit another creature to set Swap Moves.'),
     h('p', { class: 'small muted' }, `🤝 Teamwork grows +${TEAMWORK_PER_TURN} a turn while both are on your active team, and +${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle. Every ${TEAMWORK_PER_BONUS} Teamwork adds +1 to the Swap Move.`));
 }
@@ -235,7 +287,9 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
   const v = swapVals(c, partner);
   const rows = SWAP_MOVES.map((m) => ({ m, lock: swapLock(c, partner, m) }))
     .sort((a, b) => Number(!!a.lock) - Number(!!b.lock));
-  const close = openSheet(`${nameOf(c)} swapping in for ${nameOf(partner)}`, h('div', null,
+  const A = nameOf(c), P = nameOf(partner);
+  const close = openSheet(`${A} swapping in for ${P}`, h('div', null,
+    swapPair(c, partner),
     h('p', { class: 'small muted' }, `Typed Swap Moves need a creature of that type in the pair (${[...new Set([...speciesOf(c).types, ...speciesOf(partner).types])].map((t) => TYPE_LABEL[t]).join(', ')} here). Stronger ones need Teamwork: ${nameOf(c)} has ${fmtTeamwork(teamworkOf(c, partner))} with ${nameOf(partner)}. Typed hits inflict their type’s status on a 1–2.`),
     h('div', { class: 'list swap-pick' }, rows.map(({ m, lock }) =>
       h('button', {
@@ -249,8 +303,8 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
         h('div', { class: 'swap-opt-head' }, m.type ? typeIconImg(m.type, 16) : null, h('b', null, m.name),
           h('span', { class: 'muted' }, m.type ? ` · ${TYPE_LABEL[m.type]}` : ' · Neutral', m.teamwork ? ` · Teamwork ${m.teamwork}` : ''),
           m.id === cur.id ? h('span', { class: 'chip good' }, 'Set') : null),
-        h('small', null, m.text),
-        h('small', { class: 'muted' }, lock ?? describeSwap(m, v)))))), { wide: true });
+        h('small', null, alphaText(m.text, A, P)),
+        h('small', { class: 'muted' }, lock ?? alphaText(describeSwap(m, v), A, P)))))), { wide: true });
 }
 
 /**

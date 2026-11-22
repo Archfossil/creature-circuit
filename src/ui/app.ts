@@ -2,7 +2,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove } from './cards';
+import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -1751,7 +1751,7 @@ export class App {
               h('div', { class: 'small' },
                 h('div', null, '🔁 ', h('b', null, pv.power), ` · 🤝 Teamwork ${fmtTeamwork(pv.teamwork)} with ${nameOf(cur)} → `, h('b', null, pv.bonus ? `+${pv.bonus} bonus` : 'no bonus yet'),
                   ctx.watch ? null : h('button', { class: 'link', onclick: () => { close(); editSwapMove(c, cur, () => swapPicker()); } }, 'Change')),
-                h('div', null, pv.effect),
+                h('div', null, alphaText(pv.effect, nameOf(c), nameOf(cur))),
                 h('div', { class: 'muted' }, grows)));
           }))));
       };
