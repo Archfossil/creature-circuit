@@ -175,7 +175,7 @@ There is one elemental attack for every **typed energy cost** that totals 1–5,
 
 Dual attacks are only learnable by creatures that generate both energy types.
 
-**Replacing a placeholder:** add a hand-made attack with the same typed cost and hit type. Its slot is then filled and the placeholder stops being generated. Saves that already know the placeholder keep working: its old id is mapped to the new move (`RETIRED_MOVES`) and swapped in when the save loads.
+**Replacing a placeholder:** add a hand-made attack with the same typed cost and hit type. Its slot is then filled and the placeholder stops being generated. Saves that already know the placeholder keep working: its old id is mapped to the new move (`RETIRED_MOVES`) and swapped in when the save loads or an online room sends its match.
 
 ## Map node and edge
 

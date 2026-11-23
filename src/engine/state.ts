@@ -325,11 +325,13 @@ export function loadMatch(): Match | null {
   try {
     const raw = localStorage.getItem(MATCH_KEY);
     if (!raw) return null;
-    const m = JSON.parse(raw) as Match;
-    const players = m.players.map((p) => migrate(p));
-    if (players.some((p) => !p)) return null;
-    return { ...m, players: players as GameState[] };
+    return migrateMatch(JSON.parse(raw) as Match);
   } catch { return null; }
+}
+/** Bring every trainer in a match up to the current version (null if one can't be). Also used on matches a server room sends, which may predate this build. */
+export function migrateMatch(m: Match): Match | null {
+  const players = m.players.map((p) => migrate(p));
+  return players.some((p) => !p) ? null : { ...m, players: players as GameState[] };
 }
 /**
  * Read an exported save file (a solo journey or a hotseat match), migrating it to the current

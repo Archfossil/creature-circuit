@@ -12,7 +12,7 @@ import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
-import { newGame, addItem, keyTownOf, tierOf, migrate, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
+import { newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
@@ -537,6 +537,15 @@ describe('morale and loyalty', () => {
     const m = migrate(old)!;
     expect(m.roster[0].playbook).toEqual(['starglimmer', 'starstruck']);
     for (const c of [...m.roster, ...m.reserve]) for (const id of c.playbook) expect(MOVE_BY_ID[id]).toBeDefined();
+  });
+  it('a match sent by an online room gets the same conversion, keeping its room fields', () => {
+    const m = newMatch([newGame('U', 'balanced', 'mangrove', 'twinkit', '#000'), newGame('V', 'balanced', 'mangrove', 'zapup', '#111')]);
+    m.owners = ['x', 'y']; m.code = 'ABCD';
+    m.players[1].roster[0].playbook = ['atk-astral3'];
+    const back = migrateMatch(JSON.parse(JSON.stringify(m)))!;
+    expect(back.players[1].roster[0].playbook).toEqual(['starglimmer']);
+    expect([back.owners, back.code]).toEqual([['x', 'y'], 'ABCD']);
+    expect(migrateMatch({ ...back, players: [{ ...back.players[0], version: 999 }] })).toBeNull();
   });
   it('morale back above the low line clears the warning', () => {
     const s = game();

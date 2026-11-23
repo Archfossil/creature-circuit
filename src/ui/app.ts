@@ -10,7 +10,7 @@ import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, 
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain } from '../engine/state';
-import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
@@ -511,7 +511,9 @@ export class App {
   }
 
   /** A new match snapshot from the server. */
-  applyState(match: Match) {
+  applyState(sent: Match) {
+    const match = migrateMatch(sent); // the room may have been started by an older build
+    if (!match) { toast('This room’s game is from a different version. Reload the page, or start a new room.', 'bad', 6000); return; }
     try { localStorage.setItem('creature-circuit-online-v1', JSON.stringify(match)); } catch { /* ignore */ }
     if (this.feeding()) return; // we're the one playing: our copy is the newest
     setActiveMatch(match);
