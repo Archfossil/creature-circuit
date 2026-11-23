@@ -498,6 +498,17 @@ describe('morale and loyalty', () => {
     expect(r2.checks[0].left).toBe(true);
     expect(s.roster).not.toContain(c);
   });
+  it('a starter’s Nature, Ability and Instinct can be chosen, and last through evolution', () => {
+    const c = newGame('U', 'balanced', 'mangrove', 'twinkit', '#000', undefined, { nature: 'enduring', ability: 'forager', instinct: 'comet-tail' }).roster[0];
+    expect([c.nature, abilityOf(c), instinctIdOf(c)]).toEqual(['enduring', 'forager', 'comet-tail']);
+    expect([c.health, c.vitality]).toEqual([maxHealth(c), maxVitality(c)]);
+    c.species = SPECIES_BY_ID[c.species].evolvesTo!;
+    expect([abilityOf(c), instinctIdOf(c)]).toEqual(['forager', 'comet-tail']);
+    // left out: a random Nature and the species' own
+    const d = newGame('U', 'balanced', 'mangrove', 'twinkit', '#000').roster[0];
+    expect(NATURE_BY_ID[d.nature]).toBeDefined();
+    expect([d.ability, d.instinct]).toEqual([undefined, undefined]);
+  });
   it('the starter’s bond gives +1 Vigor and no attribute under 1, before its Nature', () => {
     for (const id of STARTERS) {
       const c = newGame('U', 'balanced', 'mangrove', id, '#000').roster[0];

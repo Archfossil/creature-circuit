@@ -343,8 +343,8 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
   const nat = NATURE_BY_ID[c.nature];
   const ab = ABILITIES[abilityOf(c)];
   const inst = INSTINCT_BY_ID[instinctIdOf(c)];
-  /** "Retrained (Sproutle’s is Forager)" when it differs from its species'. */
-  const retrained = (own: string | undefined, name: string | undefined) => (own ? h('small', { class: 'muted' }, ` Retrained (a ${sp.name} usually has ${name}).`) : null);
+  /** "Retrained (Sproutle’s is Forager)" when it differs from its species' (a starter's may have been picked at the start). */
+  const retrained = (own: string | undefined, usual: string, name: string | undefined) => (own && own !== usual ? h('small', { class: 'muted' }, ` ${c.bond ? 'Its own' : 'Retrained'} (a ${sp.name} usually has ${name}).`) : null);
   const spent = allocateEnergy(e, c.playbook);
   const free = energyTotal(e) - energyTotal(spent);
   return h('article', { class: 'index-card', style: `--tc:${TYPE_COLOR[sp.types[0]]};--tc2:${TYPE_COLOR[sp.types[1] ?? sp.types[0]]}` },
@@ -374,8 +374,8 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       h('h4', null, 'Playbook', opts.editable ? h('button', { class: 'link', onclick: () => editPlaybook(c, changed, opts.onEdit) }, 'Edit moves') : null),
       h('div', { class: 'moves' }, c.playbook.filter((id) => MOVE_BY_ID[id]).map((id) => moveCard(MOVE_BY_ID[id])))),
     h('section', { class: 'ic-sec two' },
-      h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.'), retrained(c.ability, ABILITIES[sp.ability]?.name)),
-      inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.'), retrained(c.instinct, INSTINCT_BY_ID[sp.instinct]?.name)) : null),
+      h('div', { class: 'mini-panel' }, h('h5', null, '🌿 Ability · ', ab.name), h('p', null, ab.text), h('small', { class: 'muted' }, 'Active while Following.'), retrained(c.ability, sp.ability, ABILITIES[sp.ability]?.name)),
+      inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.'), retrained(c.instinct, sp.instinct, INSTINCT_BY_ID[sp.instinct]?.name)) : null),
     swapSection(c, opts.teammates === undefined ? [] : opts.teammates, opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
     h('section', { class: 'ic-sec' },
       h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),

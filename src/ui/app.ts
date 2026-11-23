@@ -9,7 +9,7 @@ import { BattleView } from '../render/battle';
 import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, type TrainerLook } from '../render/trainerModel';
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
-import type { GameState, TrainerStyle, BattleKind, Retrain } from '../engine/state';
+import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits } from '../engine/state';
 import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
@@ -20,14 +20,14 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { createCreature, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
-import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON } from '../data/instincts';
+import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, INSTINCT_POOL, instinctRules } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
-import { ABILITIES, NATURES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
+import { ABILITIES, NATURES, NATURE_BY_ID, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -160,6 +160,10 @@ export class App {
     let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = 'thunder', starter = STARTERS[3];
     const who = opts.seat !== undefined ? `Trainer ${opts.seat + 1} of ${opts.total} · ` : '';
     let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket', hairStyle: 'short' };
+    // the starter's traits: a random Nature to begin with, and its species' usual Ability and Instinct
+    const defaults = (id: string): StarterTraits => ({ nature: NATURES[Math.floor(Math.random() * NATURES.length)].id, ability: SPECIES_BY_ID[id].ability, instinct: SPECIES_BY_ID[id].instinct });
+    let traits = defaults(starter);
+    let shown = 0;
     const step = (n: number) => {
       let body: HTMLElement;
       if (n === 0) {
@@ -180,31 +184,59 @@ export class App {
               h('div', { class: 'row gap-s' }, typeIconImg(c.type, 28), h('b', null, c.name)),
               h('small', null, `${c.park} · Arbiter ${c.arbiter}`), h('small', { class: 'muted' }, c.blurb)))),
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(0) }, '← Back'), h('button', { class: 'btn primary', onclick: () => step(2) }, 'Next: Starter →')));
-      } else {
+      } else if (n === 2) {
         const sp = SPECIES_BY_ID[starter];
         body = h('div', { class: 'wizard' },
           h('div', { class: 'starter-grid' }, STARTERS.map((id) => {
             const x = SPECIES_BY_ID[id];
-            return h('button', { class: `starter ${starter === id ? 'sel' : ''}`, style: `--tc:${TYPE_COLOR[x.types[0]]}`, onclick: () => { starter = id; step(2); } },
+            return h('button', { class: `starter ${starter === id ? 'sel' : ''}`, style: `--tc:${TYPE_COLOR[x.types[0]]}`, onclick: () => { if (id !== starter) { starter = id; traits = defaults(id); } step(2); } },
               h('img', { src: portrait(id), alt: x.name }), h('b', null, x.name), typeChip(x.types[0], true));
           })),
           h('div', { class: 'starter-detail', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
             h('img', { src: portrait(sp.id) }),
             h('div', null, h('h3', null, sp.name), h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t))), h('p', { class: 'small' }, sp.dex),
-              h('p', { class: 'small' }, h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
-              INSTINCT_BY_ID[sp.instinct] ? h('p', { class: 'small' }, `${INSTINCT_ICON} `, h('b', null, INSTINCT_BY_ID[sp.instinct].name), ' — ', INSTINCT_BY_ID[sp.instinct].text) : null,
+              h('p', { class: 'small' }, 'Usually: 🌿 ', h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
+              INSTINCT_BY_ID[sp.instinct] ? h('p', { class: 'small' }, `Usually: ${INSTINCT_ICON} `, h('b', null, INSTINCT_BY_ID[sp.instinct].name), ' — ', INSTINCT_BY_ID[sp.instinct].text) : null,
+              h('p', { class: 'small muted' }, 'You’ll choose its Nature, Ability and Instinct next.'),
               h('p', { class: 'small' }, '🤝 ', h('b', null, 'Special bond'), ' — +1 Vigor, and no attribute starts below 1 (before its Nature).'),
               h('p', { class: 'small muted' }, `Evolves: ${sp.name} → ${SPECIES_BY_ID[sp.evolvesTo!].name} → ${SPECIES_BY_ID[SPECIES_BY_ID[sp.evolvesTo!].evolvesTo!].name}`))),
-          h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'),
-            h('button', { class: 'btn primary', onclick: () => {
+          h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'), h('button', { class: 'btn primary', onclick: () => step(3) }, 'Next: Nature →')));
+      } else {
+        const sp = SPECIES_BY_ID[starter];
+        const type = sp.types[0];
+        const pickBtn = (on: boolean, pickIt: () => void, ...kids: (Node | null)[]) => h('button', { class: `choice ${on ? 'sel' : ''}`, 'aria-pressed': String(on), onclick: () => { pickIt(); step(n); } }, ...kids);
+        const usual = (on: boolean) => (on ? h('small', { class: 'good-text' }, `${sp.name}’s usual`) : null);
+        // the starter as picked so far, to show what its Nature does
+        const c = createCreature(starter, 1, { nature: traits.nature });
+        c.bond = true;
+        const st = stats(c), nat = NATURE_BY_ID[traits.nature!];
+        const head = h('div', { class: 'starter-detail', style: `--tc:${TYPE_COLOR[type]}` },
+          h('img', { src: portrait(sp.id), alt: '' }),
+          h('div', null, h('h3', null, sp.name),
+            h('div', { class: 'row gap-s wrap' }, h('span', { class: 'chip' }, nat.name), n > 3 ? h('span', { class: 'chip' }, '🌿 ', ABILITIES[traits.ability!].name) : null, n > 4 ? h('span', { class: 'chip' }, `${INSTINCT_ICON} `, INSTINCT_BY_ID[traits.instinct!].name) : null),
+            h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${k === nat.up ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
+        const intro = n === 3 ? 'Its Nature raises one attribute and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health and its Vitality.'
+          : n === 4 ? 'Its Ability helps you on the map while it’s Following you.'
+            : `Its Instinct fires on its own in battle. Here are the ${TYPE_LABEL[type]} ones.`;
+        const grid = n === 3 ? NATURES.map((x) => pickBtn(traits.nature === x.id, () => { traits.nature = x.id; },
+          h('b', null, x.name), h('small', null, h('span', { class: 'good-text' }, `+1 ${STAT_LABEL[x.up]}`), ' · ', h('span', { class: 'bad-text' }, `−1 ${STAT_LABEL[x.down]}`)),
+          h('small', null, x.text), h('small', { class: 'muted' }, `Perks: ${x.perks.map((p) => p.text).join(' → ')}`)))
+          : n === 4 ? Object.values(ABILITIES).map((x) => pickBtn(traits.ability === x.id, () => { traits.ability = x.id; }, h('b', null, `🌿 ${x.name}`), h('small', null, x.text), usual(x.id === sp.ability)))
+            : INSTINCT_POOL[type].map((x) => pickBtn(traits.instinct === x.id, () => { traits.instinct = x.id; }, h('b', null, `${INSTINCT_ICON} ${x.name}`), h('small', null, x.text), h('small', { class: 'muted' }, instinctRules(x)), usual(x.id === sp.instinct)));
+        body = h('div', { class: 'wizard' }, head, h('p', { class: 'small' }, intro), h('div', { class: 'choice-grid' }, grid),
+          h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(n - 1) }, '← Back'),
+            n < 5 ? h('button', { class: 'btn primary', onclick: () => step(n + 1) }, n === 3 ? 'Next: Ability →' : 'Next: Instinct →')
+            : h('button', { class: 'btn primary', onclick: () => {
               finished = true;
               close();
-              const s = newGame(name.trim() || 'Rowan', style, home, starter, color, look);
+              const s = newGame(name.trim() || 'Rowan', style, home, starter, color, look, traits);
               if (opts.onDone) opts.onDone(s); else this.start(s, true);
             } }, opts.onDone && opts.seat! + 1 < opts.total! ? 'Next trainer →' : 'Begin Journey ✦')));
       }
       sheetBody.replaceChildren(body);
-      $('.sheet-head h2', sheetEl).textContent = who + ['Your Trainer', 'Home City', 'Choose a Starter'][n];
+      $('.sheet-head h2', sheetEl).textContent = who + ['Your Trainer', 'Home City', 'Choose a Starter', 'Its Nature', 'Its Ability', 'Its Instinct'][n];
+      if (n !== shown) { const sc = sheetBody.closest('.sheet-body'); if (sc) sc.scrollTop = 0; } // a new page starts at the top
+      shown = n;
     };
     const sheetBody = h('div');
     const close = openSheet('Your Trainer', sheetBody, { wide: true, onClose: () => { if (!finished) opts.onCancel?.(); } });

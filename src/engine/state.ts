@@ -166,7 +166,10 @@ export interface Retrain { nature?: string; ability?: string; instinct?: string 
 
 export interface TrainerLookChoice { skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string }
 
-export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string, look?: TrainerLookChoice): GameState {
+/** What a trainer picks for their starter; anything left out is random (Nature) or its species' own. */
+export interface StarterTraits { nature?: string; ability?: string; instinct?: string }
+
+export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string, look?: TrainerLookChoice, traits: StarterTraits = {}): GameState {
   const s: GameState = {
     version: SAVE_VERSION,
     trainer: { name, style, home, color, ...(look ? { look } : {}) },
@@ -179,7 +182,10 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
     phase: 'map',
     stats: { battlesWon: 0, recruited: 0, explored: 0, encountered: 0, record: {}, moveTypes: {}, foesKO: 0, itemsFound: 0, coinsEarned: 0, steps: 0 },
   };
-  const c = createCreature(starter, 1); // starters begin at Lv 1 with an untouched chart
+  const c = createCreature(starter, 1, { nature: traits.nature }); // starters begin at Lv 1 with an untouched chart
+  // kept on the creature even when it's the usual one, so the choice lasts through evolution
+  if (traits.ability) c.ability = traits.ability;
+  if (traits.instinct) c.instinct = traits.instinct;
   c.morale = 7;
   c.bond = true; // the starter's special bond: it never leaves, so a trainer always has a partner, and it's a little tougher than others of its kind
   fullRestore(c); // (the bond's extra Vigor)

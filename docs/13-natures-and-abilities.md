@@ -17,7 +17,7 @@ The traits every creature carries, shown on its index card:
 
 ### How Natures work
 
-- **Assigned at random** when a creature is created (wild, trainer, recruited or starter). A few sources set it: the Roaming Trader's creature shows its Nature up front.
+- **Assigned at random** when a creature is created (wild, trainer or recruited). A starter's is chosen by its trainer at the start, as are its Ability (any of the eight) and Instinct (any of its type's six). A few sources set it: the Roaming Trader's creature shows its Nature up front.
 - **Stats:** the Nature's **up** stat gets +1 and its **down** stat −1 (never below 0). Evasion always stays within 1–6.
 - **Perks:** each Nature has three perks that unlock **permanently** when the creature's Loyalty reaches **3**, **6** and **10**. Perks never re-lock, even if Loyalty drops later. Loyalty ranges 0–10.
 - **Changing it:** the Creature Caretaker event lets the player pick a new Nature for one creature (from 3 offered). The creature keeps the *number* of perks it had unlocked, now taken from the new Nature, starting with its first perk.
