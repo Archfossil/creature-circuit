@@ -3,7 +3,7 @@ import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import type { BattleLog } from './battleLog';
-import { createCreature, fullRestore, speciesOf, NODE_ENERGY } from './creature';
+import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
@@ -151,8 +151,9 @@ export interface GameState {
 
 const KEY = 'creature-circuit-save-v1';
 /** v2: energy generation doubled; progression-chart energy nodes now grant +2.
- *  v3: progression charts became skill trees; some node ids moved. */
-export const SAVE_VERSION = 3;
+ *  v3: progression charts became skill trees; some node ids moved.
+ *  v4: Health is 5 × Vigor in hearts of 5; the chart's Health and Vitality nodes became Vigor and stats. */
+export const SAVE_VERSION = 4;
 
 /** The player's mini customisation (colours are hex; hat/jacket are ids from render/trainerModel). Older saves have none. */
 /**
@@ -449,6 +450,27 @@ export function load(): GameState | null {
     return migrate(JSON.parse(raw) as GameState);
   } catch { return null; }
 }
+/**
+ * v3 → v4: Health and Vitality were each equal to Vigor, plus chart nodes of their own. A node bought on
+ * the current chart becomes what it gives now; one from an earlier stage becomes +1 Vigor (Vitality) or
+ * +1 Armor (Health). How hurt the creature was is kept, in hearts.
+ */
+function heartsFromV3(c: CreatureInst) {
+  const old = c.bonus as CreatureInst['bonus'] & { health?: number; vitality?: number };
+  const oldMax = Math.max(1, stats(c).vigor + (old.vitality ?? 0));
+  const frac = Math.min(1, c.vitality / oldMax);
+  let hp = old.health ?? 0, vit = old.vitality ?? 0;
+  delete old.health;
+  delete old.vitality;
+  const now = (id: string) => progressionTree(c).find((n) => n.id === id)?.apply(c);
+  if (hp && c.unlocked.includes('c')) { hp--; now('c'); }
+  if (vit && c.unlocked.includes('h')) { vit--; now('h'); }
+  if (vit) c.bonus.vigor = (c.bonus.vigor ?? 0) + vit;
+  if (hp) c.bonus.armor = (c.bonus.armor ?? 0) + hp;
+  c.vitality = c.ko ? 0 : Math.round(frac * maxVitality(c));
+  c.health = c.ko ? 0 : Math.max(1, Math.min(maxHealth(c), c.health));
+}
+
 /** Bring an older save up to SAVE_VERSION, or null if it can't be read. */
 export function migrate(s: GameState): GameState | null {
   if (s.version === 1) {
@@ -464,6 +486,10 @@ export function migrate(s: GameState): GameState | null {
     const rename: Record<string, string> = { e: 'f', f: 'g', g: 'h', h: 'p' };
     for (const c of [...s.roster, ...s.reserve]) c.unlocked = c.unlocked.map((id) => rename[id] ?? id);
     s.version = 3;
+  }
+  if (s.version === 3) {
+    for (const c of [...s.roster, ...s.reserve, ...(s.training ?? []).map((t) => t.creature)]) heartsFromV3(c);
+    s.version = 4;
   }
   // Overworld movements (Fly, Sail, Tunnel, Wayfind) are gone: a creature that had learned one gets
   // the chart node's replacement instead, +2 energy of its second type (or its only type)

@@ -9,7 +9,7 @@ import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
-import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
@@ -99,10 +99,12 @@ describe('energy & playbook (docs/03 Energy)', () => {
 });
 
 describe('creature growth', () => {
-  it('Health = Vitality = Vigor by default', () => {
+  it('Health is 5 × Vigor, in hearts of 5', () => {
     const c = createCreature('cindercub', 1, { nature: 'timid' });
     expect(maxHealth(c)).toBe(c.health);
-    expect(maxVitality(c)).toBe(maxHealth(c));
+    expect(maxHealth(c)).toBe(5);
+    expect(maxVitality(c)).toBe(stats(c).vigor - 1);
+    expect([totalHealth(c), maxTotal(c)]).toEqual([5 * stats(c).vigor, 5 * stats(c).vigor]);
   });
   it('10 XP is a level and a chart node', () => {
     const c = createCreature('cindercub', 1);
@@ -2319,7 +2321,7 @@ describe('camping', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
     s.roster.push(createCreature('zapup', 5), createCreature('pebbark', 5));
     const [a, b, c] = s.roster;
-    a.vitality = maxVitality(a) - 1; b.vitality = 1; c.vitality = maxVitality(c); c.fatigue = 2;
+    a.vitality = maxVitality(a) - 1; b.vitality = maxVitality(b) - 2; c.vitality = maxVitality(c); c.fatigue = 2;
     s.initiative = 2;
     expect(W.campTargets(s)).toEqual([b, a]);
     W.endTurn(s, true);
@@ -2576,7 +2578,40 @@ describe('progression skill tree', () => {
     for (let i = 0; i < 30; i++) { const w = createCreature('sproutle', 14); expect(w.bonus.vigor ?? 0).toBe(0); }
     expect(unlockNode(c, 'evo')).toBe(true);
     expect(c.species).toBe('thornback');
-    expect(progressionTree(c).map((n) => n.label)).toEqual(expect.arrayContaining(['+1 Health', '+1 Vitality']));
+    expect(progressionTree(c).map((n) => n.label)).toContain('+1 Vigor');
+  });
+  it('charts raise Health only through Vigor: last in a first stage, early after that, twice unless sturdy', () => {
+    const vigor = (id: string) => progressionTree(fresh(id)).filter((n) => n.label === '+1 Vigor').map((n) => n.id);
+    for (const sp of SPECIES) {
+      const want = sp.bulky ? [] : sp.stage === 1 && sp.evolvesTo ? ['h'] : sp.sturdy ? ['c'] : ['c', 'h'];
+      expect(vigor(sp.id), sp.id).toEqual(want);
+      for (const n of progressionTree(fresh(sp.id))) expect(n.label, sp.id).not.toMatch(/Health|Vitality/);
+    }
+    const c = fresh('emberfish');
+    const before = maxTotal(c);
+    for (const id of ['a', 'b', 'c', 'e', 'h']) expect(unlockNode(c, id), id).toBe(true);
+    expect([maxTotal(c), totalHealth(c)]).toEqual([before + 5, before + 5]); // a new heart comes full
+  });
+  it('older saves turn the old Health and Vitality nodes into what they give now', () => {
+    const s = newGame('T', 'balanced', 'iron', 'puddlit', '#fff');
+    s.version = 3;
+    const c = s.roster[0];
+    const oldVigor = stats(c).vigor;
+    c.unlocked = ['a', 'b', 'c', 'e', 'h'];
+    c.bonus = { health: 1, vitality: 1 } as never;
+    c.health = oldVigor + 1; c.vitality = oldVigor + 1; // unhurt under the old rules
+    const m = migrate(JSON.parse(JSON.stringify(s)))!;
+    const d = m.roster[0];
+    expect(m.version).toBe(SAVE_VERSION);
+    expect(d.bonus.vigor).toBe(1);
+    expect(Object.keys(d.bonus)).not.toContain('health');
+    expect(totalHealth(d)).toBe(maxTotal(d));
+    expect(maxHearts(d)).toBe(oldVigor + 1);
+    // half its hearts gone stays about half
+    c.vitality = 2;
+    const hurt = migrate(JSON.parse(JSON.stringify(s)))!.roster[0];
+    expect(hurt.vitality).toBeLessThan(maxVitality(hurt));
+    expect(hurt.ko).toBe(false);
   });
   it('a node needs ALL of its connecting nodes, not just one', () => {
     const c = fresh('emberfish');

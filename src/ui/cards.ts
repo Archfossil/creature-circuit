@@ -1,7 +1,7 @@
 import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
-import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, maxHealth, maxVitality, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
+import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
 import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
@@ -42,13 +42,29 @@ export function energyPips(e: Partial<Record<EnergyKey | 'neutral', number>>, sm
   return h('span', { class: 'pips' }, out);
 }
 
+/**
+ * The Health bar: one bar of 5 × Vigor, notched into hearts of 5, with the hearts still beating in a badge
+ * at its left end. The lighter stretch is what's missing from the current heart (it refills after a
+ * battle); Overheal is a gold, striped stretch. `gain` lights up what resting would restore.
+ */
+export function healthBar(n: number, x: { health: number; vitality: number; ko: boolean }, opts: { over?: number; gain?: boolean; title?: string } = {}) {
+  const max = n * HEART, cur = Math.min(max, totalHealth(x));
+  const pct = (v: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
+  const full = x.ko ? 0 : Math.min(n, x.vitality + 1);
+  const frac = cur / max, over = x.ko ? 0 : Math.min(max, opts.over ?? 0);
+  return h('div', { class: `hpbar ${x.ko ? 'ko' : ''}`, style: `--n:${n}`, title: opts.title ?? `Health ${cur}/${max}: ${full} of ${n} hearts, ${HEART} Health each${over ? `. Overheal +${over} soaks up damage first` : ''}` },
+    h('span', { class: 'hp-heart', 'aria-label': `${full} of ${n} hearts` }, h('span', { class: 'hp-heart-shape', 'aria-hidden': 'true', html: '<svg viewBox="0 0 24 22"><path d="M12 20.5C5 15.2 1.5 11.6 1.5 7.4 1.5 4.2 4 1.7 7 1.7c2 0 3.9 1.1 5 3 1.1-1.9 3-3 5-3 3 0 5.5 2.5 5.5 5.7 0 4.2-3.5 7.8-10.5 13.1z"/></svg>' }), h('b', { 'aria-hidden': 'true' }, full)),
+    h('div', { class: 'bar hp-bar' },
+      h('span', { class: 'refill', style: `width:${pct(full * HEART)}` }),
+      opts.gain && !x.ko ? h('span', { class: 'gain' }) : null,
+      h('i', { style: `width:${pct(cur)}`, class: frac < 0.34 ? 'low' : frac < 0.67 ? 'mid' : '' }),
+      over ? h('span', { class: 'over', style: `left:${pct(Math.min(cur, max - over))};width:${pct(over)}` }) : null,
+      h('span', { class: 'notches' })));
+}
+
 export function hpBlock(c: CreatureInst, compact = false) {
-  const mh = maxHealth(c), mv = maxVitality(c);
-  const hearts = h('span', { class: 'hearts' }, Array.from({ length: mv }, (_, i) => h('span', { class: `heart ${i < c.vitality ? 'on' : ''}` }, '♥')));
-  const pct = c.ko ? 0 : Math.max(0, Math.min(100, (c.health / mh) * 100));
   return h('div', { class: `hp ${compact ? 'compact' : ''}` },
-    h('div', { class: 'hp-row' }, h('span', { class: 'lbl' }, 'HP'), h('div', { class: 'bar' }, h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' })), h('span', { class: 'num' }, c.ko ? 'KO' : `${c.health}/${mh}`)),
-    h('div', { class: 'hp-row' }, h('span', { class: 'lbl' }, 'VIT'), hearts));
+    h('div', { class: 'hp-row' }, h('span', { class: 'lbl' }, 'HP'), healthBar(maxHearts(c), c), h('span', { class: 'num' }, c.ko ? 'KO' : `${totalHealth(c)}/${maxTotal(c)}`)));
 }
 
 /** How a move's typing lands on a defender: only Elemental moves use the type chart. */
@@ -133,8 +149,7 @@ export function statCompare(before: CreatureInst, after: CreatureInst, labels: [
       h('small', { class: 'muted' }, `${NATURE_BY_ID[c.nature]?.name ?? c.nature} · ${sp.rarity}`));
   };
   const rows: [string, number, number][] = [
-    ['Health', maxHealth(before), maxHealth(after)],
-    ['Vitality', maxVitality(before), maxVitality(after)],
+    ['Health', maxTotal(before), maxTotal(after)],
     ['Stamina', maxStamina(before), maxStamina(after)],
     ...STAT_KEYS.filter((k) => k !== 'vigor' && k !== 'stamina').map((k): [string, number, number] => [STAT_LABEL[k], sb[k], sa[k]]),
     ['Energy', energyTotal(energy(before)), energyTotal(energy(after))],
@@ -252,8 +267,7 @@ export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
   };
   const of = (v: number, max: number) => `${Math.max(0, v)}/${max}`;
   const rows: [string, string | number, string | number][] = [
-    ['Health', of(alpha.health, maxHealth(alpha)), of(partner.health, maxHealth(partner))],
-    ['Vitality', of(alpha.vitality, maxVitality(alpha)), of(partner.vitality, maxVitality(partner))],
+    ['Health', of(totalHealth(alpha), maxTotal(alpha)), of(totalHealth(partner), maxTotal(partner))],
     ['Stamina', of(alpha.stamina, maxStamina(alpha)), of(partner.stamina, maxStamina(partner))],
     ...STAT_KEYS.filter((k) => k !== 'vigor' && k !== 'stamina').map((k): [string, number, number] => [STAT_LABEL[k], sa[k], sp[k]]),
   ];
@@ -441,7 +455,7 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void, editab
     sp.signature && c.signature !== sp.signature ? h('div', { class: 'sig-preview' },
       h('small', null, '★ Signature Move preview (unlocked by its node on this chart)'),
       moveCard(MOVE_BY_ID[sp.signature])) : null,
-    h('p', { class: 'small muted center' }, 'A node opens once every node linked above it is unlocked. Evolving needs the whole center path; side branches are optional, but any you skip are left behind when the creature evolves. At the final stage, the Capstone needs both the Vitality and Stamina branches.'),
+    h('p', { class: 'small muted center' }, 'A node opens once every node linked above it is unlocked. Evolving needs the whole center path; side branches are optional, but any you skip are left behind when the creature evolves. At the final stage, the Capstone needs both the center path and the Stamina branch.'),
     h('footer', { class: 'ic-foot' }, h('button', { class: 'btn ghost', onclick: flip }, '↺ Flip to front')));
 }
 
@@ -487,7 +501,7 @@ function drawChartLinks(chart: HTMLElement, svg: SVGSVGElement, tree: ReturnType
 
 /** What each stat does for the moves you pick (hints in the playbook editor's sidebar). */
 const STAT_HINT: Record<string, string> = {
-  vigor: 'Sets Health and Vitality.',
+  vigor: 'Health: each point is a heart of 5.',
   power: 'Added to Physical move damage (minus the target’s Armor).',
   armor: 'Blocks Physical damage.',
   focus: 'Added to Elemental move damage (minus the target’s Ward).',
@@ -521,7 +535,7 @@ function playbookSidebar(c: CreatureInst, sel: string[], usage: Node, remove: (i
       h('div', null,
         h('b', null, nameOf(c)),
         h('div', { class: 'row gap-s small' }, sp.types.map((t) => typeIconImg(t, 16)), h('span', null, `Lv ${c.level}`), h('span', { class: 'muted' }, NATURE_BY_ID[c.nature]?.name ?? '')),
-        h('small', { class: 'muted' }, `❤️ ${maxHealth(c)} HP · 💨 ${maxStamina(c)} Stamina`))),
+        h('small', { class: 'muted' }, `❤️ ${maxTotal(c)} HP · 💨 ${maxStamina(c)} Stamina`))),
     // tapping a stat explains it (phones have no hover for the title)
     h('div', { class: 'pb-stats' }, STAT_KEYS.map((k) => h('button', {
       class: `stat ${uses.has(k) ? 'used' : ''}`, type: 'button', title: `${STAT_LABEL[k]}: ${STAT_HINT[k]}`,

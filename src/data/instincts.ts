@@ -16,7 +16,7 @@ import { TYPE_LABEL } from './types';
 export type InstinctMoment =
   /** It takes the field: as the battle begins (round 1), swapping in, or replacing a knocked-out teammate. */
   | 'enter'
-  /** It loses a Vitality heart. */
+  /** It loses a heart. */
   | 'heartLost'
   /** A physical attack (move or Swap Move) hits it and it's still standing. */
   | 'hitPhysical'
@@ -74,7 +74,7 @@ export interface InstinctPassive {
   opener?: number;
   /** Stat changes while one of these weathers is in the sky. */
   weather?: { ids: string[]; mods: Partial<Record<StatKey, number>> };
-  /** Stat changes while it's on its last heart (Vitality 0). */
+  /** Stat changes while it's on its last heart. */
   lastHeart?: Partial<Record<StatKey, number>>;
 }
 
@@ -225,7 +225,7 @@ const mods = (m: Partial<Record<StatKey, number>>) => Object.entries(m).map(([k,
 
 export const MOMENT_TEXT: Record<InstinctMoment, string> = {
   enter: 'When it takes the field',
-  heartLost: 'When it loses a Vitality heart',
+  heartLost: 'When it loses a heart',
   hitPhysical: 'When a physical attack hits it',
   ko: 'When it knocks out a foe',
   miss: 'When one of its attacks misses',
@@ -236,7 +236,7 @@ function effectText(e: InstinctEffect): string {
   switch (e.t) {
     case 'mod': return e.who === 'self' ? `${signed(e.n)} ${LABEL[e.stat]} while it stays in` : `the foe gets ${signed(e.n)} ${LABEL[e.stat]}`;
     case 'status': return `${statusName(e.status)} on the foe (if it has no status)`;
-    case 'heal': return `it recovers ${e.n} Health (beyond full Health: Overheal, up to half its max Health)`;
+    case 'heal': return `it recovers ${e.n} Health (beyond a full heart: Overheal, up to half a heart)`;
     case 'refill': return 'its Stamina refills';
     case 'cure': return 'it shakes off its status';
     case 'sting': return `the foe takes ${e.n} damage`;
@@ -264,7 +264,7 @@ export function instinctRules(i: Instinct): string {
     if (p.clash) out.push(`Clash die ${p.clash} size${p.clash > 1 ? 's' : ''} bigger.`);
     if (p.opener) out.push(`${signed(p.opener)} Speed in round 1.`);
     if (p.weather) out.push(`${mods(p.weather.mods)} in ${p.weather.ids.map((w) => WEATHER_NAME[w] ?? w).join(' or ')}.`);
-    if (p.lastHeart) out.push(`${mods(p.lastHeart)} while on its last heart (Vitality 0).`);
+    if (p.lastHeart) out.push(`${mods(p.lastHeart)} while on its last heart.`);
   }
   return out.join(' ');
 }

@@ -36,7 +36,7 @@ Day and night each have **39** weight of eligible events: 24 of time-specific ev
 | 3 | 🍲 Wandering Cook | `cook` | Service | 3 | Any | An active creature is hurt or fatigued | No | 💰 4 |
 | 4 | 🥺 A Lost Creature | `lost` | Creatures | 2 | Night | Always | Yes (two good options) | Free |
 | 5 | 🐫 Merchant Caravan | `caravan` | Service | 3 | Night | Always | No | Half the item's price |
-| 6 | ⛈️ Sudden Storm | `storm` | Hazard | 2 | Any | Always | **Yes** | 1 Initiative or 1 Vitality each |
+| 6 | ⛈️ Sudden Storm | `storm` | Hazard | 2 | Any | Always | **Yes** | 1 Initiative or 1 heart each |
 | 7 | 🥋 Sparring Master | `sparring` | Service | 3 | Day | Always | No | 💰 5 |
 | 8 | 🔮 Fortune Teller | `fortune` | Service | 2 | Any | No Star Charm effect already active | No | 💰 3 |
 | 9 | 🧺 Windfall | `windfall` | Find | 3 | Night | Always | Yes (one option) | Free |
@@ -53,7 +53,7 @@ Day and night each have **39** weight of eligible events: 24 of time-specific ev
 | 20 | 🔍 Codex Scholar | `scholar` | Find | 2 | Day | Always | Yes (one option) | Free |
 | 21 | 🎒 Lost Satchel | `satchel` | Find | 2 | Day | Always | Yes (moral choice) | Free |
 | 22 | 🌠 Shooting Star | `star` | Find | 2 | Night | Always | Yes (two good options) | Free |
-| 23 | 🤢 Bad Berries | `berries` | Hazard | 2 | Night | At least one active creature isn't KO'd | **Yes** | A Salve, 1 Initiative, or Vitality and Morale |
+| 23 | 🤢 Bad Berries | `berries` | Hazard | 2 | Night | At least one active creature isn't KO'd | **Yes** | A Salve, 1 Initiative, or a heart and Morale |
 | 24 | 🧒 Eager Apprentice | `apprentice` | Creatures | 2 | Day | At least one active creature isn't KO'd | No | Free |
 | 25 | 🎈 Hot Air Balloon | `balloon` | Travel | 2 | Day | On the mainland | No | Free |
 | 26 | 🚌 Night Coach | `coach` | Travel | 2 | Night | On the mainland | No | 💰 4 |
@@ -65,10 +65,10 @@ Day and night each have **39** weight of eligible events: 24 of time-specific ev
 | 32 | 🌫️ Cloud Bank | `cloudbank` | Cloud Island | 2 | Any | On Cloud Island | **Yes** | 1 Initiative, or Morale at risk |
 | 33 | ☀️ Sunlit Clouds | `sunlit` | Cloud Island | 3 | Day | On Cloud Island | Yes (two good options) | Free |
 | 34 | 👁️ Something in the Dark | `stalker` | Forest Floor | 3 | Any | On the Forest Floor, a creature able to fight | **Yes** | A hard battle, an item, or a trail sign |
-| 35 | 🌱 Grasping Roots | `roots` | Forest Floor | 3 | Any | On the Forest Floor, a creature not KO'd | **Yes** | 1 Initiative, or Vitality and Morale |
+| 35 | 🌱 Grasping Roots | `roots` | Forest Floor | 3 | Any | On the Forest Floor, a creature not KO'd | **Yes** | 1 Initiative, or a heart and Morale |
 | 36 | 🍄 Spore Cloud | `spores` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | A Calm Tea, or Fatigue and Morale |
 | 37 | 🌫️ Whispers in the Dark | `whispers` | Forest Floor | 2 | Any | On the Forest Floor | **Yes** | 2 Initiative, or a trail sign |
-| 38 | 🦇 Shade Thieves | `shadethieves` | Forest Floor | 2 | Any | On the Forest Floor, with a non-key item | **Yes** | An item (and maybe Vitality) |
+| 38 | 🦇 Shade Thieves | `shadethieves` | Forest Floor | 2 | Any | On the Forest Floor, with a non-key item | **Yes** | An item (and maybe a heart) |
 
 **Kinds:** *Cloud Island* and *Forest Floor* events only happen there. *Travel* moves the trainer somewhere far away (see [Getting around](#getting-around)). *Creatures* change or add to your team. *Service* means paying for a benefit. *Find* is a free gift. *Hazard* forces a choice between two costs. *Battle* starts a fight. *Gamble* is a dice bet. *Rest* recovers the team.
 
@@ -110,10 +110,10 @@ A caretaker offers to change one creature's Nature. Three random Natures are off
 
 | Kind | Weight | Time | Appears when | Forced? |
 |---|---|---|---|---|
-| Service | 3 | Any | An active creature (not KO'd) is missing Vitality or has Fatigue | No |
+| Service | 3 | Any | An active creature (not KO'd) is missing hearts or has Fatigue | No |
 
 **Choices**
-- **Share a meal · 💰 4:** every active creature that isn't KO'd gets full Vitality and Health, and its Fatigue is cleared. KO'd creatures still need a stable.
+- **Share a meal · 💰 4:** every active creature that isn't KO'd gets full Health, and its Fatigue is cleared. KO'd creatures still need a stable.
 - **No thanks:** nothing happens.
 
 ### 4. 🥺 A Lost Creature · `lost`
@@ -148,7 +148,7 @@ A caravan sells one item at **half price** (rounded down, at least 💰 1): a Ho
 
 **Choices**
 - **Take shelter:** −1 Initiative this turn.
-- **Push on:** each active creature that isn't KO'd loses 1 Vitality.
+- **Push on:** each active creature that isn't KO'd loses 1 heart.
 
 ### 7. 🥋 Sparring Master · `sparring`
 
@@ -330,7 +330,7 @@ One random active creature (not KO'd) ate bad berries.
 **Choices**
 - **Give it a Salve:** uses one Vigor Salve. No other effect. Disabled if you have none.
 - **Stay with it · 1 Initiative:** it gets +1 Morale.
-- **Let it sleep it off:** −1 Vitality (never below 1 heart) and −1 Morale.
+- **Let it sleep it off:** −1 heart (never its last) and −1 Morale.
 
 ### 24. 🧒 Eager Apprentice · `apprentice`
 
@@ -472,7 +472,7 @@ A thick bank of cloud swallows the path.
 Daylight burns the portal shut until night (the trainer is stranded on the island for the day).
 
 **Choices**
-- **Bask in the sun:** the active team (not KO'd) gets full Vitality and Health, and Fatigue cleared.
+- **Bask in the sun:** the active team (not KO'd) gets full Health, and Fatigue cleared.
 - **Comb the clouds:** get 1 Cloud Silk and 1 Stardust.
 
 ### Forest Floor events
@@ -502,7 +502,7 @@ Roots seize one random active creature.
 
 **Choices**
 - **Cut it free · 1 Initiative.**
-- **Tear it free:** it loses 1 Vitality (never below 1 heart) and 1 Morale.
+- **Tear it free:** it loses 1 heart (never its last) and 1 Morale.
 
 ### 36. 🍄 Spore Cloud · `spores`
 
@@ -538,7 +538,7 @@ Shadows make off with your things.
 
 **Choices**
 - **Let them go:** lose one random item (never a key item).
-- **Send (follower) after them:** roll d6 + the follower's Speed. On **7 or more**, you lose nothing. Otherwise, you lose the item and the follower loses 1 Vitality.
+- **Send (follower) after them:** roll d6 + the follower's Speed. On **7 or more**, you lose nothing. Otherwise, you lose the item and the follower loses 1 heart.
 
 ---
 
@@ -619,5 +619,5 @@ Event ideas to design and build. Add yours here, then move them up into [The eve
 
 | Idea | Kind | Sketch | Status |
 |---|---|---|---|
-| *(example)* Wild Stampede | Hazard | A herd blocks the road: wait (−1 Initiative) or lead your follower through (Speed roll for coins, or −1 Vitality). | Idea |
+| *(example)* Wild Stampede | Hazard | A herd blocks the road: wait (−1 Initiative) or lead your follower through (Speed roll for coins, or −1 heart). | Idea |
 | | | | |

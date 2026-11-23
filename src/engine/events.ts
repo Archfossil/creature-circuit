@@ -215,7 +215,7 @@ const EVENTS: EventDef[] = [
     create: () => ({ price: 4 }),
     view: (s, d) => ({
       title: 'Wandering Cook', icon: '🍲',
-      text: 'A cook with a steaming pot on their back offers your active team a hearty meal: all Vitality and Health restored, Fatigue cleared. KO\'d creatures still need a stable.',
+      text: 'A cook with a steaming pot on their back offers your active team a hearty meal: all Health restored, Fatigue cleared. KO\'d creatures still need a stable.',
       choices: [{ id: 'eat', label: `Share a meal · 💰 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice) => {
@@ -283,13 +283,13 @@ const EVENTS: EventDef[] = [
       text: 'A storm rolls in fast. You can wait it out or push through the downpour.',
       choices: [
         { id: 'shelter', label: 'Take shelter', detail: 'Lose 1 Initiative this turn.' },
-        { id: 'push', label: 'Push on', detail: 'Each active creature loses 1 Vitality (never below its last heart).' },
+        { id: 'push', label: 'Push on', detail: 'Each active creature loses a heart (never its last).' },
       ],
     }),
     resolve: (s, _d, choice) => {
       if (choice === 'shelter') { s.initiative = Math.max(0, s.initiative - 1); return { text: 'You huddle under a ledge until it passes. (−1 Initiative)', tone: 'info' }; }
       for (const c of s.roster) if (!c.ko) c.vitality = Math.max(0, c.vitality - 1);
-      return { text: 'Soaked and shivering, your team pushes on. (−1 Vitality each)', tone: 'bad' };
+      return { text: 'Soaked and shivering, your team pushes on. (−1 heart each)', tone: 'bad' };
     },
   },
   {
@@ -649,7 +649,7 @@ const EVENTS: EventDef[] = [
       choices: [
         { id: 'salve', label: 'Give it a Salve', detail: 'Uses one Salve. It’s fine by morning.', disabled: (s.inventory.salve ?? 0) > 0 ? undefined : 'You have no Salve.' },
         { id: 'rest', label: 'Stay with it · 1 Initiative', detail: 'Nurse it through the night.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
-        { id: 'endure', label: 'Let it sleep it off', detail: '−1 Vitality and −1 Morale.' },
+        { id: 'endure', label: 'Let it sleep it off', detail: '−1 heart (never its last) and −1 Morale.' },
       ],
     }),
     resolve: (s, d, choice) => {
@@ -657,9 +657,9 @@ const EVENTS: EventDef[] = [
       if (!c) return { text: 'Whoever it was, they seem fine now.', tone: 'info' };
       if (choice === 'salve') { addItem(s, 'salve', -1); return { text: `${nameOf(c)} perks up after the Salve.`, tone: 'good' }; }
       if (choice === 'rest') { s.initiative -= 1; cheer(c, 1); return { text: `You sit up with ${nameOf(c)} all night. It’s grateful (+1 Morale).`, tone: 'good' }; }
-      c.vitality = Math.max(c.ko ? 0 : 1, c.vitality - 1);
+      c.vitality = Math.max(0, c.vitality - 1);
       cheer(c, -1);
-      return { text: `${nameOf(c)} has a rough night. (−1 Vitality, −1 Morale)`, tone: 'bad' };
+      return { text: `${nameOf(c)} has a rough night. (−1 heart, −1 Morale)`, tone: 'bad' };
     },
   },
   {
@@ -780,7 +780,7 @@ const EVENTS: EventDef[] = [
       title: 'Sunlit Clouds', icon: '☀️',
       text: 'Daylight burns the portal shut until night. The clouds glow warm and soft under the sun.',
       choices: [
-        { id: 'bask', label: 'Bask in the sun', detail: 'Your active team (not KO’d) gets full Vitality and Health, and Fatigue cleared.' },
+        { id: 'bask', label: 'Bask in the sun', detail: 'Your active team (not KO’d) gets full Health, and Fatigue cleared.' },
         { id: 'comb', label: 'Comb the clouds', detail: 'Find 1 Cloud Silk and 1 Stardust.' },
       ],
     }),
@@ -827,15 +827,15 @@ const EVENTS: EventDef[] = [
       text: `Roots coil out of the dark and seize ${d.name}, dragging it toward the soil.`,
       choices: [
         { id: 'cut', label: 'Cut it free · 1 Initiative', detail: 'Slow, careful work.', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
-        { id: 'tear', label: 'Tear it free', detail: `${d.name} loses 1 Vitality and 1 Morale.` },
+        { id: 'tear', label: 'Tear it free', detail: `${d.name} loses a heart (never its last) and 1 Morale.` },
       ],
     }),
     resolve: (s, d, choice) => {
       const c = team(s).find((x) => x.uid === d.uid);
       if (!c) return { text: 'The roots slither back into the soil.', tone: 'info' };
       if (choice === 'cut') { s.initiative -= 1; return { text: `You hack ${nameOf(c)} free, root by root.`, tone: 'info' }; }
-      c.vitality = Math.max(c.ko ? 0 : 1, c.vitality - 1); cheer(c, -1);
-      return { text: `${nameOf(c)} rips free, bruised and shaken. (−1 Vitality, −1 Morale)`, tone: 'bad' };
+      c.vitality = Math.max(0, c.vitality - 1); cheer(c, -1);
+      return { text: `${nameOf(c)} rips free, bruised and shaken. (−1 heart, −1 Morale)`, tone: 'bad' };
     },
   },
   {
@@ -891,7 +891,7 @@ const EVENTS: EventDef[] = [
         text: 'Shadows flit across your bag. Something small and quick is making off with your things!',
         choices: [
           { id: 'let', label: 'Let them go', detail: 'Lose one random item (never a key item).' },
-          { id: 'chase', label: f ? `Send ${nameOf(f)} after them` : 'Chase them', detail: `Roll d6 + Speed ${spd} ≥ 7: you lose nothing. Miss: you lose the item, and your follower loses 1 Vitality in the scramble.` },
+          { id: 'chase', label: f ? `Send ${nameOf(f)} after them` : 'Chase them', detail: `Roll d6 + Speed ${spd} ≥ 7: you lose nothing. Miss: you lose the item, and your follower loses a heart in the scramble (never its last).` },
         ],
       };
     },
@@ -902,7 +902,7 @@ const EVENTS: EventDef[] = [
         const f = follower(s);
         const r = roll(6);
         if (r + (f ? stats(f).speed : 0) >= 7) return { text: 'You catch the thieves and shake your things loose.', tone: 'good', rolls: [r] };
-        if (f && !f.ko) f.vitality = Math.max(1, f.vitality - 1);
+        if (f && !f.ko) f.vitality = Math.max(0, f.vitality - 1);
         if (id) addItem(s, id, -1);
         return { text: `They get away${id ? ` with your ${ITEMS[id]?.name ?? id}` : ''}, and the scramble leaves ${f ? nameOf(f) : 'you'} bruised.`, tone: 'bad', rolls: [r] };
       }

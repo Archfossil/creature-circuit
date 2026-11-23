@@ -3,7 +3,7 @@
 import { STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { TYPE_LABEL } from '../data/types';
 import { partsText, type Battle, type BEvent } from './battle';
-import { maxHealth, maxVitality, nameOf } from './creature';
+import { maxHearts, maxTotal, nameOf, totalHealth } from './creature';
 
 /** One line: what happened (`text`), the rolls and maths behind it (`detail`), and whose side it was (0 = the log owner's). */
 export interface BattleLogEntry { round: number; text: string; tone?: string; detail?: string; side?: 0 | 1 }
@@ -62,7 +62,7 @@ export function logBattleEvent(lg: BattleLog, b: Battle, e: BEvent, who: (side: 
       const k = e.calc;
       const chainText = (i: number) => { const ch = k?.cascade?.[i]; return ch ? ` (cascade d${ch.die}: ${ch.rolls.join(' + ')})` : ''; };
       const math = k ? `${k.dice.length ? `${k.dice.map((d, i) => `d${d} rolled ${k.rolls[i]}${chainText(i)}`).join(' + ')} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
-      const left = target ? ` ${nameOf(target)}: Health ${e.snap.ko ? 'KO' : `${e.snap.health}/${maxHealth(target)}`}, Vitality ${e.snap.vitality}/${maxVitality(target)}.` : '';
+      const left = target ? ` ${nameOf(target)}: ${e.snap.ko ? 'KO' : `Health ${totalHealth(e.snap)}/${maxTotal(target)} (${e.snap.vitality + 1} of ${maxHearts(target)} hearts)`}.` : '';
       note(`${who(e.side)} took ${e.amount} damage${e.crit ? ' (critical)' : ''}.${eff}`, { side: e.side, tone: mine(e.side) ? 'bad' : 'good', detail: `${math}${left}`.trim() || undefined });
       break;
     }

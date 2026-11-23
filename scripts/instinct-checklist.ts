@@ -14,7 +14,7 @@ const OUT = new URL('../docs/14-instinct-checklist.md', import.meta.url);
  */
 const BALANCE_WATCH: Record<string, { concern: string; idea: string }> = {
   'deep-roots': {
-    concern: 'With Overheal, Deep Roots no longer stops at full Health: a creature at full Health builds 1 Overheal every round, up to half its max Health, so a long fight hands it a free buffer.',
+    concern: 'With Overheal, Deep Roots no longer stops at a full heart: a creature with a full heart builds 1 Overheal every round, up to half a heart (3), so a long fight hands it a free buffer.',
     idea: 'If it proves too strong: let Deep Roots heal Health only (no Overheal), or only overheal once a battle.',
   },
   shadow: {

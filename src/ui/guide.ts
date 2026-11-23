@@ -111,7 +111,7 @@ export const GUIDE: GuideCategory[] = [
         '- Move keywords (hover a keyword on a move card for its rules): Potency N widens the status roll to 1 through 1 + N (Potency 2 on a d6: 1–3, 50%). Cascade (physical): a damage die that rolls its highest face rolls again and adds it, chaining as long as it keeps rolling its highest face; Cascade d10 chains with d10s instead. Purge: extra damage against a foe that already has a status (Purge: Burn only against Burn, for a bigger bonus).',
         '- Status moves (Smolder, Drench, Live Wire …) roll accuracy and deal no damage: a hit inflicts their status. A creature holds one status at a time.',
         '- 🛡 on a nameplate: its Instinct keeps statuses off (the icons show what it’s immune to; hover for details). The move readout tells you when a status won’t land.',
-        'Damage drains the Health bar, then a Vitality heart. Out of hearts means knocked out.',
+        'Health is one bar: 5 for each point of Vigor, notched into hearts of 5. The badge counts the hearts left. Healing and the end of a battle refill the current heart (the lighter stretch); a lost heart needs a stable, camping or a Salve. An empty bar means knocked out.',
       ] },
       { id: 'battlelog', title: 'Battle Log', body: [
         'Tap 📜 Log at the top of a battle (or press L) to see everything so far, round by round: each move used, every accuracy and damage roll with the numbers behind it, statuses, buffs, Clashes and coin flips.',
@@ -126,7 +126,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'stamina', title: 'Stamina & Fatigue', body: [
         'Each move costs Effort from Stamina. At 0 Stamina a creature gains Fatigue, and a fatigued creature rolls a d10 before acting and may lose its turn.',
         'In battle, the thin blue bar under your Health is Stamina. The diamond beside it is Fatigue: grey at 0, a red number when fatigued. The opponent’s nameplate shows its Fatigue diamond too. Hover or tap one to see the odds of losing a turn.',
-        'Overheal: when a move, a Swap Move or an Instinct heals a creature past full Health, the extra becomes Overheal, a gold stripe at the end of its Health bar. It soaks up damage before Health does, up to half the creature’s max Health, and lasts the rest of the battle.',
+        'Overheal: when a move, a Swap Move or an Instinct heals a creature past a full heart, the extra becomes Overheal, a gold stripe on its Health bar. It soaks up damage before Health does, up to half a heart (3), and lasts the rest of the battle.',
         'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
       ] },
       { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
@@ -197,7 +197,7 @@ export const GUIDE: GuideCategory[] = [
         '- Its events are all hostile: stalkers, grasping roots, spore clouds, whispers and thieves.',
       ] },
       { id: 'camping', title: 'Camping', body: [
-        'On a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Vitality and clearing Fatigue.',
+        'On a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Health and clearing Fatigue.',
         'Camp early to tend more of your team. Knocked-out creatures need a Stable.',
       ] },
       { id: 'school', title: 'Battle School', body: [

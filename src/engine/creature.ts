@@ -22,7 +22,7 @@ export interface CreatureInst {
   moraleMark?: number;
   /** Special bond: the trainer's starter. +1 Vigor and no attribute under 1 (before its Nature); it never leaves over low Morale, and can't be released or traded away. */
   bond?: boolean;
-  bonus: Partial<Stats> & { health?: number; vitality?: number };
+  bonus: Partial<Stats>;
   extraEnergy: EnergyMap;
   unlocked: string[];       // progression node ids (current stage chart)
   signature?: string;       // learned signature move id
@@ -78,8 +78,22 @@ export function stats(c: CreatureInst, extra?: Partial<Stats>): Stats {
   return s;
 }
 
-export const maxHealth = (c: CreatureInst, extraVigor = 0) => stats(c).vigor + extraVigor + (c.bonus.health ?? 0);
-export const maxVitality = (c: CreatureInst, extraVigor = 0) => stats(c).vigor + extraVigor + (c.bonus.vitality ?? 0);
+// ── Health ──────────────────────────────────────────────────────
+// Health is one bar of 5 per point of Vigor, divided into hearts of 5. It's stored as the Health left in
+// the current heart (`health`, up to HEART) and the full hearts behind it (`vitality`, up to Vigor − 1).
+// Healing refills the current heart; a lost heart needs rest (a stable, camping, a Salve …).
+/** Health in one heart (one point of Vigor). */
+export const HEART = 5;
+/** The most Health the current heart holds. */
+export const maxHealth = (_c: CreatureInst) => HEART;
+/** The most full hearts behind the current one. */
+export const maxVitality = (c: CreatureInst) => stats(c).vigor - 1;
+/** Hearts in the whole bar: one per Vigor. */
+export const maxHearts = (c: CreatureInst) => stats(c).vigor;
+/** The whole Health bar: 5 × Vigor. */
+export const maxTotal = (c: CreatureInst) => HEART * stats(c).vigor;
+/** Health left in the whole bar. */
+export const totalHealth = (x: { health: number; vitality: number; ko: boolean }) => (x.ko ? 0 : x.vitality * HEART + x.health);
 export const maxStamina = (c: CreatureInst) => stats(c).stamina;
 
 export function energy(c: CreatureInst): EnergyMap {
@@ -208,12 +222,14 @@ export function autoPlaybook(c: CreatureInst, varied = false): string[] {
 // the bottom, so reaching them means buying every node on the way down.
 //
 //              a                    a  +1 best stat
-//            /   \                  b  +2 primary energy      c  +1 Health
+//            /   \                  b  +2 primary energy      c  +1 third stat, or Vigor
 //           b     c                 d  Signature (or Focus)   e  +1 second stat (needs b AND c)
-//                                   (c and h give other stats for an already bulky species: Species.bulkSwap)
+//                                   Vigor comes last (h) in a first stage that evolves. After that it's early (c),
+//                                   with a second at h unless the species is `sturdy` (naturally high Vigor).
+//                                   Otherwise c and h are a third stat. A `bulky` species has no Vigor node.
 //          / \   / \                f  +1 Speed
 //         d   e     f               g  +2 secondary energy
-//         |   |     |               h  +1 Vitality            i  +1 Stamina
+//         |   |     |               h  +1 Vigor, or third stat  i  +1 Stamina
 //         g   h     i               Evolve needs h. Final stage instead: p (+2 Prisma, needs g)
 //         |  / \   /                and Capstone (needs h AND i).
 //         p  evo/cap
@@ -248,19 +264,22 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
   const first = bias[0] === 'vigor' ? 'power' : bias[0];
   const second = bias.find((k) => k !== first && !['vigor', 'speed', 'stamina'].includes(k)) ?? 'armor';
 
+  const [third, fourth] = [...bias.filter((k) => ['power', 'focus', 'armor', 'ward'].includes(k) && k !== first && k !== second)];
+  const vigorNode = (p: Place): ProgNode => ({ ...statNode(p, 'vigor'), text: `Permanently +1 Vigor: one more heart (+${HEART} Health).`, icon: '♥' });
+  const late = sp.stage === 1 && !!sp.evolvesTo; // a first stage earns its Vigor last; later stages (and those that never evolve) early
+  const c_: Place = { id: 'c', row: 1, col: 2, requires: ['a'] }, h_: Place = { id: 'h', row: 3, col: 1, requires: ['e'] };
+
   const nodes: ProgNode[] = [
     statNode({ id: 'a', row: 0, col: 1, requires: [] }, first),
     energyNode({ id: 'b', row: 1, col: 0, requires: ['a'] }, prim),
-    sp.bulkSwap ? statNode({ id: 'c', row: 1, col: 2, requires: ['a'] }, sp.bulkSwap.health)
-      : { id: 'c', row: 1, col: 2, requires: ['a'], label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
+    sp.bulky || late ? statNode(c_, third) : vigorNode(c_),
     sp.signature
       ? { id: 'd', row: 2, col: 0, requires: ['b'], label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name} (${sigSummary(MOVE_BY_ID[sp.signature])}).`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
       : statNode({ id: 'd', row: 2, col: 0, requires: ['b'] }, 'focus'),
     statNode({ id: 'e', row: 2, col: 1, requires: ['b', 'c'] }, second),
     statNode({ id: 'f', row: 2, col: 2, requires: ['c'] }, 'speed'),
     energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
-    sp.bulkSwap ? statNode({ id: 'h', row: 3, col: 1, requires: ['e'] }, sp.bulkSwap.vitality)
-      : { id: 'h', row: 3, col: 1, requires: ['e'], label: '+1 Vitality', text: 'One more Vitality heart.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
+    sp.bulky ? statNode(h_, fourth) : late || !sp.sturdy ? vigorNode(h_) : statNode(h_, third),
     statNode({ id: 'i', row: 3, col: 2, requires: ['f'] }, 'stamina'),
   ];
   if (sp.evolvesTo) {
@@ -288,11 +307,10 @@ export function unlockNode(c: CreatureInst, nodeId: string): boolean {
   if (!n) return false;
   c.points--;
   c.unlocked.push(n.id);
-  const hpBefore = maxHealth(c), vitBefore = maxVitality(c);
+  const vitBefore = maxVitality(c);
   n.apply(c);
-  // grow current pools along with the max
-  c.health += Math.max(0, maxHealth(c) - hpBefore);
-  c.vitality += Math.max(0, maxVitality(c) - vitBefore);
+  // a new heart comes full
+  if (!c.ko) c.vitality += Math.max(0, maxVitality(c) - vitBefore);
   if (n.kind === 'signature' || n.kind === 'energy' || n.kind === 'prisma') {
     // auto-slot the signature if it fits
     if (n.kind === 'signature' && c.signature && c.playbook.length < 4 && fits(energy(c), [...c.playbook, c.signature])) c.playbook.push(c.signature);
@@ -309,20 +327,19 @@ export const chartComplete = (c: CreatureInst) => availableNodes(c).length === 0
 /** Spend a level-up point on +1 to a stat. Only once the chart is complete; returns false otherwise. */
 export function trainStat(c: CreatureInst, k: StatKey): boolean {
   if (c.points <= 0 || !chartComplete(c) || !TRAINABLE.includes(k)) return false;
-  const hpBefore = maxHealth(c);
+  const vitBefore = maxVitality(c);
   c.points--;
   c.bonus[k] = (c.bonus[k] ?? 0) + 1;
-  c.health += Math.max(0, maxHealth(c) - hpBefore);
+  if (!c.ko) c.vitality += Math.max(0, maxVitality(c) - vitBefore);
   return true;
 }
 
 export function evolve(c: CreatureInst) {
   const sp = speciesOf(c);
   if (!sp.evolvesTo) return;
-  const hpLost = maxHealth(c) - c.health, vitLost = maxVitality(c) - c.vitality;
+  const vitLost = maxVitality(c) - c.vitality;
   c.species = sp.evolvesTo;
   c.unlocked = [];
-  c.health = Math.max(1, maxHealth(c) - hpLost);
   c.vitality = Math.max(0, maxVitality(c) - vitLost);
   c.stamina = maxStamina(c);
   if (!fits(energy(c), c.playbook)) c.playbook = autoPlaybook(c);
@@ -400,7 +417,7 @@ export function autoSpend(c: CreatureInst, allowEvolve: boolean) {
     if (av.length === 0) {
       // chart exhausted (or only Evolve left, which wild creatures skip): generic growth
       c.points--;
-      const k = pick(speciesOf(c).bulkSwap ? TRAINABLE.filter((x) => x !== 'vigor') : TRAINABLE);
+      const k = pick(speciesOf(c).bulky ? TRAINABLE.filter((x) => x !== 'vigor') : TRAINABLE);
       c.bonus[k] = (c.bonus[k] ?? 0) + 1;
       continue;
     }
@@ -417,10 +434,7 @@ export function fullRestore(c: CreatureInst) {
 }
 
 export function healthFraction(c: CreatureInst): number {
-  const h = maxHealth(c), v = maxVitality(c);
-  const total = h * (v + 1);
-  const cur = c.ko ? 0 : c.vitality * h + c.health;
-  return Math.max(0, Math.min(1, cur / total));
+  return Math.max(0, Math.min(1, totalHealth(c) / maxTotal(c)));
 }
 
 export type BattleStatus = { id: StatusId; turns: number };

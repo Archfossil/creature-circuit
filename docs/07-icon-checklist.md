@@ -232,7 +232,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `battle-watching`: 👀 Watching someone else's battle (online)
 
 **Nameplates & move cards**
-- [ ] `stat-health-heart`: ♥ Vitality hearts on nameplates
+- [ ] `stat-health-heart`: ♥ Heart badge on Health bars
 - [ ] `stat-stamina`: 💨 Stamina
 - [ ] `move-damage`: ⚔ Damage value on move cards
 - [ ] `move-physical`: ✊ Physical move marker
@@ -285,8 +285,7 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 **Progression chart nodes**
 - [ ] `node-stat`: ▲ +1 stat
 - [ ] `node-energy`: ◆ +2 energy
-- [ ] `node-health`: ♥ +1 Health
-- [ ] `node-vitality`: ✚ +1 Vitality
+- [ ] `node-vigor`: ♥ +1 Vigor
 - [ ] `node-signature`: ★ Signature Move
 - [ ] `node-evolve`: ⇪ Evolve
 - [ ] `node-prisma`: ✦ +2 Prisma energy
@@ -492,7 +491,7 @@ The same emoji currently stands for different things. Each meaning should get it
 | 🗿 | Plain Totem · typed Totems · "Recruited" marker |
 | ★ | Rarity star · Signature node · rare-area marker |
 | ✦ | Prisma node · Support move marker · Begin Journey |
-| ♥ | Vitality hearts · +1 Health node |
+| ♥ | Health bar heart badge · +1 Vigor node |
 | ▲ | Level-up badge · +1 stat node |
 | ⏳ | Turns-left warning · Legendary Loyalty |
 | 🛡️ | Support filter · "Weak to" header |

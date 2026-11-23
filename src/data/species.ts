@@ -44,7 +44,8 @@ function sp(d: Def): Species {
     rt, ability: d.ability, instinct: d.instinct, signature: d.sig, biomes: d.biomes, dex: d.dex,
     look: { shape: d.shape, primary: d.c[0], secondary: d.c[1], crest: d.crest },
     ...(d.activity ? { activity: d.activity } : {}),
-    ...(d.bulkSwap ? { bulkSwap: d.bulkSwap } : {}),
+    ...(d.bias.includes('vigor') ? { sturdy: true as const } : {}),
+    ...(d.bulky ? { bulky: true as const } : {}),
     ...(d.placeholder ? { placeholder: true } : {}),
   };
 }
@@ -96,7 +97,7 @@ const HANDMADE: Species[] = [
   sp({ id: 'cinderkoi', name: 'Cinderkoi', types: ['fire', 'water'], rarity: 'prime', stage: 2, bias: ['speed', 'focus'], shape: 'fish', c: ['#d0021b', '#ffe08a'], crest: 'halo', biomes: ['volcanic', 'coast'], ability: 'luckyCharm', instinct: 'sunbather', sig: 'sig-caldera', dex: 'Kilauea fishers say a Cinderkoi leaping from the lava lake brings a year of good fortune.' }),
 
   // ── GRASS ────────────────────────────────────────────
-  sp({ id: 'sproutle', name: 'Sproutle', types: ['grass'], rarity: 'common', stage: 1, next: 'thornback', bias: ['vigor'], shape: 'quad', c: ['#5ea832', '#c6e98a'], crest: 'leaf', biomes: [...GRA, 'grove'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', bulkSwap: { health: 'armor', vitality: 'ward' }, dex: 'Buries its feet in sunlit soil to nap. Grows a new leaf every birthday.' }),
+  sp({ id: 'sproutle', name: 'Sproutle', types: ['grass'], rarity: 'common', stage: 1, next: 'thornback', bias: ['vigor'], shape: 'quad', c: ['#5ea832', '#c6e98a'], crest: 'leaf', biomes: [...GRA, 'grove'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', bulky: true, dex: 'Buries its feet in sunlit soil to nap. Grows a new leaf every birthday.' }),
   sp({ id: 'thornback', name: 'Thornback', types: ['grass'], rarity: 'common', stage: 2, next: 'redwarden', bias: ['vigor', 'armor'], shape: 'quad', c: ['#417505', '#a3d36b'], crest: 'spikes', biomes: [...GRA, 'grove'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', dex: 'Thorny bark armor shields its soft underside. Shy around fire.' }),
   sp({ id: 'redwarden', name: 'Redwarden', types: ['grass', 'rock'], rarity: 'common', stage: 3, bias: ['vigor', 'armor'], weak: 'speed', shape: 'golem', c: ['#6b3b1e', '#4f9a1e'], crest: 'leaf', biomes: ['forest'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', dex: 'Stands guard on the Gloomshade forest floor. Mistaken for a redwood until it moves.' }),
   sp({ id: 'shadeleaf', name: 'Shadeleaf', types: ['grass'], rarity: 'prime', stage: 1, next: 'gloomoth', bias: ['evasion'], shape: 'sprite', c: ['#2f5d1a', '#c1ff7a'], crest: 'antenna', biomes: ['forest', 'swamp'], ability: 'keenNose', instinct: 'bramble-coat', dex: 'A caterpillar that drinks moonlight through its leaves.' }),

@@ -230,13 +230,24 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .meter .bar i { background: linear-gradient(180deg, #7cc4ff, var(--info)); }
 .meter.xp .bar i { background: linear-gradient(180deg, #d4a7ff, #8a4dff); }
 .num { font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
-.hearts { display: flex; gap: 1px; flex-wrap: wrap; }
-.heart { color: #d7cdb6; font-size: 15px; line-height: 1; }
-.heart.on { color: #ef476f; text-shadow: 0 1px 0 #8d1f3b; }
+/* The Health bar: notched into hearts of 5, with the hearts left in a badge on its left end */
+.hpbar { display: flex; align-items: center; min-width: 0; --hh: 24px; }
+.hpbar .bar { flex: 1; height: 14px; margin-left: calc(var(--hh) * -0.42); border-radius: 7px; background: #b9ae98; }
+.hpbar .bar i { border-radius: 0; }
+.hpbar .refill { position: absolute; inset: 0 auto 0 0; background: #f3ead6; }
+.hpbar .gain { position: absolute; inset: 0; background: #ffb3c6; animation: hp-gain 1.1s ease-in-out infinite; }
+@keyframes hp-gain { 50% { background: #ff6b8f; } }
+@media (prefers-reduced-motion: reduce) { .hpbar .gain { animation: none; } }
+.hpbar .notches { position: absolute; inset: 0 -2px 0 0; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--n) - 2px), var(--ink) calc(100% / var(--n) - 2px) calc(100% / var(--n))); }
+.hp-heart { position: relative; z-index: 1; flex: none; width: var(--hh); height: var(--hh); display: grid; place-items: center; line-height: 1; }
+.hp-heart-shape { grid-area: 1 / 1; width: 100%; line-height: 0; }
+.hp-heart-shape svg { width: 100%; fill: #ef476f; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; overflow: visible; }
+.hp-heart b { grid-area: 1 / 1; z-index: 1; font-family: var(--font-head); font-size: calc(var(--hh) * 0.52); color: #fff; font-variant-numeric: tabular-nums; transform: translateY(-6%); }
+.hpbar.ko .hp-heart-shape svg { fill: #bbb; }
 .hp.compact { gap: 2px; }
 .hp.compact .hp-row { grid-template-columns: 26px 1fr auto; font-size: 11px; }
-.hp.compact .bar { height: 9px; }
-.hp.compact .heart { font-size: 12px; }
+.hp.compact .bar { height: 11px; }
+.hp.compact .hpbar { --hh: 22px; }
 .ic-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .stat { background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; text-align: center; padding: 4px 2px; }
 .stat small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); font-weight: 800; }
@@ -564,9 +575,9 @@ button.dex-entry:hover { border-color: var(--ink); }
 .pl-bars .sta-num { grid-column: 2; font-size: 9.5px; }
 .pl-bars .fat-badge { grid-column: 3; grid-row: 1 / span 2; }
 .pl-vit { display: flex; align-items: center; gap: 8px; }
-.pl-vit .hearts { gap: 2px; }
-.pl-vit .heart { font-size: 24px; }
-.pl-vit .heart.on { text-shadow: 0 2px 0 #8d1f3b; }
+.pl-bars .hpbar { --hh: 28px; }
+.pl-bars .hpbar .bar { height: 15px; border-width: 2px; }
+.pl-bars .hpbar + .num { font-size: 13px; }
 .caught-mark { font-size: 14px; line-height: 1; padding: 2px 4px; border: 1.5px solid var(--ink); border-radius: 6px; background: #fff3c4; }
 /* Fatigue: a number in a warning diamond. Greyed at 0, red when the creature is fatigued. */
 .fat-badge { position: relative; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; background: none; box-shadow: none; cursor: help; }
@@ -687,7 +698,8 @@ button.dex-entry:hover { border-color: var(--ink); }
   .node-preview { left: auto; right: calc(10px + var(--sar)); top: calc(50px + var(--sat)); bottom: auto; width: 320px; }
   .battle-head { max-width: 40%; }
   .plate { padding: 5px 10px; width: 250px; }
-  .pl-vit .heart { font-size: 19px; }
+  .pl-bars .hpbar { --hh: 23px; }
+  .pl-bars .hpbar .bar { height: 12px; }
   .plate.foe { top: calc(8px + var(--sat)); }
   .battle-stack { grid-template-columns: 250px 1fr; align-items: end; }
   .battle-controls { min-height: 0; }
@@ -728,22 +740,19 @@ body.gl-lost::after { content: 'Graphics were paused by your device. Tap to relo
 .ic-art { max-height: 260px; aspect-ratio: auto; height: min(56vw, 260px); }
 .ic-art img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: contain; margin: 0; }
 
-/* Camp picker: choose who to tend, with the recovered hearts highlighted */
+/* Camp picker: choose who to tend, with what they'd recover highlighted */
 .camp-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 12px; }
 .camp-mon { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font-family: inherit; color: inherit;
   padding: 8px 10px; border-radius: 12px; border: 2px solid #e2d6bb; background: #fffaf0; cursor: pointer; }
 .camp-mon img { width: 44px; height: 44px; border-radius: 10px; background: #f1e7d2; flex: none; }
-.camp-mon .camp-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.camp-mon .camp-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .camp-mon .camp-check { width: 22px; height: 22px; flex: none; border-radius: 6px; border: 2px solid #c9b994; display: grid; place-items: center; font-weight: 700; color: #fff; }
 .camp-mon.on { border-color: #ef476f; background: #fff0f3; }
 .camp-mon.on .camp-check { background: #ef476f; border-color: #ef476f; }
 .camp-mon:disabled { cursor: default; opacity: 0.55; }
 .camp-mon.na { filter: grayscale(0.8); }
-.camp-mon .heart { font-size: 18px; }
-.heart.gain { color: #ffb3c6; text-shadow: 0 0 6px #ff4d7d, 0 0 2px #ff4d7d; animation: heart-gain 1.1s ease-in-out infinite; }
+.camp-mon .hpbar { max-width: 260px; }
 .gain-txt { color: #d6335f; font-weight: 700; }
-@keyframes heart-gain { 50% { color: #ff6b8f; transform: scale(1.12); } }
-@media (prefers-reduced-motion: reduce) { .heart.gain { animation: none; } }
 
 /* Move readout: what a move will roll, in order, before you commit to it */
 .readout { display: grid; gap: 8px; background: #fffaf0; border: 2px solid #e2d6bb; border-radius: 14px; padding: 10px 12px; }
@@ -898,9 +907,8 @@ div.perk { cursor: default; }
 .school-info { display: grid; gap: 4px; }
 .school-info .bar { height: 8px; border-radius: 6px; background: var(--paper-2, #eee3cc); overflow: hidden; border: 1px solid var(--line); }
 .school-info .bar i { display: block; height: 100%; background: #b05cff; }
-/* Overheal: a gold, striped segment over the right end of the Health bar, and a +N beside the number */
-.hp-bar { position: relative; }
-.hp-bar .over { position: absolute; right: 0; top: 0; bottom: 0; border-radius: inherit; background: repeating-linear-gradient(135deg, #ffd54a 0 5px, #ffb300 5px 10px); box-shadow: 0 0 6px #ffd54a; opacity: .95; }
+/* Overheal: a gold, striped stretch of the Health bar, and a +N beside the number */
+.hp-bar .over { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #ffd54a 0 5px, #ffb300 5px 10px); box-shadow: 0 0 6px #ffd54a; opacity: .95; }
 .over-num { color: #b07800; font-weight: 800; }
 .school-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; }
 .retrain { margin-top: 14px; display: grid; gap: 8px; }

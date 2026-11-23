@@ -30,7 +30,7 @@ export interface Species {
   rarity: Rarity;
   stage: 1 | 2 | 3;
   evolvesTo?: string;
-  /** Base attributes at level 1. Health = Vitality = vigor by default. */
+  /** Base attributes at level 1. Health is 5 × vigor, in hearts of 5. */
   base: Stats;
   /** Energy generated (requirement budget for the playbook, not spent per use). */
   energy: EnergyMap;
@@ -39,8 +39,10 @@ export interface Species {
   ability: string;        // ability id (overworld passive)
   instinct: string;       // Instinct id (data/instincts.ts): its passive in battle
   signature?: string;     // move id unlocked via progression
-  /** Already bulky: what its chart gives instead of the +1 Health (`health`) and +1 Vitality (`vitality`) nodes at this stage. */
-  bulkSwap?: { health: keyof Stats; vitality: keyof Stats };
+  /** Naturally high Vigor (a Vigor bias): one Vigor node on its later charts instead of two. */
+  sturdy?: true;
+  /** Already bulky: its chart has no Vigor node at this stage (another stat takes its place). */
+  bulky?: true;
   biomes: Biome[];        // where it can be encountered in the wild
   dex: string;            // flavor text for the index card
   look: CreatureLook;

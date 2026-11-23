@@ -163,7 +163,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-style) t
 **In game:** "Camping tends 2 creatures per Initiative; stables give +1 extra Morale." / "−1 XP per battle for each creature (never below 1)."
 
 **Exact rules**
-- **Perk, camping:** each Initiative left when you camp tends **2** creatures instead of 1 (restoring Vitality and clearing Fatigue).
+- **Perk, camping:** each Initiative left when you camp tends **2** creatures instead of 1 (restoring Health and clearing Fatigue).
 - **Perk, Stables:** resting gives the active team **+2 Morale** instead of +1.
 - **Drawback:** every creature that took part in a battle gets **1 less XP**, never below 1 total.
 

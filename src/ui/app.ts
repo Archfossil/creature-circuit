@@ -2,7 +2,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
+import { healthBar, creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -20,7 +20,7 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { createCreature, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { createCreature, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
 import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, INSTINCT_POOL, instinctRules } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
@@ -215,7 +215,7 @@ export class App {
           h('div', null, h('h3', null, sp.name),
             h('div', { class: 'row gap-s wrap' }, h('span', { class: 'chip' }, nat.name), n > 3 ? h('span', { class: 'chip' }, '🌿 ', ABILITIES[traits.ability!].name) : null, n > 4 ? h('span', { class: 'chip' }, `${INSTINCT_ICON} `, INSTINCT_BY_ID[traits.instinct!].name) : null),
             h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${k === nat.up ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
-        const intro = n === 3 ? 'Its Nature raises one attribute and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health and its Vitality.'
+        const intro = n === 3 ? 'Its Nature raises one attribute and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health: a heart of 5 for each point.'
           : n === 4 ? 'Its Ability helps you on the map while it’s Following you.'
             : `Its Instinct fires on its own in battle. Here are the ${TYPE_LABEL[type]} ones.`;
         const grid = n === 3 ? NATURES.map((x) => pickBtn(traits.nature === x.id, () => { traits.nature = x.id; },
@@ -1272,7 +1272,7 @@ export class App {
       f ? h('span', { class: 'ability-tag' }, ABILITIES[abilityOf(f)].name) : null);
     const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale})${c.bond ? '' : ' and may leave'}` : undefined, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
-      h('i', { style: `--p:${c.ko ? 0 : (c.vitality * maxHealth(c) + c.health) / (maxHealth(c) * (maxVitality(c) + 1))}` }))));
+      h('i', { style: `--p:${healthFraction(c)}` }))));
     const ev = E.eventView(s);
     const eventPill = ev && this.watching ? h('button', { class: 'event-pill watch', onclick: () => this.watchEvent(), title: `See the choices (only ${s.trainer.name} can answer)` },
       h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('b', null, `${s.trainer.name} is resolving ${ev.title}`), h('small', null, 'Tap to see the choices')))
@@ -1617,8 +1617,6 @@ export class App {
       const c = sd.team.find((x) => x.uid === disp[side].uid)!;
       const sn = disp[side];
       const sp = speciesOf(c);
-      const mh = maxHealth(c), mv = maxVitality(c);
-      const pct = sn.ko ? 0 : Math.min(100, (sn.health / mh) * 100);
       const recruited = sd.kind === 'wild' && s.dex.caught.includes(c.species);
       const guard = statusGuard(b, c); // an Instinct that keeps statuses off: say so up front
       plates[side].replaceChildren(
@@ -1629,16 +1627,12 @@ export class App {
           sn.zero ? h('span', { class: 'zero-tag', title: `Zeroing In: +${sn.zero} to its next accuracy roll, from missing. Misses stack it up to +${ZERO_IN_MAX}; leaving the field loses it.` }, h('i', { class: 'zi' }, '⌖'), ` +${sn.zero}`) : null,
           guard && !sn.ko ? h('span', { class: 'guard-tag', title: `${guard.text} Its Instinct protects it from status effects.`, 'aria-label': `Status protection: ${guard.text}` }, '🛡', guard.label === '🛡' ? '' : ` ${guard.label}`) : null,
           sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
-        // Vitality first: hearts are what actually decide the fight
         h('div', { class: 'pl-vit' },
-          h('span', { class: 'hearts', title: `Vitality ${sn.vitality}/${mv}` }, Array.from({ length: mv }, (_, i) => h('span', { class: `heart ${i < sn.vitality ? 'on' : ''}` }, '♥'))),
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: x.ko ? 'ko' : '' })))),
-        // Health bar and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
+        // the Health bar (notched into hearts) and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
         h('div', { class: `pl-bars ${side === 0 ? 'mine' : 'foe'}` },
-          h('div', { class: 'bar hp-bar', title: `Health ${sn.health}/${mh}${sn.over ? ` · Overheal +${sn.over}: soaks up damage before Health` : ''}` },
-            h('i', { style: `width:${pct}%`, class: pct < 34 ? 'low' : pct < 67 ? 'mid' : '' }),
-            sn.over && !sn.ko ? h('b', { class: 'over', style: `width:${Math.min(100, (sn.over / mh) * 100)}%` }) : null),
-          h('span', { class: 'num' }, sn.ko ? 'KO' : `${sn.health}/${mh}`, sn.over && !sn.ko ? h('span', { class: 'over-num', title: 'Overheal: extra Health beyond full that soaks up damage first' }, ` +${sn.over}`) : null),
+          healthBar(maxHearts(c), sn, { over: sn.over }),
+          h('span', { class: 'num' }, sn.ko ? 'KO' : `${totalHealth(sn)}/${maxTotal(c)}`, sn.over && !sn.ko ? h('span', { class: 'over-num', title: 'Overheal: extra Health that soaks up damage first' }, ` +${sn.over}`) : null),
           fatigueBadge(sn.fatigue),
           ...(side === 0 ? [
             h('div', { class: 'bar sta-bar', title: `Stamina ${sn.stamina}/${maxStamina(c)}: each move's 💨 Effort comes out of it. Running out adds Fatigue.` },
@@ -2418,7 +2412,7 @@ export class App {
       rule('🏮', 'Dahlia’s Trail', `Find ${t.need} signs (3, +1 per Tier) and her arena appears. Challenge her right there with 🏟️ Dahlia.`),
       rule('🚪', 'Leaving loses the trail', h('b', null, 'Leaving the Forest Floor, by choice or by being sent home after a defeat, loses every sign.'), ' You’ll have to start over.'),
       rule('🏃', 'No easy escape', 'Wild creatures are hard to run from down here (you need a 7+, not 4+), unless your follower has Quick Step.'),
-      rule('🍄', 'Exotic finds', 'Slightly better than usual: Duskberries (+2 Morale, +1 Loyalty), Root Salve (+2 Vitality and clears Fatigue), Heartwood Resin and Glowcaps (stronger offerings).'),
+      rule('🍄', 'Exotic finds', 'Slightly better than usual: Duskberries (+2 Morale, +1 Loyalty), Root Salve (+2 hearts and clears Fatigue), Heartwood Resin and Glowcaps (stronger offerings).'),
       rule('⚠️', 'Hostile events', 'While you’re down here, only the Forest Floor’s events happen, and they’re all dangerous: stalkers, grasping roots, spore clouds, whispers and thieves.'));
   }
 
@@ -2961,12 +2955,9 @@ export class App {
       count.textContent = `${picked.size}/${limit}`;
       go.disabled = picked.size === 0;
       list.replaceChildren(...s.roster.map((c) => {
-        const mv = maxVitality(c), canTend = needs.includes(c), on = picked.has(c.uid);
+        const lost = maxHearts(c) - 1 - c.vitality, canTend = needs.includes(c), on = picked.has(c.uid);
         const full = picked.size >= limit && !on;
         const why = c.ko ? 'KO’d: needs a stable' : !canTend ? 'Fully rested' : full ? 'Out of Initiative' : null;
-        // hearts: kept (on), recovered by tending (gain), still missing (off)
-        const hearts = h('span', { class: 'hearts' }, Array.from({ length: mv }, (_, i) =>
-          h('span', { class: `heart ${i < c.vitality ? 'on' : on ? 'gain' : ''}` }, '♥')));
         return h('button', {
           class: `camp-mon ${on ? 'on' : ''} ${canTend ? '' : 'na'}`, disabled: !canTend || full, 'aria-pressed': String(on),
           onclick: () => { if (on) picked.delete(c.uid); else picked.add(c.uid); render(); },
@@ -2975,16 +2966,17 @@ export class App {
           h('img', { src: portrait(c.species), alt: '' }),
           h('div', { class: 'camp-info' },
             h('div', { class: 'row gap-s' }, h('b', null, nameOf(c)), h('small', { class: 'muted' }, `Lv ${c.level}`)),
-            h('div', { class: 'row gap-s' }, hearts,
-              h('small', { class: on ? 'gain-txt' : 'muted' }, c.ko ? '' : on ? `+${mv - c.vitality} ♥` : `${c.vitality}/${mv}`),
+            healthBar(maxHearts(c), c, { gain: on }),
+            h('div', { class: 'row gap-s' },
+              h('small', { class: on ? 'gain-txt' : 'muted' }, c.ko ? '' : `${totalHealth(c)}/${maxTotal(c)} Health${on && lost > 0 ? ` · +${lost} ♥ (+${lost * HEART} Health)` : ''}`),
               c.fatigue ? h('span', { class: `chip ${on ? 'good' : 'bad'}` }, on ? `😮‍💨 Fatigue ${c.fatigue} → 0` : `😮‍💨 Fatigue ${c.fatigue}`) : null),
             why ? h('small', { class: 'muted' }, why) : null));
       }));
     };
     render();
     const close = openSheet('Make camp', h('div', null,
-      h('p', { class: 'small' }, `Camping ends your turn and uses all ${s.initiative} Initiative you have left. Each point tends ${per === 1 ? 'one creature' : `${per} creatures (Caretaker)`}: it recovers all its Vitality and shakes off Fatigue.`),
-      h('p', { class: 'small muted' }, 'Highlighted hearts are what tending restores. KO’d creatures need a stable.'),
+      h('p', { class: 'small' }, `Camping ends your turn and uses all ${s.initiative} Initiative you have left. Each point tends ${per === 1 ? 'one creature' : `${per} creatures (Caretaker)`}: it recovers all its Health and shakes off Fatigue.`),
+      h('p', { class: 'small muted' }, 'The highlighted part of a bar is what tending restores. KO’d creatures need a stable.'),
       h('div', { class: 'row gap-s' }, h('span', null, 'Tending '), count),
       list,
       h('div', { class: 'row gap end' }, h('button', { class: 'btn ghost', onclick: () => close() }, 'Cancel'), go)));

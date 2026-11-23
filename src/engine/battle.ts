@@ -4,7 +4,7 @@ import { describeSwap, swapChart, swapStatus, type SwapEffect, type SwapMove, ty
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
-import { stats, maxHealth, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, instinctIdOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
+import { stats, HEART, maxHealth, totalHealth, maxTotal, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, instinctIdOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie } from './dice';
 import { addTeamwork, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
 import { swapMoveOf, swapVals } from './swaps';
@@ -61,7 +61,7 @@ export interface Battle {
   instinctUsed?: string[];
   /**
    * Overheal by creature uid: Health a move, Swap Move or Instinct healed beyond full, kept as a buffer that
-   * soaks up damage before Health does (capped at half max Health; lasts the battle). See `mend`.
+   * soaks up damage before Health does (capped at half a heart; lasts the battle). See `mend`.
    */
   overheal?: Record<string, number>;
 }
@@ -109,7 +109,7 @@ export function snap(b: Battle, c: CreatureInst): Snap {
 }
 
 // ── Overheal ────────────────────────────────────────────────────
-/** The most Overheal a creature can hold: half its max Health, rounded up. */
+/** The most Overheal a creature can hold: half a heart, rounded up. */
 export const overhealCap = (c: CreatureInst) => Math.ceil(maxHealth(c) / 2);
 /** A creature's Overheal right now. */
 export const overhealOf = (b: Battle, c: CreatureInst) => b.overheal?.[c.uid] ?? 0;
@@ -131,7 +131,7 @@ function mend(b: Battle, c: CreatureInst, n: number): { healed: number; over: nu
 function mendText(b: Battle, c: CreatureInst, r: { healed: number; over: number }): string {
   const name = nameOf(c);
   if (!r.over) return `${name} recovers ${r.healed} Health.`;
-  return `${name} ${r.healed ? `recovers ${r.healed} Health and ` : 'is already at full Health: '}gains +${r.over} Overheal (${overhealOf(b, c)} in all), which soaks up damage first.`;
+  return `${name} ${r.healed ? `recovers ${r.healed} Health and ` : 'has a full heart: '}gains +${r.over} Overheal (${overhealOf(b, c)} in all), which soaks up damage first.`;
 }
 
 export const activeOf = (s: Side) => s.team[s.active];
@@ -162,8 +162,8 @@ export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts:
     if (!s.team[s.active] || s.team[s.active].ko) s.active = Math.max(0, s.team.findIndex((c) => !c.ko));
     for (const c of s.team) if (!c.ko) c.stamina = maxStamina(c);
   }
-  // Hot pot vigor buff: a little extra Health at the start
-  if (player.buff?.vigor) for (const c of player.team) if (!c.ko) c.health += player.buff.vigor * 2;
+  // Hot pot Vigor buff: a heart's worth of extra Health per point, as Overheal, for this battle
+  if (player.buff?.vigor) for (const c of player.team) if (!c.ko) (b.overheal ??= {})[c.uid] = player.buff.vigor * HEART;
   b.participants.push(activeOf(player).uid);
   noteFoe(b);
   return b;
@@ -850,7 +850,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
       icon: '💥', title: `Damage: ${[dt, partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
       tone: mult > 1 ? 'good' : mult < 1 ? 'bad' : undefined,
       text: `${dice.length ? `Roll ${dice.length > 1 ? `${dt} and add them up` : `a ${dt}`}, then ` : ''}${stat}${multText ? `, then apply the type chart${multText}` : ''}. ` +
-        `Deals ${range(lo, hi)}${chain ? '+' : ''} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)}${chain ? '+' : ''} on a crit` : ''}. ${foeName} has ${foe.health} Health left in its current heart.` +
+        `Deals ${range(lo, hi)}${chain ? '+' : ''} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)}${chain ? '+' : ''} on a crit` : ''}. ${foeName} has ${totalHealth(foe)}/${maxTotal(foe)} Health left.` +
         (chain ? ` Cascade: a top-face damage roll ${chain === dice[0] ? 'rolls again' : `rolls a d${chain}`} and adds it, and keeps going while that rolls its top face (no upper limit).` : ''),
     });
     if (m.kind === 'elemental' && m.status && m.dmgDie > 0) {
@@ -887,7 +887,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     const fx: string[] = [];
     for (const [k, v] of Object.entries(e.self ?? {})) fx.push(`your ${k} ${sgn(v!)}`);
     for (const [k, v] of Object.entries(e.foe ?? {})) fx.push(`foe ${k} ${sgn(v!)}`);
-    if (e.heal) fx.push(`heal ${e.heal} Health (beyond full: Overheal)`);
+    if (e.heal) fx.push(`heal ${e.heal} Health (beyond a full heart: Overheal)`);
     if (e.staminaGain) fx.push(`+${e.staminaGain} Stamina`);
     if (fx.length) steps.push({ icon: '✨', title: 'Effects', text: `${m.kind === 'support' ? 'On a hit' : 'After the damage'}: ${fx.join(', ')}. Stat changes last until that creature leaves the field, capped at ±3 per stat.`, tone: 'good' });
   }
@@ -1090,7 +1090,7 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
   ev.push({ t: 'say', text: `${nameOf(dead)} was knocked out!`, tone: loser === 0 ? 'bad' : 'good' });
   dead.losses++;
   if (!winner.ko) {
-    winner.health = maxHealth(winner); // victor restores Health (not Vitality)
+    winner.health = maxHealth(winner); // the victor refills its current heart (lost hearts stay lost)
     winner.wins++;
     ev.push({ t: 'heal', side: loser === 0 ? 1 : 0, amount: 0, snap: snap(b, winner) });
   }

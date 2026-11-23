@@ -2,7 +2,7 @@
 
 Each creature has the following attributes with sub-attributes in parenthesis.
 
-* Vigor (Health and Vitality)
+* Vigor (Health)
 * Power & Armor
 * Focus & Ward
 * Evasion
@@ -10,15 +10,17 @@ Each creature has the following attributes with sub-attributes in parenthesis.
 * Stamina (Fatigue)
 * Energy
 
-## Vigor (Health & Vitality)
+## Vigor (Health)
 
-The creature's Vigor informs the **Health** and **Vitality** of the creature. (A creature with 3 Vigor has 3 Health and 3 Vitality by default.) Incoming damage is dealt to Health first. When Health hits zero, a point of Vitality is removed and Health is reset. When a creature reaches 0 Vitality and 0 Health, they are defeated.
+A creature's Health is one bar of **5 × its Vigor**, divided into **hearts of 5**: one heart for each point of Vigor. (A creature with 3 Vigor has 15 Health, in 3 hearts.) Damage empties the current heart and carries on into the next. When the bar is empty, the creature is defeated.
 
-**Overheal.** Healing from a **move**, a **Swap Move** or an **Instinct** that would go past full Health isn't wasted: the extra becomes **Overheal**, a buffer of bonus Health that soaks up damage before Health does. A creature can hold up to **half its max Health** (rounded up) in Overheal. It lasts for the rest of the battle (also while benched) until damage uses it up. It's shown as a gold, striped end on the Health bar and a "+N" beside the Health number. Since the cap is half max Health, a heal repeated at full Health stops adding once the buffer is full. Typical cases: Photosynth or Second Wind used at full Health, Siphon healing a creature that swaps in at full Health, and Heartmend firing just after a lost heart has reset Health to full. (Healing from the arena only restores Health. This is under trial to make support moves more useful and may be pulled back.)
+The bar is notched at each heart, with a badge counting the hearts left. Healing in battle refills the **current** heart only; a heart that's been lost stays lost until the creature rests (a stable, camping, a Salve, some events). Nothing else adds Health: the progression chart does it through +1 Vigor nodes.
 
-When a creature defeats another creature in combat, the winning creature immediately restores all of their Health, but not Vitality. The defeated creature is KO'd and must be revived in a town or city.
+**Overheal.** Healing from a **move**, a **Swap Move** or an **Instinct** that would go past a full heart isn't wasted: the extra becomes **Overheal**, a buffer of bonus Health that soaks up damage before Health does. A creature can hold up to **half a heart** (3) in Overheal. It lasts for the rest of the battle (also while benched) until damage uses it up. It's shown as a gold, striped stretch on the Health bar and a "+N" beside the Health number. Because of the cap, a heal repeated at full Health stops adding once the buffer is full. Typical cases: Photosynth or Second Wind used at full Health, Siphon healing a creature that swaps in at full Health, and Heartmend firing just after a lost heart has reset Health to full. (Healing from the arena only restores Health. This is under trial to make support moves more useful and may be pulled back.)
 
-Outside of combat, creatures restore all Health, but not Vitality unless you skip turns "Camping" to heal wounded creatures. This will not revive KO'd creatures under normal circumstances, it merely recovers lost Vitality and removes Fatigue (more on Fatigue below.)
+When a creature defeats another creature in combat, the winning creature immediately refills its current heart, but not any hearts it lost. The defeated creature is KO'd and must be revived in a town or city.
+
+Outside of combat, creatures refill their current heart, but not lost hearts unless you skip turns "Camping" to heal wounded creatures. This will not revive KO'd creatures under normal circumstances, it merely recovers lost hearts and removes Fatigue (more on Fatigue below.)
 
 ## Power & Armor
 
@@ -42,9 +44,9 @@ Every attack has an "Effort" value which drains Stamina. When Stamina hits 0 the
 
 During combat if a Creature has Fatigue, before they can roll an attack they must first roll a 10-sided die. If the dice result is equal to or lower than the current Fatigue of the attacking creature, they do not resolve the attack and spend that turn to "Catch their breath" instead.
 
-Fatigue is removed when Vitality is restored. At rest in Cities or by camping.
+Fatigue is removed when a creature rests. At rest in Cities or by camping.
 
-> **Prototype note: camping.** Camping ends the turn and spends all remaining Initiative. Each point tends one creature the trainer picks: it recovers all Vitality and clears Fatigue. KO'd and fully rested creatures can't be picked, and with 0 Initiative left camping does nothing.
+> **Prototype note: camping.** Camping ends the turn and spends all remaining Initiative. Each point tends one creature the trainer picks: it recovers all Health and clears Fatigue. KO'd and fully rested creatures can't be picked, and with 0 Initiative left camping does nothing.
 
 ## Energy
 
@@ -92,7 +94,7 @@ This determines the difficulty of recruiting a defeated Creature. This is compar
 
 ## Level
 
-Determines how many times the creature has already been upgraded. At each new level a node is unlocked in the creatures progression tree. This tree can include increases to attributes, sub-attributes (such as improving Health or Vitality), adding more energy for use in the playbook, adding "Prism" energy (a rare energy type which counts as any energy), or unlocking signature attacks.
+Determines how many times the creature has already been upgraded. At each new level a node is unlocked in the creatures progression tree. This tree can include increases to attributes, Vigor (Health) included, adding more energy for use in the playbook, adding "Prism" energy (a rare energy type which counts as any energy), or unlocking signature attacks.
 
 The last node in progression charts for stage 1 and 2 creatures is always to "Evolve" into the next stage. Creatures at their final stage will have a capstone node which, once unlocked, gives the creature more power based on their Loyalty with their trainer.
 
@@ -106,7 +108,7 @@ Personality is determined by the Nature of a creature. Nature, like the progress
 
 An **Ability** is a passive effect which the Creature applies while in the overworld out of combat. These can be something like "Sweet Scent" which attracts wild creatures to the trainer for battle and possible recruitment, or "Baby-Doll Eyes" which can earn the trainer deals at markets. Only the "Following" creature can make use of their passive ability. At the start of each trainers turn, they determine one of their creature roster to "follow" them which improves their Loyalty, Morale, and allows them to use their Ability. This creature is also deployed first in combat if a fight breaks out. Some trainers who are expecting a challenge might not choose to have any creature following, so as to not give an incoming challenger the ability to start the battle with a type advantage!
 
-An **Instinct** is a passive which the creature applies on its own in battle. Every species has one, shared by its whole evolution family, and wild creatures and opposing trainers' creatures have them too. Some fire at a moment: when the creature takes the field (Menace lowers the foe's Power), when it loses a Vitality heart (Eruption Burns the foe), when a physical attack hits it (Static Field may Shock the attacker), when it knocks out a foe, when it misses, or at the end of each round. Others bend a rule while it's out: Fixed Star's accuracy can't be lowered, Shadow stops the foe Zeroing In, Steel Coat shrugs off the first status of the fight, Hold Fast survives one knockout blow with 1 Health. Stat changes from an Instinct last while the creature stays in, capped at ±3 like any modifier. All of them, with exact rules: [14 · Instinct Checklist](./14-instinct-checklist.md).
+An **Instinct** is a passive which the creature applies on its own in battle. Every species has one, shared by its whole evolution family, and wild creatures and opposing trainers' creatures have them too. Some fire at a moment: when the creature takes the field (Menace lowers the foe's Power), when it loses a heart (Eruption Burns the foe), when a physical attack hits it (Static Field may Shock the attacker), when it knocks out a foe, when it misses, or at the end of each round. Others bend a rule while it's out: Fixed Star's accuracy can't be lowered, Shadow stops the foe Zeroing In, Steel Coat shrugs off the first status of the fight, Hold Fast survives one knockout blow with 1 Health. Stat changes from an Instinct last while the creature stays in, capped at ±3 like any modifier. All of them, with exact rules: [14 · Instinct Checklist](./14-instinct-checklist.md).
 
 **Swap Moves** are the effect which triggers when a creature swaps in for another in your roster mid-fight. The incoming creature is the "Alpha", and it uses the Swap Move the trainer set for swapping in for that partner (or, until one is set, a neutral move picked at random for that pair). The Swap Move specifies what's borrowed from the partner.
 
@@ -122,7 +124,7 @@ Here is the flow of combat:
 * Attack resolution follows their own steps detailed below.
 * After creatures make their attacks, if they both still have health remaining, combat continues from the "Trainers Choose an Attack" step. If the battle is against a Legendary Wild Creature they will roll for Evasion at the end of each round. This is done by making a d20 roll and adding the level of the trainer's creature to the roll. If the sum is not 20 or higher, the Legendary will lose interest in the fight and flee next turn when they would otherwise be attacking (using their base Speed to determine when.) The trainer gets a warning that the wild creature looks like they're trying to get away and fundamentally has one turn to stop them somehow. 
 * Starting on the second round of a battle, a trainer can decide to swap in another creature instead (so long as the fight is either 2v2 or 3v3.) If this happens, the Alpha's Swap Move is resolved as its action instead, with all normal considerations taken into account (such as the attack speed, or damage dealt to the creature before it is swapped.)
-* When one creature is KO'd (zero vitality, zero health) the victorious creature regains all health (but no Vitality!) and gains Experience based on the level of the other creature. If that was the final creature in the roster for that team, the battle is over.
+* When one creature is KO'd (zero Health) the victorious creature refills its current heart (but not lost hearts!) and gains Experience based on the level of the other creature. If that was the final creature in the roster for that team, the battle is over.
 * When a battle ends there is a Prize step. Trainer vs. Trainer prizes are d6 coins exchanged from the loser to the winner. Trainer battles can also be made for certain other prizes such as items, or even merits, but these require official acknowledgement by the Creature Circuit first and must be done in an arena setting (using a stadium and unique combat rules for both trainers as if they were fighting the arbiter.)
 
 ## Attack Resolution
@@ -141,7 +143,7 @@ Attack resolution is done as follows:
 * **Purge** (elemental): extra damage against a foe that already has a status. Plain **Purge** (+2) works on any status (Heartbreaker, Maelstrom). **Purge: Burn**, **Purge: Soak** and so on (+4) only pay off against that one status, a bigger reward for setting it up. The status stays on. Each type has a named Purge attack costing 2 of its type and 1 of the type whose status it punishes (Quench is Water with a little Fire and has Purge: Burn), so a dual-type creature, or a team, can inflict a status with one type and cash it in with the other.
 * **Status moves** (support): one per type (Smolder, Drench, Live Wire, Creeping Vines, Ground Rumble, Corrode, Sweet Nothings, Dizzy Lights). They roll accuracy like an attack (d6) and deal no damage. A hit inflicts the type's status outright. Since a creature holds one status at a time, they do nothing against a foe that already has one.
 * **Status protection:** some Instincts keep statuses off (Wet Coat can't be Burned or Soaked, Steel Coat shrugs off the first status of each battle). The battle nameplate shows a 🛡 chip for these, with the statuses it's immune to (hover for details), and the move readout marks a status that won't land as blocked, with the reason (also when the foe already has a status).
-* Damage reduces a creatures Health. When their health hits 0, a point of Vitality is reduced. Damage carries over between Vitality points unless the creature has an ability or effect which says otherwise.
+* Damage reduces a creatures Health. When the current heart is empty, the next one starts. Damage carries over between hearts unless the creature has an ability or effect which says otherwise.
 
 # Example Natures
 
@@ -173,7 +175,7 @@ When a type is "Strong" against another it deals double (2x) damage. When a type
 
 Because creatures can have two types, but attacks can only be one certain type, it is possible to get super effectiveness or immunity. If the attack is effective against both types of a creature, it deals 4x damage. If the attack is resisted by both of the creatures types, that creature takes no damage at all.
 
-> **Balance watch: 4× hits ignore level.** The multiplier applies after the attacker's Focus and the defender's Ward, and damage carries over from Health into Vitality hearts, so one 4× hit can knock out a creature many levels higher. Seen in testing: a Lv 2 Emberfish's Tideblaze Strike (Water) came to 8 damage before the multiplier against a Lv 10 Calderex (Fire / Rock), and the resulting 32 knocked it out from full in one hit. In the engine test that pits them, this happened in about 1 run in 1,000, whenever the Emberfish won a speed tie and acted first. Worth deciding whether that's an exciting upset or too swingy. Possible levers: cap 4× at 3×, apply the multiplier before Ward, or stop a single hit from taking more than one or two Vitality hearts.
+> **Balance watch: 4× hits ignore level.** The multiplier applies after the attacker's Focus and the defender's Ward, and damage carries over between hearts, so one 4× hit can knock out a creature many levels higher. Seen in testing: a Lv 2 Emberfish's Tideblaze Strike (Water) came to 8 damage before the multiplier against a Lv 10 Calderex (Fire / Rock), and the resulting 32 knocked it out from full in one hit. In the engine test that pits them, this happened in about 1 run in 1,000, whenever the Emberfish won a speed tie and acted first. Worth deciding whether that's an exciting upset or too swingy. Possible levers: cap 4× at 3×, apply the multiplier before Ward, or stop a single hit from taking more than one or two Vitality hearts.
 
 | Type | Initial | Strong Against (Deals 2x) | Weak Against (Takes 2x) |
 | :---: | :---: | :---: | :---: |

@@ -7,7 +7,7 @@ import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
-import { STAT_LABEL, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
+import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
@@ -1104,7 +1104,7 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     const dest = wipe(s, ctx.wipeTo);
     out.text.push(`Your team was wiped out. You rush back to ${CITIES[dest].name}…`);
   }
-  // out of combat: creatures restore all Health (not Vitality)
+  // out of combat: the current heart refills (lost hearts need rest)
   for (const c of s.roster) if (!c.ko) { c.health = maxHealth(c); c.stamina = maxStamina(c); }
   return out;
 }
@@ -1215,7 +1215,7 @@ export function refundFacility(s: GameState, f: Facility) {
 }
 
 /**
- * Rest at a stable: full recovery (KOs, Vitality, Health, Stamina, Fatigue) and +1 Morale for the active team.
+ * Rest at a stable: full recovery (KOs, Health, Stamina, Fatigue) and +1 Morale for the active team.
  * City stables also serve their Chanko Nabe, a battle buff (doubled at your home city). Town stables don't.
  */
 export function rest(s: GameState, nodeId: string) {
@@ -1359,10 +1359,10 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
   if (!c || !hasItem(s, id)) return null;
   const it = itemInfo(id);
   let msg: string | null = null;
-  if (id === 'salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 1); msg = `${nameOf(c)} regained 1 Vitality.`; }
-  else if (id === 'elixir') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = maxVitality(c); c.fatigue = 0; msg = `${nameOf(c)} is fully refreshed.`; }
+  if (id === 'salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 1); msg = `${nameOf(c)} regained a heart (+${HEART} Health).`; }
+  else if (id === 'elixir') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; msg = `${nameOf(c)} is fully refreshed.`; }
   else if (id === 'calm-tea') { c.fatigue = 0; msg = `${nameOf(c)} sips the tea. Fatigue cleared.`; }
-  else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained 2 Vitality, and its Fatigue is cleared.`; }
+  else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained up to 2 hearts, and its Fatigue is cleared.`; }
   else if (id === 'energy-tonic') { const t = speciesOf(c).types[0]; c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
   else if (it.kind === 'treat') {
     const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;
@@ -1481,7 +1481,7 @@ export interface TurnReport {
   trainingDone: { name: string; school: string; retrain?: boolean }[];
 }
 
-/** Creatures that would benefit from camping, most in need first (missing Vitality, then Fatigue). KO'd ones need a stable. */
+/** Creatures that would benefit from camping, most in need first (missing hearts, then Fatigue). KO'd ones need a stable. */
 export function campNeeds(s: GameState): CreatureInst[] {
   return s.roster.filter((c) => !c.ko && (c.vitality < maxVitality(c) || c.fatigue > 0))
     .sort((a, b) => (maxVitality(b) - b.vitality) - (maxVitality(a) - a.vitality) || b.fatigue - a.fatigue);
@@ -1579,9 +1579,9 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   const report: TurnReport = { weatherRoll: 0, seasonChanged: false, left: [], warned: [], checks: [], legendsReturned: [], trainingDone: [] };
   if (camping) {
     const tended = campTargets(s, Array.isArray(camping) ? camping : undefined);
-    for (const c of tended) { c.vitality = maxVitality(c); c.fatigue = 0; }
+    for (const c of tended) { c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; }
     s.initiative = 0;
-    log(s, tended.length ? `You made camp. ${tended.map(nameOf).join(', ')} recovered Vitality and shook off Fatigue.` : 'You made camp, but no one needed tending.');
+    log(s, tended.length ? `You made camp. ${tended.map(nameOf).join(', ')} recovered all Health and shook off Fatigue.` : 'You made camp, but no one needed tending.');
   }
   moraleAndLoyalty(s, report);
   // Teamwork: the creatures on the active team grow closer travelling together (announced at the start of the next turn)

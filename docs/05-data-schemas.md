@@ -40,14 +40,14 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `types` | One or two of `astral, charm, electric, fire, grass, rock, steel, water`. |
 | `rarity` | `common`, `prime`, `apex` or `legendary`. This sets the encounter rarity tier and the base Recruitment Threshold (RT). |
 | `stage` | 1–3. Stage 1 and 2 progression charts end in **Evolve**. Stage 3 charts (and creatures with no evolution) end in a **Capstone**. |
-| `base` | Level 1 attributes. Health = Vitality = `vigor` by default. In `species.ts` these are generated from rarity and stage plus a stat `bias`. |
+| `base` | Level 1 attributes. Health is 5 × `vigor`, in hearts of 5. In `species.ts` these are generated from rarity and stage plus a stat `bias`. |
 | `energy` | Energy generated per type, plus optional `prisma`, which counts as any type. This is a playbook requirement, not a resource spent each turn. In `species.ts` it is generated from rarity and stage, then multiplied by `ENERGY_SCALE` (2). Energy and Prisma nodes on the progression chart each add `NODE_ENERGY` (2). |
 | `rt` | Recruitment Threshold. The offering roll is 2d6 + totem + offerings, against `rt + floor(level / 3)`. |
 | `biomes` | Biomes the species prefers. A wild node offers it when its biome's type pool (`BIOME_TYPES` in `map.ts`) includes the species' first type, and it is preferred over same-type species without that biome. The Creature Codex lists these nodes. |
 | `ability` | An overworld passive (see `ABILITIES`). It is active only while the creature is **Following**. |
 | `instinct` | Its battle passive (an id from `INSTINCTS` in `instincts.ts`). Every stage of a family shares one. See [14 · Instinct Checklist](./14-instinct-checklist.md). |
 | `signature` | A Signature Move, unlocked through a progression-chart node. |
-| `bulkSwap` (optional) | For an already bulky species: the stats its chart gives instead of the +1 Health and +1 Vitality nodes, e.g. Sproutle's `{ "health": "armor", "vitality": "ward" }`. It's per stage, so the next stage has the usual nodes. |
+| `sturdy`, `bulky` (optional) | How its charts raise Vigor. A first stage has one Vigor node, last; later stages (and species that never evolve) have two, one of them early. `sturdy` species (a Vigor bias, set automatically) have one instead of two, and `bulky` ones (Sproutle) have none at that stage. |
 | `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
 ### The roster table (`roster.ts`)
@@ -89,7 +89,7 @@ Each creature the player owns is saved as an instance of a species:
   "nature": "timid", "morale": 6, "loyalty": 2, "perks": 0,
   "bonus": { "speed": 1, "health": 1 }, "extraEnergy": { "fire": 1 },
   "unlocked": ["a", "c"], "signature": null, "capstone": false,
-  "health": 4, "vitality": 3, "stamina": 6, "fatigue": 0, "ko": false,
+  "health": 4, "vitality": 2, "stamina": 6, "fatigue": 0, "ko": false,
   "playbook": ["ember", "splash-jet", "quick-jab"],
   "teamwork": { "<other uid>": 1.4 },
   "swapMoves": { "<other uid>": "tide-relay" },

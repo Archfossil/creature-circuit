@@ -236,7 +236,7 @@ export const CITIES: Record<string, City> = {
   gloom: { nodeId: 'gloom', name: 'Gloomshade', type: 'grass', park: 'Redwood', arbiter: 'Dahlia', accolade: 'Lily Merit',
     arenaNode: 'forestfloor',
     arena: { name: 'Forest Floor Arena', trick: 'darkness', text: 'In the lightless forest floor, challengers roll 1 lower to hit.' },
-    hotpot: { name: 'Canopy Herb Nabe', buff: { vigor: 1 }, text: '+1 Vigor in your next battle.' },
+    hotpot: { name: 'Canopy Herb Nabe', buff: { vigor: 1 }, text: '+1 Vigor (5 extra Health, as Overheal) in your next battle.' },
     blurb: 'Boardwalks and ring platforms built into towering redwoods, high above a bottomless dark.' },
   canyon: { nodeId: 'canyon', name: 'Houndmouth Canyon', type: 'rock', park: 'Grand Canyon', arbiter: 'Cliff', accolade: 'Plateau Merit',
     arena: { name: 'Crumbling Plateau', trick: 'crumble', text: 'The plateau shrinks every round. Beat Cliff before it’s gone, or you’re rung out and lose (10 rounds at Tier 1–2, 9 at Tier 3–4, 8 at Tier 5).' },
