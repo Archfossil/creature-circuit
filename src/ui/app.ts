@@ -18,6 +18,7 @@ import * as X from '../engine/npcTrade';
 import * as D from '../engine/dares';
 import type { Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
+import { alertState, askForAlerts, calm, callFor, steadyInterval, testCall } from './attention';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
@@ -447,12 +448,12 @@ export class App {
   private inWizard = false;
   private closeLobby: (() => void) | null = null;
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
-  private titleFlash: ReturnType<typeof setInterval> | null = null;
 
   /** The read-only event window open while watching, and which event it shows. */
   private eventWatch: { key: string; close: () => void } | null = null;
 
   /** True when this browser is playing the current turn online (so its actions are mirrored to everyone). */
+  private stopKeepAlive: (() => void) | null = null;
   feeding() { return !!this.online && this.online.isController && !this.watching; }
   feed(item: FeedItem) { if (this.feeding()) this.online!.send({ type: 'feed', item }); }
 
@@ -464,14 +465,14 @@ export class App {
     const close = openSheet('🌐 Online', h('div', { class: 'online' },
       h('p', null, 'Play turn by turn with up to six trainers over the internet. Everyone watches the current trainer’s moves and battles live; when your turn comes up you’ll get a ping, even in another tab.'),
       h('div', { class: 'row gap-s wrap' },
-        h('button', { class: 'btn primary', onclick: async () => { close(); if (await this.connectOnline()) this.online!.create(); } }, '➕ Host a new room')),
+        h('button', { class: 'btn primary', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create(); } }, '➕ Host a new room')),
       h('h4', null, 'Join a room'),
       h('div', { class: 'row gap-s' }, input,
-        h('button', { class: 'btn primary', onclick: async () => { const c = input.value.trim().toUpperCase(); if (c.length !== 5) { toast('Room codes have 5 letters.', 'info'); return; } close(); if (await this.connectOnline()) this.online!.join(c); } }, 'Join')),
-      last && !code ? h('p', { class: 'small' }, h('button', { class: 'link', onclick: async () => { close(); if (await this.connectOnline()) this.online!.join(last); } }, `Rejoin room ${last}`)) : '',
+        h('button', { class: 'btn primary', onclick: async () => { const c = input.value.trim().toUpperCase(); if (c.length !== 5) { toast('Room codes have 5 letters.', 'info'); return; } void askForAlerts(); close(); if (await this.connectOnline()) this.online!.join(c); } }, 'Join')),
+      last && !code ? h('p', { class: 'small' }, h('button', { class: 'link', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.join(last); } }, `Rejoin room ${last}`)) : '',
       saved && saved.owners ? h('div', null, h('h4', null, 'Your saved online game'),
         h('p', { class: 'small muted' }, `${saved.players.map((p) => p.trainer.name).join(', ')} · Turn ${saved.players[saved.current].turn}. If its room has closed (e.g. the server restarted), open it again as host and share the new code.`),
-        h('button', { class: 'btn ghost', onclick: async () => { close(); if (await this.connectOnline()) this.online!.create({ match: saved, owners: saved.owners!, turnSeconds: saved.turnSeconds ?? 0 }); } }, '♻️ Reopen as host')) : '',
+        h('button', { class: 'btn ghost', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create({ match: saved, owners: saved.owners!, turnSeconds: saved.turnSeconds ?? 0 }); } }, '♻️ Reopen as host')) : '',
       h('p', { class: 'small muted' }, 'Online play needs the game server: it runs on Render from render.yaml, or locally with npm run server.')), { wide: true });
   }
 
@@ -487,12 +488,17 @@ export class App {
     mirror.toast = (text, tone) => this.feed({ kind: 'toast', text, tone });
     // (a battle's dice are part of its events, for whoever is viewing it)
     mirror.dice = (title, dice, caption, hold) => { if (!this.liveLog) this.feed({ kind: 'dice', title, dice, caption, hold }); };
-    if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
+    // a connection can die without a word in the background: keep checking it's real, so a turn isn't missed
+    this.stopKeepAlive?.();
+    this.stopKeepAlive = steadyInterval(() => { if (this.online === net && net.code && !this.reconnecting) void net.alive(8000).then((ok) => { if (!ok && this.online === net) void this.reconnect(); }); }, 25_000);
     return true;
   }
 
   /** Leave online play and go back to the title screen. */
   leaveOnline() {
+    this.stopKeepAlive?.();
+    this.stopKeepAlive = null;
+    calm();
     this.online?.close();
     this.online = null;
     mirror.toast = undefined; mirror.dice = undefined;
@@ -596,6 +602,7 @@ export class App {
     const ready = room.seats.filter((s) => s.trainer).length;
     this.lobbyBody.replaceChildren(
       h('p', null, 'Share this code or link. Everyone creates a trainer here, then the host starts the game.'),
+      this.alertRow(() => this.lobby()),
       h('div', { class: 'row gap-s wrap' }, h('b', { class: 'room-code' }, room.code),
         h('button', { class: 'btn ghost sm', onclick: () => { void navigator.clipboard?.writeText(link); toast('Invite link copied.', 'good'); } }, '🔗 Copy invite link')),
       h('h4', null, `Trainers (${room.seats.length}/${MAX_PLAYERS})`),
@@ -654,7 +661,7 @@ export class App {
       if (!this.watching && this.activeKey === key) return;
       this.activeKey = key;
       this.watching = false;
-      this.stopTitleFlash();
+        calm();
       this.start(s);
       if (m.owners?.[m.current] === net.id) this.notifyTurn(s);
       else toast(`You’re playing ${s.trainer.name}’s turn for them.`, 'info', 4000);
@@ -671,7 +678,7 @@ export class App {
     if (!m) return;
     const s = m.players[m.current];
     // we were playing until now (the turn ended, or the host took over): our open windows no longer apply
-    if (!this.watching) { this.liveFight = null; this.cancelAsk?.(); closeAllSheets(); this.eventWatch = null; this.liveLog = null; this.busy = false; }
+    if (!this.watching) { calm(); this.liveFight = null; this.cancelAsk?.(); closeAllSheets(); this.eventWatch = null; this.liveLog = null; this.busy = false; }
     rememberSession(this.online?.code ?? null);
     this.watching = true;
     this.s = s;
@@ -747,20 +754,11 @@ export class App {
     if (me) this.bagSheet(me, true);
   }
 
-  /** It's this browser's turn: ping and flag the tab if it's in the background. */
+  /** It's this browser's turn: a ping, and if they're looking elsewhere a flashing tab and a notification. */
   notifyTurn(s: GameState) {
     toast(`🔔 ${s.trainer.name}, it’s your turn!`, 'good', 4000);
-    if (!document.hidden) return;
-    if (settings().turnPing) sfx.ping();
-    const base = document.title.replace(/^🔔 Your turn! · /, '');
-    let on = false;
-    this.stopTitleFlash();
-    this.titleFlash = setInterval(() => { on = !on; document.title = on ? `🔔 Your turn! · ${base}` : base; }, 1000);
-    const back = () => { if (!document.hidden) { this.stopTitleFlash(); document.title = base; removeEventListener('visibilitychange', back); } };
-    addEventListener('visibilitychange', back);
-    try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Creature Circuit', { body: `${s.trainer.name}, it’s your turn!`, tag: 'cc-turn' }); } catch { /* ignore */ }
+    callFor('Your turn!', `${s.trainer.name}, it’s your turn!`);
   }
-  stopTitleFlash() { if (this.titleFlash) { clearInterval(this.titleFlash); this.titleFlash = null; document.title = document.title.replace(/^🔔 Your turn! · /, ''); } }
 
   /** We run the current turn: another trainer tended their creatures from their own browser. */
   applyRemoteEdit(seat: number, edit: CreatureEdit) {
@@ -852,7 +850,7 @@ export class App {
     const pick = m.pick as ({ kind: 'duel'; round: number } & FoeOptions) | undefined;
     const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
     if (send?.kind === 'duel-send') {
-      if (document.hidden && settings().turnPing) sfx.ping();
+      callFor('Choose your next creature!', `${m.from} is waiting for you.`);
       open(`⚔️ Your next creature against ${m.from}`, h('div', null,
         h('p', { class: 'small muted' }, 'Choose within a minute, or the next in line goes in.'),
         this.duelSendPicker(send.down, send.vs, send.options, (i) => answer({ yes: true, value: i }))), true);
@@ -860,20 +858,20 @@ export class App {
     }
     const lead = m.pick as { kind: 'duel-lead'; vs: CreatureInst | null; options: { i: number; c: CreatureInst }[] } | undefined;
     if (lead?.kind === 'duel-lead') {
-      if (document.hidden && settings().turnPing) sfx.ping();
+      callFor('Choose who leads!', `${m.from} is waiting for you.`);
       open(`⚔️ Who leads against ${m.from}?`, h('div', null,
         h('p', { class: 'small muted' }, 'Choose within a minute, or your first healthy creature leads.'),
         this.duelLeadPicker(lead.vs, lead.options, (i) => answer({ yes: true, value: i }))), true);
       return;
     }
     if (pick?.kind === 'duel') {
-      if (document.hidden && settings().turnPing) sfx.ping();
+      callFor('Your move!', `${m.from} is waiting for you.`);
       open(`⚔️ Your move against ${m.from}`, h('div', null,
         h('p', { class: 'small muted' }, 'Choose within a minute, or your creature acts on its own instincts.'),
         this.duelPicker(pick, pick.round, (act) => answer({ yes: true, value: act }))), true);
       return;
     }
-    if (document.hidden && settings().turnPing) sfx.ping();
+    callFor('An offer for you!', `${m.from} is waiting for you.`);
     open(m.title, h('div', null, h('p', null, m.text),
       h('div', { class: 'row gap center' },
         h('button', { class: 'btn ghost', onclick: () => answer({ yes: false }) }, m.no),
@@ -3802,6 +3800,16 @@ export class App {
         : tile('🗑️', 'Abandon Journey', activeMatchOf()?.players.includes(this.s) ? 'Delete this hotseat game (every trainer’s progress).' : 'Delete this save.', '', async () => { close(); await this.abandon(); }))));
   }
 
+  /** Turn alerts: whether the browser may show notifications, a button to allow them, and a test. */
+  private alertRow(changed: () => void, test = false) {
+    const st = alertState();
+    const quiet = !settings().sound || settings().volume <= 0 ? 'Sound is muted, so there’ll be no ping.' : !settings().turnPing ? 'The turn ping is off.' : '';
+    return h('div', { class: 'alert-row' }, h('div', null, h('b', null, '🔔 Turn notifications'),
+      h('small', null, st === 'on' ? 'On: your browser will tell you when it’s your turn.' : st === 'ask' ? 'Your browser can tell you when it’s your turn, even in another window.' : st === 'blocked' ? 'Blocked by your browser. Allow notifications for this site in its address-bar or site settings, then reload. The tab still flashes and pings.' : 'Not supported in this browser (or the page isn’t on https). The tab still flashes and pings.', quiet ? ` ${quiet}` : '')),
+      st === 'ask' ? h('button', { class: 'btn primary sm', onclick: async () => { await askForAlerts(); changed(); } }, 'Turn on') : null,
+      test ? h('button', { class: 'btn ghost sm', onclick: () => { testCall(); toast('Look at another tab or window now: the alert comes in 4 seconds.', 'info', 4000); } }, 'Test') : null);
+  }
+
   settingsSheet() {
     const body = h('div');
     const render = () => {
@@ -3816,7 +3824,8 @@ export class App {
         toggle('fastBattle', 'Fast battles', 'Pick a move and it resolves at once, with no move readout, no damage dice and short pauses. Off: each move shows what it will roll first, and every roll is explained as it happens.'),
         toggle('reduceMotion', 'Reduce motion', 'Tones down UI animations.'),
         toggle('doubleTapTravel', 'Double-tap shortcuts', 'Double-tap (or double-click) an adjacent node to travel there without the Travel button, or the city or town you’re in to open its menu.'),
-        toggle('turnPing', 'Turn ping (online)', 'Play a ping and flag the browser tab when it becomes your turn while you’re in another tab.'),
+        toggle('turnPing', 'Turn ping (online)', 'A gentle ping when it’s your turn, or someone needs an answer. If you’re looking elsewhere the tab flashes too.'),
+        this.alertRow(render, true),
         toggle('followerPrompt', 'Choose a follower each turn', 'At the start of every turn, show who is following you (Ability, Morale, Loyalty) and offer to switch.'),
         h('p', { class: 'small muted' }, 'Keyboard: 1–4 pick a move (Enter to confirm its readout, Esc to go back), B catch breath, S swap, R run, T type chart, Esc closes panels.'));
     };

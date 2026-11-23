@@ -609,6 +609,9 @@ button.dex-entry:hover { border-color: var(--ink); }
 .dare-row { display: grid; grid-template-columns: 70px 1fr 92px; gap: 8px; align-items: center; margin: 3px 0; }
 .dare-bar { height: 10px; border: 1.5px solid var(--ink); border-radius: 99px; overflow: hidden; background: #fff; }
 .dare-bar i { display: block; height: 100%; }
+.alert-row { display: flex; gap: 10px; align-items: center; padding: 8px 0; }
+.alert-row > div { flex: 1; display: grid; }
+.alert-row small { color: var(--ink-2); }
 .npc-tabs { margin-bottom: 10px; }
 .npc-card { border: 2px solid var(--ink); border-left: 8px solid var(--tc); border-radius: 14px; padding: 10px 12px; background: var(--paper); display: grid; gap: 8px; }
 .npc-head { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: start; }

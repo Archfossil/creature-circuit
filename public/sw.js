@@ -28,3 +28,9 @@ self.addEventListener('fetch', (e) => {
     return res;
   })));
 });
+
+// A turn notification was tapped: bring the game back to the front.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => (list.length ? list[0].focus() : self.clients.openWindow('./'))));
+});

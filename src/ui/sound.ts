@@ -29,8 +29,10 @@ function audio(): AudioContext | null {
 
 /** Mobile browsers only allow audio after a user gesture. */
 export function unlockAudio() {
-  const once = () => { audio(); removeEventListener('pointerdown', once); };
-  addEventListener('pointerdown', once);
+  // keep at it until sound is really running: a first tap with sound off, or a tab brought back, isn't enough
+  const wake = () => { const a = audio(); if (a?.state === 'running') for (const e of ['pointerdown', 'keydown', 'touchend']) removeEventListener(e, wake); };
+  for (const e of ['pointerdown', 'keydown', 'touchend']) addEventListener(e, wake);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ctx && ctx.state !== 'running') void ctx.resume().catch(() => undefined); });
 }
 
 function tone(freq: number, dur: number, type: OscillatorType = 'sine', vol = 0.5, slideTo?: number, delay = 0) {
@@ -80,7 +82,7 @@ export const sfx = {
   ko: () => tone(400, 0.6, 'triangle', 0.35, 60),
   good: () => { tone(523, 0.1, 'triangle', 0.3); tone(659, 0.1, 'triangle', 0.3, undefined, 0.09); tone(784, 0.2, 'triangle', 0.3, undefined, 0.18); },
   bad: () => tone(300, 0.3, 'triangle', 0.3, 150),
-  /** Online play: it's your turn (plays even while the tab is in the background). */
-  ping: () => { tone(988, 0.12, 'sine', 0.35); tone(1319, 0.22, 'sine', 0.35, undefined, 0.13); },
+  /** Online play: it's your turn (a soft two-note chime; plays in the background too). */
+  ping: () => { tone(880, 0.5, 'sine', 0.5); tone(1319, 0.8, 'sine', 0.45, undefined, 0.16); },
   fanfare: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.32, undefined, i * 0.12)),
 };
