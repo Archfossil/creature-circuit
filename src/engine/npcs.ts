@@ -13,7 +13,9 @@ import type { GameState } from './state';
 import { earnCoins, log, tierOf } from './state';
 import { textStoodUp, textTurn, type Chat } from './messenger';
 import { createBattle, type Battle } from './battle';
-import { createCreature, fullRestore, gainXp, type CreatureInst } from './creature';
+import { createCreature, fullRestore, gainXp, recommendPlaybook, type CreatureInst } from './creature';
+import { assignSwapMoves } from './swaps';
+import { teamworkCap } from './teamwork';
 import { cityActionCost, here, playerSide, stageCapFor, tierBandLevel, weather } from './world';
 
 /** A trainer's history with one Rival or Champion. */
@@ -35,9 +37,15 @@ export interface NpcRecord {
   invite?: Invite;
   /** Texts with them (engine/messenger.ts). */
   chat?: Chat;
+  /** Trades this stay (engine/npcTrade.ts). */
+  trade?: { stay: number; sold: number[]; spent: number; warmed?: boolean };
+  /** Creatures of this trainer's that now fill slots on their team. */
+  swaps?: Record<number, { species: string; nature: string; nickname?: string }>;
+  /** A creature of this trainer's (uid) they've said they want. */
+  keen?: string;
 }
 /** A rematch arranged: they're at `at` from turn `from` until the end of turn `until`. */
-export interface Invite { at: string; from: number; until: number }
+export interface Invite { at: string; from: number; until: number; /** You've seen each other there. */ met?: boolean }
 
 export const RIVALS = NPCS.filter((x) => x.kind === 'rival');
 export const CHAMPIONS = NPCS.filter((x) => x.kind === 'champion');
@@ -45,9 +53,9 @@ export const CHAMPIONS = NPCS.filter((x) => x.kind === 'champion');
 // ── Seeded randomness ───────────────────────────────────────────
 const hash = (text: string) => { let h = 2166136261; for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return h >>> 0; };
 /** A repeatable random number (0–1) for this game. */
-const chanceOf = (s: GameState, key: string) => { let t = hash(`${s.prismSeed ?? 0}|${key}`) + 0x6d2b79f5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+export const chanceOf = (s: GameState, key: string) => { let t = hash(`${s.prismSeed ?? 0}|${key}`) + 0x6d2b79f5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 /** Run `fn` with Math.random replaced by a repeatable sequence (it must not be async). */
-function seededly<T>(seed: string, fn: () => T): T {
+export function seededly<T>(seed: string, fn: () => T): T {
   const real = Math.random;
   let i = 0;
   Math.random = () => { let t = hash(`${seed}|${i++}`); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -62,10 +70,10 @@ export const npcTier = (turn: number) => NPC_TIER_TURNS.filter((t) => turn >= t)
 const OWNED = [2, 3, 4, 4, 5];
 const FIELDED = [2, 2, 3, 3, 3];
 
-/** A battle's level: halfway between the season's pace and the challenger's own, a little above local trainers (Champions more). */
+/** A battle's level: halfway between the season's pace and the challenger's own, a level above local trainers. */
 export function npcLevel(s: GameState, npc: Npc): number {
   const pace = (tierBandLevel(npcTier(s.turn)) + tierBandLevel(tierOf(s))) / 2;
-  return Math.max(1, Math.round(pace) + (npc.kind === 'champion' ? 2 : 1));
+  return Math.max(1, Math.round(pace) + (npc.kind === 'champion' && npcTier(s.turn) === 1 ? 2 : 1)); // (Champions are ahead of everyone early on)
 }
 
 const lineFrom = (base: Species): Species[] => { const out = [base]; while (out[out.length - 1].evolvesTo) out.push(SPECIES_BY_ID[out[out.length - 1].evolvesTo!]); return out; };
@@ -84,19 +92,24 @@ export function npcFamilies(s: GameState, npc: Npc): Species[] {
     const pool = families(rarity, (t) => t.includes(type)).filter((x) => !out.includes(x));
     out.push(pool[Math.floor(chanceOf(s, `${npc.id}:family:${i}`) * pool.length)]);
   });
-  return out.filter(Boolean);
+  const swaps = recordWith(s, npc)?.swaps ?? {};
+  // a creature this trainer traded them has taken a slot
+  return out.filter(Boolean).map((f, i) => SPECIES_BY_ID[swaps[i]?.species ?? ''] ?? f);
 }
 /** Built creatures, to copy (picking a playbook is slow). */
 const built = new Map<string, string>();
 /** One of their creatures as it stands at a level. */
-function npcCreature(s: GameState, npc: Npc, slot: number, level: number): CreatureInst {
-  const sp = formAt(npcFamilies(s, npc)[slot], level);
-  const seed = `${s.prismSeed ?? 0}|${npc.id}|${slot}`;
+export function npcCreature(s: GameState, npc: Npc, slot: number, level: number, as?: { species: string; nature: string }): CreatureInst {
+  const sp = formAt(as ? SPECIES_BY_ID[as.species] : npcFamilies(s, npc)[slot], level);
+  const swap: { nature: string; nickname?: string } | undefined = as ?? recordWith(s, npc)?.swaps?.[slot];
+  const seed = `${s.prismSeed ?? 0}|${npc.id}|${slot}${swap ? `|${swap.nature}|${swap.nickname ?? ''}` : ''}`;
   const key = `${seed}|${sp.id}|${level}`;
   const had = built.get(key);
   if (had) return JSON.parse(had) as CreatureInst;
   const made = seededly(seed, () => {
-    const c = createCreature(sp.id, level, { nature: NATURES[hash(seed) % NATURES.length].id });
+    const c = createCreature(sp.id, level, { nature: swap?.nature ?? NATURES[hash(seed) % NATURES.length].id });
+    if (swap?.nickname) c.nickname = swap.nickname;
+    c.playbook = recommendPlaybook(c, { kind: 'balanced' });
     c.uid = `npc-${npc.id}-${slot}`;
     if (slot === 0) { c.ace = true; c.bond = true; } // an Ace has the same bond as a trainer's own starter
     fullRestore(c);
@@ -115,8 +128,15 @@ export const npcRoster = (s: GameState, npc: Npc, level = npcLevel(s, npc)): Cre
 export function npcTeam(s: GameState, npc: Npc, size: number, level = npcLevel(s, npc)): CreatureInst[] {
   const [ace, ...others] = npcRoster(s, npc, level);
   if (size <= 1) return [others[0] ?? ace];
+  const drilled = (team: CreatureInst[]) => { drill(team, npc, s.turn); return team; };
   const pickFrom = [...others].sort((x, y) => chanceOf(s, `${npc.id}:${s.turn}:${x.uid}`) - chanceOf(s, `${npc.id}:${s.turn}:${y.uid}`));
-  return [...pickFrom.slice(0, size - 1), ace];
+  return drilled([...pickFrom.slice(0, size - 1), ace]);
+}
+/** Their creatures have fought side by side: Teamwork that grows with the season, and the best Swap Move for every pair. */
+function drill(team: CreatureInst[], npc: Npc, turn: number) {
+  for (const c of team) c.loyalty = Math.min(10, 2 * npcTier(turn) + (npc.kind === 'champion' ? 2 : 0));
+  for (const a of team) for (const p of team) if (a !== p) a.teamwork[p.uid] = Math.floor(teamworkCap(a, p));
+  assignSwapMoves(team);
 }
 
 // ── History ─────────────────────────────────────────────────────
@@ -243,6 +263,7 @@ export function challengeNpc(s: GameState, npc: Npc): Battle | null {
 export function chatWith(s: GameState, npc: Npc): { line: string; gift?: string } | null {
   if (!npcsHere(s).includes(npc)) return null;
   const r = meet(s, npc);
+  if (r.invite) r.invite.met = true;
   if (r.chatted === npcStay(s.turn)) return null;
   r.chatted = npcStay(s.turn);
   r.rapport++;
@@ -325,8 +346,9 @@ export function npcTurn(s: GameState): string[] {
     if (!r?.invite) continue;
     if (s.turn === r.invite.from) notes.push(`🤺 ${npc.name} is waiting for you at ${NODE_BY_ID[r.invite.at].name} until the end of turn ${r.invite.until}.`);
     else if (s.turn > r.invite.until) {
-      const at = r.invite.at;
+      const { at, met } = r.invite;
       r.invite = undefined;
+      if (met) continue; // you did meet: you just didn't battle
       r.rapport--;
       textStoodUp(s, npc, at);
       notes.push(`🤺 ${npc.name} waited for your rematch, then left.`);

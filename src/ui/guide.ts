@@ -83,7 +83,7 @@ export const GUIDE: GuideCategory[] = [
         '- The playbook editor crosses out the energy each move takes and counts what’s left. Its side panel shows the creature’s stats and your picks so far, with rough damage for each. The stats your picks use (Power for Physical moves, Focus for Elemental ones) light up.',
         '- On a phone, tap a move to see what it does with this creature (damage, accuracy, Effort, speed) and why it might not fit, then ➕ Add move?. Double-tap a move to add or remove it straight away. Tap a stat to see what it does.',
         '- Filter by type or by Physical / Support, sort by cost, damage or speed, and tick “Only moves that still fit”.',
-        '- ✨ Recommend moves? suggests a set for physical power, elemental power, a balanced spread, or against a type.',
+        '- ✨ Recommend moves? suggests a set for physical power, elemental power, a balanced spread, or against a type. It weighs everything a move does: damage dice, crits, Cascade, statuses, Purge, Zeroing In, Speed and Effort.',
       ] },
       { id: 'morale', title: 'Morale & Loyalty', body: [
         'Happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good.',
@@ -132,6 +132,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
         'From round 2 you can swap (S). The creature coming in is the Alpha, and it uses a 🔁 Swap Move at once, often borrowing from the partner it replaces. The swap screen shows what each swap will do right now.',
         'You choose the Swap Moves. Each creature’s card has a slot for every teammate: the move it uses when it swaps in for that one. So Sproutle swapping in for Puddlit can use a different move from Sproutle swapping in for Zapup (or Puddlit swapping in for Sproutle). Until you set one, a pair uses a neutral Swap Move picked at random (the same one each battle).',
+        'Opposing trainers swap too, when another of their creatures would fare better against yours. Arbiters and Champions are the quickest to.',
         'Choosing a Swap Move shows both creatures side by side with their stats, so you can see whose numbers each move uses. The Alpha (swapping in) is highlighted in gold and the partner (swapping out) in silver, there and in every move’s description.',
         '- Neutral Swap Moves (Tag Strike, Shield Pass, Slipstream, Siphon, Rally) are open to every pair.',
         '- Each type has two more. The Alpha uses its partner’s types, not its own: a Rock / Water creature swapping in for an Astral one can use the Astral moves, and the Astral one swapping in for it can use the Rock and Water moves. The first needs Teamwork 1 with that partner, the second Teamwork 2. Typed hits inflict their type’s status on a 1–2.',
@@ -156,9 +157,10 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'trainers', title: 'Trainers & Arbiters', body: [
         'Every city has a Trainer Hall: battle a local trainer once per turn (a city action).',
-        'Rivals: some of the trainers you meet are Rivals, with favourite types, a team that grows with the season and an Ace: a tougher creature with the same bond as your starter, marked with a gold star ★ in battle. ☰ Menu → Rival Trainers keeps your record with each, the creatures they’ve shown, and lets you invite them to a rematch in a city or town.',
+        'Rivals: some of the trainers you meet are Rivals, with favourite types, a team that grows with the season and an Ace: a tougher creature with the same bond as your starter, marked with a gold star ★ in battle. ☰ Menu → Rival Trainers keeps your record with each, the creatures they’ve shown, and lets you arrange to meet them in a city or town.',
         'Messages: people you’ve met text you now and then, offering rematches, sharing news or sending a treat. Answer them, or write first, under 💬 Messages in Rival Trainers. A number on the ☰ button means unread messages; a question waits 6 turns.',
         'If a Rival or Champion knocks out your whole team, they’ll offer to help one creature back up (unless you’re on bad terms), so you can carry on instead of going home.',
+        'Trades: face to face, swap creatures (one for one), items and coins; by courier (from a conversation), items and coins. They judge creatures by level, attributes and how they’ll grow, like their own types best, and won’t take one that would weaken their team. A creature you trade away joins their team, and you may battle it. Their Ace and your starter are never for trade.',
         'Revenge: beat a Rival or Champion who beat you last time for extra coins, XP and an item. The more losses you’re avenging, the bigger the bonus (up to three).',
         'Champions tour the cities and towns. Chat with them or challenge them there. The Circuit Standings (in Rival Trainers) show who’s on course for the Finals; a Rival who keeps beating you, or whom you battle most, can earn a place.',
         'Each city’s Arbiter guards a Merit. Their arenas have tricks that favour the Arbiter (ice floes, fog, lightning…), described before you challenge. A prepared trainer can use some of them: Watson’s lightning heals Electric creatures, yours included.',

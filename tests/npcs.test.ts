@@ -7,10 +7,17 @@ import * as N from '../src/engine/npcs';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import { newGame, migrate, type GameState } from '../src/engine/state';
-import { createCreature, speciesOf, stats, STAT_KEYS } from '../src/engine/creature';
+import { createCreature, speciesOf, stats, STAT_KEYS, recommendPlaybook, fits, energy, moveWorth, learnable } from '../src/engine/creature';
+import { bestSwapMove, swapMoveOf, swapMoveSet } from '../src/engine/swaps';
+import { teamworkOf } from '../src/engine/teamwork';
+import { MOVE_BY_ID } from '../src/data/moves';
+import { WEATHER } from '../src/data/content';
+import { activeOf, aiSwap, createBattle, outlook, resolveRound } from '../src/engine/battle';
+import { SPECIES } from '../src/data/species';
 import type { Battle } from '../src/engine/battle';
 import * as T from '../src/engine/messenger';
 import { VOICES } from '../src/data/texts';
+import * as X from '../src/engine/npcTrade';
 
 const game = () => {
   const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
@@ -210,14 +217,16 @@ describe('helping a KO’d creature up', () => {
 
 describe('the messenger', () => {
   /** Pass turns until `npc` has a question waiting. */
-  const until = (s: GameState, done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) { s.turn = s.turn >= 90 ? 20 : s.turn + 1; T.textTurn(s); } expect(done()).toBe(true); };
+  const until = (s: GameState, done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) { if (s.turn >= 90) { s.turn = 20; s.lastText = 0; for (const r of Object.values(s.npcs!)) r.chat = undefined; } else s.turn++; T.textTurn(s); } expect(done()).toBe(true); };
   it('everyone has a voice, with every kind of line filled in', () => {
     expect(Object.keys(VOICES).sort()).toEqual(NPCS.map((x) => x.id).sort());
     for (const [id, v] of Object.entries(VOICES)) {
-      for (const [k, text] of Object.entries(v)) { expect(text.length, `${id}.${k}`).toBeGreaterThan(2); expect(text.replace(/\{(you|merit|place)\}/g, ''), `${id}.${k}`).not.toMatch(/[{}]/); }
+      for (const [k, text] of Object.entries(v)) { expect(text.length, `${id}.${k}`).toBeGreaterThan(2); expect(text.replace(/\{(you|merit|place|thing|creature)\}/g, ''), `${id}.${k}`).not.toMatch(/[{}]/); }
       expect(v.congrats, id).toContain('{merit}');
       expect(v.news, id).toContain('{merit}');
       expect(v.stoodUp, id).toContain('{place}');
+      expect(v.swap, id).toContain('{thing}');
+      expect(v.keen, id).toContain('{creature}');
     }
   });
   it('only people you’ve met write, not too often, and never leave a blank in', () => {
@@ -277,5 +286,222 @@ describe('the messenger', () => {
     expect(T.writeFirst(s, rival, 'hi')).toBe(false);
     for (let i = 0; i < 20; i++) { s.turn += T.WRITE_EVERY; expect(T.writeFirst(s, rival, 'hi')).toBe(true); }
     expect(T.chatWithNpc(s, rival)!.texts.length).toBe(T.CHAT_MAX);
+  });
+});
+
+describe('trading with Rivals and Champions', () => {
+  const meetUp = (turn = 45) => {
+    const s = game();
+    s.turn = turn;
+    N.meet(s, rival).invite = { at: 'mistfall', from: turn, until: turn + 4 };
+    s.location = 'mistfall';
+    s.coins = 200;
+    return s;
+  };
+  /** One of the trainer's that they'd take for a slot: the family they have already, at their level. */
+  const matching = (s: GameState, slot: number) => { const x = N.npcRoster(s, rival)[slot]; const c = JSON.parse(JSON.stringify(x)); c.uid = 'mine'; return c as typeof x; };
+  it('judge creatures by what they can do: attributes, level, Nature and growth', () => {
+    const a = createCreature('rivetail', 5, { nature: 'bold' });
+    const b = JSON.parse(JSON.stringify(a)) as typeof a;
+    for (const k of STAT_KEYS) b.bonus[k] = (b.bonus[k] ?? 0) - 2;
+    expect(X.creatureValue(b)).toBeLessThan(X.creatureValue(a) - 5);
+    const up = JSON.parse(JSON.stringify(a)) as typeof a;
+    up.bonus.power = (up.bonus.power ?? 0) + 3; up.bonus.vigor = (up.bonus.vigor ?? 0) + 2;
+    expect(X.creatureValue(up)).toBeGreaterThan(X.creatureValue(a) + 5);
+    // a level is worth about what training costs
+    expect(X.creatureValue(createCreature('rivetail', 9)) - X.creatureValue(createCreature('rivetail', 4))).toBeGreaterThan(30);
+    // taste never makes their own a bargain
+    for (const id of ['rivetail', 'puddlit']) { const c = createCreature(id, 5); expect(X.askFor(rival, c)).toBeGreaterThan(X.payFor(rival, c)); }
+  });
+  it('won’t be left weaker, whatever the price', () => {
+    const s = meetUp();
+    s.coins = 5000;
+    const { slot, c: theirs } = X.npcOffers(s, rival)[0];
+    const ask = { coins: 0, stock: [], slot };
+    const good = matching(s, slot);
+    s.roster[1] = good;
+    expect(X.teamBlock(s, rival, good, slot)).toBeNull();
+    // attributes spoiled by training or events
+    const weak = matching(s, slot);
+    for (const k of STAT_KEYS) weak.bonus[k] = (weak.bonus[k] ?? 0) - 3;
+    s.roster[2] = weak; weak.uid = 'weak';
+    expect(X.verdict(s, rival, { coins: 4000, items: {}, creature: 'weak' }, ask).why).toMatch(/weak/);
+    // no species whose line ends up clearly weaker gets onto the team, at any level
+    const bar = X.potentialOf(theirs.species, theirs.nature);
+    for (const sp of SPECIES.filter((x) => x.stage === 1 && x.rarity === 'common').slice(0, 30)) {
+      const c = createCreature(sp.id, 12);
+      if (X.potentialOf(sp.id, c.nature) < bar * 0.97) expect(X.teamBlock(s, rival, c, slot)).toBeTruthy();
+      else if (!X.teamBlock(s, rival, c, slot)) expect(X.powerOf(N.npcCreature(s, rival, slot, theirs.level, { species: sp.id, nature: c.nature }))).toBeGreaterThanOrEqual(X.powerOf(theirs) * 0.95);
+    }
+    // a Champion won't take ordinary Commons for their Apexes
+    s.turn = 85;
+    N.meet(s, champ);
+    const apex = X.npcOffers(s, champ).filter((x) => speciesOf(x.c).rarity === 'apex');
+    expect(apex.length).toBeGreaterThan(0);
+    const commons = SPECIES.filter((x) => x.stage === 1 && x.rarity === 'common').slice(0, 12).map((x) => createCreature(x.id, 9));
+    const taken = commons.filter((c) => apex.some((a) => !X.teamBlock(s, champ, c, a.slot))).length;
+    expect(taken).toBeLessThan(commons.length / 3);
+    // nor more than one creature that isn't their own type
+    const r = N.recordWith(s, rival)!;
+    r.swaps = { 3: { species: 'puddlit', nature: 'bold' } };
+    for (const sp of SPECIES.filter((x) => x.stage === 1 && !x.types.some((t) => rival.types.includes(t))).slice(0, 20)) expect(X.teamBlock(s, rival, createCreature(sp.id, 9), slot)).toBeTruthy();
+  });
+  it('a creature trade: one for one, never the Ace, bond or Legendary; yours joins their team', () => {
+    const s = meetUp();
+    const offers = X.npcOffers(s, rival);
+    expect(offers.some((x) => x.c.ace)).toBe(false);
+    const { slot, c: theirs } = offers[0];
+    const mine = s.roster[1] = matching(s, slot);
+    mine.nickname = 'Sparky';
+    const ask = { coins: 0, stock: [], slot };
+    expect(X.verdict(s, rival, { coins: 0, items: {}, creature: s.roster[0].uid }, ask).why).toMatch(/bond/);
+    expect(X.verdict(s, rival, { coins: 200, items: {} }, ask).why).toMatch(/one for one/);
+    const v = X.verdict(s, rival, { coins: 0, items: {}, creature: mine.uid }, ask);
+    expect(v.ok).toBe(false);
+    const offer = { coins: v.short, items: {}, creature: mine.uid };
+    expect(X.verdict(s, rival, { ...offer, coins: v.short - 1 }, ask).ok).toBe(false);
+    expect(X.trade(s, rival, offer, ask)).toBeNull();
+    expect(s.coins).toBe(200 - v.short);
+    expect(s.roster.some((c) => c.uid === mine.uid)).toBe(false);
+    const got = [...s.roster, ...s.reserve].find((c) => c.species === theirs.species)!;
+    expect(got.uid.startsWith('npc-')).toBe(false);
+    expect(got).toMatchObject({ loyalty: 0, perks: 0, teamwork: {}, swapMoves: {} });
+    expect(got.ace).toBeUndefined();
+    expect(s.dex.caught).toContain(theirs.species);
+    // it turns up on their side, with its name, and won't be traded again
+    const now = N.npcRoster(s, rival)[slot];
+    expect(now.nickname).toBe('Sparky');
+    expect(speciesOf(now).types).toEqual(speciesOf(mine).types);
+    expect(X.npcOffers(s, rival).some((x) => x.slot === slot)).toBe(false);
+    expect(N.npcLineup(s, rival)).toHaveLength(N.npcRoster(s, rival).length);
+  });
+  it('by courier: coins and items only, from a stock and purse that run out', () => {
+    const s = meetUp();
+    s.location = 'thunder';
+    expect(X.verdict(s, rival, { coins: 99, items: {}, creature: s.roster[1].uid }, { coins: 0, stock: [], slot: 1 }).why).toMatch(/face to face/);
+    expect(X.npcStock(s, rival).every((id) => ITEMS[id])).toBe(true);
+    expect(X.trade(s, rival, { coins: 60, items: {} }, { coins: 0, stock: [0, 3] })).toBeNull();
+    expect(X.verdict(s, rival, { coins: 60, items: {} }, { coins: 0, stock: [0] }).why).toMatch(/any more/);
+    s.turn += N.STAY;
+    expect(X.verdict(s, rival, { coins: 60, items: {} }, { coins: 0, stock: [0] }).ok).toBe(true);
+    const purse = X.npcPurse(s, rival);
+    s.inventory.moonberry = 50;
+    expect(X.verdict(s, rival, { coins: 0, items: { moonberry: 50 } }, { coins: purse + 1, stock: [] }).why).toMatch(/only have/);
+    expect(X.trade(s, rival, { coins: 0, items: { moonberry: 50 } }, { coins: purse, stock: [] })).toBeNull();
+    expect(X.npcPurse(s, rival)).toBe(0);
+    expect(s.inventory.moonberry).toBeUndefined();
+    s.inventory.bike = 1; s.inventory['summit-pick'] = 1;
+    expect(X.verdict(s, rival, { coins: 0, items: { 'summit-pick': 1 } }, { coins: 0, stock: [1] }).why).toMatch(/can’t be traded/);
+    expect(X.verdict(s, rival, { coins: 5, items: {} }, { coins: 5, stock: [] }).ok).toBe(false);
+    expect(X.verdict(s, rival, { coins: -5, items: {} }, { coins: 0, stock: [1] }).ok).toBe(false);
+  });
+  it('buying and selling straight back never makes money', () => {
+    const s = meetUp();
+    for (const npc of NPCS) { N.meet(s, npc).rapport = 9; for (const id of Object.keys(ITEMS)) expect(X.itemWorth(npc, id), id).toBeLessThanOrEqual(ITEMS[id].price ?? 0); }
+    expect(1.1 * X.asking(N.recordWith(s, rival))).toBeGreaterThanOrEqual(1); // what they ask, even of a friend
+  });
+  it('friends ask less, and someone miffed asks more', () => {
+    const s = meetUp();
+    const short = (rapport: number) => { N.recordWith(s, rival)!.rapport = rapport; return X.verdict(s, rival, { coins: 1, items: {} }, { coins: 0, stock: [0, 1, 2, 3] }).short; };
+    expect(short(8)).toBeLessThan(short(0));
+    expect(short(N.MIFFED)).toBeGreaterThan(short(0));
+  });
+  it('they text swaps and ask about creatures; meeting without battling isn’t standing them up', () => {
+    const s = game();
+    s.turn = 45;
+    N.meet(s, rival);
+    s.inventory = { moonberry: 3 };
+    expect(T.trySwap(s, rival)).toBe(true);
+    const o = T.chatWithNpc(s, rival)!.offer!;
+    expect(T.reply(s, rival, 'deal')).toBe(true);
+    expect(s.inventory[o.give]).toBe(1);
+    expect(s.inventory.moonberry ?? 0).toBe(3 - o.n);
+    s.inventory = {};
+    expect(T.trySwap(s, rival)).toBe(false);
+    s.turn = 45;
+    s.roster[1] = matching(s, X.npcOffers(s, rival)[0].slot);
+    expect(T.tryKeen(s, rival)).toBe(true);
+    expect(T.reply(s, rival, 'meet')).toBe(true);
+    const r = N.recordWith(s, rival)!;
+    expect(r.keen).toBe(s.roster[1].uid);
+    s.turn = r.invite!.from; s.location = r.invite!.at;
+    const ask = { coins: 0, stock: [], slot: X.npcOffers(s, rival)[0].slot };
+    const keen = X.verdict(s, rival, { coins: 0, items: {}, creature: s.roster[1].uid }, ask).short;
+    r.keen = undefined;
+    expect(X.verdict(s, rival, { coins: 0, items: {}, creature: s.roster[1].uid }, ask).short).toBeGreaterThan(keen);
+    N.chatWith(s, rival);
+    const mood = r.rapport;
+    s.turn += 10; s.lastText = s.turn;
+    N.npcTurn(s);
+    expect(r.invite).toBeUndefined();
+    expect(r.rapport).toBe(mood);
+  });
+});
+
+describe('how Rivals, Champions and the AI play', () => {
+  it('their creatures know playbooks that fit and the best Swap Move for each pair', () => {
+    const s = game();
+    s.turn = 65;
+    for (const npc of [rival, champ]) {
+      const team = N.npcTeam(s, npc, 3);
+      for (const c of team) {
+        expect(c.playbook).toEqual(recommendPlaybook(c, { kind: 'balanced' }));
+        expect(fits(energy(c), c.playbook)).toBe(true);
+        for (const p of team) if (p !== c) {
+          expect(swapMoveSet(c, p)).toBe(true);
+          expect(swapMoveOf(c, p)).toBe(bestSwapMove(c, p));
+          expect(teamworkOf(c, p)).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+  it('recommended playbooks weigh every move element', () => {
+    const c = createCreature('cindercub', 8);
+    const foe = { types: ['rock' as const], armor: 3, ward: 3 };
+    const m = MOVE_BY_ID['headbutt'];
+    const w = (x: Partial<typeof m>) => moveWorth(c, { ...m, ...x }, foe);
+    const base = w({});
+    expect(w({ extraDice: [4] })).toBeGreaterThan(base);
+    expect(w({ critRange: 3 })).toBeGreaterThan(base);
+    expect(w({ cascade: true })).toBeGreaterThan(base);
+    expect(w({ zeroIn: 3 })).toBeGreaterThan(w({ zeroIn: 0 }));
+    expect(w({ effort: 4 })).toBeLessThan(base);
+    expect(w({ speed: 3 })).toBeGreaterThan(base);
+    expect(w({ effect: { foe: { armor: -1 } } })).toBeGreaterThan(base);
+    const e = MOVE_BY_ID['ember'];
+    expect(moveWorth(c, { ...e, potency: 2 }, foe)).toBeGreaterThan(moveWorth(c, { ...e, potency: 0 }, foe));
+  });
+  it('trainers swap out of a bad matchup, but not wild creatures, nor a duel’s human', () => {
+    const mk = (kind: 'trainer' | 'champion' | 'wild' | 'arbiter') => {
+      const me = createCreature('puddlit', 8), weak = createCreature('cindercub', 8, { nature: 'bold' }), strong = createCreature('sproutle', 8, { nature: 'bold' });
+      me.playbook = ['splash', 'tide-slam'].filter((id) => MOVE_BY_ID[id]);
+      if (!me.playbook.length) me.playbook = learnable(me).filter((id) => MOVE_BY_ID[id].type === 'water' && MOVE_BY_ID[id].kind === 'elemental').slice(0, 2);
+      const b = createBattle({ kind: 'player', name: 'p', team: [me], active: 0, mods: {} }, { kind, name: 'q', team: [weak, strong], active: 0, mods: {} }, WEATHER.clear);
+      b.round = 3;
+      return b;
+    };
+    const swaps = (b: Battle) => Array.from({ length: 60 }, () => { b.aiSwapped = undefined; return aiSwap(b, 1); }).filter((x) => x === 1).length;
+    expect(outlook(mk('champion'), 1, 1)).toBeGreaterThan(outlook(mk('champion'), 1, 0));
+    expect(swaps(mk('champion'))).toBeGreaterThan(30);
+    expect(swaps(mk('wild'))).toBe(0);
+    const duel = mk('trainer'); duel.foeChooses = true;
+    expect(swaps(duel)).toBe(0);
+    const first = mk('champion'); first.round = 0;
+    expect(swaps(first)).toBe(0); // swapping opens in round 2
+    const again = mk('champion'); again.aiSwapped = 2;
+    expect(Array.from({ length: 30 }, () => aiSwap(again, 1)).every((x) => x === null)).toBe(true);
+  });
+  it('keeps the Ace for last when someone else can go in', () => {
+    for (let i = 0; i < 20; i++) {
+      const s = game();
+      s.turn = 65;
+      const b = N.npcBattle(s, rival);
+      const lead = b.sides[1].team[0];
+      lead.health = 1; lead.vitality = 0;
+      b.sides[0].mods.speed = 10;
+      for (const c of b.sides[0].team) { c.vitality = 20; }
+      for (let k = 0; k < 30 && !lead.ko; k++) { b.aiSwapped = b.round + 1; resolveRound(b, { kind: 'move', move: b.sides[0].team[b.sides[0].active].playbook[0] }); if (b.needSwap) break; }
+      if (lead.ko) expect(activeOf(b.sides[1]).ace).toBeFalsy();
+    }
   });
 });

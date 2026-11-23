@@ -14,6 +14,7 @@ import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log,
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
+import * as X from '../engine/npcTrade';
 import type { Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import * as W from '../engine/world';
@@ -2271,7 +2272,7 @@ export class App {
     const s = this.s;
     return N.npcsHere(s).map((npc) => {
       const r = N.recordWith(s, npc);
-      return tile(npc.kind === 'champion' ? '🏅' : '🤺', npc.name, r?.invite ? 'Here for your rematch!' : `${npc.blurb}`, r ? `${r.won}–${r.lost}` : 'new', () => this.npcSheet(npc));
+      return tile(npc.kind === 'champion' ? '🏅' : '🤺', npc.name, r?.invite ? 'Here to meet you!' : `${npc.blurb}`, r ? `${r.won}–${r.lost}` : 'new', () => this.npcSheet(npc));
     });
   }
 
@@ -2297,6 +2298,7 @@ export class App {
             if (c.gift) toast(`${npc.name} shares a ${itemInfo(c.gift).icon} ${itemInfo(c.gift).name}.`, 'good');
             save(s); this.renderHud(); render(c.line);
           } }, '💬 Chat'),
+          h('button', { class: 'btn ghost', onclick: () => { N.meet(s, npc); this.npcTradeSheet(npc, true, () => render()); } }, '🔄 Trade'),
           h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: async () => {
             const b = N.challengeNpc(s, npc);
             if (!b) return;
@@ -2344,13 +2346,13 @@ export class App {
         return h('span', { class: `npc-mon ${seen ? '' : 'unseen'} ${ace ? 'ace' : ''}`, title: seen ? `${sp.name} · about Lv ${N.npcLevel(s, npc)}${ace ? ' · their Ace' : ''}` : ace ? 'Their Ace (not seen yet)' : 'Not seen yet' },
           h('img', { src: portrait(sp.id), alt: seen ? sp.name : 'Unknown creature' }), ace ? h('i', null, '★') : null, h('small', null, seen ? sp.name : '???'));
       })),
-      r.invite ? h('div', { class: 'row gap-s wrap' }, h('span', { class: 'small' }, `🤝 Rematch at ${at(r.invite.at)}, turns ${r.invite.from}–${r.invite.until}.`),
+      r.invite ? h('div', { class: 'row gap-s wrap' }, h('button', { class: 'btn ghost sm', onclick: () => this.chatSheet(s, npc, mine, changed) }, '💬 Message'), h('span', { class: 'small' }, `🤝 Meeting at ${at(r.invite.at)}, turns ${r.invite.from}–${r.invite.until}.`),
         mine ? h('button', { class: 'btn ghost sm', onclick: () => { this.markNextStop(r.invite!.at); } }, '📍 Mark it') : null,
         mine ? h('button', { class: 'btn ghost sm', onclick: () => { N.cancelInvite(s, npc); save(s); changed(); } }, 'Call it off') : null)
         : h('div', { class: 'row gap-s wrap' },
-          where ? h('span', { class: 'small muted' }, `🏅 Now at ${at(where)}.`) : null,
           h('button', { class: 'btn ghost sm', onclick: () => this.chatSheet(s, npc, mine, changed) }, '💬 Message'),
-          mine ? h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, changed) }, '🤝 Invite to a rematch') : null,
+          where ? h('span', { class: 'small muted' }, `🏅 Now at ${at(where)}.`) : null,
+          mine ? h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, changed) }, '🤝 Arrange to meet') : null,
           mine && why ? h('small', { class: 'muted' }, why) : null));
   }
 
@@ -2385,8 +2387,9 @@ export class App {
       }), c?.texts.length ? null : h('p', { class: 'muted center' }, 'No messages yet. Say something!'));
       body.replaceChildren(log, mine ? h('div', { class: 'chat-say' },
         ...(answers.length ? say(answers, (id) => T.reply(s, npc, id)) : [...say(T.openers(s, npc), (id) => T.writeFirst(s, npc, id)),
-          h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, () => { render(); changed(); }) }, '🤝 Invite to a rematch')]),
-        N.recordWith(s, npc)?.invite ? h('small', { class: 'muted' }, `Rematch at ${NODE_BY_ID[N.recordWith(s, npc)!.invite!.at].name}, turns ${N.recordWith(s, npc)!.invite!.from}–${N.recordWith(s, npc)!.invite!.until}.`) : '') : h('p', { class: 'small muted' }, 'You can answer on your own turn.'));
+          h('button', { class: 'btn ghost sm', onclick: () => this.npcTradeSheet(npc, N.npcsHere(s).includes(npc), () => { render(); changed(); }) }, '🔄 Trade'),
+          h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, () => { render(); changed(); }) }, '🤝 Arrange to meet')]),
+        N.recordWith(s, npc)?.invite ? h('small', { class: 'muted' }, `Meeting at ${NODE_BY_ID[N.recordWith(s, npc)!.invite!.at].name}, turns ${N.recordWith(s, npc)!.invite!.from}–${N.recordWith(s, npc)!.invite!.until}.`) : '') : h('p', { class: 'small muted' }, 'You can answer on your own turn.'));
       requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
     };
     render();
@@ -2394,13 +2397,48 @@ export class App {
     openSheet(`💬 ${npc.name}`, body, { wide: true });
   }
 
+  /** Trade with a Rival or Champion: face to face (creatures too) or by courier (coins and items). */
+  npcTradeSheet(npc: Npc, here: boolean, changed: () => void) {
+    const s = this.s;
+    const mine = X.emptyMine(), theirs = X.emptyTheirs();
+    const body = h('div', { class: 'trade' });
+    const render = () => {
+      const r = N.recordWith(s, npc);
+      const v = X.verdict(s, npc, mine, theirs);
+      const stock = X.npcStock(s, npc), purse = X.npcPurse(s, npc);
+      const bag = Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && I.giftable(id));
+      const coins = (o: { coins: number }, max: number, owner: string) => h('div', { class: 'offer-item' }, h('span', null, `💰 ${owner} coins (${max})`), ...[-5, -1].map((d) => h('button', { class: 'btn ghost sm', disabled: o.coins <= 0, onclick: () => { o.coins = Math.max(0, o.coins + d); render(); } }, String(d).replace('-', '−'))), h('b', null, o.coins), h('span', null, ...[1, 5].map((d) => h('button', { class: 'btn ghost sm', disabled: o.coins >= max, onclick: () => { o.coins = Math.min(max, o.coins + d); render(); } }, `+${d}`))));
+      const creatures = X.npcOffers(s, npc);
+      const mood = v.why ?? (v.ok ? (v.short <= -6 ? '😄 “That’s more than fair!”' : '🤝 “Deal!”') : v.short <= 6 ? `🤔 “Nearly. Another ${v.short} coins’ worth?”` : `🙅 “I’d need about ${v.short} coins’ worth more.”`);
+      body.replaceChildren(
+        h('p', { class: 'small muted' }, `${npc.name} loves ${npc.types.map((t) => TYPE_LABEL[t]).join(' and ')}. They judge creatures by their level, attributes and how they’ll grow, and won’t take one that would weaken their team. ${here ? 'Creatures are traded one for one.' : 'By courier: coins and items only. Meet up to trade creatures.'}`),
+        r?.keen && here && [...s.roster, ...s.reserve].some((c) => c.uid === r.keen) ? h('p', { class: 'small good-text' }, `💡 They came about ${nameOf([...s.roster, ...s.reserve].find((c) => c.uid === r.keen)!)}, and will give more for it.`) : '',
+        h('div', { class: 'trade-cols' },
+          h('div', { class: 'offer' }, h('h4', null, 'You give'), coins(mine, s.coins, 'Your'),
+            here ? h('div', { class: 'list' }, [...s.roster, ...s.reserve].map((c) => { const why = X.mineBlock(s, c); const m = miniCard(c, { selected: mine.creature === c.uid, onClick: () => { if (why) { toast(why, 'info'); return; } mine.creature = mine.creature === c.uid ? undefined : c.uid; render(); }, badge: why ? '🔒' : r?.keen === c.uid ? '💡' : undefined }); return m; })) : null,
+            h('div', { class: 'offer-items' }, bag.map((id) => h('div', { class: 'offer-item' }, h('span', null, `${itemInfo(id).icon} ${W.itemDisplayName(id)} (${s.inventory[id]})`), h('span'), h('button', { class: 'btn ghost sm', disabled: !mine.items[id], onclick: () => { mine.items[id]--; render(); } }, '−'), h('b', null, mine.items[id] ?? 0), h('button', { class: 'btn ghost sm', disabled: (mine.items[id] ?? 0) >= s.inventory[id], onclick: () => { mine.items[id] = (mine.items[id] ?? 0) + 1; render(); } }, '+'))))),
+          h('div', { class: 'offer' }, h('h4', null, `${npc.name} gives`), coins(theirs, purse, 'Their'),
+            here ? (creatures.length ? h('div', { class: 'list' }, creatures.map(({ slot, c }) => miniCard(c, { selected: theirs.slot === slot, onClick: () => { theirs.slot = theirs.slot === slot ? undefined : slot; render(); } }))) : h('p', { class: 'small muted' }, 'They won’t part with any of their creatures now.')) : null,
+            h('div', { class: 'offer-items' }, stock.map((id, i) => { const sold = X.stockSold(s, npc, i), on = theirs.stock.includes(i); return h('button', { class: `pick ${on ? 'sel' : ''}`, disabled: sold, 'aria-pressed': String(on), title: itemInfo(id).text, onclick: () => { theirs.stock = on ? theirs.stock.filter((x) => x !== i) : [...theirs.stock, i]; render(); } }, `${itemInfo(id).icon} ${W.itemDisplayName(id)}${sold ? ' · traded' : ''}`); })))),
+        h('div', { class: 'row end gap sticky-foot wrap' }, h('span', { class: v.ok ? 'good-text' : 'muted' }, mood),
+          h('button', { class: 'btn primary', disabled: !v.ok, onclick: () => {
+            const e = X.trade(s, npc, mine, theirs);
+            if (e) { toast(e, 'bad'); return; }
+            close(); sfx.good(); save(s); this.renderHud(); changed();
+            toast(`🔄 Trade complete with ${npc.name}!`, 'good');
+          } }, 'Trade')));
+    };
+    const close = openSheet(`🔄 Trade with ${npc.name}`, body, { wide: true });
+    render();
+  }
+
   /** Choose where a rematch happens: they travel there and wait a few turns. */
   inviteSheet(npc: Npc, changed: () => void) {
     const s = this.s;
     const from = NODE_BY_ID[s.location];
     const stops = [...N.inviteStops()].sort((a, b) => Math.hypot(NODE_BY_ID[a].x - from.x, NODE_BY_ID[a].z - from.z) - Math.hypot(NODE_BY_ID[b].x - from.x, NODE_BY_ID[b].z - from.z));
-    const close = openSheet(`🤝 Rematch with ${npc.name}`, h('div', null,
-      h('p', null, `Where? ${npc.name} will be there in ${N.INVITE_TRAVEL} turns and wait ${N.INVITE_WAIT} turns for you.`),
+    const close = openSheet(`🤝 Meet ${npc.name}`, h('div', null,
+      h('p', null, `Where? ${npc.name} will be there in ${N.INVITE_TRAVEL} turns and wait ${N.INVITE_WAIT} turns for you, to battle or trade.`),
       h('div', { class: 'list' }, stops.map((id) => h('button', { class: 'choice', onclick: () => {
         if (!N.inviteNpc(s, npc, id)) return;
         close(); save(s); changed();

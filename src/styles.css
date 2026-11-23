@@ -994,7 +994,7 @@ div.perk { cursor: default; }
 .trainer-row { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: center; padding: 8px; border-radius: 14px; border: 2px solid var(--tc); background: color-mix(in srgb, var(--tc) 8%, white); }
 .trainer-row img { width: 72px; height: 72px; }
 .trainer-info { display: grid; gap: 4px; }
-.offer { display: grid; gap: 8px; }
+.offer { display: grid; gap: 8px; align-content: start; }
 .offer-items { display: grid; gap: 4px; }
 .offer-item { display: grid; grid-template-columns: 1fr auto auto 28px auto; gap: 6px; align-items: center; }
 .offer-item b { text-align: center; }

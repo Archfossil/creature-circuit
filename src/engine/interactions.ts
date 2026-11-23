@@ -41,14 +41,14 @@ export function offerProblem(from: GameState, o: Offer, to: GameState, back: Off
 }
 
 /** Take a creature out of a trainer's team, keeping the team and follower valid. */
-function removeCreature(s: GameState, uid: string): CreatureInst {
+export function removeCreature(s: GameState, uid: string): CreatureInst {
   const list = s.roster.some((c) => c.uid === uid) ? s.roster : s.reserve;
   const c = list.splice(list.findIndex((x) => x.uid === uid), 1)[0];
   if (!s.roster.length && s.reserve.length) s.roster.push(s.reserve.shift()!);
   if (s.following === uid) s.following = s.roster[0]?.uid ?? null;
   return c;
 }
-function receiveCreature(s: GameState, c: CreatureInst) {
+export function receiveCreature(s: GameState, c: CreatureInst) {
   c.morale = Math.max(3, c.morale - 1); // a new trainer takes some getting used to
   if (s.roster.length < 3) s.roster.push(c); else s.reserve.push(c);
   if (!s.dex.seen.includes(c.species)) s.dex.seen.push(c.species);

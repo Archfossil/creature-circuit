@@ -7,12 +7,14 @@ import { CITIES, NODE_BY_ID } from '../data/map';
 import { itemInfo } from '../data/content';
 import type { GameState } from './state';
 import { log } from './state';
+import { doSwapOffer, eyedCreature, swapLock, thinkOfSwap, type TextOffer } from './npcTrade';
+import { nameOf } from './creature';
 import { championAt, CHAMPIONS, inviteBlock, inviteNpc, inviteStops, npcMerits, recordWith, type NpcRecord } from './npcs';
 
 export interface Text { turn: number; text: string; /** Written by the trainer. */ me?: boolean }
 /** A text that waits for an answer. */
-export type Ask = 'rematch' | 'congrats' | 'news' | 'hello';
-export interface Chat { texts: Text[]; unread: number; ask?: Ask; askTurn?: number; /** The turn the trainer last wrote first. */ wrote?: number }
+export type Ask = 'rematch' | 'congrats' | 'news' | 'hello' | 'trade' | 'keen';
+export interface Chat { texts: Text[]; unread: number; ask?: Ask; askTurn?: number; /** The swap they're offering, or the creature (uid) they're after. */ offer?: TextOffer; after?: string; /** The turn the trainer last wrote first. */ wrote?: number }
 export interface Reply { id: string; label: string; disabled?: string }
 
 /** Texts kept in a conversation. */
@@ -28,8 +30,8 @@ export const chatWithNpc = (s: GameState, npc: Npc): Chat | undefined => recordW
 export const unreadTexts = (s: GameState) => NPCS.reduce((a, x) => a + (chatWithNpc(s, x)?.unread ?? 0), 0);
 export function readChat(s: GameState, npc: Npc) { const c = chatWithNpc(s, npc); if (c) c.unread = 0; }
 
-const fill = (s: GameState, text: string, more: { merit?: string; place?: string } = {}) =>
-  text.split('{you}').join(s.trainer.name).split('{merit}').join(more.merit ?? 'Merit').split('{place}').join(more.place ?? 'the road');
+const fill = (s: GameState, text: string, more: { merit?: string; place?: string; thing?: string; creature?: string } = {}) =>
+  text.split('{you}').join(s.trainer.name).split('{merit}').join(more.merit ?? 'Merit').split('{place}').join(more.place ?? 'the road').split('{thing}').join(more.thing ?? 'something').split('{creature}').join(more.creature ?? 'one of yours');
 function add(s: GameState, npc: Npc, text: string, me = false) {
   const c = chatOf(recordWith(s, npc)!);
   c.texts.push({ turn: s.turn, text, ...(me ? { me } : {}) });
@@ -49,6 +51,8 @@ function write(s: GameState, npc: Npc, text: string, ask?: Ask) {
   const c = chatOf(recordWith(s, npc)!);
   c.ask = ask;
   c.askTurn = ask ? s.turn : undefined;
+  c.offer = undefined;
+  c.after = undefined;
 }
 
 // ── They write first ────────────────────────────────────────────
@@ -79,6 +83,8 @@ export function textTurn(s: GameState): string[] {
   const r = recordWith(s, npc)!, voice = VOICES[npc.id];
   const news = npcMerits(s, npc).length > npcMerits(s, npc, s.turn - 4).length;
   if (r.last && !inviteBlock(s, npc) && Math.random() < 0.5) write(s, npc, fill(s, r.last.won ? voice.grudge : voice.taunt), 'rematch');
+  else if (Math.random() < 0.35 && trySwap(s, npc)) { /* sent */ }
+  else if (Math.random() < 0.25 && tryKeen(s, npc)) { /* sent */ }
   else if (news && Math.random() < 0.5) { const m = npcMerits(s, npc); write(s, npc, fill(s, voice.news, { merit: CITIES[m[m.length - 1]].accolade }), 'news'); }
   else if (r.rapport >= 4 && Math.random() < 0.4) {
     const item = r.rapport >= 8 ? 'moonberry' : npc.kind === 'champion' ? 'dewberry' : 'sunberry';
@@ -87,6 +93,24 @@ export function textTurn(s: GameState): string[] {
     log(s, `${npc.name} sent you a ${itemInfo(item).name}.`);
   } else write(s, npc, fill(s, voice.hello), 'hello');
   return sent(npc);
+}
+const named = (id: string, n = 1) => `${itemInfo(id).icon} ${itemInfo(id).name}${n > 1 ? ` ×${n}` : ''}`;
+/** They offer a small swap by courier. */
+export function trySwap(s: GameState, npc: Npc): boolean {
+  const o = thinkOfSwap(s, npc);
+  if (!o) return false;
+  write(s, npc, `${fill(s, VOICES[npc.id].swap, { thing: named(o.want, o.n) })} (Their ${named(o.give)} for your ${named(o.want, o.n)}.)`, 'trade');
+  chatOf(recordWith(s, npc)!).offer = o;
+  return true;
+}
+/** They ask to meet about a creature they've taken a shine to. */
+export function tryKeen(s: GameState, npc: Npc): boolean {
+  if (inviteBlock(s, npc)) return false;
+  const c = eyedCreature(s, npc);
+  if (!c) return false;
+  write(s, npc, fill(s, VOICES[npc.id].keen, { creature: nameOf(c) }), 'keen');
+  chatOf(recordWith(s, npc)!).after = c.uid;
+  return true;
 }
 /** Nobody came to a rematch: they say so. */
 export function textStoodUp(s: GameState, npc: Npc, at: string) { write(s, npc, fill(s, VOICES[npc.id].stoodUp, { place: NODE_BY_ID[at].name })); }
@@ -100,6 +124,11 @@ export function replies(s: GameState, npc: Npc): Reply[] {
     const why = inviteBlock(s, npc);
     return [{ id: 'accept', label: `You’re on! Meet me at ${NODE_BY_ID[nearbyStop(s)].name}.`, disabled: why ?? undefined }, { id: 'kind', label: 'Not now, but soon. You’re good practice!' }, { id: 'cheeky', label: 'Once was enough for you, I think.' }];
   }
+  if (ask === 'trade') {
+    const o = chatWithNpc(s, npc)!.offer;
+    return [{ id: 'deal', label: 'Deal! It’s on its way.', disabled: o ? swapLock(s, o) ?? undefined : 'They’ve changed their mind.' }, { id: 'kind', label: 'Not this time, but thank you!' }, { id: 'cheeky', label: 'You’ll have to do better than that.' }];
+  }
+  if (ask === 'keen') return [{ id: 'meet', label: `Let’s talk. Meet me at ${NODE_BY_ID[nearbyStop(s)].name}.`, disabled: inviteBlock(s, npc) ?? undefined }, { id: 'kind', label: 'Sorry, we’re too close. Good eye, though!' }, { id: 'cheeky', label: 'Not for all the berries in Margos.' }];
   if (ask === 'congrats') return [{ id: 'kind', label: 'Thank you! That means a lot.' }, { id: 'cheeky', label: 'Try to keep up!' }];
   if (ask === 'news') return [{ id: 'kind', label: 'Well done! You earned it.' }, { id: 'cheeky', label: 'Only just, I bet.' }];
   return [{ id: 'kind', label: 'Ha! Good to hear from you.' }, { id: 'cheeky', label: 'Don’t you have training to do?' }];
@@ -113,7 +142,18 @@ export function reply(s: GameState, npc: Npc, id: string): boolean {
   add(s, npc, opt.label, true);
   c.ask = undefined;
   c.askTurn = undefined;
-  if (id === 'accept') {
+  const { offer, after } = c;
+  c.offer = undefined;
+  c.after = undefined;
+  if (id === 'deal' && offer) {
+    doSwapOffer(s, npc, offer);
+    r.rapport++;
+    add(s, npc, `${fill(s, voice.warm)} (${named(offer.give)} received.)`);
+  } else if (id === 'meet') {
+    inviteNpc(s, npc, stop);
+    r.keen = after;
+    add(s, npc, `${NODE_BY_ID[stop].name}, from turn ${r.invite!.from}. I’ll bring the team.`);
+  } else if (id === 'accept') {
     inviteNpc(s, npc, stop);
     add(s, npc, `${NODE_BY_ID[stop].name}, from turn ${r.invite!.from}. I’ll be there.`);
     r.rapport++;

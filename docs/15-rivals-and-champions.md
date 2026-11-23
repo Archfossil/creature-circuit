@@ -41,9 +41,10 @@ The named trainers of Margos. **Rivals** turn up through the season and grow wit
 - **Tiers** unlock on turns 1, 20, 40, 60 and 80. They own 2, 3, 4, 4 and 5 creatures, and bring up to 2, 2, 3, 3 and 3 (never more than the challenger has healthy).
 - **The same creatures all season:** they level and evolve (stage 2 from Lv 6, stage 3 from Lv 10). Apart from the Ace, which is always theirs, each game picks them from their favourite types.
 - **Rarity:** a Rival's Ace is Prime, with Commons first and Primes later. A Champion's Ace is Apex, with Primes first and Apexes later.
-- **Level:** halfway between the season's pace and the challenger's Tier, +1 for Rivals and +2 for Champions.
+- **Level:** halfway between the season's pace and the challenger's Tier, +1 (Champions +2 before turn 20).
 - **The Ace ★** has the starter's special bond (+1 Vigor, no attribute under 1), goes last, and isn't sent against a lone creature. In battle it's a gold star among the team's dots and has an ★ Ace tag.
-- **AI:** Rivals play like trainers, Champions like Champions.
+- **Playbooks** are the game's balanced recommendation for each creature. **Teamwork** grows with the season (about 1 a tier, Champions 1 more), and every pair has its best Swap Move set.
+- **In battle** Rivals play like trainers and Champions like Champions: see [03 · Combat Rules](./03-combat-rules.md) and the AI notes in the README. Both swap out of bad matchups, and send in whoever fares best after a knockout, keeping the Ace for last.
 
 ## Meeting them
 
@@ -55,9 +56,21 @@ The named trainers of Margos. **Rivals** turn up through the season and grow wit
 
 A Rival or Champion who knocks out your whole team offers to help one creature up (`mercyOffer`): it revives with half its hearts (without the Fatigue of Rousing Salts), follows you, and you stay where you are with your Initiative and coins (bar the usual stake). Or you can decline and be sent to rest as usual, which restores everyone. They don't offer in the Finals, or if you're on bad terms (rapport −2 or lower). Passers-by never do. Each has their own line (`mercy` in `texts.ts`).
 
-## Rematches
+## Trades
 
-Invite anyone you've met from their card, to any city or town but Circuit Stadium and Lantern Glade. They arrive in 2 turns and wait 5. Up to 2 can be arranged at once. Not turning up costs a little goodwill.
+`src/engine/npcTrade.ts`. Face to face (🔄 Trade when they're where you are) a trade can include creatures, one for one. By courier (🔄 Trade in a conversation) it's coins and items.
+
+- **They judge a creature by what it can do.** Its price is about 10 coins a level (what training costs), adjusted by how strong its real attributes make it for its level (growth, Nature, training and events included), how strong its family and Nature will be at Lv 12, and a little for rarity. They pay 10% over for their own types and 15% under for others, and ask 25% over for their own types and 10% for the rest, so nothing they own is a bargain.
+- **They protect their team** (`teamBlock`). Whatever the price, they refuse a creature that would end the season weaker than the one it replaces (below 97%), be weaker on their team now (below 95%), is badly weak for its species and level, or would be a second creature outside their types.
+- **Materials** that tempt their types (2 or more) count at full price and other items at 80%. They ask 110% for their items.
+- **Friends** ask 4% less (rapport 3) or 8% less (rapport 6). Someone miffed asks 25% more.
+- **What they have:** four everyday items (no Rainbow Plains materials or universal offerings), and 8 + 4 × tier coins to spend, fresh every 5 turns. Coins you pay them top that up.
+- **Their creatures** come at their level, with their Nature, and have to learn to trust you (no Loyalty, perks or Teamwork). The Ace is never for trade, nor your starter or a Legendary. Yours takes the slot on their team (keeping its nickname and Nature) and can't be traded back, so you may well battle it.
+- **They text offers:** a small swap by courier, worth a little more to you, or a request to meet about one of your creatures of their types, which they then value at 10% more.
+
+## Rematches and meetings
+
+Arrange to meet anyone you've met from their card or a conversation, to battle or trade, to any city or town but Circuit Stadium and Lantern Glade. They arrive in 2 turns and wait 5. Up to 2 can be arranged at once. Not turning up costs a little goodwill (a chat or a trade there counts as turning up).
 
 ## Revenge
 
@@ -78,7 +91,7 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 
 ## Messenger
 
-Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (ten lines each; `{you}`, `{merit}` and `{place}` are filled in) and the rules in `src/engine/messenger.ts`.
+Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (twelve lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
 
 - **They write first:** only people you've met, at most one text every 3 turns from anyone, and every 8 from the same person. It's a rematch offer after a battle, congratulations on a Merit (as soon as there's a free moment), news of their own, a hello, or a treat by courier from someone friendly. Being stood up always gets a text.
 - **Answers:** a kind reply warms them to you. A cheeky one only costs goodwill with a firm friend. Accepting a rematch sets it at the nearest city or town. A question lapses after 6 turns.
@@ -87,11 +100,10 @@ Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many ar
 
 ## Balance notes
 
-- [ ] **Win rates** (AI playing both sides, levels on pace): Rivals are beaten about 60–85% of the time, Champions 35–70%, Trainer Hall opponents 75–99%.
+- [ ] **Win rates** with smart playbooks and swaps (the challenger: an AI with a random team that knows recommended playbooks but never swaps). Rivals are beaten about 85% of the time to turn 25 and 45% after, Champions 50–75% to turn 25 and 20–35% after. A person who swaps and builds a team should do better; watch the late Champions.
 - [ ] **Losing on purpose for Revenge:** each loss costs coins, Morale and a 3-turn rest, but an Energy Tonic (💰 30) after three is worth watching.
 - [ ] **Contenders** who lost to you 5 times still qualify (they're who you've met most). Check that feels earned.
 
 ## Still to come
 
-- **Trades** that favour their types.
 - **Side challenges:** races to a place, first to beat an Arbiter, Codex races and sillier ones.
