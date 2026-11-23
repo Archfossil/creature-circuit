@@ -26,6 +26,7 @@ export type ServerMsg =
   | { type: 'feed'; item: FeedItem }
   | { type: 'ask'; id: string; from: string; title: string; text: string; yes: string; no: string; pick?: unknown }
   | { type: 'ask-cancel'; id: string }
+  | { type: 'push-key'; key: string }
   | Answer
   | { type: 'do-skip'; seat: number; reason: 'timeout' | 'host' }
   | { type: 'do-play'; seat: number; reason: 'host' }

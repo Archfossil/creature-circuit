@@ -29,8 +29,23 @@ self.addEventListener('fetch', (e) => {
   })));
 });
 
-// A turn notification was tapped: bring the game back to the front.
+// The server pushed: a turn (or an offer) is waiting. Quiet if the player is already looking at the game, and
+// if the open tab has just shown the same thing, it isn't rung twice.
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { /* not ours */ }
+  e.waitUntil((async () => {
+    const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (open.some((c) => c.focused)) return;
+    const shown = await self.registration.getNotifications({ tag: 'cc-turn' });
+    const recent = shown.some((n) => Date.now() - ((n.data && n.data.at) || 0) < 20000);
+    await self.registration.showNotification('Creature Circuit', { body: d.text || 'It\u2019s your turn!', tag: 'cc-turn', icon: 'assets/types/astral.png', renotify: !recent, silent: recent, data: { at: Date.now(), room: d.room } });
+  })());
+});
+
+// A turn notification was tapped: bring the game back to the front, or open its room.
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => (list.length ? list[0].focus() : self.clients.openWindow('./'))));
+  const room = e.notification.data && /^[A-Z]{5}$/.test(e.notification.data.room || '') ? `?room=${e.notification.data.room}` : '';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => (list.length ? list[0].focus() : self.clients.openWindow(`./${room}`))));
 });

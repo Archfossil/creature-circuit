@@ -3,12 +3,16 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import WebSocket from 'ws';
+import { createServer } from 'node:http';
+import { createDecipheriv, createECDH, createHmac, createPublicKey, randomBytes, verify } from 'node:crypto';
+// @ts-expect-error plain JavaScript
+import { cleanSubscription, encrypt, vapidHeader } from '../server/push.mjs';
 
 const PORT = 18000 + Math.floor(Math.random() * 1000);
 let proc: ChildProcess;
 
 beforeAll(async () => {
-  proc = spawn(process.execPath, ['server/index.mjs'], { env: { ...process.env, PORT: String(PORT) }, stdio: 'pipe' });
+  proc = spawn(process.execPath, ['server/index.mjs'], { env: { ...process.env, PORT: String(PORT), PUSH_TEST: '1' }, stdio: 'pipe' });
   await new Promise<void>((resolve, reject) => {
     proc.stdout!.on('data', (d) => { if (String(d).includes('Creature Circuit server')) resolve(); });
     proc.on('error', reject);
@@ -150,5 +154,86 @@ describe('online server', () => {
     expect((await b2.wait((m) => m.type === 'state')).match).toMatchObject({ current: 1 });
     await b2.wait((m) => m.type === 'room' && m.controller === 'guest-d');
     a.close(); b2.close();
+  });
+});
+
+describe('server push', () => {
+  const b64 = (b: Uint8Array) => Buffer.from(b).toString('base64url');
+  const un64 = (t: string) => Buffer.from(t, 'base64url');
+  it('encrypts exactly as the published example (RFC 8291, appendix A)', () => {
+    const sub = { keys: { p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg' } };
+    const out = encrypt(sub, 'When I grow up, I want to be a watermelon', { privateKey: 'yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw', salt: 'DGv6ra1nlYgDCS1FRnbzlw' });
+    expect(b64(out)).toBe('DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN');
+  });
+  it('signs with a key the push service can check', () => {
+    const m = /^vapid t=([\w-]+)\.([\w-]+)\.([\w-]+), k=([\w-]+)$/.exec(vapidHeader('https://fcm.googleapis.com/fcm/send/abc'))!;
+    const claims = JSON.parse(un64(m[2]).toString());
+    expect(claims.aud).toBe('https://fcm.googleapis.com');
+    expect(claims.exp * 1000).toBeGreaterThan(Date.now());
+    expect(claims.sub).toMatch(/^(https|mailto):/);
+    const pub = un64(m[4]);
+    const key = createPublicKey({ format: 'jwk', key: { kty: 'EC', crv: 'P-256', x: b64(pub.subarray(1, 33)), y: b64(pub.subarray(33)) } });
+    expect(verify('sha256', Buffer.from(`${m[1]}.${m[2]}`), { key, dsaEncoding: 'ieee-p1363' }, un64(m[3]))).toBe(true);
+  });
+  it('only posts to real push services', () => {
+    const ec = createECDH('prime256v1'); ec.generateKeys();
+    const keys = { p256dh: b64(ec.getPublicKey()), auth: b64(randomBytes(16)) };
+    const ok = (endpoint: string, k: unknown = keys) => !!cleanSubscription({ endpoint, keys: k }, false);
+    for (const e of ['https://fcm.googleapis.com/fcm/send/x', 'https://updates.push.services.mozilla.com/wpush/v2/x', 'https://wns2-by3p.notify.windows.com/w/?token=x', 'https://web.push.apple.com/x']) expect(ok(e), e).toBe(true);
+    for (const e of ['http://fcm.googleapis.com/x', 'https://evil.com/fcm.googleapis.com', 'https://fcm.googleapis.com.evil.com/x', 'https://localhost/x', 'http://169.254.169.254/latest', 'https://fcm.googleapis.com:8443/x', 'https://a@fcm.googleapis.com/x', 'https://notify.windows.com.evil.com/', 'nonsense']) expect(ok(e), e).toBe(false);
+    expect(ok('https://fcm.googleapis.com/x', { p256dh: 'AAAA', auth: 'BBBB' })).toBe(false);
+    expect(cleanSubscription(null, false)).toBeNull();
+  });
+  it('pushes a turn and an offer to whoever asked, even with their tab closed, and stops when told', async () => {
+    const got: { path: string; text: string }[] = [];
+    const mk = () => { const ec = createECDH('prime256v1'); ec.generateKeys(); return { ec, auth: randomBytes(16) }; };
+    const bo = mk();
+    const hmac = (k: Uint8Array, d: Uint8Array) => createHmac('sha256', k).update(d).digest();
+    const open = (body: Buffer) => { // as the browser does
+      const salt = body.subarray(0, 16), theirs = body.subarray(21, 86), data = body.subarray(86);
+      const ikm = hmac(hmac(bo.auth, bo.ec.computeSecret(theirs)), Buffer.concat([Buffer.from('WebPush: info\0'), bo.ec.getPublicKey(), theirs, Buffer.from([1])]));
+      const prk = hmac(salt, ikm);
+      const d = createDecipheriv('aes-128-gcm', hmac(prk, Buffer.from('Content-Encoding: aes128gcm\0\x01')).subarray(0, 16), hmac(prk, Buffer.from('Content-Encoding: nonce\0\x01')).subarray(0, 12));
+      d.setAuthTag(data.subarray(-16));
+      return Buffer.concat([d.update(data.subarray(0, -16)), d.final()]).subarray(0, -1).toString();
+    };
+    let gone = false;
+    const service = createServer((req, res) => { const parts: Buffer[] = []; req.on('data', (x) => parts.push(x)); req.on('end', () => { if (gone) { res.writeHead(410); res.end(); return; } got.push({ path: req.url!, text: open(Buffer.concat(parts)) }); res.writeHead(201); res.end(); }); });
+    await new Promise<void>((r) => service.listen(0, r));
+    const port = (service.address() as { port: number }).port;
+    const until = async (n: number) => { for (let i = 0; i < 60 && got.length < n; i++) await new Promise((r) => setTimeout(r, 50)); };
+    const a = new Client('host-p'), b = new Client('guest-p');
+    await Promise.all([a.open(), b.open()]);
+    a.send({ type: 'create' });
+    a.code = b.code = String((await a.wait((m) => m.type === 'created')).code);
+    expect(String((await a.wait((m) => m.type === 'push-key')).key).length).toBeGreaterThan(80);
+    b.send({ type: 'join' });
+    await b.wait((m) => m.type === 'push-key');
+    a.send({ type: 'seat', trainer: trainer('Ann') });
+    await a.wait((m) => m.type === 'room' && (m.seats as unknown[]).length === 1);
+    b.send({ type: 'seat', trainer: trainer('Bo') });
+    await a.wait((m) => m.type === 'room' && (m.seats as unknown[]).length === 2);
+    b.send({ type: 'push-sub', sub: { endpoint: `http://localhost:${port}/bo`, keys: { p256dh: b64(bo.ec.getPublicKey()), auth: b64(bo.auth) } } });
+    a.send({ type: 'start', match: match(0) });
+    await a.wait((m) => m.type === 'room' && m.controller === 'host-p');
+    a.send({ type: 'ask', id: 'q', seat: 1, from: 'Ann', title: '', text: '', yes: '', no: '' });
+    await until(1);
+    expect(JSON.parse(got[0].text)).toEqual({ text: 'Ann is waiting for your answer.', room: a.code });
+    b.close();
+    await a.wait((m) => m.type === 'room' && (m.seats as { online: boolean }[])[1]?.online === false);
+    a.send({ type: 'state', match: match(1) });
+    await until(2);
+    expect(got[1]).toEqual({ path: '/bo', text: JSON.stringify({ text: 'Bo, it’s your turn!', room: a.code }) });
+    // told to stop
+    const b2 = new Client('guest-p'); await b2.open(); b2.code = a.code; b2.send({ type: 'join' });
+    await b2.wait((m) => m.type === 'room' && m.controller === 'guest-p');
+    b2.send({ type: 'push-sub', sub: null });
+    b2.send({ type: 'state', match: match(0, 2) });
+    await a.wait((m) => m.type === 'room' && m.controller === 'host-p');
+    a.send({ type: 'state', match: match(1, 2) });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(got.length).toBe(2);
+    gone = true;
+    a.close(); b2.close(); service.close();
   });
 });

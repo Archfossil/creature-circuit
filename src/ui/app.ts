@@ -18,7 +18,7 @@ import * as X from '../engine/npcTrade';
 import * as D from '../engine/dares';
 import type { Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
-import { alertState, askForAlerts, calm, callFor, steadyInterval, testCall } from './attention';
+import { alertState, askForAlerts, calm, callFor, canPush, pushSubscription, steadyInterval, testCall } from './attention';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
@@ -453,6 +453,18 @@ export class App {
   private eventWatch: { key: string; close: () => void } | null = null;
 
   /** True when this browser is playing the current turn online (so its actions are mirrored to everyone). */
+  /** The server's push key, and whether it can reach this browser with the tab closed. */
+  private pushKey = '';
+  private pushOn = false;
+  /** Tell the server where to push turn alerts (or to stop). */
+  async syncPush() {
+    const net = this.online;
+    if (!net?.code || !this.pushKey) return;
+    const sub = await pushSubscription(this.pushKey);
+    if (this.online !== net) return;
+    this.pushOn = !!sub;
+    net.send({ type: 'push-sub', sub });
+  }
   private stopKeepAlive: (() => void) | null = null;
   feeding() { return !!this.online && this.online.isController && !this.watching; }
   feed(item: FeedItem) { if (this.feeding()) this.online!.send({ type: 'feed', item }); }
@@ -499,6 +511,8 @@ export class App {
     this.stopKeepAlive?.();
     this.stopKeepAlive = null;
     calm();
+    this.online?.send({ type: 'push-sub', sub: null });
+    this.pushOn = false;
     this.online?.close();
     this.online = null;
     mirror.toast = undefined; mirror.dice = undefined;
@@ -551,6 +565,7 @@ export class App {
       case 'feed': await this.onFeed(m.item); break;
       case 'ask': await this.answerAsk(m); break;
       case 'ask-cancel': this.closeAsk(m.id); break;
+      case 'push-key': this.pushKey = m.key; void this.syncPush(); break;
       case 'do-skip': await this.skipFor(m.seat, m.reason); break;
       case 'edit': this.applyRemoteEdit(m.seat, m.edit); break;
       case 'do-play': toast(`You’re playing ${activeMatchOf()?.players[m.seat]?.trainer.name ?? 'their'}’s turn for them.`, 'info', 4000); break;
@@ -3805,8 +3820,9 @@ export class App {
     const st = alertState();
     const quiet = !settings().sound || settings().volume <= 0 ? 'Sound is muted, so there’ll be no ping.' : !settings().turnPing ? 'The turn ping is off.' : '';
     return h('div', { class: 'alert-row' }, h('div', null, h('b', null, '🔔 Turn notifications'),
-      h('small', null, st === 'on' ? 'On: your browser will tell you when it’s your turn.' : st === 'ask' ? 'Your browser can tell you when it’s your turn, even in another window.' : st === 'blocked' ? 'Blocked by your browser. Allow notifications for this site in its address-bar or site settings, then reload. The tab still flashes and pings.' : 'Not supported in this browser (or the page isn’t on https). The tab still flashes and pings.', quiet ? ` ${quiet}` : '')),
-      st === 'ask' ? h('button', { class: 'btn primary sm', onclick: async () => { await askForAlerts(); changed(); } }, 'Turn on') : null,
+      h('small', null, st === 'on' ? (this.pushOn ? 'On: you’ll be told when it’s your turn, even with the game closed.' : this.online && this.pushKey && !canPush() ? 'On while the game is open. (On an iPhone or iPad, add the game to your home screen to be told when it’s closed.)' : 'On: your browser will tell you when it’s your turn.') : st === 'off' ? 'Off. The tab still flashes and pings.' : st === 'ask' ? 'Your browser can tell you when it’s your turn, even in another window.' : st === 'blocked' ? 'Blocked by your browser. Allow notifications for this site in its address-bar or site settings, then reload. The tab still flashes and pings.' : 'Not supported in this browser (or the page isn’t on https). The tab still flashes and pings.', quiet ? ` ${quiet}` : '')),
+      st === 'ask' || st === 'off' ? h('button', { class: 'btn primary sm', onclick: async () => { await askForAlerts(); await this.syncPush(); changed(); } }, 'Turn on') : null,
+      st === 'on' && test ? h('button', { class: 'btn ghost sm', onclick: async () => { setSetting('alerts', false); await this.syncPush(); changed(); } }, 'Turn off') : null,
       test ? h('button', { class: 'btn ghost sm', onclick: () => { testCall(); toast('Look at another tab or window now: the alert comes in 4 seconds.', 'info', 4000); } }, 'Test') : null);
   }
 

@@ -1,7 +1,7 @@
 // Getting a player's attention online: a gentle ping, a flashing tab (title and icon) and, if they allow
 // it, a system notification. Browsers slow a hidden tab's timers to as little as one a minute, so the
 // flashing and the connection check run on a worker's clock, which they don't slow.
-import { settings } from './settings';
+import { setSetting, settings } from './settings';
 import { sfx } from './sound';
 
 /** Is the player looking at the game right now (the tab showing, in the window they're using)? */
@@ -81,20 +81,48 @@ if (typeof document !== 'undefined') {
 
 // ── System notifications ────────────────────────────────────────
 const TAG = 'cc-turn';
-export type AlertState = 'on' | 'ask' | 'blocked' | 'none';
-/** Whether system notifications can be shown: allowed, not asked yet, blocked in the browser, or not supported here. */
-export const alertState = (): AlertState => (!('Notification' in window) || !window.isSecureContext ? 'none' : Notification.permission === 'granted' ? 'on' : Notification.permission === 'denied' ? 'blocked' : 'ask');
+export type AlertState = 'on' | 'off' | 'ask' | 'blocked' | 'none';
+/** Whether system notifications can be shown: allowed (and wanted), turned off here, not asked yet, blocked in the browser, or not supported here. */
+export const alertState = (): AlertState => (!('Notification' in window) || !window.isSecureContext ? 'none' : Notification.permission === 'granted' ? (settings().alerts ? 'on' : 'off') : Notification.permission === 'denied' ? 'blocked' : 'ask');
 /** Ask for permission. Must be called straight from a click: some browsers ignore it otherwise. */
 export async function askForAlerts(): Promise<AlertState> {
+  setSetting('alerts', true);
   if (alertState() === 'ask') { try { await Notification.requestPermission(); } catch { /* ignore */ } }
   return alertState();
 }
 async function notify(text: string) {
   if (alertState() !== 'on') return;
-  const opts = { body: text, tag: TAG, icon: 'assets/types/astral.png', renotify: true } as NotificationOptions;
+  const opts = { body: text, tag: TAG, icon: 'assets/types/astral.png', renotify: true, data: { at: Date.now() } } as NotificationOptions;
   // phones only allow notifications through the service worker
-  try { const r = await navigator.serviceWorker?.getRegistration?.(); if (r) { await r.showNotification('Creature Circuit', opts); return; } } catch { /* fall through */ }
+  try { const r = await navigator.serviceWorker?.getRegistration?.(); if (r) {
+    // the server's push may have shown it already: don't ring twice
+    const shown = await r.getNotifications({ tag: TAG });
+    if (shown.some((n) => Date.now() - ((n.data as { at?: number } | null)?.at ?? 0) < 20_000)) return;
+    await r.showNotification('Creature Circuit', opts); return; } } catch { /* fall through */ }
   try { note = new Notification('Creature Circuit', opts); note.onclick = () => { window.focus(); calm(); }; } catch { /* not allowed here */ }
+}
+
+// ── Server push: alerts with the tab closed ─────────────────────
+/** Whether this browser can be reached with the tab closed. (iPhones and iPads: only once added to the home screen.) */
+export const canPush = () => 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext;
+/**
+ * The browser's push subscription for this server's key, made if needed; null when alerts are off or it
+ * can't. A subscription made for an earlier key (the server restarted) is replaced.
+ */
+export async function pushSubscription(key: string): Promise<PushSubscriptionJSON | null> {
+  if (!canPush()) return null;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return null;
+    let sub = await reg.pushManager.getSubscription();
+    if (alertState() !== 'on') { await sub?.unsubscribe(); return null; }
+    const text = key.replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(atob(text + '='.repeat((4 - (text.length % 4)) % 4)), (c) => c.charCodeAt(0));
+    const had = sub?.options.applicationServerKey;
+    if (sub && (!had || new Uint8Array(had).some((b, i) => b !== bytes[i]))) { await sub.unsubscribe(); sub = null; }
+    sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes });
+    return sub.toJSON();
+  } catch { return null; }
 }
 
 /**

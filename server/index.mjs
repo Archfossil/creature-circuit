@@ -10,6 +10,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { cleanSubscription, publicKey, push } from './push.mjs';
 
 const PORT = Number(process.env.PORT) || 8787;
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -66,6 +67,14 @@ function resetControl(room) {
   room.controller = seat && connected(room, seat.clientId) ? seat.clientId : null;
   armTimer(room);
   flushEdits(room);
+  if (seat) tell(room, seat.clientId, `${seat.trainer?.trainer?.name ?? seat.name}, it’s your turn!`);
+}
+
+/** Push a notification to a player who asked for them. (Their browser keeps quiet if they're looking at the game.) */
+function tell(room, clientId, text) {
+  const sub = room.pushes?.get(clientId);
+  if (!sub) return;
+  void push(sub, { text, room: room.code }).then((r) => { if (r === 'gone' && room.pushes.get(clientId) === sub) room.pushes.delete(clientId); });
 }
 
 /**
@@ -113,6 +122,7 @@ function handle(ws, clientId, msg) {
       rooms.set(r.code, r);
       r.sockets.set(clientId, ws);
       send(ws, { type: 'created', code: r.code });
+      send(ws, { type: 'push-key', key: publicKey });
       if (r.started) { resetControl(r); send(ws, { type: 'state', match: r.match }); }
       send(ws, roomInfo(r));
       return r;
@@ -120,6 +130,7 @@ function handle(ws, clientId, msg) {
     case 'join': {
       if (!room) { send(ws, { type: 'error', text: 'No room with that code. Check it, or ask the host to open it again.' }); return null; }
       room.sockets.set(clientId, ws);
+      send(ws, { type: 'push-key', key: publicKey });
       if (room.started && room.match) {
         // a seat owner coming back while it's their turn takes control again
         const seat = room.seats[room.match.current];
@@ -143,6 +154,13 @@ function handle(ws, clientId, msg) {
       if (mine) { mine.trainer = msg.trainer; mine.name = msg.trainer?.trainer?.name ?? mine.name; }
       else if (room.seats.length < 6) room.seats.push({ clientId, name: msg.trainer?.trainer?.name ?? 'Trainer', trainer: msg.trainer });
       broadcast(room, roomInfo(room));
+      return room;
+    }
+    case 'push-sub': { // turn notifications even with the tab closed: where to send them (null: stop)
+      const sub = msg.sub ? cleanSubscription(msg.sub) : null;
+      room.pushes ??= new Map();
+      if (sub) room.pushes.set(clientId, sub); else room.pushes.delete(clientId);
+      if (room.pushes.size > 24) room.pushes.delete(room.pushes.keys().next().value);
       return room;
     }
     case 'leave-seat': {
@@ -186,6 +204,7 @@ function handle(ws, clientId, msg) {
       if (clientId !== room.controller || !seat) return room;
       if (!connected(room, seat.clientId)) { send(ws, { type: 'answer', id: msg.id, yes: false, offline: true }); return room; }
       send(room.sockets.get(seat.clientId), { type: 'ask', id: msg.id, from: msg.from, title: msg.title, text: msg.text, yes: msg.yes, no: msg.no, pick: msg.pick });
+      tell(room, seat.clientId, `${String(msg.from ?? 'Someone').slice(0, 40)} is waiting for your answer.`);
       return room;
     }
     case 'ask-cancel': { // the prompt is off (answered too late, or called off): take it down
