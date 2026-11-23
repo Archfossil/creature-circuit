@@ -1,6 +1,6 @@
 import type { ArenaTrick, ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom } from '../data/moves';
-import { describeSwap, swapChart, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../data/swapMoves';
+import { SWAP_STATUS_ON, describeSwap, swapChart, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
@@ -961,7 +961,14 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   v.a = statsOf(b, si);
   v.f = statsOf(b, fi);
   for (const e of m.before ?? []) swapEffect(b, si, m, e, v, partner, ev);
-  if (m.hit && !activeOf(b.sides[fi]).ko) { v.a = statsOf(b, si); v.f = statsOf(b, fi); swapHit(b, si, m, v, ev); }
+  const foe = activeOf(b.sides[fi]);
+  for (const h of [m.hit, m.second]) {
+    // a second hit never carries over to the foe's replacement
+    if (!h || b.over || foe.ko || activeOf(b.sides[fi]) !== foe) continue;
+    v.a = statsOf(b, si);
+    v.f = statsOf(b, fi);
+    swapHit(b, si, m, h, v, ev);
+  }
   if (!b.over) for (const e of m.after ?? []) swapEffect(b, si, m, e, v, partner, ev);
 }
 
@@ -1029,8 +1036,7 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
   }
 }
 
-function swapHit(b: Battle, si: 0 | 1, m: SwapMove, v: SwapVals, ev: BEvent[]) {
-  const h = m.hit!;
+function swapHit(b: Battle, si: 0 | 1, m: SwapMove, h: SwapHit, v: SwapVals, ev: BEvent[]) {
   const fi: 0 | 1 = si === 0 ? 1 : 0;
   const foe = activeOf(b.sides[fi]);
   if (h.acc) {
@@ -1047,7 +1053,7 @@ function swapHit(b: Battle, si: 0 | 1, m: SwapMove, v: SwapVals, ev: BEvent[]) {
   const parts: Part[] = [...h.parts(v), { label: `${nameOf(foe)}’s ${STAT_LABEL[def]}`, value: -eff(b, fi, def) }];
   const r = roll(h.die);
   const raw = Math.max(1, r + parts.reduce((a, p) => a + p.value, 0));
-  const chart = swapChart(m, v);
+  const chart = swapChart(m, v, h);
   const mult = chart ? effectiveness(chart, speciesOf(foe).types) : 1;
   const struck = takeHit(b, fi, mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult)));
   const dmg = struck.dmg;
@@ -1056,7 +1062,7 @@ function swapHit(b: Battle, si: 0 | 1, m: SwapMove, v: SwapVals, ev: BEvent[]) {
   else if (mult === 0) ev.push({ t: 'say', text: `${nameOf(foe)} is immune!`, tone: 'info' });
   else if (mult < 1) ev.push({ t: 'say', text: 'It was resisted…', tone: 'info' });
   const st = h.status ? swapStatus(m) : undefined;
-  if (st && r <= 2) afflict(b, fi, st, ev);
+  if (st && r <= (h.statusOn ?? SWAP_STATUS_ON)) afflict(b, fi, st, ev);
   afterHit(b, fi, struck, h.kind === 'physical', ev);
   if (foe.ko) handleKO(b, fi, ev);
 }

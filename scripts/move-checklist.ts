@@ -6,7 +6,7 @@ import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY
 import { SPECIES } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
 import type { ElementType, Move, Stats } from '../src/data/schema';
-import { SWAP_MOVES, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../src/data/swapMoves';
+import { SWAP_MOVES, SWAP_STATUS_ON, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../src/data/swapMoves';
 
 const OUT = new URL('../docs/09-move-checklist.md', import.meta.url);
 const anchor = (heading: string) => heading.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/ /g, '-');
@@ -87,10 +87,10 @@ const swapEffectWord = (m: SwapMove, e: SwapEffect) => {
 const swapDamage = (m: SwapMove) => {
   if (!m.hit) return '—';
   const def = m.hit.kind === 'physical' ? 'Armor' : 'Ward';
-  return `d${m.hit.die} + ${m.hit.parts(SAMPLE).map((p) => p.label).join(' + ')} − ${def}`;
+  return [m.hit, ...(m.second ? [m.second] : [])].map((h) => `d${h.die} + ${h.parts(SAMPLE).map((p) => p.label).join(' + ')} − ${def}`).join(', then ');
 };
 const swapHitsAs = (m: SwapMove) => (!m.hit ? '—' : m.hit.kind === 'physical' ? 'Physical' : m.hit.chart === 'partner' ? 'Partner’s type' : m.hit.chart === 'alpha' ? 'Alpha’s type' : TYPE_LABEL[m.type!]);
-const swapRow = (m: SwapMove) => `| ${m.name} | \`${m.id}\` | ${m.type ? TYPE_LABEL[m.type] : 'Neutral'} | ${m.teamwork} | ${!m.hit ? '—' : m.hit.acc ? `d${m.hit.acc}` : 'Sure-hit'} | ${swapDamage(m)} | ${swapHitsAs(m)} | ${m.hit?.status ? `${STATUS_INFO[swapStatus(m)!].name} on 1–2` : '—'} | ${m.speed ? signed(m.speed) : '0'} | ${[...(m.before ?? []), ...(m.after ?? [])].map((e) => swapEffectWord(m, e)).join(', ') || '—'} | ${m.type ? '☐' : '☑'} | ☐ |`;
+const swapRow = (m: SwapMove) => `| ${m.name} | \`${m.id}\` | ${m.type ? `${m.boosted ? 'Boosted ' : ''}${TYPE_LABEL[m.type]}` : 'Neutral'} | ${m.teamwork} | ${!m.hit ? '—' : m.hit.acc ? `d${m.hit.acc}` : 'Sure-hit'} | ${swapDamage(m)} | ${swapHitsAs(m)} | ${m.hit?.status ? `${STATUS_INFO[swapStatus(m)!].name} on 1–${m.hit.statusOn ?? SWAP_STATUS_ON}` : '—'} | ${m.speed ? signed(m.speed) : '0'} | ${[...(m.before ?? []), ...(m.after ?? [])].map((e) => swapEffectWord(m, e)).join(', ') || '—'} | ${m.type ? '☐' : '☑'} | ☐ |`;
 const typedSwaps = SWAP_MOVES.filter((m) => m.type);
 
 const lines: string[] = [];
@@ -155,11 +155,11 @@ lines.push('## Signature moves', '', 'Unlocked from a creature’s progression c
 
 lines.push('## Swap Moves', '',
   'What a creature does when it swaps in during battle (it\'s the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature\'s card; until then a pair uses a neutral move picked at random. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).', '',
-  '- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need the Partner (not the Alpha) to have that type.',
+  '- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need the Partner (not the Alpha) to have that type; **Boosted** ones need both to share it.',
   '- **Damage** lists what\'s added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +2 at Teamwork 4; a pair\'s Teamwork is capped at half the lower Loyalty).',
-  '- **Status on 1–2**: typed hits inflict their type\'s status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it\'s inflicted with no roll (if the foe has no status).',
+  '- **Status on 1–2**: typed hits inflict their type\'s status on a 1 or 2 on the damage die, or as high as the table says (regular moves need a 1). **Outright** means it\'s inflicted with no roll (if the foe has no status).',
   '- **Effects** are applied before or after the hit as listed in the move\'s data. Stat boosts last while the Alpha stays in.',
-  '- **Design ☐**: the 16 typed moves are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.',
+  `- **Design ☐**: the ${typedSwaps.length} typed moves (Boosted included) are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.`,
   '- **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects, with `text` naming the Alpha and partner (`n.A`, `n.P`; see Wording in docs/13); document it in docs/13 (a test checks), then regenerate this file.', '',
   '| Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Design | Balance |',
   '|---|---|---|---|---|---|---|---|---|---|---|---|',

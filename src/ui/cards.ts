@@ -224,7 +224,7 @@ export function socialHelp(c: CreatureInst) {
 /** Teamwork with one decimal (its fraction is progress towards the next whole point). */
 export const fmtTeamwork = (v: number) => (Math.round(v * 10) / 10).toString();
 
-export const TEAMWORK_HELP = `Teamwork is how well two of your creatures work together. When one swaps in for the other in battle, its Swap Move gets +1 for every ${TEAMWORK_PER_BONUS} Teamwork it has with that partner, and stronger Swap Moves unlock at Teamwork 1 and 2.
+export const TEAMWORK_HELP = `Teamwork is how well two of your creatures work together. When one swaps in for the other in battle, its Swap Move gets +1 for every ${TEAMWORK_PER_BONUS} Teamwork it has with that partner, and stronger Swap Moves unlock at Teamwork 1 and 2 (3 for Boosted ones, if the two share a type).
 It grows by ${TEAMWORK_PER_TURN} each turn both travel on your active team, and by ${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle (once per battle).
 A pair's Teamwork is capped at half the lower Loyalty of the two (Loyalty 4 → Teamwork 2), so keep both creatures' trust. If that Loyalty falls, the Teamwork falls with it: Legendaries, whose Loyalty drains every turn, are costly partners to keep in step.`;
 
@@ -310,6 +310,12 @@ function swapSection(c: CreatureInst, mates: CreatureInst[] | null, edit?: (part
     h('p', { class: 'small muted' }, `🤝 Teamwork grows +${TEAMWORK_PER_TURN} a turn while both are on your active team, and +${TEAMWORK_PER_SWAP} the first time one swaps in for the other in a battle. Every ${TEAMWORK_PER_BONUS} Teamwork adds +1 to the Swap Move.`));
 }
 
+/** What a pair's shared types open up, for the Swap Move picker. */
+function sharedTypes(c: CreatureInst, partner: CreatureInst): string {
+  const both = speciesOf(c).types.filter((t) => speciesOf(partner).types.includes(t)).map((t) => TYPE_LABEL[t]).join(' and ');
+  return both ? `They’re both ${both}, so Boosted ${both} moves are open too, with enough Teamwork.` : 'Boosted moves need two creatures that share a type.';
+}
+
 /** Pick the Swap Move `c` uses when it swaps in for `partner`: every move, with why the locked ones are locked. */
 export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: () => void, onEdit?: (e: CreatureEdit) => void) {
   const cur = swapMoveOf(c, partner);
@@ -319,7 +325,7 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
   const A = nameOf(c), P = nameOf(partner);
   const close = openSheet(`${A} swapping in for ${P}`, h('div', null,
     swapPair(c, partner),
-    h('p', { class: 'small muted' }, `Typed Swap Moves use the partner’s types: swapping in for ${P}, ${A} can use ${speciesOf(partner).types.map((t) => TYPE_LABEL[t]).join(' and ')} ones. Stronger ones need Teamwork: ${nameOf(c)} has ${fmtTeamwork(teamworkOf(c, partner))} with ${nameOf(partner)}. Typed hits inflict their type’s status on a 1–2.`),
+    h('p', { class: 'small muted' }, `Typed Swap Moves use the partner’s types: swapping in for ${P}, ${A} can use ${speciesOf(partner).types.map((t) => TYPE_LABEL[t]).join(' and ')} ones. Stronger ones need Teamwork: ${nameOf(c)} has ${fmtTeamwork(teamworkOf(c, partner))} with ${nameOf(partner)}. Typed hits inflict their type’s status on a 1–2 (unless the move says otherwise). ${sharedTypes(c, partner)}`),
     h('div', { class: 'list swap-pick' }, rows.map(({ m, lock }) =>
       h('button', {
         class: `swap-opt ${m.id === cur.id ? 'on' : ''} ${lock ? 'locked' : ''}`, disabled: !!lock,
@@ -330,7 +336,7 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
         },
       },
         h('div', { class: 'swap-opt-head' }, m.type ? typeIconImg(m.type, 16) : null, h('b', null, m.name),
-          h('span', { class: 'muted' }, m.type ? ` · ${TYPE_LABEL[m.type]}` : ' · Neutral', m.teamwork ? ` · Teamwork ${m.teamwork}` : ''),
+          h('span', { class: 'muted' }, m.type ? ` · ${m.boosted ? 'Boosted ' : ''}${TYPE_LABEL[m.type]}` : ' · Neutral', m.teamwork ? ` · Teamwork ${m.teamwork}` : ''),
           m.id === cur.id ? h('span', { class: 'chip good' }, 'Set') : null),
         h('small', null, alphaText(swapText(m, v), A, P)),
         h('small', { class: 'muted' }, lock ?? alphaText(describeSwap(m, v), A, P)))))), { wide: true });

@@ -3467,6 +3467,49 @@ describe('Swap Moves', () => {
     twin.loyalty = 6; a.teamwork[twin.uid] = 3;
     expect(swapLock(a, twin, typedFor(a, 1))).toBe(null);
   });
+  it('Boosted moves need a type both creatures share, and their Teamwork', () => {
+    const [a, b] = trio();
+    const boost = SWAP_MOVES.find((m) => m.boosted && m.type === 'water')!;
+    const types = new Set(SWAP_MOVES.flatMap((m) => m.type ?? []));
+    expect(SWAP_MOVES.filter((m) => m.boosted).map((m) => m.type).sort()).toEqual([...types].sort()); // one per type
+    b.teamwork[a.uid] = a.teamwork[b.uid] = 3;
+    expect(swapLock(b, a, boost)).toMatch(/both creatures/); // a Water partner isn't enough
+    expect(swapLock(a, b, boost)).toMatch(/both creatures/);
+    // a dual-type partner: the shared type is boosted, and its other type still gives its usual moves
+    const sp = SPECIES.find((x) => x.rarity !== 'legendary' && x.types.length === 2 && x.types.includes('water'))!;
+    const d = createCreature(sp.id, 6);
+    d.loyalty = 6;
+    a.teamwork[d.uid] = 2;
+    expect(swapLock(a, d, boost)).toMatch(/Teamwork 3/);
+    a.teamwork[d.uid] = 3;
+    expect(swapLock(a, d, boost)).toBe(null);
+    const other = SWAP_MOVES.filter((m) => m.type === sp.types.find((t) => t !== 'water'));
+    expect(other.map((m) => !swapLock(a, d, m))).toEqual([true, true, false]);
+  });
+  it('Conjunction hits twice, but never carries over to the foe’s replacement', () => {
+    const sp = SPECIES.find((x) => x.rarity !== 'legendary' && x.types.length === 1 && x.types[0] === 'astral')!;
+    const run = (hp: number) => {
+      const a = createCreature(sp.id, 6), p = createCreature(sp.id, 6);
+      a.loyalty = p.loyalty = 6; a.teamwork[p.uid] = 3;
+      expect(setSwapMove(a, p, 'conjunction')).toBe(true);
+      const foes = [createCreature('sproutle', 6), createCreature('sproutle', 6)];
+      const bt = createBattle(side('player', [p, a]), side('trainer', foes), WEATHER.clear);
+      for (const c of [a, p, ...foes]) c.health = 999;
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
+      bt.sides[0].mods.speed = 10;
+      const lead = bt.sides[1].team[bt.sides[1].active], bench = foes.find((f) => f !== lead)!;
+      lead.health = hp;
+      if (hp === 1) lead.vitality = 0;
+      const ev: BEvent[] = resolveRound(bt, { kind: 'swap', to: 1 });
+      const rest = ev.slice(ev.findIndex((e) => e.t === 'use' && e.move === 'conjunction') + 1);
+      const end = rest.findIndex((e) => e.t === 'use' || (e.t === 'send' && e.side === 1));
+      return { hits: (end < 0 ? rest : rest.slice(0, end)).filter((e) => e.t === 'damage' && e.side === 1).length, bench };
+    };
+    expect(run(999).hits).toBe(2);
+    const ko = run(1);
+    expect(ko.hits).toBe(1);
+    expect(ko.bench.health).toBe(999);
+  });
   it('a slot whose move is no longer allowed falls back to the pair’s random default', () => {
     const [a, b] = trio();
     a.swapMoves[b.uid] = typedFor(b, 2).id; // set without the Teamwork for it
@@ -3488,7 +3531,7 @@ describe('Swap Moves', () => {
     for (const m of SWAP_MOVES) {
       // a partner of the move's type (any for neutral ones), with the Teamwork to set it
       const sp = SPECIES.find((x) => x.rarity !== 'legendary' && (!m.type || x.types.includes(m.type)))!;
-      const a = createCreature('zapup', 6), b = createCreature(sp.id, 6);
+      const a = createCreature(m.boosted ? sp.id : 'zapup', 6), b = createCreature(sp.id, 6);
       a.loyalty = b.loyalty = 6;
       a.teamwork[b.uid] = 3;
       expect(setSwapMove(a, b, m.id), m.id).toBe(true);

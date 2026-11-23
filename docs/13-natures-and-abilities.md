@@ -206,6 +206,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 - **Which moves a pair can set** (`swapLock` in `engine/swaps.ts`):
   - **Neutral** moves: every pair, at any Teamwork.
   - **Typed** moves: the **partner** must have the move's type; the Alpha's own types don't count. So a Rock / Water creature swapping in for an Astral one can set Astral moves, and the Astral one swapping in for it can set Rock and Water moves. Two creatures sharing a type lend it to each other. A move set under older rules that's no longer allowed falls back to the default. The first of each type needs the Alpha to have **Teamwork 1** with the partner, the second **Teamwork 2**.
+  - **Boosted** moves (one per type): **both** creatures must have the move's type; any shared type counts (Rock / Water with Rock / Fire can use the Rock one). All need **Teamwork 3** for now, which takes Loyalty 6 in both; each move sets its own requirement. The pair also keeps the partner's regular typed moves.
 - **Typed hits** inflict their type's status on a **1 or 2** on the damage die (regular elemental moves need a 1). A few typed moves inflict it outright instead.
 - **Teamwork** (`CreatureInst.teamwork`, rules in `engine/teamwork.ts`): each creature has a Teamwork score with every partner. The swap bonus is **the Alpha's Teamwork with the partner ÷ 2, rounded down**, using the value from *before* this swap. It's added wherever a move's effect says "+ bonus".
   - **Travelling together:** every pair on the active team gains **0.2** at the end of each turn. When a pair reaches a new whole point, it's announced at the start of the next turn.
@@ -214,10 +215,10 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
   - **Falling:** if a Loyalty drops, the pair's Teamwork drops to the new cap at the end of the turn and stays there (regaining Loyalty doesn't restore it; it has to be earned again). The trainer is told at the start of the next turn (`GameState.teamworkFell`).
   - **Legendaries** lose Loyalty every turn, so their Teamwork keeps sliding unless treats keep their Loyalty up. That makes them costly partners to keep in step, but a Legendary Alpha with Teamwork is a strong part of a championship team.
   - The bonus runs from 0 (under 2 Teamwork) to +2 (4–5 Teamwork, both at Loyalty 8+).
-- **The swap resolves at the outgoing creature's Speed**, plus the move's Speed bonus (Slipstream +3, Live Wire +2).
+- **The swap resolves at the outgoing creature's Speed**, plus the move's Speed bonus (Slipstream +3, Live Wire +2, Closed Circuit +4).
 - **Stat boosts** from a Swap Move last while the Alpha stays in, and are capped at ±3 like every battle modifier.
 - **Heals overheal:** a Swap Move heal beyond a full heart becomes **Overheal**, bonus Health that soaks up damage first (up to half a heart, for the rest of the battle; see [03 · Combat Rules](./03-combat-rules.md#vigor-health--vitality)). So Siphon, Heartlink, Overgrowth, Wellspring and the other healing Swap Moves still help a creature that swaps in at full Health. Instinct heals (Heartmend, Deep Roots) and healing moves (Photosynth, Second Wind, Overgrowth) work the same way.
-- **Code:** the moves are data in `src/data/swapMoves.ts` (`before` effects, an optional `hit`, `after` effects). `doSwap()` in `src/engine/battle.ts` runs them, and `describeSwap()` writes the text the card and swap screen show from the same data.
+- **Code:** the moves are data in `src/data/swapMoves.ts` (`before` effects, an optional `hit` and `second` hit, `after` effects). `doSwap()` in `src/engine/battle.ts` runs them, and `describeSwap()` writes the text the card and swap screen show from the same data.
 - **Wording:** each move's in-game text names who does what. In the game the creatures' names are filled in ("Cragtidekit swaps in with an attack of Sproutle's type (Grass), powered by Sproutle's Focus."). The tables below show the general form, with "the Alpha" (swapping in) and "the partner" (swapping out). Where a move says whose type it uses, the game adds the type in brackets. The grey line under it gives the numbers, naming whose stats they are ("d6 + 2 (Sproutle's Focus) − foe's Ward damage"). When writing a new move, say plainly which creature does each thing, and avoid a bare "it" where it could mean either creature.
 
 ### Neutral Swap Moves
@@ -253,16 +254,32 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 | Water | Tide Relay | `tide-relay` | 1 | "The Alpha swaps in on a wave of the partner's Focus." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
 | Water | Wellspring | `wellspring` | 2 | "The Alpha drinks from the partner's spring: the Alpha heals, both refill Stamina, and the foe is drenched." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; both refill Stamina; Soak on the foe (if it has no status). No damage. |
 
+### Boosted Swap Moves
+
+For two creatures that share the type. Each draws on both of them.
+
+| Type | Move | ID | Teamwork | In-game text | Exact effect |
+|---|---|---|---|---|---|
+| Astral | Conjunction | `conjunction` | 3 | "The Alpha and the partner align like two stars and strike the foe one after the other." | **Two** sure hits: d6 + Focus − Ward, then (if the foe is still standing) d4 + (partner's Focus ÷ 2, up) + bonus − Ward. Each can inflict status on a 1–2. |
+| Charm | Duet | `duet` | 3 | "The Alpha and the partner sing to each other: both are mended, and the foe is too beguiled to fight its best." | Beguile on the foe (if it has no status); foe −1 Power, −1 Focus; the Alpha heals (partner's Vigor ÷ 2, up) + bonus; the partner (benched) heals (Alpha's Vigor ÷ 2, up) + bonus. Then a sure hit: d4 + Focus − Ward. |
+| Electric | Closed Circuit | `closed-circuit` | 3 | "The Alpha and the partner complete a circuit: it strikes the foe in a flash and leaves both fully charged." | +4 Speed for turn order. A sure hit: d6 + Focus + (partner's Focus ÷ 2, down) + bonus − Ward. Status on a 1–2. Then both refill Stamina. |
+| Fire | Twin Blaze | `twin-blaze` | 3 | "The partner's flames and the Alpha's meet in one roaring blaze that is hard to aim and harder to put out." | d8 to hit. **d10** + Focus + (partner's Focus ÷ 2, up) + bonus − Ward. Status on a **1–4**. |
+| Grass | Grove Chorus | `grove-chorus` | 3 | "The Alpha and the partner call up a grove around them: both are healed, the foe is snared, and the Alpha lashes out from the leaves." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; the partner (benched) heals (Alpha's Vigor ÷ 2, up) + bonus; Snare on the foe (if it has no status); +1 Ward. Then a sure hit: d4 + Focus − Ward. |
+| Rock | Twin Monolith | `twin-monolith` | 3 | "The Alpha and the partner slam together around the foe like two great stones, and the Alpha comes out tougher." | d8 to hit. Physical: **d8** + Power + (Alpha's Armor ÷ 2, up) + (partner's Armor ÷ 2, up) + bonus − Armor. Status on a 1–2. Then +1 Armor, hit or miss. |
+| Steel | Interlock | `interlock` | 3 | "The partner locks its plating into the Alpha's and pries the foe's loose, then the Alpha strikes." | +2 Armor, +2 Ward; foe −1 Armor. Then a sure physical hit: d6 + Power + bonus − Armor. Status on a 1–2. |
+| Water | Confluence | `confluence` | 3 | "The Alpha and the partner meet as two currents, sweep over the foe, and leave each other refreshed." | A sure hit: d6 + Focus + (partner's Focus ÷ 2, down) + bonus − Ward. Status on a 1–2. Then the Alpha and the partner (benched) each heal 1 + bonus. |
+
 ### Swap Move balance notes
 
-- [ ] **Accuracy:** only the d8-to-hit moves can miss (Tag Strike, Starfall Relay, Live Wire, Phoenix Handoff, Landslide Tag, Tide Relay); the rest always hit.
+- [ ] **Accuracy:** only the d8-to-hit moves can miss (Tag Strike, Starfall Relay, Live Wire, Phoenix Handoff, Landslide Tag, Tide Relay, Twin Monolith, Twin Blaze); the rest always hit.
 - [ ] **Rally's Teamwork bonus is all-or-nothing** (+1 under 2 Teamwork, +2 from 2), unlike the other moves' 0–3 scale. Kindle Swap works the same way.
 - [ ] **Teamwork now follows Loyalty, not level:** the bonus tops out at +2 (it was +3 at Lv 12), and typed Swap Moves unlock with Loyalty 2 and 4 in both creatures. Check that pairs reach Teamwork 1 early enough, since new recruits start at Loyalty 0, and how quickly a Legendary's Teamwork slides.
 - [x] **Teamwork no longer rewards swapping back and forth:** a pair earns it from a swap once per battle; travelling together on the active team is the steady source.
 - [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may out-damage a creature's own moves at Lv 1–3.
 - [ ] **Status on a 1–2 is twice as likely** as a regular elemental move's 1. Watch whether typed Swap Moves become the main way to inflict statuses.
 - [ ] **No-damage moves** (Rally, Heartlink, Kindle Swap, Wellspring) trade a hit for setup. Check they're picked at all once the typed hits unlock.
-- [ ] **Partners set the typed choices:** a single-type partner offers two typed moves, a dual-type one four. Dual types make more flexible partners; worth watching.
+- [ ] **Partners set the typed choices:** a single-type partner offers two typed moves, a dual-type one four. Dual types make more flexible partners; worth watching. A shared type adds its Boosted move, which makes up for a mono-type team's narrower choice.
+- [ ] **Boosted moves:** first drafts. Check Twin Monolith and Conjunction (two hits, each cut by Ward) against ordinary attacks, whether Teamwork 3 is reached soon enough, and whether each is worth more than its type's Teamwork 2 move.
 
 ---
 

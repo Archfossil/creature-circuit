@@ -135,6 +135,7 @@ export const GUIDE: GuideCategory[] = [
         'Choosing a Swap Move shows both creatures side by side with their stats, so you can see whose numbers each move uses. The Alpha (swapping in) is highlighted in gold and the partner (swapping out) in silver, there and in every move’s description.',
         '- Neutral Swap Moves (Tag Strike, Shield Pass, Slipstream, Siphon, Rally) are open to every pair.',
         '- Each type has two more. The Alpha uses its partner’s types, not its own: a Rock / Water creature swapping in for an Astral one can use the Astral moves, and the Astral one swapping in for it can use the Rock and Water moves. The first needs Teamwork 1 with that partner, the second Teamwork 2. Typed hits inflict their type’s status on a 1–2.',
+        '- Boosted Swap Moves: each type also has one powerful Swap Move for two creatures that share that type (Rock with Rock, or Rock / Water with Rock / Fire), at Teamwork 3 with that partner. The partner’s types still give their usual Swap Moves too.',
         '🤝 Teamwork is how well two of your creatures work together. Every 2 Teamwork the Alpha has with its partner adds +1 to its Swap Move (more damage, more borrowed Armor and Ward, more healing).',
         '- Travelling together: every pair on your active team gains 0.2 Teamwork each turn. You’re told at the start of a turn when a pair reaches a new point.',
         '- Swapping in battle: a pair gains +1 Teamwork the first time one swaps in for the other in a battle. Swapping them back and forth again in the same battle adds nothing more.',

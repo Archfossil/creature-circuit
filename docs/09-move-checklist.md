@@ -13,7 +13,7 @@ Every move in the game with all its attributes. Use it to swap generated **place
 | **Placeholders to replace** | **336** |
 | Attack-grid slots | 376 (40 hand-made, 336 placeholders) |
 | Hand-made moves flagged for a balance look | 4 |
-| Swap Moves | 21 (5 neutral, 16 typed; **16 awaiting design sign-off**) |
+| Swap Moves | 29 (5 neutral, 24 typed; **24 awaiting design sign-off**) |
 
 ## How to read this
 
@@ -47,7 +47,7 @@ Generated attacks use these numbers by total typed cost. Dual-type attacks get +
 - [Physical moves](#physical-moves) (10)
 - [Support moves](#support-moves) (19)
 - [Signature moves](#signature-moves) (8)
-- [Swap Moves](#swap-moves) (21)
+- [Swap Moves](#swap-moves) (29)
 - [Astral attacks](#astral-attacks) (47, 42 placeholders)
 - [Charm attacks](#charm-attacks) (47, 42 placeholders)
 - [Electric attacks](#electric-attacks) (47, 42 placeholders)
@@ -133,11 +133,11 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 What a creature does when it swaps in during battle (it's the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature's card; until then a pair uses a neutral move picked at random. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
 
-- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need the Partner (not the Alpha) to have that type.
+- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need the Partner (not the Alpha) to have that type; **Boosted** ones need both to share it.
 - **Damage** lists what's added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +2 at Teamwork 4; a pair's Teamwork is capped at half the lower Loyalty).
-- **Status on 1–2**: typed hits inflict their type's status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it's inflicted with no roll (if the foe has no status).
+- **Status on 1–2**: typed hits inflict their type's status on a 1 or 2 on the damage die, or as high as the table says (regular moves need a 1). **Outright** means it's inflicted with no roll (if the foe has no status).
 - **Effects** are applied before or after the hit as listed in the move's data. Stat boosts last while the Alpha stays in.
-- **Design ☐**: the 16 typed moves are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.
+- **Design ☐**: the 24 typed moves (Boosted included) are first drafts from development (names, flavour and numbers) awaiting design sign-off. The 5 neutral ones are the original powers.
 - **Adding one (developers):** add it to `SWAP_MOVES` in `src/data/swapMoves.ts`, built from the existing effects, with `text` naming the Alpha and partner (`n.A`, `n.P`; see Wording in docs/13); document it in docs/13 (a test checks), then regenerate this file.
 
 | Move | ID | Type | Teamwork | Accuracy | Damage | Hits as | Status | Speed | Effects | Design | Balance |
@@ -163,6 +163,14 @@ What a creature does when it swaps in during battle (it's the **Alpha**; the cre
 | Alloy Guard | `alloy-guard` | Steel | 2 | Sure-hit | d6 + Alpha’s Power − Armor | Physical | — | 0 | +Armor, foe −Armor | ☐ | ☐ |
 | Tide Relay | `tide-relay` | Water | 1 | d8 | d6 + Partner’s Focus + Teamwork − Ward | Water | Soak on 1–2 | 0 | — | ☐ | ☐ |
 | Wellspring | `wellspring` | Water | 2 | — | — | — | — | 0 | heals Alpha, both refill Stamina, Soak outright | ☐ | ☐ |
+| Conjunction | `conjunction` | Boosted Astral | 3 | Sure-hit | d6 + Alpha’s Focus − Ward, then d4 + Partner’s Focus ÷ 2 + Teamwork − Ward | Astral | Daze on 1–2 | 0 | — | ☐ | ☐ |
+| Duet | `duet` | Boosted Charm | 3 | Sure-hit | d4 + Alpha’s Focus − Ward | Charm | — | 0 | Beguile outright, foe −Power, foe −Focus, heals Alpha, heals Partner | ☐ | ☐ |
+| Closed Circuit | `closed-circuit` | Boosted Electric | 3 | Sure-hit | d6 + Alpha’s Focus + Partner’s Focus ÷ 2 + Teamwork − Ward | Electric | Shock on 1–2 | +4 | both refill Stamina | ☐ | ☐ |
+| Twin Blaze | `twin-blaze` | Boosted Fire | 3 | d8 | d10 + Alpha’s Focus + Partner’s Focus ÷ 2 + Teamwork − Ward | Fire | Burn on 1–4 | 0 | — | ☐ | ☐ |
+| Grove Chorus | `grove-chorus` | Boosted Grass | 3 | Sure-hit | d4 + Alpha’s Focus − Ward | Grass | — | 0 | heals Alpha, heals Partner, Snare outright, +Ward | ☐ | ☐ |
+| Twin Monolith | `twin-monolith` | Boosted Rock | 3 | d8 | d8 + Alpha’s Power + Alpha’s Armor ÷ 2 + Partner’s Armor ÷ 2 + Teamwork − Armor | Physical | Stagger on 1–2 | 0 | +Armor | ☐ | ☐ |
+| Interlock | `interlock` | Boosted Steel | 3 | Sure-hit | d6 + Alpha’s Power + Teamwork − Armor | Physical | Sunder on 1–2 | 0 | +Armor, +Ward, foe −Armor | ☐ | ☐ |
+| Confluence | `confluence` | Boosted Water | 3 | Sure-hit | d6 + Alpha’s Focus + Partner’s Focus ÷ 2 + Teamwork − Ward | Water | Soak on 1–2 | 0 | heals Alpha, heals Partner | ☐ | ☐ |
 
 ## Astral attacks
 

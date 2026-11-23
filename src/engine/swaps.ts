@@ -31,6 +31,7 @@ export function swapMoveSet(alpha: CreatureInst, partner: CreatureInst): boolean
 
 /** Why `alpha` can't use `m` when swapping in for `partner`, or null if it can. */
 export function swapLock(alpha: CreatureInst, partner: CreatureInst, m: SwapMove): string | null {
+  if (m.type && m.boosted && !(speciesOf(alpha).types.includes(m.type) && speciesOf(partner).types.includes(m.type))) return `Boosted: both creatures must be ${TYPE_LABEL[m.type]}`;
   if (m.type && !speciesOf(partner).types.includes(m.type)) return `Needs a ${TYPE_LABEL[m.type]} partner`; // the partner lends its types; the Alpha's own don't count
   const have = teamworkShown(teamworkOf(alpha, partner));
   if (have < m.teamwork) return `Needs Teamwork ${m.teamwork} (has ${have})`;

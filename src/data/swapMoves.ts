@@ -4,10 +4,10 @@
 // Alpha; the one it replaces is the partner.
 //
 // Which a pair can use (engine/swaps.ts): the Alpha uses the partner's types, so a typed Swap Move
-// needs the partner (not the Alpha) to have its type, and the stronger ones need Teamwork with that partner. Until the trainer picks one, a pair uses
+// needs the partner (not the Alpha) to have its type; a Boosted one needs both to have it. The stronger ones need Teamwork with that partner. Until the trainer picks one, a pair uses
 // a neutral move picked at random for it (engine/swaps.ts → defaultSwapMove).
 //
-// Each move is data: `before` effects, then an optional `hit`, then `after` effects. The battle engine
+// Each move is data: `before` effects, then an optional `hit` (and `second` hit), then `after` effects. The battle engine
 // (battle.ts → doSwap) runs them and `describeSwap` writes the text the card and swap screen show,
 // so the rules and the description can't drift apart.
 import type { ElementType, StatKey, Stats, StatusId } from './schema';
@@ -45,8 +45,10 @@ export interface SwapHit {
   parts: (v: SwapVals) => SwapPart[];
   /** Elemental hits: whose type the type chart uses (default: the move's own type). */
   chart?: 'alpha' | 'partner';
-  /** Inflicts the move's type status when the damage die shows a 1 or 2. */
+  /** Inflicts the move's type status on a low damage roll. */
   status?: boolean;
+  /** Highest damage roll that inflicts that status (default `SWAP_STATUS_ON`). */
+  statusOn?: number;
 }
 
 export interface SwapMove {
@@ -54,6 +56,8 @@ export interface SwapMove {
   name: string;
   /** Typed moves need a partner of this type (the Alpha's own type doesn't count). Neutral ones are open to every pair. */
   type?: ElementType;
+  /** Boosted moves need both creatures to share the move's type. */
+  boosted?: boolean;
   /** Teamwork the Alpha needs with the partner to set it. */
   teamwork: number;
   /** Bonus Speed for the swap's turn order. */
@@ -62,6 +66,8 @@ export interface SwapMove {
   text: (n: SwapNames) => string;
   before?: SwapEffect[];
   hit?: SwapHit;
+  /** A second hit, if the foe is still standing after the first. */
+  second?: SwapHit;
   after?: SwapEffect[];
 }
 
@@ -148,6 +154,31 @@ export const SWAP_MOVES: SwapMove[] = [
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('p', 'focus')) } },
   { id: 'wellspring', name: 'Wellspring', type: 'water', teamwork: 2, text: (n) => `${n.A} drinks from ${n.P}’s spring: ${n.A} heals, both refill Stamina, and the foe is drenched.`,
     before: [heal('alpha', healFrom('p')), { t: 'refill' }, { t: 'status' }] },
+
+  // ── Boosted: both creatures must share the type ──
+  { id: 'conjunction', name: 'Conjunction', type: 'astral', boosted: true, teamwork: 3, text: (n) => `${n.A} and ${n.P} align like two stars and strike the foe one after the other.`,
+    hit: { die: 6, kind: 'elemental', status: true, parts: partsNoTw(of('a', 'focus')) },
+    second: { die: 4, kind: 'elemental', status: true, parts: parts(half('p', 'focus')) } },
+  { id: 'duet', name: 'Duet', type: 'charm', boosted: true, teamwork: 3, text: (n) => `${n.A} and ${n.P} sing to each other: both are mended, and the foe is too beguiled to fight its best.`,
+    before: [{ t: 'status' }, mod('foe', 'power', fixed(-1)), mod('foe', 'focus', fixed(-1)), heal('alpha', healFrom('p')), heal('partner', healFrom('a'))],
+    hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) } },
+  { id: 'closed-circuit', name: 'Closed Circuit', type: 'electric', boosted: true, teamwork: 3, speed: 4, text: (n) => `${n.A} and ${n.P} complete a circuit: it strikes the foe in a flash and leaves both fully charged.`,
+    hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus'), half('p', 'focus', 'down')) },
+    after: [{ t: 'refill' }] },
+  { id: 'twin-blaze', name: 'Twin Blaze', type: 'fire', boosted: true, teamwork: 3, text: (n) => `${n.P}’s flames and ${n.A}’s meet in one roaring blaze that is hard to aim and harder to put out.`,
+    hit: { acc: 8, die: 10, kind: 'elemental', status: true, statusOn: 4, parts: parts(of('a', 'focus'), half('p', 'focus')) } },
+  { id: 'grove-chorus', name: 'Grove Chorus', type: 'grass', boosted: true, teamwork: 3, text: (n) => `${n.A} and ${n.P} call up a grove around them: both are healed, the foe is snared, and ${n.A} lashes out from the leaves.`,
+    before: [heal('alpha', healFrom('p')), heal('partner', healFrom('a')), { t: 'status' }, mod('self', 'ward', fixed(1))],
+    hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) } },
+  { id: 'twin-monolith', name: 'Twin Monolith', type: 'rock', boosted: true, teamwork: 3, text: (n) => `${n.A} and ${n.P} slam together around the foe like two great stones, and ${n.A} comes out tougher.`,
+    hit: { acc: 8, die: 8, kind: 'physical', status: true, parts: parts(of('a', 'power'), half('a', 'armor'), half('p', 'armor')) },
+    after: [mod('self', 'armor', fixed(1))] },
+  { id: 'interlock', name: 'Interlock', type: 'steel', boosted: true, teamwork: 3, text: (n) => `${n.P} locks its plating into ${n.A}’s and pries the foe’s loose, then ${n.A} strikes.`,
+    before: [mod('self', 'armor', fixed(2)), mod('self', 'ward', fixed(2)), mod('foe', 'armor', fixed(-1))],
+    hit: { die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power')) } },
+  { id: 'confluence', name: 'Confluence', type: 'water', boosted: true, teamwork: 3, text: (n) => `${n.A} and ${n.P} meet as two currents, sweep over the foe, and leave each other refreshed.`,
+    hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus'), half('p', 'focus', 'down')) },
+    after: [heal('alpha', plusTw(1)), heal('partner', plusTw(1))] },
 ];
 
 /**
@@ -163,10 +194,12 @@ export const SWAP_MOVE_BY_ID: Record<string, SwapMove> = Object.fromEntries(SWAP
 
 /** The status a typed Swap Move inflicts. */
 export const swapStatus = (m: SwapMove): StatusId | undefined => (m.type ? STATUS_FOR[m.type] : undefined);
+/** Highest damage roll on which a typed hit inflicts its status, unless the hit says otherwise (`statusOn`). */
+export const SWAP_STATUS_ON = 2;
 /** The type a Swap Move's hit uses on the type chart (none for physical hits). */
-export function swapChart(m: SwapMove, v: Pick<SwapVals, 'aType' | 'pType'>): ElementType | undefined {
-  if (!m.hit || m.hit.kind !== 'elemental') return undefined;
-  return m.hit.chart === 'alpha' ? v.aType : m.hit.chart === 'partner' ? v.pType : m.type;
+export function swapChart(m: SwapMove, v: Pick<SwapVals, 'aType' | 'pType'>, h: SwapHit | undefined = m.hit): ElementType | undefined {
+  if (!h || h.kind !== 'elemental') return undefined;
+  return h.chart === 'alpha' ? v.aType : h.chart === 'partner' ? v.pType : m.type;
 }
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
@@ -198,16 +231,16 @@ export function describeSwap(m: SwapMove, v: SwapVals): string {
   const out: string[] = [];
   if (m.speed) out.push(`${v.A} gets +${m.speed} Speed to act first`);
   out.push(...effectsText(m, m.before ?? [], v));
-  if (m.hit) {
-    const h = m.hit;
+  for (const h of [m.hit, m.second]) {
+    if (!h) continue;
     const def = h.kind === 'physical' ? 'armor' : 'ward';
     // each number with what it is: "d6 + 2 (Zapup’s Focus) + 1 (Teamwork) − 1 (foe’s Ward)"
     const sum = h.parts(v).map((p) => ` ${p.value >= 0 ? '+' : '−'} ${Math.abs(p.value)} (${p.label})`).join('');
     const foeDef = v.f ? ` − ${v.f[def]} (foe’s ${LABEL[def]})` : ` − foe’s ${LABEL[def]}`;
-    const acc = h.acc ? `${v.A} attacks: d${h.acc} to hit${v.f ? ` (needs ${v.f.evasion}+)` : ' vs the foe’s Evasion'}, then ` : `${v.A} attacks (a sure hit): `;
-    const chart = swapChart(m, v);
+    const acc = h === m.second ? `then ${v.P} joins in (a sure hit, if the foe still stands): ` : h.acc ? `${v.A} attacks: d${h.acc} to hit${v.f ? ` (needs ${v.f.evasion}+)` : ' vs the foe’s Evasion'}, then ` : `${v.A} attacks (a sure hit): `;
+    const chart = swapChart(m, v, h);
     const st = h.status ? swapStatus(m) : undefined;
-    out.push(`${acc}d${h.die}${sum}${foeDef} damage${chart ? `, as ${TYPE_LABEL[chart]}` : ''}${st ? ` (${STATUS_INFO[st].name} on a 1–2)` : ''}`);
+    out.push(`${acc}d${h.die}${sum}${foeDef} damage${chart ? `, as ${TYPE_LABEL[chart]}` : ''}${st ? ` (${STATUS_INFO[st].name} on a 1–${h.statusOn ?? SWAP_STATUS_ON})` : ''}`);
   }
   out.push(...effectsText(m, m.after ?? [], v));
   const s = out.filter(Boolean).join('; ');

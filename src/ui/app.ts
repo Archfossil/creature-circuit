@@ -1886,7 +1886,7 @@ export class App {
         const cur = activeOf(b.sides[0]);
         const close = openSheet('Swap — choose the incoming Alpha', h('div', null,
           h('p', { class: 'small' }, `The incoming creature is the Alpha: it uses the Swap Move set for swapping in for ${nameOf(cur)} (change it here or on its card). The swap resolves at ${nameOf(cur)}'s speed.`),
-          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2. A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A pair’s Teamwork is capped at half the lower Loyalty of the two.`),
+          h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2 (3 for Boosted ones, if the two share a type). A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A pair’s Teamwork is capped at half the lower Loyalty of the two.`),
           h('div', { class: 'list' }, b.sides[0].team.map((c, i) => {
             if (c.ko || c === cur) return null;
             const pv = swapPreview(b, 0, i);
