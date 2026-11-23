@@ -747,8 +747,8 @@ export class WorldView implements SceneView {
     return new THREE.Vector3(n.x + off, nodeHeight(n) + (n.kind === 'city' ? 0.6 : 0.42), n.z + off);
   }
 
-  hop(fromId: string, toId: string): Promise<void> {
-    return new Promise((res) => { this.hopping = { from: this.pawnPos(fromId), to: this.pawnPos(toId), t: 0, res }; this.focus(toId); });
+  hop(fromId: string, toId: string, follow = true): Promise<void> {
+    return new Promise((res) => { this.hopping = { from: this.pawnPos(fromId), to: this.pawnPos(toId), t: 0, res }; if (follow) this.focus(toId); });
   }
 
   setFollower(speciesId: string | null) {

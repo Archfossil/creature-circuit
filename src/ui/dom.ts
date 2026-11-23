@@ -32,8 +32,8 @@ export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 /** Online play: the controlling browser mirrors its toasts and dice rolls to everyone watching. */
 export const mirror: { toast?: (text: string, tone: 'info' | 'good' | 'bad') => void; dice?: (title: string, dice: DieSpec[], caption?: string, hold?: number) => void } = {};
 
-export function toast(text: string, tone: 'info' | 'good' | 'bad' = 'info', ms = 2600) {
-  mirror.toast?.(text, tone);
+export function toast(text: string, tone: 'info' | 'good' | 'bad' = 'info', ms = 2600, mine = false) {
+  if (!mine) mirror.toast?.(text, tone); // `mine`: only for this screen, not for those watching online
   let host = $('#toasts');
   if (!host) { host = h('div', { id: 'toasts' }); document.body.append(host); }
   const t = h('div', { class: `toast ${tone}`, role: 'status' }, text);
@@ -104,8 +104,9 @@ export const readHold = (caption: string | undefined, hold: number) => Math.max(
 /** Show a tabletop dice roll overlay. Resolves when the animation ends. The caption (the result) stays
  *  hidden while the dice tumble and is revealed only once they land.
  *  `read`: hold long enough to read the caption, and resolve only after the overlay has faded, so a
- *  follow-up roll starts on a clean screen (used for rolls on the map). */
-export async function rollDice(title: string, dice: DieSpec[], caption?: string, hold = 900, opts: { read?: boolean } = {}): Promise<void> {
+ *  follow-up roll starts on a clean screen (used for rolls on the map).
+ *  `corner`: another trainer's roll, shown small in the corner and out of the way. */
+export async function rollDice(title: string, dice: DieSpec[], caption?: string, hold = 900, opts: { read?: boolean; corner?: boolean } = {}): Promise<void> {
   if (opts.read) hold = readHold(caption, hold);
   mirror.dice?.(title, dice, caption, hold);
   const fast = settings().fastDice || settings().reduceMotion;
@@ -114,7 +115,7 @@ export async function rollDice(title: string, dice: DieSpec[], caption?: string,
   sfx.dice();
   const tray = h('div', { class: 'dice-tray' });
   const cap = caption ? h('div', { class: 'dice-caption' }, caption) : null;
-  const wrap = h('div', { class: 'dice-overlay', role: 'status', 'aria-live': 'polite', 'aria-label': `${title}: rolling…` }, h('div', { class: 'dice-card' }, h('div', { class: 'dice-title' }, title), tray, cap));
+  const wrap = h('div', { class: `dice-overlay ${opts.corner ? 'corner' : ''}`, role: 'status', 'aria-live': 'polite', 'aria-label': `${title}: rolling…` }, h('div', { class: 'dice-card' }, h('div', { class: 'dice-title' }, title), tray, cap));
   const els = dice.map((d) => {
     const face = h('div', { class: `die d${d.sides}` }, h('span', null, '?'));
     const tag = h('small', null, `d${d.sides}`);   // the die's own label (e.g. "3–4 Encounter") waits until it lands

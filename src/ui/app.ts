@@ -67,6 +67,8 @@ function trainerLookEditor(get: () => { name: string; color: string; look: Train
 }
 
 /** A small async queue (online: battle rounds arrive over the network while a battle is being watched). */
+type WatchCtx = { kind: 'wild'; intro: string; city?: string; rivalLook?: TrainerLook; rivalSeat?: number };
+
 class AsyncQueue<T> {
   private items: T[] = [];
   private waiters: ((v: T) => void)[] = [];
@@ -203,6 +205,7 @@ export class App {
   }
 
   start(s: GameState, fresh = false) {
+    this.liveLog = null;
     this.eventWatch = null; // (its window closes with the rest below)
     if (!activeMatchOf()?.players.includes(s)) setActiveMatch(null);
     this.s = s;
@@ -360,7 +363,21 @@ export class App {
   // ════════════════════════════════════════════════════════════
   online: Online | null = null;
   /** Online: watching someone else's turn (read-only). */
-  watching = false;
+  get watching() { return this.isWatching; }
+  set watching(v: boolean) {
+    this.isWatching = v;
+    document.body.classList.toggle('spectating', v); // other trainers' dice stay under our own windows
+    if (!v) { this.leaveWatch?.(); this.watchFight = null; this.watchKey = ''; }
+  }
+  private isWatching = false;
+  /** Online: the battle the trainer playing is in, with what has happened so far, so we can look in at any point. */
+  private watchFight: { battle: unknown; ctx: WatchCtx; past: BEvent[] } | null = null;
+  /** Stop viewing the battle on screen (set while viewing one). */
+  private leaveWatch: (() => void) | null = null;
+  /** The trainer and turn the map last moved to while watching. */
+  private watchKey = '';
+  /** Who runs the turn (a change mid-battle abandons that battle). */
+  private lastController: string | null = null;
   /** Online: the seat:turn this browser is currently playing (so updates don't restart it). */
   activeKey = '';
   /** Online: the host is ending someone's turn for them. */
@@ -409,7 +426,8 @@ export class App {
     useMatchSlot('online');
     onMatchSaved((m) => this.pushState(m));
     mirror.toast = (text, tone) => this.feed({ kind: 'toast', text, tone });
-    mirror.dice = (title, dice, caption, hold) => this.feed({ kind: 'dice', title, dice, caption, hold });
+    // (a battle's dice are part of its events, for whoever is viewing it)
+    mirror.dice = (title, dice, caption, hold) => { if (!this.liveLog) this.feed({ kind: 'dice', title, dice, caption, hold }); };
     if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
     return true;
   }
@@ -442,6 +460,8 @@ export class App {
     switch (m.type) {
       case 'created': toast(`Room ${m.code} is open. Share the code (or link) with your friends.`, 'good', 5000); this.lobby(); break;
       case 'room':
+        if (this.watchFight && this.lastController !== m.controller) { this.watchFight = null; this.leaveWatch?.(); }
+        this.lastController = m.controller;
         if (!m.started) this.lobby();
         else { this.closeLobby?.(); await this.syncRole(); }
         this.renderTimer();
@@ -555,7 +575,7 @@ export class App {
     if (!m) return;
     const s = m.players[m.current];
     // we were playing until now (the turn ended, or the host took over): our open windows no longer apply
-    if (!this.watching) { closeAllSheets(); this.eventWatch = null; }
+    if (!this.watching) { closeAllSheets(); this.eventWatch = null; this.liveLog = null; }
     this.watching = true;
     this.s = s;
     // the event we were looking at has been answered
@@ -563,7 +583,9 @@ export class App {
     this.world.setTitleMode(false);
     this.world.setTrainerLook(playerLook(s.trainer.name, s.trainer.color, s.trainer.look));
     if (!this.hopping) this.world.setPawnAt(s.location);
-    this.world.focus(s.location);
+    // look their way as their turn begins, then leave the map alone: we may be planning our own moves
+    const key = `${s.trainer.name}:${s.turn}`;
+    if (this.watchKey !== key) { this.watchKey = key; this.world.focus(s.location); }
     this.showRivals();
     if (!this.watchQueue) { this.engine.setView(this.world); this.renderHud(); }
   }
@@ -572,24 +594,55 @@ export class App {
     if (!this.watching) return;
     switch (item.kind) {
       case 'toast': toast(item.text, item.tone, 3200); break;
-      case 'dice': void rollDice(item.title, item.dice as DieSpec[], item.caption, item.hold); break;
+      case 'dice': if (!this.watchQueue) void rollDice(item.title, item.dice as DieSpec[], item.caption, item.hold, { corner: true }); break;
       case 'hop':
         this.hopping = true;
         this.world.setPawnAt(item.from);
-        await this.world.hop(item.from, item.to);
+        await this.world.hop(item.from, item.to, false);
         this.hopping = false;
         break;
       case 'battle-start': {
-        const q = new AsyncQueue<FeedItem>();
-        this.watchQueue = q;
-        const ctx = item.ctx as { kind: 'wild'; intro: string; city?: string; rivalLook?: TrainerLook };
-        await this.runBattle(item.battle as Battle, { ...ctx, watch: q });
-        if (this.watchQueue === q) this.watchQueue = null;
-        this.spectate();
+        // viewing it is up to us (a chip on the HUD opens it), unless it's a duel against us
+        const ctx = item.ctx as WatchCtx;
+        this.leaveWatch?.(); // still catching up on their last one
+        this.watchFight = { battle: item.battle, ctx, past: [] };
+        if (ctx.rivalSeat !== undefined && ctx.rivalSeat >= 0 && ctx.rivalSeat === this.mySeat()) await this.viewFight();
+        else this.renderHud();
         break;
       }
-      case 'battle-events': case 'battle-end': this.watchQueue?.push(item); break;
+      case 'battle-events':
+        this.watchFight?.past.push(...(item.events as BEvent[]));
+        this.watchQueue?.push(item);
+        break;
+      case 'battle-end':
+        this.watchFight = null;
+        if (this.watchQueue) this.watchQueue.push(item); else this.renderHud();
+        break;
     }
+  }
+
+  /** Look in on the battle being fought: catch up on what has happened, then follow it live. */
+  async viewFight() {
+    const f = this.watchFight;
+    if (!f || this.watchQueue || !this.watching) return;
+    const q = new AsyncQueue<FeedItem>();
+    this.watchQueue = q;
+    await this.runBattle(JSON.parse(JSON.stringify(f.battle)) as Battle, { ...f.ctx, watch: q, past: [...f.past] });
+    if (this.watchQueue === q) this.watchQueue = null;
+    if (this.watching) this.spectate();
+  }
+
+  /** My own team, to tend while someone else plays. */
+  myTeamSheet() {
+    const me = activeMatchOf()?.players[this.mySeat()];
+    if (!me) return;
+    openSheet('Your team', h('div', null,
+      h('p', { class: 'small muted' }, 'While you wait you can unlock chart nodes and edit playbooks. Changes go to the shared game right away.'),
+      h('div', { class: 'list' }, [...me.roster, ...me.reserve].map((c) => miniCard(c, { onClick: () => this.showMyCreature(c) })))));
+  }
+  myBagSheet() {
+    const me = activeMatchOf()?.players[this.mySeat()];
+    if (me) this.bagSheet(me, true);
   }
 
   /** It's this browser's turn: ping and flag the tab if it's in the background. */
@@ -641,7 +694,7 @@ export class App {
       if (seat >= 0) this.online?.send({ type: 'edit', seat, edit: { op: 'waypoint', node: id } });
     } else if (activeMatchOf()?.players.includes(me)) saveMatch(activeMatchOf()!); else save(me);
     this.renderHud();
-    toast(id ? `📍 Marked ${NODE_BY_ID[id].name} as your next stop. Only you can see it.` : '📍 Marker removed.', 'info', 2500);
+    toast(id ? `📍 Marked ${NODE_BY_ID[id].name} as your next stop. Only you can see it.` : '📍 Marker removed.', 'info', 2500, true);
   }
 
   /** Next-stop chip tapped: glide the map to my flag and light it up in my colour. */
@@ -652,7 +705,7 @@ export class App {
     if (!pos) return;
     this.world.focusPos(pos);
     this.world.spotlight(pos, me.trainer.color);
-    toast(`📍 Your next stop: ${NODE_BY_ID[me.waypoint]?.name ?? ''}`, 'info', 2000);
+    toast(`📍 Your next stop: ${NODE_BY_ID[me.waypoint]?.name ?? ''}`, 'info', 2000, true);
   }
 
   /** While watching: tend my own creatures. The change shows here at once and is sent to the trainer playing. */
@@ -1096,7 +1149,7 @@ export class App {
     if (!pos) return;
     this.world.focusPos(pos);
     this.world.spotlight(pos, p.trainer.color);
-    toast(`${p.trainer.name}${p === this.s ? ' (now playing)' : ''} · ${NODE_BY_ID[p.location]?.name ?? ''}`, 'info', 2000);
+    toast(`${p.trainer.name}${p === this.s ? ' (now playing)' : ''} · ${NODE_BY_ID[p.location]?.name ?? ''}`, 'info', 2000, true);
   }
 
   renderHud() {
@@ -1160,6 +1213,8 @@ export class App {
       h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('b', null, `${s.trainer.name} is resolving ${ev.title}`), h('small', null, 'Tap to see the choices')))
       : ev ? h('button', { class: 'event-pill', onclick: () => this.eventFlow(), title: 'Answer this event before ending your turn' },
       h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('small', null, 'Event waiting'), h('b', null, ev.title))) : null;
+    const fightPill = this.watching && this.watchFight ? h('button', { class: 'event-pill watch', title: 'Look in on the battle. You can come back to the map at any time.', onclick: () => void this.viewFight() },
+      h('span', { class: 'event-pill-ico' }, '⚔️'), h('div', null, h('b', null, `${s.trainer.name} is in a battle`), h('small', null, 'Tap to watch'))) : null;
     const m = activeMatchOf();
     const seats = m ? h('div', { class: 'seats', title: 'Turn order: tap a trainer to find them on the map' }, m.players.map((p) => h('button', {
       class: `seat ${p === s ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}`,
@@ -1178,7 +1233,7 @@ export class App {
       h('b', null, '🌲 Forest Floor'),
       h('small', null, s.merits.includes('gloom') ? 'Dahlia beaten' : trailNow.found ? '🏮 Dahlia’s arena found!' : `Dahlia’s Trail ${trailNow.steps}/${trailNow.need}`),
       h('small', { class: 'cloud-chip-link' }, 'Tap for the rules')) : '';
-    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team, cloudChip, floorChip), h('div', { class: 'hud-bottom' }, eventPill, loc, actions)));
+    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team, cloudChip, floorChip), h('div', { class: 'hud-bottom' }, eventPill, fightPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
   }
 
@@ -1229,11 +1284,9 @@ export class App {
     const mySeat = m?.owners?.indexOf(net.id) ?? -1;
     const me = mySeat >= 0 ? m!.players[mySeat] : null;
     const out: HTMLElement[] = [h('div', { class: 'watch-label', style: `--tc:${cur?.trainer.color ?? '#999'}` }, h('span', null, '👀 ', h('b', null, cur?.trainer.name ?? '…'), '’s turn'))];
-    if (me) out.push(h('button', { class: 'act', title: 'Unlock chart nodes and edit playbooks while you wait', onclick: () => openSheet('Your team', h('div', null,
-        h('p', { class: 'small muted' }, 'While you wait you can unlock chart nodes and edit playbooks. Changes go to the shared game right away.'),
-        h('div', { class: 'list' }, [...me.roster, ...me.reserve].map((c) => miniCard(c, { onClick: () => this.showMyCreature(c) }))))) },
+    if (me) out.push(h('button', { class: 'act', title: 'Unlock chart nodes and edit playbooks while you wait', onclick: () => this.myTeamSheet() },
       h('span', { class: 'act-ico' }, '🐾'), h('span', { class: 'act-lbl' }, 'My team')));
-    if (me) out.push(h('button', { class: 'act', title: 'Look through your bag (items can be used on your turn)', onclick: () => this.bagSheet(me, true) },
+    if (me) out.push(h('button', { class: 'act', title: 'Look through your bag (items can be used on your turn)', onclick: () => this.myBagSheet() },
       h('span', { class: 'act-ico' }, '🎒'), h('span', { class: 'act-lbl' }, 'My bag')));
     if (net.isHost && cur) {
       out.push(h('button', { class: 'act', title: `End ${cur.trainer.name}’s turn now`, onclick: async () => { if (await confirmSheet('Skip this turn?', `${cur.trainer.name}’s turn ends now, as if they pressed End Turn.`, 'Skip turn')) net.send({ type: 'host-skip' }); } },
@@ -1450,7 +1503,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; watch?: AsyncQueue<FeedItem>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -1478,7 +1531,7 @@ export class App {
     // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
     if (!ctx.watch && W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
     // online: everyone else watches this battle live
-    this.feed({ kind: 'battle-start', battle: JSON.parse(JSON.stringify(b)), ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook } as never });
+    this.feed({ kind: 'battle-start', battle: JSON.parse(JSON.stringify(b)), ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook, rivalSeat: ctx.rival ? activeMatchOf()?.players.indexOf(ctx.rival) : undefined } as never });
     const disp: [Snap, Snap] = [snapOf(activeOf(b.sides[0])), snapOf(activeOf(b.sides[1]))];
     const panel = h('div', { class: 'battle-ui' });
     const logLine = h('div', { class: 'battle-log' }, ctx.intro);
@@ -1555,15 +1608,43 @@ export class App {
     const nabe = !ctx.watch && s.hotpot && b.sides[0].buff && Object.keys(b.sides[0].buff).length ? `${CITIES[s.hotpot.city]?.hotpot.name ?? 'Chanko Nabe'}: ${W.buffText(b.sides[0].buff)} this battle` : null;
     if (nabe) { note(`🍲 ${nabe}.`, { tone: 'good' }); toast(`🍲 ${nabe}!`, 'good', 3000); }
 
+    let watchedEnd: Battle['over'] = null;
+    // looking in on a battle under way: bring the board and the log up to date without replaying it
+    for (const e of ctx.past ?? []) {
+      logBattleEvent(blog, b, e, whoOn);
+      if ('snap' in e) disp[e.side] = e.snap;
+      if (e.t === 'ring') { showRing(e.left, e.total); void bv.shrinkRing(1 - e.left / e.total); }
+      if (e.t === 'end') watchedEnd = e.result;
+    }
+    const left = { now: false };
+    if (ctx.watch) this.leaveWatch = () => {
+      this.leaveWatch = null;
+      left.now = true;
+      this.watchQueue = null;
+      ctx.watch!.push({ kind: 'battle-end' });
+      this.liveLog = null;
+      this.engine.setView(this.world);
+      this.busy = false;
+      this.renderHud();
+    };
+
+    // viewing: our own team and bag, and the way back, from the first moment
+    const watchTools = () => [
+      this.mySeat() >= 0 ? h('button', { class: 'btn ghost sm', onclick: () => this.myTeamSheet() }, '🐾 My team') : null,
+      this.mySeat() >= 0 ? h('button', { class: 'btn ghost sm', onclick: () => this.myBagSheet() }, '🎒 My bag') : null,
+      h('button', { class: 'btn primary sm', title: 'Stop viewing (Esc). You can look in again while the battle lasts.', onclick: () => this.leaveWatch?.() }, '🗺️ Back to map')];
+    if (ctx.watch) controls.replaceChildren(h('div', { class: 'row gap-s center wrap' }, ...watchTools()));
+
     bv.trainerHop(0); bv.trainerHop(1);
-    await Promise.all([bv.setCreature(0, activeOf(b.sides[0]).species), bv.setCreature(1, activeOf(b.sides[1]).species)]);
+    await Promise.all(([0, 1] as const).map((i) => bv.setCreature(i, disp[i].ko ? null : (b.sides[i].team.find((x) => x.uid === disp[i].uid) ?? activeOf(b.sides[i])).species)));
+    if (left.now) return null;
     renderPlate(0); renderPlate(1);
 
-    let watchedEnd: Battle['over'] = null;
     const play = async (events: BEvent[]) => {
       keepLogs();
       if (!ctx.watch) this.feed({ kind: 'battle-events', events });
       for (const e of events) {
+        if (left.now) return;
         if (e.t === 'end') watchedEnd = e.result;
         try { logEvent(e); } catch (err) { console.error('battle log error', err); }
         try { await playOne(e); } catch (err) { console.error('battle fx error', err); }
@@ -1714,6 +1795,7 @@ export class App {
           return;
         }
         if (ev.key.toLowerCase() === 'l') { this.battleLogSheet(blog); return; }
+        if (ctx.watch && ev.key === 'Escape') { this.leaveWatch?.(); return; }
         if (ctx.watch) { if (ev.key.toLowerCase() === 't') showTypes(); return; } // spectators: the type chart and log only
         if (!controls.querySelector('.move-grid')) return;
         const me = activeOf(b.sides[0]);
@@ -1727,6 +1809,7 @@ export class App {
       addEventListener('keydown', onKey);
       const finish = (r: Battle['over']) => {
         removeEventListener('keydown', onKey);
+        if (left.now) { resolve(r); return; }
         this.liveLog = null;
         // Teamwork earned from swaps this battle
         if (!ctx.watch && b.teamworkGains?.length) toast(`🤝 Teamwork grew: ${b.teamworkGains.map(riseText).join(' · ')}.`, 'good', 6000);
@@ -1777,9 +1860,11 @@ export class App {
         say(ctx.intro);
         controls.replaceChildren(h('div', { class: 'row gap-s center wrap' },
           h('div', { class: 'waiting' }, `👀 Watching ${s.trainer.name}’s battle`),
-          h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types')));
+          h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
+          ...watchTools()));
         void (async () => {
           for (;;) {
+            if (watchedEnd) { finish(watchedEnd); return; }
             const it = await ctx.watch!.next();
             if (it.kind === 'battle-events') await play(it.events as BEvent[]);
             if (it.kind === 'battle-end' || watchedEnd) { finish(watchedEnd ?? 'fled'); return; }
@@ -1787,7 +1872,10 @@ export class App {
         })();
       } else showControls();
     });
-    if (ctx.watch) { this.engine.setView(this.world); this.busy = false; return result; }
+    if (ctx.watch) {
+      if (!left.now) { this.leaveWatch = null; this.engine.setView(this.world); this.busy = false; }
+      return result;
+    }
     this.feed({ kind: 'battle-end' });
 
     // ── Aftermath ──────────────────────────────────────────────
