@@ -125,7 +125,7 @@ export function meet(s: GameState, npc: Npc): NpcRecord {
   const all = (s.npcs ??= {});
   return (all[npc.id] ??= { met: s.turn, won: 0, lost: 0, owed: 0, rapport: 0, seen: [], revenges: 0 });
 }
-export const npcMood = (r: NpcRecord): string => (r.rapport >= 6 ? '💛 Firm friends' : r.rapport >= 3 ? '🙂 Friendly' : r.rapport <= -2 ? '😠 Miffed' : r.lost > r.won + 1 ? '😏 Smug' : r.won > r.lost + 1 ? '🔥 Out to beat you' : '🤺 Sizing you up');
+export const npcMood = (r: NpcRecord): string => (r.rapport >= 6 ? '💛 Firm friends' : r.rapport >= 3 ? '🙂 Friendly' : r.rapport <= MIFFED ? '😠 Miffed' : r.lost > r.won + 1 ? '😏 Smug' : r.won > r.lost + 1 ? '🔥 Out to beat you' : '🤺 Sizing you up');
 
 /** A battle against a Rival or Champion where the trainer stands. */
 export function npcBattle(s: GameState, npc: Npc): Battle {
@@ -172,6 +172,15 @@ export function settleNpc(s: GameState, b: Battle, prize: number, rewards: boole
   out.push(`${npc.name}: “${won ? npc.lines.concede : npc.lines.gloat}”`);
   return out;
 }
+
+/** A Rival or Champion who has just knocked out the whole team offers to help one creature up (unless they're miffed, or it's the Finals). */
+export function mercyOffer(s: GameState, b: Battle): Npc | null {
+  const npc = b.sides[1].npc ? NPC_BY_ID[b.sides[1].npc] : undefined;
+  if (!npc || b.over !== 'lose' || s.phase !== 'map' || !s.roster.every((c) => c.ko)) return null;
+  return (recordWith(s, npc)?.rapport ?? 0) <= MIFFED ? null : npc;
+}
+/** At or under this rapport they hold a grudge. */
+export const MIFFED = -2;
 
 // ── Meeting them ────────────────────────────────────────────────
 const away = (a: string, b: string) => { const p = NODE_BY_ID[a], q = NODE_BY_ID[b]; return Math.hypot(p.x - q.x, p.z - q.z); };

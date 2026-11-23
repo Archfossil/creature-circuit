@@ -15,6 +15,7 @@ import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
 import type { Npc } from '../data/npcs';
+import { VOICES } from '../data/texts';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
@@ -2097,8 +2098,11 @@ export class App {
     }
     // a Wanderer whose team is wiped out picks which rested city to return to
     let wipeTo: string | undefined;
-    if (ctx.kind !== 'rival' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
-    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo });
+    // a Rival or Champion who beat the whole team may help one creature up
+    const helper = ctx.kind === 'trainer' ? N.mercyOffer(s, b) : null;
+    const mercy = helper ? await this.mercySheet(helper) : undefined;
+    if (!mercy && ctx.kind !== 'rival' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
+    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo, mercy });
     for (const t of summary.text) toast(t, summary.wiped ? 'bad' : 'good', 3500);
     this.busy = false;
     if (ctx.kind !== 'endgame') {
@@ -2109,6 +2113,19 @@ export class App {
       if (ctx.kind === 'arbiter' && result === 'win') this.meritCelebration(ctx.city!);
     }
     return result;
+  }
+
+  /** A Rival or Champion offers to help one creature up: which one, or undefined to go home instead. */
+  mercySheet(npc: Npc): Promise<string | undefined> {
+    const s = this.s;
+    return new Promise((resolve) => {
+      const done = (uid?: string) => { close(); resolve(uid); };
+      const close = openSheet(`🧂 ${npc.name} offers a hand`, h('div', null,
+        h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null, h('p', null, `“${VOICES[npc.id].mercy}”`),
+          h('p', { class: 'small muted' }, 'Choose a creature to revive with half its hearts and carry on from here, instead of being sent back to rest (which costs half your coins and the rest of your turn, but restores everyone).'))),
+        h('div', { class: 'list' }, s.roster.map((c) => miniCard(c, { onClick: () => done(c.uid) }))),
+        h('div', { class: 'row end' }, h('button', { class: 'btn ghost', onclick: () => done() }, 'No thanks, go and rest'))), { noClose: true });
+    });
   }
 
   /** Wanderer: the team is wiped out; choose a city you've rested at this game to return to. */

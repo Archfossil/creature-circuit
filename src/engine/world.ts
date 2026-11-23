@@ -6,10 +6,10 @@ import { INSTINCT_BY_ID } from '../data/instincts';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { npcNamed, passerBy } from '../data/npcs';
-import { circuitField, npcBattle, npcTeam, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
+import { circuitField, mercyOffer, npcBattle, npcTeam, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
 import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
-import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
+import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
@@ -307,7 +307,7 @@ function rollFind(s: GameState, node: MapNode): Find {
   let coins = 0;
   if (ir <= 2) items.push({ id: ir === 1 ? 'sunberry' : (Math.random() < 0.2 ? 'moonberry' : 'dewberry'), n: mult });
   else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: mult });
-  else if (ir === 5) items.push({ id: pick(['salve', 'calm-tea', 'lure-incense', 'hush-smoke', 'totem', 'trail-mix']), n: 1 });
+  else if (ir === 5) items.push({ id: Math.random() < 0.1 ? 'rousing-salts' : pick(['salve', 'calm-tea', 'lure-incense', 'hush-smoke', 'totem', 'trail-mix']), n: 1 });
   else { if (Math.random() < 0.5) items.push({ id: 'totem', n: 1 }); coins = roll(6); }
   return { itemRoll: ir, items, coins };
 }
@@ -394,7 +394,7 @@ function exoticFind(s: GameState, node: MapNode): Find {
   let coins = 0;
   if (ir <= 2) items.push({ id: 'duskberry', n: mult });
   else if (ir <= 4) items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: mult });
-  else if (ir === 5) items.push({ id: 'root-salve', n: 1 });
+  else if (ir === 5) items.push({ id: Math.random() < 0.2 ? 'rousing-salts' : 'root-salve', n: 1 });
   else { items.push({ id: pick(BIOME_MATERIALS[node.biome]), n: 1 }); coins = roll(6) + 3; }
   return { itemRoll: ir, items, coins };
 }
@@ -1062,7 +1062,7 @@ function recordBattle(s: GameState, b: Battle, kind: BattleKind) {
   for (const [t, n] of Object.entries(b.moveTypes ?? {})) mt[t] = (mt[t] ?? 0) + n;
 }
 
-export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean; wipeTo?: string }): BattleSummary {
+export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean; wipeTo?: string; /** The creature (uid) a Rival or Champion who won helps up, instead of a wipe. */ mercy?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
   for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
@@ -1099,11 +1099,18 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     s.initiative = Math.min(QUICK_STEP_MAX, s.initiative + QUICK_STEP_REFUND);
     out.text.push(`Quick Step: a clean getaway. +${QUICK_STEP_REFUND} Initiative back.`);
   }
+  const helped = ctx.mercy && mercyOffer(s, b) ? s.roster.find((c) => c.uid === ctx.mercy) : undefined;
   out.text.push(...settleNpc(s, b, out.coins, ctx.kind !== 'endgame'));
   // morale for participants
   for (const uid of b.participants) {
     const c = s.roster.find((x) => x.uid === uid);
     if (c && b.over === 'win') c.morale = Math.min(10, c.morale + 1);
+  }
+  if (helped) {
+    revive(helped);
+    s.following = helped.uid;
+    out.text.push(`${b.sides[1].name} helps ${nameOf(helped)} back up. You can carry on from here.`);
+    log(s, `${b.sides[1].name} helped ${nameOf(helped)} back on its feet.`);
   }
   if (s.roster.every((c) => c.ko) && ctx.kind !== 'rival') { // hotseat duels settle their own losses (interactions.ts)
     out.wiped = true;
@@ -1262,7 +1269,7 @@ export const keyTownName = (s: GameState, item: string) => NODE_BY_ID[keyTownOf(
 
 export function marketStock(nodeId: string): string[] {
   const n = NODE_BY_ID[nodeId];
-  if (n.kind === 'city') return ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'hush-smoke', 'star-charm', 'taxi-ticket', 'trail-mix', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
+  if (n.kind === 'city') return ['salve', 'elixir', 'rousing-salts', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'hush-smoke', 'star-charm', 'taxi-ticket', 'trail-mix', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
   return TOWNS[nodeId]?.sells ?? [];
 }
 
@@ -1360,15 +1367,26 @@ export function itemDisplayName(id: string) {
 }
 
 /** Overworld item use on a creature. */
+/** Fatigue added by Rousing Salts. */
+export const SALTS_FATIGUE = 4;
+/** Back on its feet from a KO, with half its hearts (rounded up). Its Fatigue stays. */
+function revive(c: CreatureInst) {
+  c.ko = false;
+  c.vitality = Math.ceil(maxHearts(c) / 2) - 1;
+  c.health = maxHealth(c);
+  c.stamina = maxStamina(c);
+}
+
 export function useItem(s: GameState, id: string, uid: string): string | null {
   const c = [...s.roster, ...s.reserve].find((x) => x.uid === uid);
   if (!c || !hasItem(s, id)) return null;
   const it = itemInfo(id);
   let msg: string | null = null;
-  if (id === 'salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 1); msg = `${nameOf(c)} regained a heart (+${HEART} Health).`; }
-  else if (id === 'elixir') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; msg = `${nameOf(c)} is fully refreshed.`; }
+  if (id === 'salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable or with Rousing Salts.'; c.vitality = Math.min(maxVitality(c), c.vitality + 1); msg = `${nameOf(c)} regained a heart (+${HEART} Health).`; }
+  else if (id === 'elixir') { if (c.ko) return 'KO\'d creatures must be revived at a stable or with Rousing Salts.'; c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; msg = `${nameOf(c)} is fully refreshed.`; }
+  else if (id === 'rousing-salts') { if (!c.ko) return 'A creature must be KO\'d to need Rousing Salts.'; revive(c); c.fatigue += SALTS_FATIGUE; msg = `${nameOf(c)} is back on its feet with ${c.vitality + 1} of ${maxHearts(c)} hearts, but worn out (Fatigue ${c.fatigue}).`; }
   else if (id === 'calm-tea') { c.fatigue = 0; msg = `${nameOf(c)} sips the tea. Fatigue cleared.`; }
-  else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained up to 2 hearts, and its Fatigue is cleared.`; }
+  else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable or with Rousing Salts.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained up to 2 hearts, and its Fatigue is cleared.`; }
   else if (id === 'energy-tonic') { const t = speciesOf(c).types[0]; c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
   else if (it.kind === 'treat') {
     const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;

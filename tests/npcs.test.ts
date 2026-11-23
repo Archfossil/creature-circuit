@@ -152,6 +152,62 @@ describe('rivals and champions', () => {
   });
 });
 
+describe('helping a KO’d creature up', () => {
+  it('Rousing Salts revive one anywhere, with half its hearts, and are only for the KO’d', () => {
+    const s = game();
+    const c = s.roster[0];
+    s.inventory['rousing-salts'] = 2;
+    expect(W.useItem(s, 'rousing-salts', c.uid)).toMatch(/must/);
+    expect(s.inventory['rousing-salts']).toBe(2);
+    c.ko = true; c.health = 0; c.vitality = 0; c.fatigue = 1;
+    expect(W.useItem(s, 'salve', c.uid)).toMatch(/Rousing Salts/);
+    expect(W.useItem(s, 'rousing-salts', c.uid)).toMatch(/back on its feet/);
+    expect(c.ko).toBe(false);
+    expect(c.vitality + 1).toBe(Math.ceil(stats(c).vigor / 2));
+    expect(c.fatigue).toBe(1 + W.SALTS_FATIGUE);
+    s.inventory['calm-tea'] = 1;
+    W.useItem(s, 'calm-tea', c.uid);
+    expect(c.fatigue).toBe(0);
+    expect(s.inventory['rousing-salts']).toBe(1);
+    for (const id of ['thunder', 'ridgeway', 'valor', 'depths', 'stadium']) expect(W.marketStock(id)).toContain('rousing-salts');
+  });
+  it('can be found while exploring, but not often', () => {
+    const s = game();
+    s.location = 'w1';
+    let finds = 0, salts = 0;
+    for (let i = 0; i < 6000; i++) { s.initiative = 5; const o = W.reexplore(s); if (o?.t === 'item') { finds++; if (o.items.some((x) => x.id === 'rousing-salts')) salts++; } }
+    expect(salts).toBeGreaterThan(0);
+    expect(salts / finds).toBeLessThan(0.04);
+  });
+  it('a Rival who knocks out the whole team offers; accepting skips the trip home', () => {
+    const s = game();
+    const at = s.location;
+    s.coins = 40; s.initiative = 3;
+    const lose = () => { const b = N.npcBattle(s, rival); for (const c of s.roster) { c.ko = true; c.health = 0; c.vitality = 0; } b.over = 'lose'; return b; };
+    let b = lose();
+    expect(N.mercyOffer(s, b)).toBe(rival);
+    const uid = s.roster[1].uid;
+    const out = W.finishBattle(s, b, { kind: 'trainer', mercy: uid });
+    expect(out.wiped).toBe(false);
+    expect(s.location).toBe(at);
+    expect(s.initiative).toBe(3);
+    expect(s.coins).toBeGreaterThan(30); // only the usual stakes
+    expect(s.roster.map((c) => c.ko)).toEqual([true, false, true]);
+    expect(N.recordWith(s, rival)).toMatchObject({ lost: 1, owed: 1 });
+    // declined: home as usual
+    b = lose();
+    expect(W.finishBattle(s, b, { kind: 'trainer' }).wiped).toBe(true);
+    // not from someone holding a grudge, a passer-by, or in the Finals
+    b = lose(); N.recordWith(s, rival)!.rapport = N.MIFFED;
+    expect(N.mercyOffer(s, b)).toBeNull();
+    N.recordWith(s, rival)!.rapport = 0; s.phase = 'endgame';
+    expect(N.mercyOffer(s, b)).toBeNull();
+    s.phase = 'map'; b.sides[1].npc = undefined;
+    expect(N.mercyOffer(s, b)).toBeNull();
+    expect(W.finishBattle(s, b, { kind: 'trainer', mercy: uid }).wiped).toBe(true);
+  });
+});
+
 describe('the messenger', () => {
   /** Pass turns until `npc` has a question waiting. */
   const until = (s: GameState, done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) { s.turn = s.turn >= 90 ? 20 : s.turn + 1; T.textTurn(s); } expect(done()).toBe(true); };

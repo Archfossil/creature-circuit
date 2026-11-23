@@ -18,7 +18,7 @@ The bar is notched at each heart, with a badge counting the hearts left. Healing
 
 **Overheal.** Healing from a **move**, a **Swap Move** or an **Instinct** that would go past a full heart isn't wasted: the extra becomes **Overheal**, a buffer of bonus Health that soaks up damage before Health does. A creature can hold up to **half a heart** (3) in Overheal. It lasts for the rest of the battle (also while benched) until damage uses it up. It's shown as a gold, striped stretch on the Health bar and a "+N" beside the Health number. Because of the cap, a heal repeated at full Health stops adding once the buffer is full. Typical cases: Photosynth or Second Wind used at full Health, Siphon healing a creature that swaps in at full Health, and Heartmend firing just after a lost heart has reset Health to full. (Healing from the arena only restores Health. This is under trial to make support moves more useful and may be pulled back.)
 
-When a creature defeats another creature in combat, the winning creature immediately refills its current heart, but not any hearts it lost. The defeated creature is KO'd and must be revived in a town or city.
+When a creature defeats another creature in combat, the winning creature immediately refills its current heart, but not any hearts it lost. The defeated creature is KO'd and must be revived in a town or city, or with Rousing Salts.
 
 Outside of combat, creatures refill their current heart, but not lost hearts unless you skip turns "Camping" to heal wounded creatures. This will not revive KO'd creatures under normal circumstances, it merely recovers lost hearts and removes Fatigue (more on Fatigue below.)
 

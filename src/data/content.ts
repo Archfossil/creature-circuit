@@ -40,6 +40,7 @@ export const ITEMS: Record<string, Item> = {
   'salve': { id: 'salve', name: 'Vigor Salve', kind: 'restore', price: 4, icon: '🩹', text: 'Restore one lost heart (5 Health) to a creature.' },
   'elixir': { id: 'elixir', name: 'Hot Spring Elixir', kind: 'restore', price: 10, icon: '🧪', text: 'Fully restore Health and clear Fatigue.' },
   'root-salve': { id: 'root-salve', name: 'Root Salve', kind: 'restore', price: 8, icon: '🌿', text: 'A Forest Floor remedy: restore two lost hearts (10 Health) and clear Fatigue.' },
+  'rousing-salts': { id: 'rousing-salts', name: 'Rousing Salts', kind: 'restore', price: 16, icon: '🧂', text: 'Revive a KO’d creature anywhere, with half its hearts (rounded up). Hard on it: +4 Fatigue, so camp or use a Calm Tea afterwards.' },
   'calm-tea': { id: 'calm-tea', name: 'Calm Tea', kind: 'restore', price: 5, icon: '🍵', text: 'Clear all Fatigue from a creature.' },
   'energy-tonic': { id: 'energy-tonic', name: 'Energy Tonic', kind: 'restore', price: 30, icon: '⚗️', text: 'Permanently +1 energy of the creature\'s primary type.' },
   // treats (morale & loyalty)

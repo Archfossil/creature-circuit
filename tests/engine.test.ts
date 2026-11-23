@@ -1301,7 +1301,7 @@ describe('Lantern Glade and the Rainbow Plains', () => {
     const s = fresh();
     s.location = 'prism1';
     s.visited.push('prism1');
-    const exotic = new Set(['duskberry', 'root-salve', ...BIOME_MATERIALS.prism]);
+    const exotic = new Set(['duskberry', 'root-salve', 'rousing-salts', ...BIOME_MATERIALS.prism]);
     let encounters = 0, finds = 0;
     for (let i = 0; i < 300; i++) {
       s.turn = 1 + (i % 20);

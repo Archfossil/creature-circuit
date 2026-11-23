@@ -51,6 +51,10 @@ The named trainers of Margos. **Rivals** turn up through the season and grow wit
 - **Champions** spend 5 turns at a time in a city or town. Whoever is there can be challenged (a city action) or chatted with (once a stay: friendlier for it, sometimes a treat).
 - **Everyone else** is a passer-by with a made-up name: no Ace, no growth, no contact.
 
+## A helping hand
+
+A Rival or Champion who knocks out your whole team offers to help one creature up (`mercyOffer`): it revives with half its hearts (without the Fatigue of Rousing Salts), follows you, and you stay where you are with your Initiative and coins (bar the usual stake). Or you can decline and be sent to rest as usual, which restores everyone. They don't offer in the Finals, or if you're on bad terms (rapport −2 or lower). Passers-by never do. Each has their own line (`mercy` in `texts.ts`).
+
 ## Rematches
 
 Invite anyone you've met from their card, to any city or town but Circuit Stadium and Lantern Glade. They arrive in 2 turns and wait 5. Up to 2 can be arranged at once. Not turning up costs a little goodwill.
@@ -74,7 +78,7 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 
 ## Messenger
 
-Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (nine lines each; `{you}`, `{merit}` and `{place}` are filled in) and the rules in `src/engine/messenger.ts`.
+Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (ten lines each; `{you}`, `{merit}` and `{place}` are filled in) and the rules in `src/engine/messenger.ts`.
 
 - **They write first:** only people you've met, at most one text every 3 turns from anyone, and every 8 from the same person. It's a rematch offer after a battle, congratulations on a Merit (as soon as there's a free moment), news of their own, a hello, or a treat by courier from someone friendly. Being stood up always gets a text.
 - **Answers:** a kind reply warms them to you. A cheeky one only costs goodwill with a firm friend. Accepting a rematch sets it at the nearest city or town. A question lapses after 6 turns.

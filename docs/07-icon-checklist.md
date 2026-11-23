@@ -165,6 +165,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 **Restoratives**
 - [ ] `item-salve`: 🩹 Vigor Salve
 - [ ] `item-elixir`: 🧪 Hot Spring Elixir
+- [ ] `item-rousing-salts`: 🧂 Rousing Salts (also the offer of a hand after a lost Rival battle)
 - [ ] `item-calm-tea`: 🍵 Calm Tea
 - [ ] `item-energy-tonic`: ⚗️ Energy Tonic
 
