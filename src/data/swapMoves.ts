@@ -3,8 +3,8 @@
 // swapping in for Zapup" (and from "Puddlit swapping in for Sproutle"). The incoming creature is the
 // Alpha; the one it replaces is the partner.
 //
-// Which a pair can use (engine/swaps.ts): a typed Swap Move needs one of the two creatures to have its
-// type, and the stronger ones need Teamwork with that partner. Until the trainer picks one, a pair uses
+// Which a pair can use (engine/swaps.ts): the Alpha uses the partner's types, so a typed Swap Move
+// needs the partner (not the Alpha) to have its type, and the stronger ones need Teamwork with that partner. Until the trainer picks one, a pair uses
 // a neutral move picked at random for it (engine/swaps.ts → defaultSwapMove).
 //
 // Each move is data: `before` effects, then an optional `hit`, then `after` effects. The battle engine
@@ -52,7 +52,7 @@ export interface SwapHit {
 export interface SwapMove {
   id: string;
   name: string;
-  /** Typed moves need a creature of this type in the pair. Neutral ones are open to every pair. */
+  /** Typed moves need a partner of this type (the Alpha's own type doesn't count). Neutral ones are open to every pair. */
   type?: ElementType;
   /** Teamwork the Alpha needs with the partner to set it. */
   teamwork: number;
@@ -107,14 +107,14 @@ export const SWAP_MOVES: SwapMove[] = [
     before: [mod('self', 'evasion', fixed(1)), mod('foe', 'evasion', fixed(-1))],
     hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
   // ── Charm ──
-  { id: 'sweet-handoff', name: 'Sweet Handoff', type: 'charm', teamwork: 1, text: (n) => `${n.A} makes a disarming entrance: it beguiles the foe, lands a light hit and steadies itself.`,
+  { id: 'sweet-handoff', name: 'Sweet Handoff', type: 'charm', teamwork: 1, text: (n) => `${n.P} charms the foe on its way out: the foe is beguiled, and ${n.A} lands a light hit and steadies itself.`,
     before: [{ t: 'status' }],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', plusTw(1))] },
   { id: 'heartlink', name: 'Heartlink', type: 'charm', teamwork: 2, text: (n) => `${n.A} and ${n.P} mend each other, and the foe’s heart goes out of its attacks.`,
     before: [heal('alpha', healFrom('p')), heal('partner', healFrom('a')), mod('foe', 'power', fixed(-1))] },
   // ── Electric ──
-  { id: 'live-wire', name: 'Live Wire', type: 'electric', teamwork: 1, speed: 2, text: (n) => `${n.A} jumps in crackling and strikes before the foe can react.`,
+  { id: 'live-wire', name: 'Live Wire', type: 'electric', teamwork: 1, speed: 2, text: (n) => `${n.P} charges ${n.A} up, and ${n.A} jumps in crackling to strike before the foe can react.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
   { id: 'arc-bridge', name: 'Arc Bridge', type: 'electric', teamwork: 2, text: (n) => `A current arcs from ${n.P} through ${n.A} into the foe, powered by both.`,
     hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus'), half('p', 'focus', 'down')) } },
@@ -134,11 +134,11 @@ export const SWAP_MOVES: SwapMove[] = [
   // ── Rock ──
   { id: 'landslide-tag', name: 'Landslide Tag', type: 'rock', teamwork: 1, text: (n) => `${n.A} rides ${n.P}’s weight down onto the foe.`,
     hit: { acc: 8, die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power'), half('p', 'armor')) } },
-  { id: 'bulwark-swap', name: 'Bulwark Swap', type: 'rock', teamwork: 2, text: (n) => `Stone walls go up as ${n.A} arrives, and it hits back from behind them.`,
+  { id: 'bulwark-swap', name: 'Bulwark Swap', type: 'rock', teamwork: 2, text: (n) => `${n.P} raises stone walls as it leaves, and ${n.A} hits back from behind them.`,
     before: [mod('self', 'armor', plusTw(2)), mod('self', 'ward', fixed(1))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
   // ── Steel ──
-  { id: 'iron-relay', name: 'Iron Relay', type: 'steel', teamwork: 1, text: (n) => `${n.A} charges in steel-shod and dents the foe’s defences.`,
+  { id: 'iron-relay', name: 'Iron Relay', type: 'steel', teamwork: 1, text: (n) => `${n.P} shoes ${n.A} in steel, and ${n.A} charges in to dent the foe’s defences.`,
     hit: { die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power')) } },
   { id: 'alloy-guard', name: 'Alloy Guard', type: 'steel', teamwork: 2, text: (n) => `${n.P} plates ${n.A} in metal and strips the foe’s, then ${n.A} strikes.`,
     before: [mod('self', 'armor', borrow('armor')), mod('foe', 'armor', fixed(-1))],

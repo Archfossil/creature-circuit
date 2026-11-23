@@ -3447,42 +3447,48 @@ describe('Swap Moves', () => {
     expect(swapMoveOf(a, c).id).toBe('siphon');
     expect(swapMoveOf(b, a)).toBe(defaultSwapMove(b, a)); // b's own slot for a is still its random default
   });
-  it('typed moves need that type in the pair and enough Teamwork', () => {
+  it('typed moves need a partner of that type (the Alpha’s own doesn’t count) and enough Teamwork', () => {
     const [a, b] = trio();
-    const t1 = typedFor(a, 1), t2 = typedFor(a, 2);
+    const t1 = typedFor(b, 1), t2 = typedFor(b, 2);
     expect(swapLock(a, b, t1)).toMatch(/Teamwork 1/);
     a.teamwork[b.uid] = 1;
     expect(swapLock(a, b, t1)).toBe(null);
     expect(swapLock(a, b, t2)).toMatch(/Teamwork 2/);
     const foreign = SWAP_MOVES.find((m) => m.type && !speciesOf(a).types.includes(m.type) && !speciesOf(b).types.includes(m.type))!;
     a.teamwork[b.uid] = 3;
-    expect(swapLock(a, b, foreign)).toMatch(/creature in the pair/);
+    expect(swapLock(a, b, foreign)).toMatch(/partner/);
     expect(setSwapMove(a, b, foreign.id)).toBe(false);
-    // the partner's type counts too
-    expect(swapLock(a, b, typedFor(b, 2))).toBe(null);
+    expect(swapLock(a, b, t2)).toBe(null);
+    expect(swapLock(a, b, typedFor(a, 1))).toBe('Needs a Water partner');
+    b.teamwork[a.uid] = 3;
+    expect(swapLock(b, a, typedFor(a, 1))).toBe(null);
+    // a shared type is lent both ways
+    const twin = createCreature('puddlit', 6);
+    twin.loyalty = 6; a.teamwork[twin.uid] = 3;
+    expect(swapLock(a, twin, typedFor(a, 1))).toBe(null);
   });
   it('a slot whose move is no longer allowed falls back to the pair’s random default', () => {
     const [a, b] = trio();
-    a.swapMoves[b.uid] = typedFor(a, 2).id; // set without the Teamwork for it
+    a.swapMoves[b.uid] = typedFor(b, 2).id; // set without the Teamwork for it
     expect(swapMoveOf(a, b)).toBe(defaultSwapMove(a, b));
   });
   it('the battle uses the move set for that pair', () => {
     const [a, b] = trio();
     b.teamwork[a.uid] = 2;
-    setSwapMove(b, a, typedFor(b, 2).id);
+    setSwapMove(b, a, typedFor(a, 2).id);
     const foe = createCreature('sproutle', 6);
     const bt = createBattle(side('player', [a, b]), side('wild', [foe]), WEATHER.clear);
     for (const c of [a, b, foe]) c.health = 999;
     resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
-    expect(swapPreview(bt, 0, 1).move.id).toBe(typedFor(b, 2).id);
+    expect(swapPreview(bt, 0, 1).move.id).toBe(typedFor(a, 2).id);
     const used = resolveRound(bt, { kind: 'swap', to: 1 }).find((e) => e.t === 'use' && e.side === 0);
-    expect(used && used.t === 'use' && used.move).toBe(typedFor(b, 2).id);
+    expect(used && used.t === 'use' && used.move).toBe(typedFor(a, 2).id);
   });
   it('every Swap Move runs in battle and describes itself with real numbers', () => {
     for (const m of SWAP_MOVES) {
-      // an Alpha of the move's type (any for neutral ones), with the Teamwork to set it
+      // a partner of the move's type (any for neutral ones), with the Teamwork to set it
       const sp = SPECIES.find((x) => x.rarity !== 'legendary' && (!m.type || x.types.includes(m.type)))!;
-      const a = createCreature(sp.id, 6), b = createCreature('zapup', 6);
+      const a = createCreature('zapup', 6), b = createCreature(sp.id, 6);
       a.loyalty = b.loyalty = 6;
       a.teamwork[b.uid] = 3;
       expect(setSwapMove(a, b, m.id), m.id).toBe(true);
@@ -3517,7 +3523,7 @@ describe('Swap Moves', () => {
     const me = s.roster[0];
     expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: 'siphon' })).toBe(true);
     expect(swapMoveOf(me, z).id).toBe('siphon');
-    expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: typedFor(me, 2).id })).toBe(false);
+    expect(applyEdit(s, { uid: me.uid, op: 'swapMove', partner: z.uid, move: typedFor(z, 2).id })).toBe(false);
   });
 });
 

@@ -133,7 +133,7 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 What a creature does when it swaps in during battle (it's the **Alpha**; the creature it replaces is the **Partner**). Trainers set one per teammate on each creature's card; until then a pair uses a neutral move picked at random. Exact effects and rules: [13 · Natures, Abilities & Swap Moves](./13-natures-and-abilities.md#swap-moves).
 
-- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need one of the pair to have that type.
+- **Teamwork** is what the Alpha needs with the Partner to set the move. Typed moves also need the Partner (not the Alpha) to have that type.
 - **Damage** lists what's added to the die. **Teamwork** there means the Teamwork bonus (+1 per 2 Teamwork, up to +2 at Teamwork 4; a pair's Teamwork is capped at half the lower Loyalty).
 - **Status on 1–2**: typed hits inflict their type's status on a 1 or 2 on the damage die (regular moves need a 1). **Outright** means it's inflicted with no roll (if the foe has no status).
 - **Effects** are applied before or after the hit as listed in the move's data. Stat boosts last while the Alpha stays in.

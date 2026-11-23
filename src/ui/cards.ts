@@ -319,7 +319,7 @@ export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: ()
   const A = nameOf(c), P = nameOf(partner);
   const close = openSheet(`${A} swapping in for ${P}`, h('div', null,
     swapPair(c, partner),
-    h('p', { class: 'small muted' }, `Typed Swap Moves need a creature of that type in the pair (${[...new Set([...speciesOf(c).types, ...speciesOf(partner).types])].map((t) => TYPE_LABEL[t]).join(', ')} here). Stronger ones need Teamwork: ${nameOf(c)} has ${fmtTeamwork(teamworkOf(c, partner))} with ${nameOf(partner)}. Typed hits inflict their type’s status on a 1–2.`),
+    h('p', { class: 'small muted' }, `Typed Swap Moves use the partner’s types: swapping in for ${P}, ${A} can use ${speciesOf(partner).types.map((t) => TYPE_LABEL[t]).join(' and ')} ones. Stronger ones need Teamwork: ${nameOf(c)} has ${fmtTeamwork(teamworkOf(c, partner))} with ${nameOf(partner)}. Typed hits inflict their type’s status on a 1–2.`),
     h('div', { class: 'list swap-pick' }, rows.map(({ m, lock }) =>
       h('button', {
         class: `swap-opt ${m.id === cur.id ? 'on' : ''} ${lock ? 'locked' : ''}`, disabled: !!lock,
