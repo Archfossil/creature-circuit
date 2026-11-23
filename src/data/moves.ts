@@ -163,12 +163,12 @@ const HANDMADE: Move[] = [
   E('quench', 'Quench', 'water', { cost: { water: 2, fire: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'burn' } }, 'Cold water on hot wounds: a burst of scalding steam.'),
 
   // ── Signature moves (unlocked via progression trees) ──────────
-  E('sig-borealis', 'Borealis Lance', 'astral', { cost: { astral: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 1, speed: 1 }, 'Signature. A spear of aurora light.'),
+  E('sig-borealis', 'Borealis Lance', 'astral', { cost: { astral: 3, neutral: 1 }, dmgDie: 6, dmgFlat: 4, speed: 1 }, 'Signature. A spear of aurora light.'),
   E('sig-moonveil', 'Moonveil Kiss', 'charm', { cost: { charm: 3, neutral: 1 }, dmgDie: 8, accuracy: 'sure' }, 'Signature. Never misses.'),
   E('sig-stormcall', 'Stormcall', 'electric', { cost: { electric: 3, neutral: 1 }, dmgDie: 8, speed: 2 }, 'Signature. Lightning before thunder.'),
   E('sig-caldera', 'Caldera Roar', 'fire', { cost: { fire: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 2, effort: 2 }, 'Signature. Erupts from within.'),
   E('sig-overgrowth', 'Overgrowth', 'grass', { cost: { grass: 3, neutral: 1 }, dmgDie: 8, effect: { heal: 2 } }, 'Signature. Roots that drain and regrow.'),
-  E('sig-mesa', 'Mesa Breaker', 'rock', { cost: { rock: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 2, speed: -1 }, 'Signature. Shears a cliff face.'),
+  E('sig-mesa', 'Mesa Breaker', 'rock', { cost: { rock: 3, neutral: 1 }, dmgDie: 10, dmgFlat: 2, speed: -1 }, 'Signature. Shears a cliff face.'),
   E('sig-foundry', 'Foundry Hammer', 'steel', { cost: { steel: 3, neutral: 1 }, dmgDie: 8, effect: { foe: { armor: -1 } } }, 'Signature. Forge-hot strike.'),
   E('sig-riptide', 'Riptide', 'water', { cost: { water: 3, neutral: 1 }, dmgDie: 8, speed: 2 }, 'Signature. Pulls the foe off balance.'),
 ];

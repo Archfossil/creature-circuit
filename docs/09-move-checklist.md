@@ -12,7 +12,7 @@ Every move in the game with all its attributes. Use it to swap generated **place
 | Hand-made | 76 |
 | **Placeholders to replace** | **336** |
 | Attack-grid slots | 376 (40 hand-made, 336 placeholders) |
-| Hand-made moves flagged for a balance look | 2 |
+| Hand-made moves flagged for a balance look | 4 |
 | Swap Moves | 21 (5 neutral, 16 typed; **16 awaiting design sign-off**) |
 
 ## How to read this
@@ -109,23 +109,23 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 | Signature | Learned by |
 |---|---|
-| Borealis Lance | Twinkit, Lumenox, Polarion, Stelbloomkit, Stelbloomox, Stelbloomor, Stelvoltkit, Stelvoltox, Stelvoltor, Stelflarekit, Stelflareox, Stelflareor, Stelleafkit, Stelleafox, Stelleafor |
-| Moonveil Kiss | Mossprite, Fernixie, Glamorwyn, Pixivoltkit, Pixivoltox, Pixivoltor, Pixiflarekit, Pixiflareox, Pixiflareor, Pixileafkit, Pixileafox, Pixileafor, Pixistonekit, Pixistoneox, Pixistoneor |
-| Stormcall | Zapup, Voltusk, Stormhound, Zapflarekit, Zapflareox, Zapflareor, Zapleafkit, Zapleafox, Zapleafor, Zapstonekit, Zapstoneox, Zapstoneor, Zapgearkit, Zapgearox, Zapgearor |
-| Caldera Roar | Cindercub, Blazmane, Pyrothane, Emberfish, Cinderkoi, Pyroleafkit, Pyroleafox, Pyroleafor, Pyrostonekit, Pyrostoneox, Pyrostoneor, Pyrogearkit, Pyrogearox, Pyrogearor, Pyrotidekit, Pyrotideox, Pyrotideor |
-| Overgrowth | Sproutle, Thornback, Redwarden, Sprigstonekit, Sprigstoneox, Sprigstoneor, Spriggearkit, Spriggearox, Spriggearor, Sprigtidekit, Sprigtideox, Sprigtideor |
+| Borealis Lance | Twinkit, Lumenox, Polarion, Stelbloomkit, Stelbloomox, Stelbloomor, Stelvoltkit, Stelvoltox, Stelvoltor, Stelflarekit, Stelflareox, Stelflareor, Stelleafkit, Stelleafox, Stelleafor, Stelsunkit, Stelsunox, Stelsunor |
+| Moonveil Kiss | Mossprite, Fernixie, Glamorwyn, Pixivoltkit, Pixivoltox, Pixivoltor, Pixiflarekit, Pixiflareox, Pixiflareor, Pixileafkit, Pixileafox, Pixileafor, Pixistonekit, Pixistoneox, Pixistoneor, Pixisunkit, Pixisunox, Pixisunor |
+| Stormcall | Zapup, Voltusk, Stormhound, Zapflarekit, Zapflareox, Zapflareor, Zapleafkit, Zapleafox, Zapleafor, Zapstonekit, Zapstoneox, Zapstoneor, Zapgearkit, Zapgearox, Zapgearor, Zapduskkit, Zapduskox, Zapduskor |
+| Caldera Roar | Cindercub, Blazmane, Pyrothane, Emberfish, Cinderkoi, Pyroleafkit, Pyroleafox, Pyroleafor, Pyrostonekit, Pyrostoneox, Pyrostoneor, Pyrogearkit, Pyrogearox, Pyrogearor, Pyrotidekit, Pyrotideox, Pyrotideor, Pyroduskkit, Pyroduskox, Pyroduskor |
+| Overgrowth | Sproutle, Thornback, Redwarden, Sprigstonekit, Sprigstoneox, Sprigstoneor, Spriggearkit, Spriggearox, Spriggearor, Sprigtidekit, Sprigtideox, Sprigtideor, Sprigduskkit, Sprigduskox, Sprigduskor |
 | Mesa Breaker | Pebbark, Cragjaw, Mesahound, Cragstarkit, Cragstarox, Cragstaror, Craggearkit, Craggearox, Craggearor, Cragtidekit, Cragtideox, Cragtideor |
 | Foundry Hammer | Rivetail, Ferrocrab, Ironclawd, Ferrostarkit, Ferrostarox, Ferrostaror, Ferrobloomkit, Ferrobloomox, Ferrobloomor, Ferrotidekit, Ferrotideox, Ferrotideor |
 | Riptide | Puddlit, Marshfin, Mangrovore, Aquastarkit, Aquastarox, Aquastaror, Aquabloomkit, Aquabloomox, Aquabloomor, Aquavoltkit, Aquavoltox, Aquavoltor |
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Borealis Lance** | `sig-borealis` | 3 Astral + 1 Neutral | Astral | d8+1 | 5.5 | 1.38 | d6 | +1 | 1 | Daze | — | — | — | Hand-made | ☑ | ☐ |
+| **Borealis Lance** | `sig-borealis` | 3 Astral + 1 Neutral | Astral | d6+4 | 7.5 | 1.88 | d6 | +1 | 1 | Daze | — | — | ⬆ Strong for its cost (+2.3 vs baseline) | Hand-made | ☑ | ☐ |
 | **Moonveil Kiss** | `sig-moonveil` | 3 Charm + 1 Neutral | Charm | d8 | 4.5 | 1.13 | Sure-hit | 0 | 1 | Beguile | — | — | — | Hand-made | ☑ | ☐ |
 | **Stormcall** | `sig-stormcall` | 3 Electric + 1 Neutral | Electric | d8 | 4.5 | 1.13 | d6 | +2 | 1 | Shock | — | — | — | Hand-made | ☑ | ☐ |
 | **Caldera Roar** | `sig-caldera` | 3 Fire + 1 Neutral | Fire | d8+2 | 6.5 | 1.63 | d6 | 0 | 2 | Burn | — | — | — | Hand-made | ☑ | ☐ |
 | **Overgrowth** | `sig-overgrowth` | 3 Grass + 1 Neutral | Grass | d8 | 4.5 | 1.13 | d6 | 0 | 1 | Snare | — | On a hit, you heal 2 Health. | — | Hand-made | ☑ | ☐ |
-| **Mesa Breaker** | `sig-mesa` | 3 Rock + 1 Neutral | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 1 | Stagger | — | — | — | Hand-made | ☑ | ☐ |
+| **Mesa Breaker** | `sig-mesa` | 3 Rock + 1 Neutral | Rock | d10+2 | 7.5 | 1.88 | d6 | -1 | 1 | Stagger | — | — | ⬆ Strong for its cost (+1.8 vs baseline) | Hand-made | ☑ | ☐ |
 | **Foundry Hammer** | `sig-foundry` | 3 Steel + 1 Neutral | Steel | d8 | 4.5 | 1.13 | d6 | 0 | 1 | Sunder | — | On a hit, the foe gets −1 Armor. | — | Hand-made | ☑ | ☐ |
 | **Riptide** | `sig-riptide` | 3 Water + 1 Neutral | Water | d8 | 4.5 | 1.13 | d6 | +2 | 1 | Soak | — | — | — | Hand-made | ☑ | ☐ |
 
@@ -678,3 +678,5 @@ Hand-made moves whose damage stands out from the placeholder baseline for their 
 |---|---|---|---|---|---|
 | Redwood Crush | 4 Grass + 1 Neutral | d10 | d6 | -2 | ⬇ Weak for its cost (-1.5 vs baseline) |
 | Anchor Drop | 4 Steel + 1 Neutral | d10 | d6 | -2 | ⬇ Weak for its cost (-1.5 vs baseline) |
+| Borealis Lance | 3 Astral + 1 Neutral | d6+4 | d6 | +1 | ⬆ Strong for its cost (+2.3 vs baseline) |
+| Mesa Breaker | 3 Rock + 1 Neutral | d10+2 | d6 | -1 | ⬆ Strong for its cost (+1.8 vs baseline) |
