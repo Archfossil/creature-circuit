@@ -423,6 +423,8 @@ export class App {
   private askOpen: { id: string; close: () => void } | null = null;
   /** Online: call off the trade or duel offer we're waiting on. */
   private cancelAsk: (() => void) | null = null;
+  /** After a lost battle: settle the choice on screen the plain way (the turn is being ended for us). */
+  private settleLoss: (() => void) | null = null;
   /** Viewing a battle: its events are still playing on this screen. */
   private watchPlaying = false;
   /** Online: the battle we're fighting, to send again when someone reconnects. */
@@ -892,6 +894,8 @@ export class App {
     if (!m || m.current !== seat) return;
     const s = m.players[seat];
     this.skipping = true;
+    // a lost battle still waiting on a choice is finished first, or the team would be left knocked out where it stands
+    if (this.settleLoss) { this.settleLoss(); await wait(50); }
     this.liveFight = null;
     this.cancelAsk?.();
     closeAllSheets();
@@ -2126,7 +2130,8 @@ export class App {
   mercySheet(npc: Npc): Promise<string | undefined> {
     const s = this.s;
     return new Promise((resolve) => {
-      const done = (uid?: string) => { close(); resolve(uid); };
+      const done = (uid?: string) => { this.settleLoss = null; close(); resolve(uid); };
+      this.settleLoss = () => done();
       const close = openSheet(`🧂 ${npc.name} offers a hand`, h('div', null,
         h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null, h('p', null, `“${VOICES[npc.id].mercy}”`),
           h('p', { class: 'small muted' }, 'Choose a creature to revive with half its hearts and carry on from here, instead of being sent back to rest (which costs half your coins and the rest of your turn, but restores everyone).'))),
@@ -2140,11 +2145,12 @@ export class App {
     const s = this.s;
     const last = W.wipeDefault(s);
     return new Promise((resolve) => {
+      this.settleLoss = () => { this.settleLoss = null; close(); resolve(last); };
       const close = openSheet('⚖️ Where do you rest up?', h('div', null,
         h('p', { class: 'small' }, 'Your team is wiped out. As a Wanderer you make your home anywhere: return to any city you’ve rested at this game. You still lose half your coins, and your turn ends.'),
         h('div', { class: 'list' }, W.wipeOptions(s).map((id) => {
           const c = CITIES[id];
-          return h('button', { class: 'choice', onclick: () => { close(); resolve(id); } },
+          return h('button', { class: 'choice', onclick: () => { this.settleLoss = null; close(); resolve(id); } },
             h('b', null, h('img', { src: typeIcon(c.type), alt: '', style: 'width:18px;height:18px;vertical-align:-3px;margin-right:6px' }), c.name),
             h('small', { class: 'muted' }, [`${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}`, id === s.trainer.home ? '🏠 Home' : '', id === last ? 'rested here last' : ''].filter(Boolean).join(' · ')));
         }))), { noClose: true });
