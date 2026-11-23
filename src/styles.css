@@ -483,6 +483,8 @@ button.dex-entry:hover { border-color: var(--ink); }
 .event-choice { font: inherit; text-align: left; display: grid; gap: 2px; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 12px; background: var(--paper); box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
 .event-choice:hover:not(:disabled) { background: #fff3c4; }
 .event-choice:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.event-pill.watch { animation: none; background: var(--paper); }
+.event-choice.watch, .event-choice.watch:hover { cursor: default; box-shadow: none; background: var(--paper-2); }
 .event-choice.ghost { box-shadow: none; border-color: var(--line); }
 .event-choice small { color: var(--muted); }
 .bad-text { color: var(--bad) !important; }

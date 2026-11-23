@@ -238,7 +238,7 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'online', title: 'Online', body: [
         'Title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts.',
-        'You watch other trainers’ turns live (moves, dice and battles; 🔺 Types works while watching), and a ping tells you when it’s your turn.',
+        'You watch other trainers’ turns live (moves, dice and battles; 🔺 Types works while watching), and a ping tells you when it’s your turn. While someone resolves an event, tap the note at the bottom to see its choices (only they can answer).',
         'While you wait you can unlock chart nodes and edit playbooks (🐾 My team), look through your bag (🎒 My bag), and tap a node to 📍 mark your next stop.',
         'The host can set a turn timer, skip a turn, or play one for someone who stepped away.',
       ] },

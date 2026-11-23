@@ -202,6 +202,7 @@ export class App {
   }
 
   start(s: GameState, fresh = false) {
+    this.eventWatch = null; // (its window closes with the rest below)
     if (!activeMatchOf()?.players.includes(s)) setActiveMatch(null);
     this.s = s;
     closeAllSheets();
@@ -370,6 +371,9 @@ export class App {
   private closeLobby: (() => void) | null = null;
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
   private titleFlash: ReturnType<typeof setInterval> | null = null;
+
+  /** The read-only event window open while watching, and which event it shows. */
+  private eventWatch: { key: string; close: () => void } | null = null;
 
   /** True when this browser is playing the current turn online (so its actions are mirrored to everyone). */
   feeding() { return !!this.online && this.online.isController && !this.watching; }
@@ -549,8 +553,12 @@ export class App {
     const m = activeMatchOf();
     if (!m) return;
     const s = m.players[m.current];
+    // we were playing until now (the turn ended, or the host took over): our open windows no longer apply
+    if (!this.watching) { closeAllSheets(); this.eventWatch = null; }
     this.watching = true;
     this.s = s;
+    // the event we were looking at has been answered
+    if (this.eventWatch && this.eventWatch.key !== this.eventKey()) this.eventWatch.close();
     this.world.setTitleMode(false);
     this.world.setTrainerLook(playerLook(s.trainer.name, s.trainer.color, s.trainer.look));
     if (!this.hopping) this.world.setPawnAt(s.location);
@@ -1147,7 +1155,9 @@ export class App {
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
       h('i', { style: `--p:${c.ko ? 0 : (c.vitality * maxHealth(c) + c.health) / (maxHealth(c) * (maxVitality(c) + 1))}` }))));
     const ev = E.eventView(s);
-    const eventPill = ev ? h('button', { class: 'event-pill', onclick: () => this.eventFlow(), title: 'Answer this event before ending your turn' },
+    const eventPill = ev && this.watching ? h('button', { class: 'event-pill watch', onclick: () => this.watchEvent(), title: `See the choices (only ${s.trainer.name} can answer)` },
+      h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('b', null, `${s.trainer.name} is resolving ${ev.title}`), h('small', null, 'Tap to see the choices')))
+      : ev ? h('button', { class: 'event-pill', onclick: () => this.eventFlow(), title: 'Answer this event before ending your turn' },
       h('span', { class: 'event-pill-ico' }, ev.icon), h('div', null, h('small', null, 'Event waiting'), h('b', null, ev.title))) : null;
     const m = activeMatchOf();
     const seats = m ? h('div', { class: 'seats', title: 'Turn order: tap a trainer to find them on the map' }, m.players.map((p) => h('button', {
@@ -2875,9 +2885,10 @@ export class App {
    * decline it: the event stays pending (reopen it from the HUD) until a choice is made.
    */
   async eventFlow(): Promise<void> {
+    if (this.watching) { this.watchEvent(); return; }
     const s = this.s;
     const view = E.eventView(s);
-    if (!view || document.querySelector('.sheet-wrap.event-sheet')) return;
+    if (!view || this.watching || document.querySelector('.sheet-wrap.event-sheet:not(.closing)')) return;
     const answer = await new Promise<{ choice: string; uid?: string } | null>((resolve) => {
       let settled = false;
       const done = (v: { choice: string; uid?: string } | null) => { if (!settled) { settled = true; close(); resolve(v); } };
@@ -2919,6 +2930,7 @@ export class App {
         h('p', { class: 'small muted center' }, 'Close this to check your team first. The event waits at the bottom of the screen.')),
         { cls: 'event-sheet', onClose: () => { if (!settled) { settled = true; resolve(null); } } });
     });
+    if (this.watching || this.s !== s) return; // the turn passed to another trainer or browser meanwhile
     if (!answer) { this.renderHud(); return; }
     const before = s.location;
     const r = E.resolveEvent(s, answer.choice, answer.uid);
@@ -2932,6 +2944,26 @@ export class App {
       await this.runBattle(r.battle, { kind: r.battle.sides[1].kind === 'wild' ? 'wild' : 'trainer', intro: r.text });
     }
   }
+
+  /** Online, while watching: the event the trainer playing is resolving, with its choices shown but not answerable. */
+  watchEvent() {
+    const s = this.s;
+    const view = E.eventView(s);
+    if (!view || this.eventWatch) return;
+    const close = openSheet(`${s.trainer.name} is resolving ${view.title}`, h('div', { class: 'event' },
+      h('div', { class: 'event-head' }, h('span', { class: 'event-ico' }, view.icon), h('p', null, view.text)),
+      view.showcase ? h('div', { class: 'event-offer' },
+        h('small', null, 'On offer'),
+        miniCard(view.showcase, { onClick: () => openSheet(nameOf(view.showcase!), creatureCard(view.showcase!, { editable: false }), { wide: true }) })) : null,
+      h('div', { class: 'event-choices' }, view.choices.map((ch) => h('div', { class: `event-choice watch ${ch.id === 'decline' ? 'ghost' : ''}` },
+        h('b', null, ch.label),
+        ch.disabled ? h('small', { class: 'bad-text' }, ch.disabled) : ch.detail ? h('small', null, ch.detail) : null))),
+      h('p', { class: 'small muted center' }, `Only ${s.trainer.name} can choose. This closes once they have.`)),
+    { onClose: () => { this.eventWatch = null; } });
+    this.eventWatch = { key: this.eventKey(), close };
+  }
+  /** Which pending event is on screen (trainer, turn and event), or '' if none. */
+  private eventKey() { const s = this.s; return s.event ? `${s.trainer.name}:${s.turn}:${s.event.id}` : ''; }
 
   async banner(title: string, sub: string) {
     const b = h('div', { class: 'banner' }, h('h2', null, title), h('p', null, sub));

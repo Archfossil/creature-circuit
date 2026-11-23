@@ -46,7 +46,7 @@ export function toast(text: string, tone: 'info' | 'good' | 'bad' = 'info', ms =
 let sheetStack: HTMLElement[] = [];
 export function openSheet(title: string, body: Node, opts: { wide?: boolean; onClose?: () => void; noClose?: boolean; cls?: string } = {}): () => void {
   const close = () => {
-    sheet.classList.remove('in');
+    sheet.classList.remove('in'); sheet.classList.add('closing');
     sheetStack = sheetStack.filter((s) => s !== sheet);
     setTimeout(() => sheet.remove(), 220);
     opts.onClose?.();
@@ -79,7 +79,7 @@ addEventListener('keydown', (e) => {
 });
 
 export function closeAllSheets() {
-  for (const s of sheetStack) { s.classList.remove('in'); const el = s; setTimeout(() => el.remove(), 220); }
+  for (const s of sheetStack) { s.classList.remove('in'); s.classList.add('closing'); const el = s; setTimeout(() => el.remove(), 220); }
   sheetStack = [];
 }
 
