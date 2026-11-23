@@ -1,10 +1,10 @@
 import type { ArenaTrick, ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
-import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom } from '../data/moves';
+import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
 import { SWAP_STATUS_ON, describeSwap, swapChart, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
 import type { CreatureInst, BattleStatus } from './creature';
-import { stats, HEART, maxHealth, totalHealth, maxTotal, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, instinctIdOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
+import { stats, moveWorth, healthFraction, STATUS_WORTH, HEART, maxHealth, totalHealth, maxTotal, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, instinctIdOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie } from './dice';
 import { addTeamwork, teamworkOf, teamworkCap, TEAMWORK_PER_SWAP, type TeamworkRise } from './teamwork';
 import { swapMoveOf, swapVals } from './swaps';
@@ -51,6 +51,8 @@ export interface Battle {
   foeParticipants?: string[];
   /** Two-player duels: a human picks side 1's replacement after a KO (instead of the next in line). */
   foeChooses?: boolean;
+  /** The round side 1's AI last swapped. */
+  aiSwapped?: number;
   /** The AI's last move per creature and how many times in a row it used it (to keep it from spamming one move). */
   aiLast?: Record<string, { move: string; streak: number }>;
   /** Teamwork: the pairs (sorted uids joined by '|') that already earned Teamwork from a swap this battle. */
@@ -335,9 +337,83 @@ export function foeOptions(b: Battle) {
 }
 export type FoeOptions = ReturnType<typeof foeOptions>;
 
+// ── The AI's swaps ──────────────────────────────────────────────
+/** How much better (natural log of how the two would fare) a swap must look before each kind of trainer makes it. Others never swap. */
+export const AI_SWAP_MARGIN: Partial<Record<SideKind, number>> = { trainer: 1.2, arbiter: 0.65, champion: 0.5 };
+/** Rivals are readier to swap than other trainers. */
+export const RIVAL_SWAP_MARGIN = 0.75;
+/** Rounds a trainer waits between swaps. */
+const AI_SWAP_REST = 2;
+/** Bringing the Ace out early takes a better reason. */
+const ACE_RELUCTANCE = 0.5;
+
+/** The average damage a creature's best attack does to another (types, accuracy and crits included). */
+function bestHit(st: Stats, c: CreatureInst, vs: Stats, foe: CreatureInst): number {
+  const types = speciesOf(foe).types;
+  return Math.max(0.5, ...c.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m && m.kind !== 'support')
+    .map((m) => moveWorth(c, m, { types, armor: vs.armor - (st.power - stats(c).power), ward: vs.ward - (st.focus - stats(c).focus), evasion: vs.evasion })));
+}
+/**
+ * How well a creature (a team index) would fare against the foe's active one, as the log of how many of its
+ * hits the foe can take against how many of the foe's hits it can: 0 is even, more is better. For a creature
+ * on the bench it counts what coming in costs (a hit on the way) and what its Swap Move does.
+ */
+export function outlook(b: Battle, si: 0 | 1, idx: number, opts: { free?: boolean } = {}): number {
+  const side = b.sides[si], fi: 0 | 1 = si === 0 ? 1 : 0;
+  const c = side.team[idx], foe = activeOf(b.sides[fi]);
+  const here = idx === side.active;
+  const mine = here ? statsOf(b, si) : stats(c, side.buff), theirs = statsOf(b, fi);
+  const deal = bestHit(mine, c, theirs, foe), take = bestHit(theirs, foe, mine, c);
+  let foeHp = totalHealth(foe) + overhealOf(b, foe), hp = totalHealth(c) + overhealOf(b, c);
+  if (!here && !opts.free) {
+    hp -= take * 0.9;
+    const m = swapMoveOf(c, activeOf(side));
+    if (m.hit) {
+      const v = swapVals(c, activeOf(side), { f: theirs });
+      const chart = swapChart(m, v);
+      const def = m.hit.kind === 'physical' ? theirs.armor : theirs.ward;
+      foeHp -= (m.hit.acc ? hitChance(m.hit.acc, theirs.evasion) : 1) * Math.max(1, (m.hit.die + 1) / 2 + m.hit.parts(v).reduce((a, p) => a + p.value, 0) - def) * (chart ? effectiveness(chart, speciesOf(foe).types) : 1);
+    }
+    for (const e of [...(m.before ?? []), ...(m.after ?? [])]) if (e.t === 'heal' && e.who === 'alpha') hp += Math.min(3, e.n(swapVals(c, activeOf(side))));
+  }
+  if (hp <= 0) return -3;
+  // weariness costs turns; being slower costs a hit
+  const tired = 1 - Math.min(0.8, c.fatigue / 10);
+  const first = mine.speed >= theirs.speed ? 0.5 : -0.5;
+  return Math.log(((hp / take + first) * tired + 0.2) / (Math.max(0.5, foeHp) / deal + 0.2));
+}
+/** The team index the AI would rather have out, or null to carry on. */
+export function aiSwap(b: Battle, si: 0 | 1): number | null {
+  const side = b.sides[si];
+  const margin = side.npc && side.kind === 'trainer' ? RIVAL_SWAP_MARGIN : AI_SWAP_MARGIN[side.kind];
+  if (margin === undefined || b.foeChooses || b.round < 1 || b.round - (b.aiSwapped ?? -9) < AI_SWAP_REST) return null;
+  const c = activeOf(side), foe = activeOf(b.sides[si === 0 ? 1 : 0]);
+  // nothing to gain by rescuing one that's nearly down (its replacement comes in free), or leaving a foe that is
+  if (healthFraction(c) < 0.25 || totalHealth(foe) <= 4) return null;
+  const now = outlook(b, si, side.active);
+  let best: number | null = null, gain = margin;
+  side.team.forEach((x, i) => {
+    if (x.ko || i === side.active) return;
+    const g = outlook(b, si, i) - now - (x.ace ? ACE_RELUCTANCE : 0);
+    if (g > gain) { gain = g; best = i; }
+  });
+  // (not every time: a little unpredictability)
+  return best !== null && Math.random() < 0.85 ? best : null;
+}
+/** Who a Rival, Champion or Arbiter sends in after a knockout: whoever fares best, keeping the Ace for last. Anyone else sends the next in line. */
+function aiReplacement(b: Battle): number {
+  const s = b.sides[1];
+  const left = s.team.map((_, i) => i).filter((i) => !s.team[i].ko);
+  if (!s.npc && s.kind !== 'arbiter' && s.kind !== 'champion') return left[0];
+  const pool = left.length > 1 ? left.filter((i) => !s.team[i].ace) : left;
+  return [...pool].sort((x, y) => outlook(b, 1, y, { free: true }) - outlook(b, 1, x, { free: true }))[0] ?? left[0];
+}
+
 export function chooseAI(b: Battle, si: 0 | 1): Action {
   const side = b.sides[si];
   const c = activeOf(side);
+  const to = aiSwap(b, si);
+  if (to !== null) { b.aiSwapped = b.round; return { kind: 'swap', to }; }
   const foe = activeOf(b.sides[si === 0 ? 1 : 0]);
   const fi: 0 | 1 = si === 0 ? 1 : 0;
   if (c.fatigue >= 3 && c.stamina <= 2) return { kind: 'move', move: CATCH_BREATH.id };
@@ -358,7 +434,13 @@ export function chooseAI(b: Battle, si: 0 | 1): Action {
       const atk = (m.kind === 'physical' ? eff(b, si, 'power') - eff(b, fi, 'armor') : eff(b, si, 'focus') - eff(b, fi, 'ward')) + purgeBonus(m, b.status[foe.uid]?.id);
       const mult = m.kind === 'elemental' && m.type ? effectiveness(m.type, speciesOf(foe).types) : 1;
       score = hit * Math.max(1, avgRoll(m) + atk) * mult;
+      // crits, the status it may leave, and the aim a miss would give the next attack
+      const p = passiveOf(c);
+      if (mult > 0 && critFaces(m) && typeof m.accuracy === 'number') score *= 1 + Math.min(1, Math.min(critFaces(m) + (p?.keen ?? 0), m.accuracy - 1) / Math.max(1, hit * m.accuracy));
+      if (m.kind === 'elemental' && m.status && !finishingBlow && !statusBlock(b, fi, m.status)) score += hit * statusChance(m, p?.spread ? 1 : 0) * (STATUS_WORTH[m.status] ?? 2) * 0.7;
       if (m.effect) score += hit * effectValue(b, si, m.effect) * SUPPORT_WEIGHT * 0.5; // a rider on a hit
+      // close to a knockout: landing first and landing at all matter more than how hard
+      if (finishingBlow) score = Math.min(score, 8) * (0.6 + 0.4 * hit) + Math.max(0, m.speed) * 0.2;
     }
     if (m.effort > c.stamina) score *= 0.7;
     // the same move again gets less and less appealing (Quick Jab, Quick Jab, Quick Jab…)
@@ -374,9 +456,6 @@ const hitChance = (die: number, need: number) => Math.max(0, Math.min(1, (die - 
 
 /** Cascade chains stop after this many extra rolls (a safety cap; a d4 chaining 20 times is about 1 in a trillion). */
 const CASCADE_MAX = 20;
-
-/** Roughly what landing each status is worth to the AI, in damage-equivalent points over its 3 rounds. */
-const STATUS_WORTH: Partial<Record<StatusId, number>> = { burn: 3, shock: 2.5, sunder: 2.5, stagger: 2.5, soak: 2, snare: 2, beguile: 2, daze: 2 };
 
 /**
  * Why side `fi`'s active creature won't take `status` right now (null if it would): it already has a
@@ -1130,12 +1209,13 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
   if (loser === 1 && b.foeChooses) {
     b.foeNeedSwap = true;
   } else if (loser === 1) {
-    ls.active = next;
+    const to = aiReplacement(b);
+    ls.active = to;
     noteFoe(b);
     ls.mods = {};
     ls.zeroIn = 0;
-    ev.push({ t: 'send', side: 1, idx: next, snap: snap(b, ls.team[next]) });
-    ev.push({ t: 'say', text: `${ls.name} sends out ${nameOf(ls.team[next])}!`, tone: 'info' });
+    ev.push({ t: 'send', side: 1, idx: to, snap: snap(b, ls.team[to]) });
+    ev.push({ t: 'say', text: `${ls.name} sends out ${nameOf(ls.team[to])}!`, tone: 'info' });
     fireInstinct(b, 1, 'enter', ev);
   } else {
     b.needSwap = true;

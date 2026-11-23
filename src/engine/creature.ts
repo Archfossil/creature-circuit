@@ -1,6 +1,7 @@
 import type { EnergyMap, ElementType, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
-import { MOVES, MOVE_BY_ID, avgRoll, diceText, critFaces } from '../data/moves';
+import { MOVES, MOVE_BY_ID, avgRoll, diceText, critFaces, statusChance, zeroInOf } from '../data/moves';
+import { INSTINCT_BY_ID } from '../data/instincts';
 import { NATURES, NATURE_BY_ID } from '../data/content';
 import { TYPES, effectiveness } from '../data/types';
 import { pick, uid } from './dice';
@@ -442,9 +443,9 @@ export function healthFraction(c: CreatureInst): number {
 export type BattleStatus = { id: StatusId; turns: number };
 
 // ── Recommended playbooks ───────────────────────────────────────
-// The playbook editor's "Recommend moves" menu. Each goal scores moves by their expected damage
-// with this creature's own stats (assuming a typical foe Evasion of 3), then searches for the
-// best set of up to 4 that fits its energy.
+// The playbook editor's "Recommend moves" menu, and the playbooks Rivals and Champions give their own
+// creatures. Each move is judged by everything it carries, with this creature's stats and Instinct
+// (`moveWorth`), against typical foes of its level; then the best set of up to 4 that fits its energy wins.
 
 export type PlaybookGoal = { kind: 'physical' } | { kind: 'elemental' } | { kind: 'balanced' } | { kind: 'vs'; type: ElementType };
 
@@ -471,44 +472,127 @@ export function suggestGoal(c: CreatureInst): { goal: PlaybookGoal; reason: stri
   return { goal: { kind: 'balanced' }, reason: `Power ${st.power} and Focus ${st.focus} are close, so a mix covers more matchups.` };
 }
 
-/** The best playbook (up to 4 moves that fit the creature's energy) for a goal. */
+/** What a status is worth once it lands, in damage-like points over its 3 rounds. */
+export const STATUS_WORTH: Record<StatusId, number> = { burn: 3, shock: 2.5, sunder: 2.5, stagger: 2.5, soak: 2, snare: 2, beguile: 2, daze: 2 };
+/** What a point of each stat is worth over a battle, for judging effects away from one. */
+const STAT_WORTH: Record<StatKey, number> = { vigor: 1, power: 0.9, armor: 0.9, focus: 0.9, ward: 0.9, speed: 0.5, evasion: 1.1, stamina: 0.2 };
+/** Armor or Ward on a typical foe of this level. */
+export const typicalGuard = (level: number) => Math.round(1 + level * 0.3);
+
+/** What a move's stat changes, heals and Stamina are worth, away from any particular battle. */
+export function effectWorth(c: CreatureInst, e: Move['effect']): number {
+  if (!e) return 0;
+  const st = stats(c);
+  const uses = (k: StatKey) => (k === 'power' || k === 'focus' ? (st[k] >= Math.max(st.power, st.focus) - 1 ? 1 : 0.4) : 1);
+  let v = 0;
+  for (const [k, n] of Object.entries(e.self ?? {}) as [StatKey, number][]) v += n * STAT_WORTH[k] * uses(k);
+  for (const [k, n] of Object.entries(e.foe ?? {}) as [StatKey, number][]) v -= n * STAT_WORTH[k];
+  return v + (e.heal ?? 0) * 0.7 + (e.staminaGain ?? 0) * 0.15;
+}
+
+/**
+ * What one use of a move is worth to this creature against a foe with these types and this much Armor and
+ * Ward, in damage-like points. Everything a move can carry counts: every damage die and Cascade (in
+ * `avgRoll`), accuracy and Zeroing In, crit range, the chance and worth of its status (Potency), its
+ * riders, Speed and Effort, and the Instincts that improve any of those. Purge depends on the rest of the
+ * playbook, so it's added there (`playbookScore`).
+ */
+export function moveWorth(c: CreatureInst, m: Move, foe: { types?: ElementType[]; armor: number; ward: number; evasion?: number }): number {
+  const st = stats(c);
+  const p = INSTINCT_BY_ID[instinctIdOf(c)]?.passive;
+  const ev = foe.evasion ?? TYPICAL_EVASION;
+  const sure = m.accuracy === 'sure';
+  const hit = sure ? 1 : Math.max(0, Math.min(1, ((m.accuracy as number) - ev + 1) / (m.accuracy as number)));
+  const costs = (m.effort / Math.max(1, st.stamina)) * (1 + c.level * 0.1) - (m.speed > 0 ? m.speed * 0.2 : m.speed * 0.1);
+  if (m.kind === 'support') return hit * (effectWorth(c, m.effect) + (m.status ? STATUS_WORTH[m.status] : 0)) - costs;
+  const raw = Math.max(1, avgRoll(m) + (m.kind === 'physical' ? st.power - foe.armor : st.focus - foe.ward));
+  const mult = m.kind === 'elemental' && m.type && foe.types ? effectiveness(m.type, foe.types) : 1;
+  const faces = critFaces(m) ? Math.min(critFaces(m) + (p?.keen ?? 0), (m.accuracy as number) - 1) : 0;
+  const crit = faces ? 1 + Math.min(1, faces / Math.max(1, hit * (m.accuracy as number))) : 1;
+  let v = hit * raw * mult * crit;
+  if (m.kind === 'elemental' && m.status) v += hit * statusChance(m, p?.spread ? 1 : 0) * STATUS_WORTH[m.status] * 0.8;
+  if (m.effect) v += hit * effectWorth(c, m.effect) * 0.6;
+  // a miss makes the next attack likelier to land
+  if (!sure && zeroInOf(m)) v += (1 - hit) * Math.min(1, (zeroInOf(m) + (p?.zeroPlus ?? 0)) / (m.accuracy as number)) * raw * mult * 0.6;
+  return v - costs;
+}
+
+/** The foes a playbook is judged against: each type, once with more Armor and once with more Ward. */
+const testFoes = (level: number, vs?: ElementType) => (vs ? [vs] : TYPES).flatMap((t) => [1, -1].map((d) => ({ types: [t], armor: typicalGuard(level) + d, ward: typicalGuard(level) - d })));
+
+/**
+ * The best playbook (up to 4 moves that fit the creature's energy) for a goal. A set is judged on how well
+ * its best moves do against foes of every type (so coverage, and having an answer to both Armor and Ward,
+ * count for what they're worth), plus one useful support move, a quick move, and Purge moves the rest of
+ * the set can set up.
+ */
 export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal): string[] {
   const e = energy(c);
-  const vs = goal.kind === 'vs' ? goal.type : undefined;
-  const weight = (m: Move) =>
-    m.kind === 'support' ? 0
-      : goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4)
-        : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1;
-  const value = (id: string) => {
-    const m = MOVE_BY_ID[id];
-    return expectedDamage(c, m, vs) * weight(m) - m.effort * 0.3 + Math.max(0, m.speed) * 0.15;
-  };
-  const all = learnable(c);
-  const supports = all.filter((id) => MOVE_BY_ID[id].kind === 'support');
-  const attacks = all.filter((id) => MOVE_BY_ID[id].kind !== 'support').sort((a, b) => value(b) - value(a));
-  // shortlist: the strongest attacks plus a couple of support moves
-  const pool = [...attacks.slice(0, 12), ...supports.slice(0, 3)];
-  const score = (set: string[]) => {
-    const ms = set.map((id) => MOVE_BY_ID[id]);
-    let sc = set.reduce((a, id) => a + value(id), 0) + set.length;
-    if (ms.some((m) => m.kind === 'support')) sc += goal.kind === 'balanced' ? 3.5 : 2.5; // one utility move is worth a slot
-    if (ms.filter((m) => m.kind === 'support').length > 1) sc -= 6;
-    if (goal.kind === 'balanced') {
-      if (ms.some((m) => m.kind === 'physical') && ms.some((m) => m.kind === 'elemental')) sc += 4;
-      sc += new Set(ms.filter((m) => m.kind === 'elemental').map((m) => m.type)).size; // type coverage
+  const foes = testFoes(c.level, goal.kind === 'vs' ? goal.type : undefined);
+  const spread = INSTINCT_BY_ID[instinctIdOf(c)]?.passive?.spread ? 1 : 0;
+  const weight = (m: Move) => (goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4) : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1);
+  const all = learnable(c).map((id) => MOVE_BY_ID[id]);
+  const rows = new Map(all.map((m) => [m.id, foes.map((f) => Math.max(0, moveWorth(c, m, f)) * (m.kind === 'support' ? 1 : weight(m)))]));
+  const mean = (id: string) => rows.get(id)!.reduce((a, x) => a + x, 0) / foes.length;
+  const top = (list: Move[], n: number, by = (m: Move) => mean(m.id)) => [...list].sort((a, b) => by(b) - by(a)).slice(0, n);
+  const attacks = all.filter((m) => m.kind !== 'support'), supports = all.filter((m) => m.kind === 'support');
+  const cost = (m: Move) => Math.max(1, Object.values(m.cost).reduce<number>((a, v) => a + (v ?? 0), 0));
+  // shortlist: the strongest overall, the best for their energy, the best of each kind and type, anything that Purges, and a few supports
+  const pool = [...new Set([
+    ...top(attacks, 6), ...top(attacks, 4, (m) => mean(m.id) / cost(m)), ...top(attacks.filter((m) => m.kind === 'physical'), 2),
+    ...speciesOf(c).types.flatMap((t) => top(attacks.filter((m) => m.kind === 'elemental' && m.type === t), 2)),
+    ...top(attacks.filter((m) => m.purge), 1), ...top(supports, 3),
+  ])];
+  const score = (set: Move[]) => {
+    const atk = set.filter((m) => m.kind !== 'support');
+    let sc = 0;
+    for (let f = 0; f < foes.length; f++) {
+      let first = 0, second = 0;
+      for (const m of atk) { const v = rows.get(m.id)![f]; if (v > first) { second = first; first = v; } else if (v > second) second = v; }
+      sc += first * 0.75 + second * 0.35; // the same move over and over isn't a plan
     }
-    return sc;
+    sc /= foes.length;
+    const sup = set.filter((m) => m.kind === 'support').map((m) => mean(m.id)).sort((a, b) => b - a);
+    sc += (sup[0] ?? 0) * 0.3 + (sup[1] ?? 0) * 0.05;
+    if (sup.length > 1) sc -= 1;
+    if (atk.some((m) => m.speed > 0)) sc += 0.3;
+    for (const m of atk) if (m.purge) {
+      // how often something else in the set will have set it up
+      const ready = Math.max(0, ...set.filter((x) => x !== m && x.status && (!m.purge!.status || x.status === m.purge!.status)).map((x) => (x.kind === 'support' ? 0.6 : statusChance(x, spread) * 0.8)));
+      sc += m.purge.n * ready * 0.35;
+    }
+    // what the rest of the set adds: variety for when Stamina runs low or the foe adapts
+    return sc + set.reduce((a, m) => a + (m.kind === 'support' ? 0 : mean(m.id) * 0.3), 0) + set.length * 0.15;
   };
   let best: string[] = [], bestScore = -Infinity;
-  const dfs = (start: number, set: string[]) => {
-    if (set.length) { const sc = score(set); if (sc > bestScore) { bestScore = sc; best = [...set]; } }
+  const dfs = (start: number, set: Move[]) => {
+    if (set.length) { const sc = score(set); if (sc > bestScore) { bestScore = sc; best = set.map((m) => m.id); } }
     if (set.length === 4) return;
-    for (let i = start; i < pool.length; i++) {
-      set.push(pool[i]);
-      if (fits(e, set)) dfs(i + 1, set);
+    for (let k = start; k < pool.length; k++) {
+      set.push(pool[k]);
+      if (fits(e, set.map((m) => m.id))) dfs(k + 1, set);
       set.pop();
     }
   };
   dfs(0, []);
   return best;
+}
+
+/** How well a playbook does: the damage-like points of its best moves against foes of every type. */
+export function playbookPower(c: CreatureInst, ids: string[]): number {
+  const foes = testFoes(c.level);
+  const atk = ids.map((id) => MOVE_BY_ID[id]).filter((m) => m && m.kind !== 'support');
+  return foes.reduce((a, f) => { const v = atk.map((m) => Math.max(0, moveWorth(c, m, f))).sort((x, y) => y - x); return a + (v[0] ?? 1) * 0.75 + (v[1] ?? 0) * 0.35; }, 0) / foes.length;
+}
+
+/**
+ * How strong a creature is in a fight at its level: what its best playbook does, against how long it lasts.
+ * Its real attributes decide it, however it came by them (growth, Nature, training, events).
+ */
+export function creaturePower(c: CreatureInst): number {
+  const st = stats(c);
+  const off = playbookPower(c, recommendPlaybook(c, { kind: 'balanced' }));
+  const hurt = (guard: number) => Math.max(1, 3.5 + typicalGuard(c.level) + 1 - guard);
+  const bulk = (HEART * st.vigor) / ((hurt(st.armor) + hurt(st.ward)) / 2) / (1 - Math.min(0.5, Math.max(0, st.evasion - 1) * 0.1));
+  return Math.sqrt(Math.max(0.5, off) * Math.max(0.5, bulk)) + st.speed * 0.12 + Math.min(6, st.stamina) * 0.05;
 }

@@ -3,9 +3,9 @@
 // swaps in for that partner. Unset (or no longer allowed) means a neutral move picked at random for
 // that pair (seeded by the two uids, so it stays the same until the trainer sets one).
 import type { ElementType, Stats } from '../data/schema';
-import { SWAP_MOVES, SWAP_MOVE_BY_ID, type SwapMove, type SwapVals } from '../data/swapMoves';
+import { SWAP_MOVES, SWAP_MOVE_BY_ID, SWAP_STATUS_ON, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { TYPE_LABEL } from '../data/types';
-import { nameOf, speciesOf, stats, type CreatureInst } from './creature';
+import { STATUS_WORTH, nameOf, speciesOf, stats, typicalGuard, type CreatureInst } from './creature';
 import { teamworkBonus, teamworkOf, teamworkShown } from './teamwork';
 
 /** The neutral Swap Moves: open to every pair, so always safe as a default. */
@@ -45,6 +45,35 @@ export const swapMovesFor = (alpha: CreatureInst, partner: CreatureInst) => SWAP
 export function swapMoveOf(alpha: CreatureInst, partner: CreatureInst): SwapMove {
   const picked = SWAP_MOVE_BY_ID[alpha.swapMoves?.[partner.uid] ?? ''];
   return picked && !swapLock(alpha, partner, picked) ? picked : defaultSwapMove(alpha, partner);
+}
+
+/** What a Swap Move is worth to a pair against a typical foe of the Alpha's level, in damage-like points. */
+export function swapWorth(alpha: CreatureInst, partner: CreatureInst, m: SwapMove): number {
+  const v = swapVals(alpha, partner);
+  const guard = typicalGuard(alpha.level);
+  const hitWorth = (h: SwapHit) => {
+    const land = h.acc ? Math.max(0, Math.min(1, (h.acc - 3 + 1) / h.acc)) : 1;
+    const dmg = Math.max(1, (h.die + 1) / 2 + h.parts(v).reduce((a, p) => a + p.value, 0) - guard);
+    const st = h.status ? swapStatus(m) : undefined;
+    return land * (dmg + (st ? (Math.min(h.die, h.statusOn ?? SWAP_STATUS_ON) / h.die) * STATUS_WORTH[st] : 0));
+  };
+  const effect = (e: SwapEffect): number => {
+    switch (e.t) {
+      case 'mod': return Math.abs(e.n(v)) * (e.stat === 'speed' ? 0.5 : 0.9);
+      case 'heal': return e.n(v) * 0.6;
+      case 'refill': return 1;
+      case 'ease': return 0.5;
+      case 'status': { const st = swapStatus(m); return st ? STATUS_WORTH[st] : 0; }
+    }
+  };
+  return (m.hit ? hitWorth(m.hit) : 0) + (m.second ? hitWorth(m.second) : 0) + [...(m.before ?? []), ...(m.after ?? [])].reduce((a, e) => a + effect(e), 0) + (m.speed ?? 0) * 0.15;
+}
+/** The best Swap Move this pair can use. */
+export const bestSwapMove = (alpha: CreatureInst, partner: CreatureInst): SwapMove =>
+  swapMovesFor(alpha, partner).map((m) => ({ m, w: swapWorth(alpha, partner, m) })).sort((a, b) => b.w - a.w)[0].m;
+/** Set the best Swap Move for every pair of a team, both ways (Rivals' and Champions' teams). */
+export function assignSwapMoves(team: CreatureInst[]) {
+  for (const a of team) for (const p of team) if (a !== p) setSwapMove(a, p, bestSwapMove(a, p).id);
 }
 
 /** Set the Swap Move `alpha` uses when it swaps in for `partner`. False if it isn't allowed. */
