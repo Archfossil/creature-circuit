@@ -18,7 +18,7 @@ import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
-import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { createCreature, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
@@ -850,6 +850,14 @@ export class App {
         this.duelSendPicker(send.down, send.vs, send.options, (i) => answer({ yes: true, value: i }))), true);
       return;
     }
+    const lead = m.pick as { kind: 'duel-lead'; vs: CreatureInst | null; options: { i: number; c: CreatureInst }[] } | undefined;
+    if (lead?.kind === 'duel-lead') {
+      if (document.hidden && settings().turnPing) sfx.ping();
+      open(`⚔️ Who leads against ${m.from}?`, h('div', null,
+        h('p', { class: 'small muted' }, 'Choose within a minute, or your first healthy creature leads.'),
+        this.duelLeadPicker(lead.vs, lead.options, (i) => answer({ yes: true, value: i }))), true);
+      return;
+    }
     if (pick?.kind === 'duel') {
       if (document.hidden && settings().turnPing) sfx.ping();
       open(`⚔️ Your move against ${m.from}`, h('div', null,
@@ -1129,7 +1137,7 @@ export class App {
         if (!ok) return;
         const battle = I.startChallenge(a, b);
         if (!battle) { toast(I.challengeProblem(a, b) ?? 'The duel can’t start.', 'bad'); return; }
-        await this.runBattle(battle, { kind: 'rival', rival: b, intro: `${b.trainer.name} accepts ${a.trainer.name}’s challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
+        await this.runBattle(battle, { kind: 'rival', rival: b, intro: `${b.trainer.name} accepts ${a.trainer.name}’s challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duelLead: W.needsLeadChoice(b) ? (bt, vs) => this.duelLeadPick(a, b, bt, vs) : undefined, duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
         for (const t of I.settleChallenge(a, b, battle, w)) toast(t, 'info', 4000);
         save(a);
         this.world.setPawnAt(a.location); this.world.focus(a.location, true);
@@ -1155,6 +1163,52 @@ export class App {
     });
     await this.backTo(a);
     return pickIt;
+  }
+
+  /**
+   * Duels: nobody is Following the challenged trainer, so they choose who leads. `vs` is the challenger's
+   * lead, or null when the challenger has yet to choose theirs too (neither sees the other's first).
+   */
+  async duelLeadPick(a: GameState, b: GameState, battle: Battle, vs: CreatureInst | null): Promise<number | undefined> {
+    const options = foeReplacements(battle).map((i) => ({ i, c: JSON.parse(JSON.stringify(battle.sides[1].team[i])) as CreatureInst }));
+    const m = activeMatchOf();
+    if (this.online && m) {
+      const key = this.activeKey;
+      const close = openSheet(`Waiting for ${b.trainer.name}…`, h('p', null, `${b.trainer.name} is choosing who leads.`), { noClose: true });
+      const idx = await this.online.pick<number>(m.players.indexOf(b), a.trainer.name, { kind: 'duel-lead', vs: vs && JSON.parse(JSON.stringify(vs)), options });
+      close();
+      // our turn ended meanwhile (skipped, or out of time): the duel never starts
+      if (!this.feeding() || this.activeKey !== key || this.s !== a) return new Promise(() => { /* never */ });
+      return idx;
+    }
+    const idx = await new Promise<number>((resolve) => {
+      const close = openSheet(`⚔️ ${b.trainer.name}: who leads?`, h('div', { class: 'handoff', style: `--tc:${b.trainer.color}` },
+        h('p', { class: 'small muted' }, `Pass the device to ${b.trainer.name}. ${a.trainer.name}, no peeking.`),
+        this.duelLeadPicker(vs, options, (i) => { close(); resolve(i); })), { noClose: true, wide: true });
+    });
+    await this.backTo(a);
+    return idx;
+  }
+
+  duelLeadPicker(vs: CreatureInst | null, options: { i: number; c: CreatureInst }[], done: (i: number) => void): HTMLElement {
+    return h('div', { class: 'duel-picker' },
+      h('p', null, 'Nobody is Following you, so choose who to send out first. ', vs ? ['They lead with ', h('b', null, nameOf(vs)), ` (Lv ${vs.level}, `, speciesOf(vs).types.map((t) => typeChip(t, true)), ').'] : 'They’re choosing too.'),
+      h('div', { class: 'list' }, options.map((o) => miniCard(o.c, { onClick: () => done(o.i) }))));
+  }
+
+  /** One creature that could swap in: its card, its Swap Move with this partner and what it would do now. */
+  swapRow(r: SwapRowInfo, done: () => void, change?: () => void): HTMLElement {
+    const A = nameOf(r.c), P = nameOf(r.partner);
+    const m = SWAP_MOVE_BY_ID[r.move];
+    const grows = r.earned ? 'Already earned its Teamwork this battle.' : r.capped ? 'Teamwork is at the pair’s cap (half the lower Loyalty of the two): raise that Loyalty to grow it.' : `This swap earns +${TEAMWORK_PER_SWAP} Teamwork (once per battle).`;
+    return h('div', { class: 'swap-row' },
+      miniCard(r.c, { onClick: done }),
+      h('div', { class: 'small' },
+        h('div', null, '🔁 ', h('b', null, m.name), ` · 🤝 Teamwork ${fmtTeamwork(r.teamwork)} with ${P} → `, h('b', null, r.bonus ? `+${r.bonus} bonus` : 'no bonus yet'),
+          change ? h('button', { class: 'link', onclick: change }, 'Change') : null),
+        h('div', null, alphaText(swapText(m, { A, P, aType: speciesOf(r.c).types[0], pType: speciesOf(r.partner).types[0] }), A, P)),
+        h('div', { class: 'muted' }, alphaText(r.effect, A, P)),
+        h('div', { class: 'muted' }, grows)));
   }
 
   /** Duels: after a KO, the challenged trainer picks their next creature (hotseat hand-off or their own browser). */
@@ -1184,13 +1238,20 @@ export class App {
 
   /** The defender's choices in a duel round: their moves, Catch Breath, and swaps. */
   duelPicker(o: FoeOptions, round: number, done: (a: Action) => void): HTMLElement {
-    return h('div', { class: 'duel-picker' },
+    const body = h('div', { class: 'duel-picker' });
+    const swaps = () => body.replaceChildren(
+      h('p', null, 'Swap in for ', h('b', null, o.name), ': choose the incoming Alpha.'),
+      h('div', { class: 'list' }, o.swaps.map((sw) => this.swapRow(sw.row, () => done({ kind: 'swap', to: sw.i })))),
+      h('div', { class: 'row end' }, h('button', { class: 'btn ghost sm', onclick: () => moves() }, '← Back to moves')));
+    const moves = () => body.replaceChildren(
       h('p', null, `Round ${round}: what will `, h('b', null, o.name), ' do?'),
       h('p', { class: 'small muted' }, `Health ${o.health} · 💨 Stamina ${o.stamina}${o.fatigue ? ` · Fatigue ${o.fatigue}` : ''}`),
       h('div', { class: 'move-grid' }, o.moves.map((id) => moveCard(MOVE_BY_ID[id], { compact: true, vs: o.vs, onClick: () => done({ kind: 'move', move: id }) }))),
       h('div', { class: 'row gap-s wrap center' },
         h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
-        o.swaps.map((sw) => h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'swap', to: sw.i }) }, `🔁 Swap to ${sw.name}`))));
+        h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight', onclick: swaps }, '🔁 Swap')));
+    moves();
+    return body;
   }
 
   /** Ask another trainer about `what` (a trade or a challenge): hand them the device, or ask in their own browser. */
@@ -1630,18 +1691,18 @@ export class App {
   // Battle
   // ════════════════════════════════════════════════════════════
   /** Ask which creature leads a battle (no healthy Following creature). Resolves once one is picked. */
-  pickLead(b: Battle, intro: string): Promise<void> {
+  pickLead(b: Battle, intro: string, hideFoe = false): Promise<void> {
     const foe = activeOf(b.sides[1]);
     return new Promise((resolve) => {
       const close = openSheet('Who leads?', h('div', null,
-        h('p', null, intro, ' ', h('b', null, `${nameOf(foe)}`), ` (Lv ${foe.level}, `, speciesOf(foe).types.map((t) => typeChip(t, true)), ').'),
+        h('p', null, intro, ' ', hideFoe ? 'Both leads are chosen in secret.' : [h('b', null, `${nameOf(foe)}`), ` (Lv ${foe.level}, `, speciesOf(foe).types.map((t) => typeChip(t, true)), ').']),
         h('p', { class: 'small muted' }, 'Nobody is Following you, so choose who to send out first. Set a Following creature in Team to lead automatically.'),
         h('div', { class: 'list' }, b.sides[0].team.map((c, i) => c.ko ? null : miniCard(c, { onClick: () => { chooseLead(b, i); close(); resolve(); } })))),
         { noClose: true });
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -1667,7 +1728,13 @@ export class App {
     bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color, s.trainer.look) : null, foeLook);
     this.engine.setView(bv);
     // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
-    if (!ctx.watch && W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
+    const choosing = !ctx.watch && W.needsLeadChoice(s) && b.round === 0;
+    // a duel: so does the challenged trainer, without either seeing the other's choice first
+    if (ctx.duelLead && b.round === 0) {
+      const idx = await ctx.duelLead(b, choosing ? null : activeOf(b.sides[0]));
+      if (idx !== undefined) chooseLead(b, idx, 1);
+    }
+    if (choosing) await this.pickLead(b, ctx.intro, !!ctx.duelLead);
     // online: everyone else watches this battle live
     const live = { battle: JSON.parse(JSON.stringify(b)) as unknown, ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook, rivalSeat: ctx.rival ? activeMatchOf()?.players.indexOf(ctx.rival) : undefined } as WatchCtx, past: [] as BEvent[] };
     if (!ctx.watch && this.online) this.liveFight = live;
@@ -1973,16 +2040,7 @@ export class App {
           h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2 (3 for Boosted ones, if the two share a type). A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A pair’s Teamwork is capped at half the lower Loyalty of the two.`),
           h('div', { class: 'list' }, b.sides[0].team.map((c, i) => {
             if (c.ko || c === cur) return null;
-            const pv = swapPreview(b, 0, i);
-            const grows = pv.earned ? 'Already earned its Teamwork this battle.' : pv.capped ? 'Teamwork is at the pair’s cap (half the lower Loyalty of the two): raise that Loyalty to grow it.' : `This swap earns +${TEAMWORK_PER_SWAP} Teamwork (once per battle).`;
-            return h('div', { class: 'swap-row' },
-              miniCard(c, { onClick: () => { close(); act({ kind: 'swap', to: i }); } }),
-              h('div', { class: 'small' },
-                h('div', null, '🔁 ', h('b', null, pv.power), ` · 🤝 Teamwork ${fmtTeamwork(pv.teamwork)} with ${nameOf(cur)} → `, h('b', null, pv.bonus ? `+${pv.bonus} bonus` : 'no bonus yet'),
-                  ctx.watch ? null : h('button', { class: 'link', onclick: () => { close(); editSwapMove(c, cur, () => swapPicker()); } }, 'Change')),
-                h('div', null, alphaText(swapText(pv.move, { A: nameOf(c), P: nameOf(cur), aType: speciesOf(c).types[0], pType: speciesOf(cur).types[0] }), nameOf(c), nameOf(cur))),
-                h('div', { class: 'muted' }, alphaText(pv.effect, nameOf(c), nameOf(cur))),
-                h('div', { class: 'muted' }, grows)));
+            return this.swapRow(swapRowInfo(b, 0, i), () => { close(); act({ kind: 'swap', to: i }); }, () => { close(); editSwapMove(c, cur, () => swapPicker()); });
           }))));
       };
       // two-player duel: the defender picks who replaces their knocked-out creature

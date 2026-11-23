@@ -2093,6 +2093,21 @@ describe('two-player duels', () => {
     const ev2 = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'swap', to: o.swaps[0].i });
     expect(ev2.some((e) => e.t === 'send' && e.side === 1)).toBe(true);
   });
+  it('the defender can choose who leads, and sees what each swap would do', () => {
+    const b = duel();
+    chooseLead(b, 1, 1);
+    expect(activeOf(b.sides[1]).species).toBe('pebbark');
+    expect(b.foeParticipants).toEqual([b.sides[1].team[1].uid]); // the default lead never took the field
+    expect(b.seenFoes).toEqual(['pebbark']);
+    resolveRound(b, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+    chooseLead(b, 0, 1); // too late
+    expect(b.sides[1].active).toBe(1);
+    const o = JSON.parse(JSON.stringify(foeOptions(b))) as ReturnType<typeof foeOptions>; // as sent online
+    const [a, p] = [b.sides[1].team[0], b.sides[1].team[1]];
+    expect(o.swaps).toHaveLength(1);
+    expect(o.swaps[0].row).toMatchObject({ move: swapMoveOf(a, p).id, c: { uid: a.uid }, partner: { uid: p.uid } });
+    expect(o.swaps[0].row.effect).toBe(swapPreview(b, 1, 0).effect);
+  });
   it('after a KO the defender picks the replacement (or the next in line goes in)', () => {
     const koed = () => {
       for (let i = 0; i < 500; i++) {

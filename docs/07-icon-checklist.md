@@ -225,7 +225,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Controls**
 - [ ] `battle-catch-breath`: 😮‍💨 Catch Breath
-- [ ] `battle-swap`: 🔁 Swap (also the duel picker's "Swap to…")
+- [ ] `battle-swap`: 🔁 Swap (also in the duel picker)
 - [ ] `battle-run`: 🏃 Run
 - [ ] `battle-types`: 🔺 Types (matchup chart; also the Type Chart menu tile)
 - [ ] `battle-card`: 📇 View the creature's card

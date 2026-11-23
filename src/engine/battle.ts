@@ -326,7 +326,7 @@ export function foeOptions(b: Battle) {
   return {
     name: nameOf(me),
     moves: [...me.playbook],
-    swaps: b.round >= 1 ? side.team.map((c, i) => ({ i, name: nameOf(c), ko: c.ko })).filter((x) => !x.ko && x.i !== side.active).map(({ i, name }) => ({ i, name })) : [],
+    swaps: b.round >= 1 ? side.team.map((c, i) => ({ c, i })).filter((x) => !x.c.ko && x.i !== side.active).map(({ c, i }) => ({ i, name: nameOf(c), row: swapRowInfo(b, 1, i) })) : [],
     vs: speciesOf(activeOf(b.sides[0])).types,
     health: `${totalHealth(me)}/${maxTotal(me)}`, stamina: `${me.stamina}/${maxStamina(me)}`, fatigue: me.fatigue,
   };
@@ -934,6 +934,14 @@ export function swapPreview(b: Battle, si: 0 | 1, to: number) {
   return { move: m, power: m.name, teamwork: teamworkOf(alpha, partner), bonus: v.bonus, earned, capped, effect: describeSwap(m, v) };
 }
 
+/** Everything the swap screen shows for one incoming creature: a plain copy, so it can be sent to another browser. */
+export function swapRowInfo(b: Battle, si: 0 | 1, to: number) {
+  const { move, teamwork, bonus, earned, capped, effect } = swapPreview(b, si, to);
+  const plain = (c: CreatureInst) => JSON.parse(JSON.stringify(c)) as CreatureInst;
+  return { c: plain(b.sides[si].team[to]), partner: plain(activeOf(b.sides[si])), move: move.id, teamwork, bonus, earned, capped, effect };
+}
+export type SwapRowInfo = ReturnType<typeof swapRowInfo>;
+
 function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   const side = b.sides[si];
   const partner = activeOf(side);
@@ -1132,10 +1140,18 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
   }
 }
 
-/** Before round 1: the trainer picks which creature leads (used when nobody is Following). */
-export function chooseLead(b: Battle, idx: number) {
-  const s = b.sides[0];
+/** Before round 1: a trainer picks which creature leads (used when nobody is Following; side 1 in a duel). */
+export function chooseLead(b: Battle, idx: number, si: 0 | 1 = 0) {
+  const s = b.sides[si];
   if (b.round > 0 || !s.team[idx] || s.team[idx].ko) return;
+  if (si === 1) {
+    s.active = idx;
+    // only the creature that really leads has been seen or has fought
+    b.seenFoes = [];
+    b.foeParticipants = [];
+    noteFoe(b);
+    return;
+  }
   const prev = activeOf(s).uid;
   s.active = idx;
   b.participants = b.participants.filter((u) => u !== prev);
