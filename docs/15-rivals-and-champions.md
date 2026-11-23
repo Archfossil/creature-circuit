@@ -72,6 +72,15 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 - **Contenders 📈:** a Rival who is ahead of you with at least 2 wins, or whom you've battled 5 times, climbs into the top 7, below the very best Champions.
 - **The bracket:** you meet the lowest of the seven first and the favourite last. If any contender qualifies, one of your three opponents is a contender: the one who has beaten you most.
 
+## Messenger
+
+Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (nine lines each; `{you}`, `{merit}` and `{place}` are filled in) and the rules in `src/engine/messenger.ts`.
+
+- **They write first:** only people you've met, at most one text every 3 turns from anyone, and every 8 from the same person. It's a rematch offer after a battle, congratulations on a Merit (as soon as there's a free moment), news of their own, a hello, or a treat by courier from someone friendly. Being stood up always gets a text.
+- **Answers:** a kind reply warms them to you. A cheeky one only costs goodwill with a firm friend. Accepting a rematch sets it at the nearest city or town. A question lapses after 6 turns.
+- **You write first:** say hello, bring up the last match, ask where a Champion is (one you haven't met, if there is one), or invite them to a rematch. Once every 4 turns with each person (invitations aside).
+- The last 16 texts with each person are kept.
+
 ## Balance notes
 
 - [ ] **Win rates** (AI playing both sides, levels on pace): Rivals are beaten about 60–85% of the time, Champions 35–70%, Trainer Hall opponents 75–99%.
@@ -80,6 +89,5 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 
 ## Still to come
 
-- **Messenger:** texts with replies, and Rivals getting in touch first.
 - **Trades** that favour their types.
 - **Side challenges:** races to a place, first to beat an Arbiter, Codex races and sillier ones.

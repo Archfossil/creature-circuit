@@ -13,6 +13,7 @@ import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits } from
 import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
+import * as T from '../engine/messenger';
 import type { Npc } from '../data/npcs';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
@@ -1356,6 +1357,7 @@ export class App {
 
   renderHud() {
     const s = this.s;
+    const unread = T.unreadTexts(this.idOwner());
     const node = NODE_BY_ID[s.location];
     const w = W.weather(s);
     const se = season(s);
@@ -1392,7 +1394,7 @@ export class App {
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
         h('span', { class: `merit ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '' })))),
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.trainerId(), 'aria-label': 'Trainer ID', title: 'Trainer ID: your home town, style and records' }, '📇'),
-      h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': 'Menu' }, '☰'));
+      h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': unread ? `Menu (${unread} unread message${unread === 1 ? '' : 's'})` : 'Menu' }, '☰', unread ? h('i', { class: 'hud-dot' }, String(unread)) : null));
     const loc = h('div', { class: 'loc-card', style: node.cityType ? `--tc:${TYPE_COLOR[node.cityType]}` : '' },
       h('div', { class: 'loc-title' },
         h('span', { class: 'loc-ico' }, node.kind === 'city' ? h('img', { src: typeIcon(node.cityType!), alt: '' }) : BIOME_INFO[node.biome].icon),
@@ -2295,12 +2297,12 @@ export class App {
     const s = this.idOwner();
     const mine = s === this.s && !this.watching && s.phase === 'map';
     const body = h('div');
-    let tab: 'rivals' | 'standings' = 'rivals';
+    let tab: 'rivals' | 'chats' | 'standings' = mine && T.unreadTexts(s) ? 'chats' : 'rivals';
     const render = () => {
       const met = [...N.RIVALS, ...N.CHAMPIONS].filter((x) => N.recordWith(s, x)).sort((a, b) => (N.recordWith(s, b)!.last?.turn ?? 0) - (N.recordWith(s, a)!.last?.turn ?? 0));
       body.replaceChildren(
-        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : '🏆 Circuit Standings'))),
-        tab === 'standings' ? this.standingsBody(s) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
+        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'chats', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : t === 'chats' ? `💬 Messages${T.unreadTexts(s) ? ` (${T.unreadTexts(s)})` : ''}` : '🏆 Circuit Standings'))),
+        tab === 'standings' ? this.standingsBody(s) : tab === 'chats' ? this.chatsBody(s, mine, render) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
           : h('p', { class: 'muted' }, 'You haven’t met anyone yet. Rivals turn up on roads and meadows, in Trainer Halls and in the morning; Champions tour the cities and towns.'),
         tab === 'rivals' ? h('p', { class: 'small muted' }, `Met ${met.filter((x) => x.kind === 'rival').length} of ${N.RIVALS.length} Rivals and ${met.filter((x) => x.kind === 'champion').length} of ${N.CHAMPIONS.length} Champions.`) : '');
     };
@@ -2330,8 +2332,49 @@ export class App {
         mine ? h('button', { class: 'btn ghost sm', onclick: () => { N.cancelInvite(s, npc); save(s); changed(); } }, 'Call it off') : null)
         : h('div', { class: 'row gap-s wrap' },
           where ? h('span', { class: 'small muted' }, `🏅 Now at ${at(where)}.`) : null,
+          h('button', { class: 'btn ghost sm', onclick: () => this.chatSheet(s, npc, mine, changed) }, '💬 Message'),
           mine ? h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, changed) }, '🤝 Invite to a rematch') : null,
           mine && why ? h('small', { class: 'muted' }, why) : null));
+  }
+
+  /** Conversations, the latest first. */
+  private chatsBody(s: GameState, mine: boolean, changed: () => void) {
+    const list = T.chats(s);
+    if (!list.length) return h('p', { class: 'muted' }, 'Once you’ve met a Rival or Champion you can text each other here.');
+    return h('div', { class: 'list' }, list.map((npc) => {
+      const c = T.chatWithNpc(s, npc), last = c?.texts[c.texts.length - 1];
+      return h('button', { class: `chat-row ${c?.unread ? 'unread' : ''}`, style: `--tc:${TYPE_COLOR[npc.types[0]]}`, onclick: () => this.chatSheet(s, npc, mine, changed) },
+        h('img', { src: this.npcPortrait(npc), alt: '' }),
+        h('span', null, h('b', null, npc.name), h('small', { class: 'muted' }, last ? `${last.me ? 'You: ' : ''}${last.text}` : 'No messages yet')),
+        c?.unread ? h('span', { class: 'chip good' }, String(c.unread)) : c?.ask ? h('span', { class: 'chip', title: 'Waiting for your reply' }, '↩') : null);
+    }));
+  }
+
+  /** A conversation: the texts, and what you can say. */
+  chatSheet(s: GameState, npc: Npc, mine: boolean, changed: () => void) {
+    const body = h('div');
+    const did = (ok: boolean) => { if (!ok) return; sfx.tap(); save(s); this.renderHud(); render(); changed(); };
+    const render = () => {
+      if (mine) T.readChat(s, npc);
+      const c = T.chatWithNpc(s, npc);
+      const answers = T.replies(s, npc);
+      const say = (list: T.Reply[], go: (id: string) => boolean) => list.map((o) => h('button', { class: 'btn ghost sm', disabled: !!o.disabled, title: o.disabled ?? '', onclick: () => did(go(o.id)) }, o.label));
+      const why = N.inviteBlock(s, npc);
+      let turn = -1;
+      const log = h('div', { class: 'chat-log', role: 'log', 'aria-label': `Messages with ${npc.name}` }, (c?.texts ?? []).flatMap((m) => {
+        const bits: HTMLElement[] = [h('p', { class: `bubble ${m.me ? 'me' : ''}` }, m.text)];
+        if (m.turn !== turn) { turn = m.turn; bits.unshift(h('small', { class: 'chat-turn muted' }, `Turn ${m.turn}`)); }
+        return bits;
+      }), c?.texts.length ? null : h('p', { class: 'muted center' }, 'No messages yet. Say something!'));
+      body.replaceChildren(log, mine ? h('div', { class: 'chat-say' },
+        ...(answers.length ? say(answers, (id) => T.reply(s, npc, id)) : [...say(T.openers(s, npc), (id) => T.writeFirst(s, npc, id)),
+          h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, () => { render(); changed(); }) }, '🤝 Invite to a rematch')]),
+        N.recordWith(s, npc)?.invite ? h('small', { class: 'muted' }, `Rematch at ${NODE_BY_ID[N.recordWith(s, npc)!.invite!.at].name}, turns ${N.recordWith(s, npc)!.invite!.from}–${N.recordWith(s, npc)!.invite!.until}.`) : '') : h('p', { class: 'small muted' }, 'You can answer on your own turn.'));
+      requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
+    };
+    render();
+    if (mine) { save(s); this.renderHud(); changed(); }
+    openSheet(`💬 ${npc.name}`, body, { wide: true });
   }
 
   /** Choose where a rematch happens: they travel there and wait a few turns. */
@@ -3635,7 +3678,7 @@ export class App {
     const mine = this.logOwner();
     const close = openSheet('Menu', h('div', null, this.soundControls(), h('div', { class: 'tiles' },
       tile('📇', 'Trainer ID', `${this.idOwner().trainer.name} of ${NODE_BY_ID[this.idOwner().trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
-      tile('🥇', 'Rival Trainers', (() => { const n = N.RIVALS.concat(N.CHAMPIONS).filter((x) => N.recordWith(this.idOwner(), x)).length; return `${n} met. Records, rematches and the Circuit Standings.`; })(), '', () => { close(); this.rivalsSheet(); }),
+      tile('🥇', 'Rival Trainers', (() => { const n = N.RIVALS.concat(N.CHAMPIONS).filter((x) => N.recordWith(this.idOwner(), x)).length; return `${n} met. Records, rematches, messages and the Circuit Standings.`; })(), T.unreadTexts(this.idOwner()) ? `💬 ${T.unreadTexts(this.idOwner())}` : '', () => { close(); this.rivalsSheet(); }),
       tile('📖', 'Creature Codex', `${this.idOwner().dex.caught.length} recruited · ${this.idOwner().dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),

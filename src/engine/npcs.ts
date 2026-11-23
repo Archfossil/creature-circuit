@@ -11,6 +11,7 @@ import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { NATURES, itemInfo } from '../data/content';
 import type { GameState } from './state';
 import { earnCoins, log, tierOf } from './state';
+import { textStoodUp, textTurn, type Chat } from './messenger';
 import { createBattle, type Battle } from './battle';
 import { createCreature, fullRestore, gainXp, type CreatureInst } from './creature';
 import { cityActionCost, here, playerSide, stageCapFor, tierBandLevel, weather } from './world';
@@ -32,6 +33,8 @@ export interface NpcRecord {
   /** The stay (npcStay) they last chatted in. */
   chatted?: number;
   invite?: Invite;
+  /** Texts with them (engine/messenger.ts). */
+  chat?: Chat;
 }
 /** A rematch arranged: they're at `at` from turn `from` until the end of turn `until`. */
 export interface Invite { at: string; from: number; until: number }
@@ -313,8 +316,10 @@ export function npcTurn(s: GameState): string[] {
     if (!r?.invite) continue;
     if (s.turn === r.invite.from) notes.push(`🤺 ${npc.name} is waiting for you at ${NODE_BY_ID[r.invite.at].name} until the end of turn ${r.invite.until}.`);
     else if (s.turn > r.invite.until) {
+      const at = r.invite.at;
       r.invite = undefined;
       r.rapport--;
+      textStoodUp(s, npc, at);
       notes.push(`🤺 ${npc.name} waited for your rematch, then left.`);
       log(s, `${npc.name} waited for a rematch, then left.`);
     }
@@ -328,6 +333,7 @@ export function npcTurn(s: GameState): string[] {
     // only people you know are worth interrupting for
     if (recordWith(s, npc)) notes.push(`📰 ${text}`);
   }
+  notes.push(...textTurn(s));
   if (s.circuitNews) s.circuitNews.length = Math.min(s.circuitNews.length, 20);
   return notes;
 }

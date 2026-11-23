@@ -154,6 +154,9 @@ export interface GameState {
   circuitNews?: { turn: number; text: string }[];
   /** Rival and Circuit notes to show at the start of the turn. */
   npcNotes?: string[];
+  /** The turn a Rival or Champion last texted of their own accord, and how many Merits they've heard about. */
+  lastText?: number;
+  npcMerits?: number;
 }
 
 const KEY = 'creature-circuit-save-v1';

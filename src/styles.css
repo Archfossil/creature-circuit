@@ -594,6 +594,18 @@ button.dex-entry:hover { border-color: var(--ink); }
 .team-balls i.ace { width: 15px; height: 15px; margin: -3px -1px; border: 0; border-radius: 0; background: #e0a400; clip-path: polygon(50% 0, 62% 35%, 98% 35%, 69% 57%, 79% 92%, 50% 71%, 21% 92%, 31% 57%, 2% 35%, 38% 35%); }
 .team-balls i.ace.ko { background: #999; }
 .ace-tag { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: #ffd84a; border: 1.5px solid var(--ink); color: var(--ink); white-space: nowrap; }
+.hud-pill.menu { position: relative; }
+.hud-dot { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; background: var(--accent); color: #fff; border: 1.5px solid var(--ink); font: 800 11px/15px inherit; font-size: 11px; line-height: 15px; font-style: normal; text-align: center; }
+.chat-row { font: inherit; color: var(--ink); text-align: left; display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; background: var(--paper); border: 2px solid var(--ink); border-left: 8px solid var(--tc); border-radius: 12px; padding: 6px 10px; cursor: pointer; }
+.chat-row img { width: 44px; height: 44px; object-fit: contain; }
+.chat-row span:nth-child(2) { min-width: 0; display: grid; }
+.chat-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-row.unread small { font-weight: 700; color: var(--ink); }
+.chat-log { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+.chat-turn { align-self: center; }
+.bubble { margin: 0; max-width: 78%; align-self: flex-start; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 14px 14px 14px 4px; background: #fff; }
+.bubble.me { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: #fff0c2; }
+.chat-say { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
 .npc-tabs { margin-bottom: 10px; }
 .npc-card { border: 2px solid var(--ink); border-left: 8px solid var(--tc); border-radius: 14px; padding: 10px 12px; background: var(--paper); display: grid; gap: 8px; }
 .npc-head { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: start; }

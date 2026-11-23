@@ -9,6 +9,8 @@ import * as E from '../src/engine/events';
 import { newGame, migrate, type GameState } from '../src/engine/state';
 import { createCreature, speciesOf, stats, STAT_KEYS } from '../src/engine/creature';
 import type { Battle } from '../src/engine/battle';
+import * as T from '../src/engine/messenger';
+import { VOICES } from '../src/data/texts';
 
 const game = () => {
   const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
@@ -147,5 +149,77 @@ describe('rivals and champions', () => {
     const r = E.resolveEvent(t, 'fight')!;
     expect(r.battle!.sides[1].npc).toBeTruthy();
     expect(migrate(JSON.parse(JSON.stringify(t)))!.npcs).toEqual(t.npcs);
+  });
+});
+
+describe('the messenger', () => {
+  /** Pass turns until `npc` has a question waiting. */
+  const until = (s: GameState, done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) { s.turn = s.turn >= 90 ? 20 : s.turn + 1; T.textTurn(s); } expect(done()).toBe(true); };
+  it('everyone has a voice, with every kind of line filled in', () => {
+    expect(Object.keys(VOICES).sort()).toEqual(NPCS.map((x) => x.id).sort());
+    for (const [id, v] of Object.entries(VOICES)) {
+      for (const [k, text] of Object.entries(v)) { expect(text.length, `${id}.${k}`).toBeGreaterThan(2); expect(text.replace(/\{(you|merit|place)\}/g, ''), `${id}.${k}`).not.toMatch(/[{}]/); }
+      expect(v.congrats, id).toContain('{merit}');
+      expect(v.news, id).toContain('{merit}');
+      expect(v.stoodUp, id).toContain('{place}');
+    }
+  });
+  it('only people you’ve met write, not too often, and never leave a blank in', () => {
+    const s = game();
+    for (let t = 2; t < 60; t++) { s.turn = t; expect(T.textTurn(s)).toEqual([]); }
+    N.meet(s, rival); N.meet(s, champ); N.meet(s, NPC_BY_ID.pim);
+    const times: number[] = [];
+    for (let t = 60; t < 100; t++) { s.turn = t; if (T.textTurn(s).length) times.push(t); }
+    expect(times.length).toBeGreaterThan(2);
+    for (let i = 1; i < times.length; i++) expect(times[i] - times[i - 1]).toBeGreaterThanOrEqual(T.TEXT_EVERY);
+    for (const x of T.chats(s)) for (const m of T.chatWithNpc(s, x)?.texts ?? []) expect(m.text).not.toMatch(/[{}]|undefined/);
+    expect(T.unreadTexts(s)).toBe(times.length);
+    expect(T.unreadTexts(migrate(JSON.parse(JSON.stringify(s)))!)).toBe(times.length);
+  });
+  it('congratulates a new Merit, and a kind answer warms them', () => {
+    const s = game();
+    N.meet(s, rival);
+    s.turn = 10; T.textTurn(s);
+    s.merits.push('aurora');
+    until(s, () => T.chatWithNpc(s, rival)?.ask === 'congrats');
+    expect(T.chatWithNpc(s, rival)!.texts.some((m) => m.text.includes('Polaris Merit'))).toBe(true);
+    const before = N.recordWith(s, rival)!.rapport;
+    expect(T.openers(s, rival)).toEqual([]); // answer first
+    expect(T.reply(s, rival, 'kind')).toBe(true);
+    expect(T.reply(s, rival, 'kind')).toBe(false);
+    expect(N.recordWith(s, rival)!.rapport).toBe(before + 1);
+    expect(T.chatWithNpc(s, rival)!.unread).toBe(0);
+  });
+  it('offers a rematch after a battle, and accepting arranges it nearby', () => {
+    const s = game();
+    s.turn = 10;
+    settle(s, N.npcBattle(s, rival), 'lose');
+    until(s, () => T.chatWithNpc(s, rival)?.ask === 'rematch');
+    expect(T.chatWithNpc(s, rival)!.texts.slice(-1)[0].text).toBe(VOICES.bex.taunt);
+    expect(T.reply(s, rival, 'accept')).toBe(true);
+    expect(N.recordWith(s, rival)!.invite!.at).toBe(T.nearbyStop(s));
+  });
+  it('a question lapses, and being stood up gets a text', () => {
+    const s = game();
+    N.meet(s, rival);
+    until(s, () => !!T.chatWithNpc(s, rival)?.ask);
+    s.turn += T.ASK_LASTS; s.lastText = s.turn;
+    T.textTurn(s);
+    expect(T.chatWithNpc(s, rival)!.ask).toBeUndefined();
+    s.turn = 20;
+    N.inviteNpc(s, rival, 'mistfall');
+    s.turn = 40;
+    N.npcTurn(s);
+    expect(T.chatWithNpc(s, rival)!.texts.some((m) => m.text.includes('Mistfall'))).toBe(true);
+  });
+  it('the trainer can write first, but not constantly, and conversations stay short', () => {
+    const s = game();
+    N.meet(s, rival);
+    expect(T.writeFirst(s, rival, 'champions')).toBe(true);
+    const tip = T.chatWithNpc(s, rival)!.texts.slice(-1)[0].text;
+    expect(N.CHAMPIONS.some((x) => tip.includes(x.name) && tip.includes(NODE_BY_ID[N.championAt(s, x)].name))).toBe(true);
+    expect(T.writeFirst(s, rival, 'hi')).toBe(false);
+    for (let i = 0; i < 20; i++) { s.turn += T.WRITE_EVERY; expect(T.writeFirst(s, rival, 'hi')).toBe(true); }
+    expect(T.chatWithNpc(s, rival)!.texts.length).toBe(T.CHAT_MAX);
   });
 });
