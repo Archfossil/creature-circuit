@@ -3167,7 +3167,23 @@ export class App {
    * and state.ts → earnCoins.
    */
   trainerId() {
-    const s = this.s, st = s.stats;
+    const me = this.idOwner();
+    const m = activeMatchOf();
+    const players = m?.players.includes(me) ? m.players : [me];
+    const body = h('div');
+    const show = (p: GameState) => body.replaceChildren(
+      ...(players.length > 1 ? [h('div', { class: 'seats tid-tabs', role: 'group', 'aria-label': 'Whose Trainer ID to show' }, players.map((x) => h('button', {
+        class: `seat ${x === p ? 'now' : ''}`, style: `--tc:${x.trainer.color}`, 'aria-pressed': String(x === p), onclick: () => show(x),
+      }, x.trainer.name, x === me ? ' (you)' : '')))] : []),
+      this.trainerIdBody(p, p === me));
+    show(me);
+    openSheet('Trainer ID', body, { wide: true });
+  }
+  /** Whose Trainer ID, Creature Codex and Journal the buttons open: online, always this browser's own trainer; otherwise whoever is playing. */
+  private idOwner(): GameState { return (this.online ? activeMatchOf()?.players[this.mySeat()] : null) ?? this.s; }
+
+  private trainerIdBody(s: GameState, own: boolean) {
+    const st = s.stats;
     const style = TRAINER_STYLES.find((x) => x.id === s.trainer.style)!;
     const tier = tierOf(s);
     // a stable, made-up ID number from who the trainer is
@@ -3175,7 +3191,7 @@ export class App {
     const idNo = String(hsh % 100000).padStart(5, '0');
     const home = NODE_BY_ID[s.trainer.home];
     const homeCity = CITIES[s.trainer.home];
-    const styleNow = s.trainer.style === 'nature' ? `This turn: ${W.rangerRefundsLeft(s)} of ${tier} Initiative refunds left.`
+    const styleNow = !own ? null : s.trainer.style === 'nature' ? `This turn: ${W.rangerRefundsLeft(s)} of ${tier} Initiative refunds left.`
       : s.trainer.style === 'pathfinder' ? `This turn: free first move ${s.flags.firstMoveUsed ? 'used' : 'ready'}.`
       : s.trainer.style === 'balanced' ? `If your team is wiped out, you can return to: ${W.restedCities(s).map((id) => CITIES[id].name).join(', ')}. Rest at a city’s stable to add it.`
       : null;
@@ -3217,7 +3233,7 @@ export class App {
         h('small', null, `${n} · ${Math.round((n / used) * 100)}%`))))
         : h('p', { class: 'small muted' }, 'No moves used in battle yet.'),
       st.trackedFrom ? h('p', { class: 'small muted' }, `Detailed stats have been kept since Turn ${st.trackedFrom}, when this journey was first loaded with the Trainer ID.`) : null);
-    openSheet('Trainer ID', body, { wide: true });
+    return body;
   }
 
   /** Whose saved log this screen shows: the trainer taking their turn, or (watching online) this browser's own. */
@@ -3288,8 +3304,8 @@ export class App {
   menu() {
     const mine = this.logOwner();
     const close = openSheet('Menu', h('div', null, this.soundControls(), h('div', { class: 'tiles' },
-      tile('📇', 'Trainer ID', `${this.s.trainer.name} of ${NODE_BY_ID[this.s.trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
-      tile('📖', 'Creature Codex', `${this.s.dex.caught.length} recruited · ${this.s.dex.seen.length} seen`, '', () => { close(); this.codex(); }),
+      tile('📇', 'Trainer ID', `${this.idOwner().trainer.name} of ${NODE_BY_ID[this.idOwner().trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
+      tile('📖', 'Creature Codex', `${this.idOwner().dex.caught.length} recruited · ${this.idOwner().dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
@@ -3335,7 +3351,7 @@ export class App {
    * (where it or an earlier stage turns up), rarity and whether you've seen or recruited it.
    */
   codex() {
-    const s = this.s;
+    const s = this.idOwner();
     const v = this.codexView;
     const RARITIES: Rarity[] = ['common', 'prime', 'apex', 'legendary'];
     const rank = (r: Rarity) => RARITIES.indexOf(r);
@@ -3414,7 +3430,7 @@ export class App {
 
   /** One Codex page: where to find the species (or its earlier stages) and how to win it over. */
   codexEntry(id: string) {
-    const s = this.s;
+    const s = this.idOwner();
     const sp = SPECIES_BY_ID[id];
     const caught = s.dex.caught.includes(id);
     const nodeChip = (spot: W.Spot) => {
@@ -3460,7 +3476,7 @@ export class App {
   }
 
   journal() {
-    openSheet('Journal', h('ul', { class: 'journal' }, this.s.log.map((l) => h('li', null, h('small', null, `T${l.turn}`), ' ', l.text))));
+    openSheet('Journal', h('ul', { class: 'journal' }, this.idOwner().log.map((l) => h('li', null, h('small', null, `T${l.turn}`), ' ', l.text))));
   }
 
   calendar() {

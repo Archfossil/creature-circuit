@@ -92,7 +92,7 @@ export const GUIDE: GuideCategory[] = [
         'Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0.',
       ] },
       { id: 'codex', title: 'Creature Codex', body: [
-        'Every creature you meet in the wild or in a trainer’s team is recorded (☰ Menu → Creature Codex).',
+        'Every creature you meet in the wild or in a trainer’s team is recorded (☰ Menu → Creature Codex). Online, it’s always your own, as is the Journal.',
         'Search it by name, or filter by type, biome, rarity and whether you’ve seen or recruited it. Each page lists the nodes to explore for it (or its earlier stages) and its favorite offerings.',
         'You can carve an Effigy of any creature in your Codex at a Carving Shrine.',
       ] },
@@ -253,7 +253,7 @@ export const GUIDE: GuideCategory[] = [
         'The Wanderer makes their home anywhere: if their team is wiped out, they choose which city to return to, from any city whose stable they’ve rested at this game (only their home city at the start).',
       ] },
       { id: 'trainerId', title: 'Trainer ID', body: [
-        'Tap 📇 on the top bar (or ☰ Menu → Trainer ID) to see your home town, trainer style and its rules, Tier and Merits.',
+        'Tap 📇 on the top bar (or ☰ Menu → Trainer ID) to see your home town, trainer style and its rules, Tier and Merits. In multiplayer it opens on your own; tap another trainer’s name at the top to see theirs.',
         'It also keeps your journey stats: creatures encountered, foes knocked out, items found, steps and coins, your won / lost record against wild creatures, trainers and Arbiters, and your favoured move types.',
       ] },
       { id: 'look', title: 'Your look', body: [
