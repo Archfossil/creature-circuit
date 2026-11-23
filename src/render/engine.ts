@@ -37,15 +37,31 @@ export class Engine {
     // Save battery: stop rendering while the tab/app is in the background.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.renderer.setAnimationLoop(null);
-      else { this.clock.getDelta(); this.renderer.setAnimationLoop(() => this.frame()); }
+      else this.resume();
     });
+    addEventListener('pageshow', () => this.resume());
     // Mobile GPUs can drop the WebGL context (memory pressure, app switching).
     this.canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
+      this.lost = true;
       this.renderer.setAnimationLoop(null);
       document.body.classList.add('gl-lost');
     });
-    this.canvas.addEventListener('webglcontextrestored', () => location.reload());
+    // three.js rebuilds its GPU state when the context comes back, so the game carries on where it was
+    this.canvas.addEventListener('webglcontextrestored', () => {
+      this.lost = false;
+      document.body.classList.remove('gl-lost');
+      this.resume();
+    });
+  }
+  private lost = false;
+
+  /** Start drawing again after the tab was hidden or the graphics came back. */
+  private resume() {
+    if (this.lost || document.hidden) return;
+    this.clock.getDelta();
+    this.resize(); // the browser's bars or the orientation may have changed meanwhile
+    this.renderer.setAnimationLoop(() => this.frame());
   }
 
   setView(v: SceneView) {
@@ -73,21 +89,27 @@ export class Engine {
 }
 
 // ── Portraits for index cards (rendered once per species, cached) ───────────
-let pr: THREE.WebGLRenderer | null = null;
+let shared: THREE.WebGLRenderer | null = null;
 const cache = new Map<string, string>();
+/** The portrait renderer, made afresh if its graphics were lost (phones drop them in the background). */
+function portraitRenderer(): THREE.WebGLRenderer {
+  if (shared && shared.getContext().isContextLost()) { shared.dispose(); shared = null; }
+  if (!shared) {
+    shared = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    shared.setSize(320, 320);
+    shared.setPixelRatio(1);
+    shared.toneMapping = THREE.ACESFilmicToneMapping;
+    shared.outputColorSpace = THREE.SRGBColorSpace;
+  }
+  return shared;
+}
 
 export function portrait(speciesId: string): string {
   const hit = cache.get(speciesId);
   if (hit) return hit;
   const sp = SPECIES_BY_ID[speciesId];
   if (!sp) return '';
-  if (!pr) {
-    pr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    pr.setSize(320, 320);
-    pr.setPixelRatio(1);
-    pr.toneMapping = THREE.ACESFilmicToneMapping;
-    pr.outputColorSpace = THREE.SRGBColorSpace;
-  }
+  const pr = portraitRenderer();
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight('#ffffff', '#8a7a66', 1.6));
   const d = new THREE.DirectionalLight('#fff6e0', 2.2);
@@ -107,7 +129,7 @@ export function portrait(speciesId: string): string {
   pr.setClearColor(0x000000, 0);
   pr.render(scene, cam);
   const url = pr.domElement.toDataURL('image/png');
-  cache.set(speciesId, url);
+  if (!pr.getContext().isContextLost()) cache.set(speciesId, url);
   rig.root.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; m?.dispose?.(); });
   return url;
 }
@@ -117,13 +139,7 @@ export function trainerPortrait(look: TrainerLook): string {
   const key = 'trainer:' + JSON.stringify(look);
   const hit = cache.get(key);
   if (hit) return hit;
-  if (!pr) {
-    pr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    pr.setSize(320, 320);
-    pr.setPixelRatio(1);
-    pr.toneMapping = THREE.ACESFilmicToneMapping;
-    pr.outputColorSpace = THREE.SRGBColorSpace;
-  }
+  const pr = portraitRenderer();
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight('#ffffff', '#8a7a66', 1.6));
   const d = new THREE.DirectionalLight('#fff6e0', 2.2);
@@ -138,6 +154,6 @@ export function trainerPortrait(look: TrainerLook): string {
   pr.setClearColor(0x000000, 0);
   pr.render(scene, cam);
   const url = pr.domElement.toDataURL('image/png');
-  cache.set(key, url);
+  if (!pr.getContext().isContextLost()) cache.set(key, url);
   return url; // trainer materials are shared (cached in trainerModel), so nothing is disposed here
 }

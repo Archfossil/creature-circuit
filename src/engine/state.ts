@@ -256,6 +256,8 @@ export const wispLit = (s: GameState) => (s.inventory['fog-lantern'] ?? 0) > 0 &
 export function save(s: GameState) {
   // a trainer in a hotseat match is saved as part of the whole match
   if (activeMatch && activeMatch.players.includes(s)) { saveMatch(activeMatch); return; }
+  // online, a trainer from an outdated copy of the match (a newer one arrived): never let it land in the solo save
+  if (activeMatch && matchKey !== MATCH_KEY) return;
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage unavailable */ }
 }
 
@@ -264,7 +266,7 @@ export function save(s: GameState) {
 // records whose turn it is and the shared weather rolls, so every trainer sees the same skies on a
 // given turn. Turns go in seat order: when one trainer ends their turn, the next one starts theirs.
 export const MAX_PLAYERS = 6;
-export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number }
+export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
 const MATCH_KEY = 'creature-circuit-match-v1';
 let activeMatch: Match | null = null;
 /** Where the active match is kept: the hotseat slot, or (online) a separate slot so the two never mix. */

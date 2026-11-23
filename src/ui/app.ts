@@ -15,7 +15,7 @@ import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
-import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
+import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
@@ -91,6 +91,7 @@ export class App {
   watchedLog: BattleLog | null = null;
 
   constructor(root: HTMLElement) {
+    const resumeRoom = sessionRoom();
     this.engine = new Engine(root);
     this.world = new WorldView(this.engine.canvas);
     this.battleView = new BattleView();
@@ -102,12 +103,19 @@ export class App {
     // invite links: ?room=CODE opens the Online sheet ready to join
     const invite = new URLSearchParams(location.search).get('room');
     if (invite) setTimeout(() => this.onlineSheet(invite.toUpperCase()), 300);
+    // back from another tab or app, or the network returned
+    document.addEventListener('visibilitychange', () => void this.checkOnline());
+    addEventListener('pageshow', () => void this.checkOnline());
+    addEventListener('online', () => void this.checkOnline());
+    // the browser dropped or reloaded the tab mid-game: go straight back to the room
+    if (resumeRoom) void this.connectOnline().then((ok) => { if (ok) { closeAllSheets(); this.online!.join(resumeRoom); } });
   }
 
   // ════════════════════════════════════════════════════════════
   // Title & new game
   // ════════════════════════════════════════════════════════════
   title() {
+    rememberSession(null);
     closeAllSheets();
     this.engine.setView(this.world);
     this.world.setTitleMode(true);
@@ -205,6 +213,8 @@ export class App {
   }
 
   start(s: GameState, fresh = false) {
+    this.busy = false; // (whatever was under way is replaced)
+    rememberSession(this.online?.code ?? null);
     this.liveLog = null;
     this.eventWatch = null; // (its window closes with the rest below)
     if (!activeMatchOf()?.players.includes(s)) setActiveMatch(null);
@@ -441,6 +451,7 @@ export class App {
     useMatchSlot('hotseat');
     setActiveMatch(null);
     rememberRoom(null);
+    rememberSession(null);
     this.watching = false; this.activeKey = ''; this.watchedLog = null;
     this.world.setRivals([]);
     this.title();
@@ -451,7 +462,7 @@ export class App {
     if (!this.feeding()) return;
     if (this.pushTimer) clearTimeout(this.pushTimer);
     const net = this.online!;
-    this.pushTimer = setTimeout(() => { this.pushTimer = null; net.send({ type: 'state', match: m }); }, 80);
+    this.pushTimer = setTimeout(() => { this.pushTimer = null; m.by = net.id; net.send({ type: 'state', match: m }); }, 80);
   }
 
   async onServer(m: ServerMsg) {
@@ -473,18 +484,34 @@ export class App {
       case 'edit': this.applyRemoteEdit(m.seat, m.edit); break;
       case 'do-play': toast(`You’re playing ${activeMatchOf()?.players[m.seat]?.trainer.name ?? 'their'}’s turn for them.`, 'info', 4000); break;
       case 'error':
+        if (/Disconnected/.test(m.text) && net.code) { void this.reconnect(); break; }
         toast(m.text, 'bad', 5000);
-        if (/Disconnected/.test(m.text) && net.code) setTimeout(() => void this.reconnect(net.code!), 2500);
         break;
     }
   }
 
-  async reconnect(code: string) {
-    if (!this.online || this.online.ws?.readyState === 1) return;
-    const old = this.online;
-    this.online = null;
-    old.close();
-    if (await this.connectOnline()) { this.online!.join(code); toast('Reconnected.', 'good'); }
+  /** The connection dropped: keep trying to get back into the room, carrying on with any turn we're playing. */
+  async reconnect() {
+    const net = this.online;
+    if (!net?.code || this.reconnecting) return;
+    this.reconnecting = true;
+    toast('Connection lost. Reconnecting…', 'info', 3000, true);
+    for (let tries = 0; this.online === net; tries++) {
+      this.resync = true;
+      try { await net.reopen(); toast('Reconnected.', 'good', 2600, true); break; } catch { await wait(Math.min(10000, 1000 + tries * 1500)); }
+    }
+    this.reconnecting = false;
+    if (this.online === net && net.ws?.readyState !== 1) void this.reconnect(); // dropped again meanwhile
+  }
+  private reconnecting = false;
+  /** Just reconnected: the next match the server sends decides whether our own copy is still the live one. */
+  private resync = false;
+
+  /** Back from another tab or app (or the network returned): make sure the connection is real. */
+  async checkOnline() {
+    const net = this.online;
+    if (!net?.code || document.hidden || this.reconnecting) return;
+    if (!(await net.alive()) && this.online === net) void this.reconnect();
   }
 
   /** The lobby before the game starts: seats, your trainer, the host's timer and Start. */
@@ -540,7 +567,11 @@ export class App {
     const match = migrateMatch(sent); // the room may have been started by an older build
     if (!match) { toast('This room’s game is from a different version. Reload the page, or start a new room.', 'bad', 6000); return; }
     try { localStorage.setItem('creature-circuit-online-v1', JSON.stringify(match)); } catch { /* ignore */ }
-    if (this.feeding()) return; // we're the one playing: our copy is the newest
+    // we're the one playing: our copy is the newest (unless we just reconnected and someone else played on)
+    const theirs = this.resync && !!sent.by && sent.by !== this.online?.id;
+    const back = this.resync;
+    this.resync = false;
+    if (this.feeding() && activeMatchOf() && !theirs) { if (back) this.pushState(activeMatchOf()!); return; }
     setActiveMatch(match);
     this.activeKey = ''; // the server's copy replaces ours, so any turn we were playing restarts from it
     if (!match.players.some(stillPlaying)) { this.matchSummary(); return; }
@@ -575,7 +606,8 @@ export class App {
     if (!m) return;
     const s = m.players[m.current];
     // we were playing until now (the turn ended, or the host took over): our open windows no longer apply
-    if (!this.watching) { closeAllSheets(); this.eventWatch = null; this.liveLog = null; }
+    if (!this.watching) { closeAllSheets(); this.eventWatch = null; this.liveLog = null; this.busy = false; }
+    rememberSession(this.online?.code ?? null);
     this.watching = true;
     this.s = s;
     // the event we were looking at has been answered
@@ -592,6 +624,7 @@ export class App {
 
   async onFeed(item: FeedItem) {
     if (!this.watching) return;
+    if (document.hidden && (item.kind === 'toast' || item.kind === 'dice')) return; // nobody's looking: don't pile them up for later
     switch (item.kind) {
       case 'toast': toast(item.text, item.tone, 3200); break;
       case 'dice': if (!this.watchQueue) void rollDice(item.title, item.dice as DieSpec[], item.caption, item.hold, { corner: true }); break;
@@ -1788,7 +1821,7 @@ export class App {
         typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe), attackerName: ctx.watch ? nameOf(me) : undefined });
       };
       const onKey = (ev: KeyboardEvent) => {
-        if (document.querySelector('.sheet-wrap')) return;
+        if (document.querySelector('.sheet-wrap') || !panel.isConnected) return;
         if (readoutFor && controls.querySelector('.readout')) {
           if (ev.key === 'Escape' || ev.key === 'Backspace') { readoutFor = null; showControls(); }
           else if (ev.key === 'Enter') { ev.preventDefault(); const id = readoutFor; readoutFor = null; act({ kind: 'move', move: id }); }

@@ -23,7 +23,7 @@ function audio(): AudioContext | null {
     master.gain.value = gainFor(settings().volume);
     master.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') void ctx.resume();
+  if (ctx.state !== 'running') void ctx.resume().catch(() => undefined); // (iOS also has 'interrupted')
   return ctx;
 }
 

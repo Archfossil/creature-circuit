@@ -241,6 +241,7 @@ export const GUIDE: GuideCategory[] = [
         'Title screen → 🌐 Online. The host opens a room and shares the code; everyone makes a trainer and the host starts.',
         'You watch other trainers’ turns live (moves and dice, with a chip to look in on their battles and come back to the map whenever you like), and a ping tells you when it’s your turn. While someone resolves an event, tap the note at the bottom to see its choices (only they can answer).',
         'While you wait you can unlock chart nodes and edit playbooks (🐾 My team), look through your bag (🎒 My bag), and tap a node to 📍 mark your next stop.',
+        'Switching apps or losing signal is fine: the game reconnects by itself and your turn carries on.',
         'The host can set a turn timer, skip a turn, or play one for someone who stepped away.',
       ] },
     ],

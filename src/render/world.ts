@@ -217,6 +217,8 @@ export class WorldView implements SceneView {
   private cloudGoal: CloudLook = { ...CLOUD_LOOKS.none, color: new THREE.Color(CLOUD_LOOKS.none.color) };
   private cloudsSet = false;
   private lightning = 0;
+  /** Where the pawn stands, without its idle bob. */
+  private pawnBase = new THREE.Vector3();
   private hopping: { from: THREE.Vector3; to: THREE.Vector3; t: number; res: () => void } | null = null;
   private legendGlows: THREE.Mesh[] = [];
   private season: Season = 'spring';
@@ -713,9 +715,9 @@ export class WorldView implements SceneView {
 
   // ── State sync ─────────────────────────────────────────────────
   setPawnAt(id: string) {
-    const n = NODE_BY_ID[id];
-    const off = n.kind === 'city' ? 1.6 : 0;
-    this.pawn.position.set(n.x + off, nodeHeight(n) + (n.kind === 'city' ? 0.6 : 0.42), n.z + off);
+    this.endHop(); // a hop still under way (the tab was hidden) must not carry the pawn off afterwards
+    this.pawnBase.copy(this.pawnPos(id));
+    this.pawn.position.copy(this.pawnBase);
     // the follower jumps along too (e.g. when the hotseat switches trainers), instead of gliding across the map
     this.follower?.root.position.copy(this.pawn.position).add(new THREE.Vector3(-1.3, -0.4, 0.6));
   }
@@ -747,7 +749,18 @@ export class WorldView implements SceneView {
     return new THREE.Vector3(n.x + off, nodeHeight(n) + (n.kind === 'city' ? 0.6 : 0.42), n.z + off);
   }
 
+  /** Finish a hop under way at once, so whoever is waiting on it carries on. */
+  private endHop() {
+    const h = this.hopping;
+    if (!h) return;
+    this.hopping = null;
+    this.pawnBase.copy(h.to);
+    this.pawn.position.copy(h.to);
+    h.res();
+  }
+
   hop(fromId: string, toId: string, follow = true): Promise<void> {
+    this.endHop();
     return new Promise((res) => { this.hopping = { from: this.pawnPos(fromId), to: this.pawnPos(toId), t: 0, res }; if (follow) this.focus(toId); });
   }
 
@@ -1116,9 +1129,9 @@ export class WorldView implements SceneView {
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       this.pawn.position.lerpVectors(h.from, h.to, e);
       this.pawn.position.y += Math.sin(k * Math.PI) * 2.2;
-      if (k >= 1) { this.hopping = null; h.res(); }
+      if (k >= 1) this.endHop();
     } else {
-      this.pawn.position.y += Math.sin(t * 3) * 0.002;
+      this.pawn.position.y = this.pawnBase.y + Math.sin(t * 3) * 0.04;
     }
     this.pawn.rotation.y = Math.sin(t * 0.8) * 0.2;
     this.pawnRig?.update(t);

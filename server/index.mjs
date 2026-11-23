@@ -100,6 +100,7 @@ function timeUp(room) {
 function handle(ws, clientId, msg) {
   const room = msg.code ? rooms.get(msg.code) : null;
   switch (msg.type) {
+    case 'ping': send(ws, { type: 'pong' }); return null; // a returning browser checking its connection is real
     case 'create': {
       const r = { code: newCode(), host: clientId, seats: [], started: false, match: null, controller: null, turnSeconds: 0, deadline: null, timer: null, sockets: new Map(), touched: Date.now() };
       // re-opening a saved online match: seats come back with their owners
@@ -120,12 +121,13 @@ function handle(ws, clientId, msg) {
       if (!room) { send(ws, { type: 'error', text: 'No room with that code. Check it, or ask the host to open it again.' }); return null; }
       room.sockets.set(clientId, ws);
       if (room.started && room.match) {
-        send(ws, { type: 'state', match: room.match });
         // a seat owner coming back while it's their turn takes control again
         const seat = room.seats[room.match.current];
         if (seat?.clientId === clientId && !room.controller) room.controller = clientId;
       }
+      // who's in control first, so a browser coming back knows whether its own copy is the live one
       broadcast(room, roomInfo(room));
+      if (room.started && room.match) send(ws, { type: 'state', match: room.match });
       flushEdits(room);
       return room;
     }

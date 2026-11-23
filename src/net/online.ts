@@ -42,6 +42,11 @@ const ROOM_KEY = 'creature-circuit-online-room';
 export function lastRoom(): string | null { try { return localStorage.getItem(ROOM_KEY); } catch { return null; } }
 export function rememberRoom(code: string | null) { try { if (code) localStorage.setItem(ROOM_KEY, code); else localStorage.removeItem(ROOM_KEY); } catch { /* ignore */ } }
 
+const SESSION_KEY = 'creature-circuit-session-room';
+/** The room this tab is playing in, so a tab the browser reloads goes straight back (cleared by leaving or the title screen). */
+export function sessionRoom(): string | null { try { return sessionStorage.getItem(SESSION_KEY); } catch { return null; } }
+export function rememberSession(code: string | null) { try { if (code) sessionStorage.setItem(SESSION_KEY, code); else sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ } }
+
 export class Online {
   ws: WebSocket | null = null;
   readonly id = clientId();
@@ -50,18 +55,26 @@ export class Online {
   private handlers = new Set<(m: ServerMsg) => void>();
   private pending = new Map<string, (yes: boolean, value?: unknown) => void>();
   private queue: string[] = [];
+  private awaiting: (() => void)[] = [];
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       const ws = new WebSocket(`${proto}://${location.host}/ws?id=${encodeURIComponent(this.id)}`);
       this.ws = ws;
-      ws.onopen = () => { for (const q of this.queue.splice(0)) ws.send(q); resolve(); };
+      ws.onopen = () => {
+        if (this.code) ws.send(JSON.stringify({ type: 'join', code: this.code })); // coming back after a dropped connection
+        for (const q of this.queue.splice(0)) ws.send(q);
+        resolve();
+      };
       ws.onerror = () => reject(new Error('Couldn’t reach the game server.'));
-      ws.onclose = () => { for (const h of this.handlers) h({ type: 'error', text: 'Disconnected from the game server.' }); };
+      ws.onclose = () => { if (this.ws !== ws) return; for (const h of this.handlers) h({ type: 'error', text: 'Disconnected from the game server.' }); };
       ws.onmessage = (e) => {
-        let msg: ServerMsg;
+        if (this.ws !== ws) return;
+        for (const a of this.awaiting.splice(0)) a();
+        let msg: ServerMsg | { type: 'pong' };
         try { msg = JSON.parse(String(e.data)); } catch { return; }
+        if (msg.type === 'pong') return;
         if (msg.type === 'room') this.room = msg;
         if (msg.type === 'created') { this.code = msg.code; rememberRoom(msg.code); }
         if (msg.type === 'answer') { this.pending.get(msg.id)?.(msg.yes, msg.value); this.pending.delete(msg.id); return; }
@@ -72,9 +85,28 @@ export class Online {
   on(h: (m: ServerMsg) => void) { this.handlers.add(h); return () => this.handlers.delete(h); }
   send(msg: Record<string, unknown>) {
     const text = JSON.stringify({ ...msg, code: this.code });
-    if (this.ws?.readyState === 1) this.ws.send(text); else this.queue.push(text);
+    if (this.ws?.readyState === 1) this.ws.send(text);
+    // while disconnected, the match and what watchers see are sent afresh on return; the rest waits
+    else if (msg.type !== 'state' && msg.type !== 'feed' && msg.type !== 'ping') this.queue.push(text);
   }
-  close() { this.ws?.close(); this.ws = null; }
+
+  /** Is the connection really there? A phone's can look open long after it died in the background. */
+  alive(ms = 3000): Promise<boolean> {
+    if (this.ws?.readyState !== 1) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(false), ms);
+      this.awaiting.push(() => { clearTimeout(timer); resolve(true); });
+      this.send({ type: 'ping' });
+    });
+  }
+  /** Open a fresh connection to the same room, keeping everything else. */
+  reopen(): Promise<void> {
+    const old = this.ws;
+    this.ws = null;
+    old?.close();
+    return this.connect();
+  }
+  close() { const ws = this.ws; this.ws = null; ws?.close(); }
 
   create(resume?: { match: Match; owners: string[]; turnSeconds: number }) { this.send({ type: 'create', ...(resume ?? {}) }); }
   join(code: string) { this.code = code.toUpperCase(); rememberRoom(this.code); this.send({ type: 'join' }); }
