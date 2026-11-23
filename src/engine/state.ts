@@ -3,6 +3,7 @@ import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import type { BattleLog } from './battleLog';
+import type { NpcRecord } from './npcs';
 import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
@@ -147,6 +148,12 @@ export interface GameState {
   waypoint?: string;
   /** The 📜 log of this trainer's latest battle, to look back on (replaced by the next one; left out of saved copies). */
   lastBattle?: BattleLog;
+  /** History with the Rivals and Champions this trainer has met, by id (engine/npcs.ts). */
+  npcs?: Record<string, NpcRecord>;
+  /** Circuit news, latest first. */
+  circuitNews?: { turn: number; text: string }[];
+  /** Rival and Circuit notes to show at the start of the turn. */
+  npcNotes?: string[];
 }
 
 const KEY = 'creature-circuit-save-v1';

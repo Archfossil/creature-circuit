@@ -40,7 +40,7 @@ Day and night each have **39** weight of eligible events: 24 of time-specific ev
 | 7 | 🥋 Sparring Master | `sparring` | Service | 3 | Day | Always | No | 💰 5 |
 | 8 | 🔮 Fortune Teller | `fortune` | Service | 2 | Any | No Star Charm effect already active | No | 💰 3 |
 | 9 | 🧺 Windfall | `windfall` | Find | 3 | Night | Always | Yes (one option) | Free |
-| 10 | 🤺 Rival Challenge | `rival` | Battle | 2 | Day | At least one active creature can fight | No | Trainer-battle stakes |
+| 10 | 🤺 Rival Challenge | `rival` | Battle | 2 | Day | At least one active creature can fight, and a Rival is free | No | Trainer-battle stakes |
 | 11 | 📜 Wise Hermit | `hermit` | Service | 2 | Any | Always | No | 💰 8 |
 | 12 | 🦝 Pickpocket! | `pickpocket` | Hazard | 2 | Any | You have 💰 3+ | **Yes** | Coins at risk |
 | 13 | 🙏 Passing Pilgrim | `pilgrim` | Find | 2 | Day | Always | Yes (one option) | Free |
@@ -185,10 +185,10 @@ A caravan sells one item at **half price** (rounded down, at least 💰 1): a Ho
 |---|---|---|---|---|
 | Battle | 2 | Day | At least one active creature can fight | No |
 
-A named rival (Juniper, Ozzie, Marisol, Dex or Calla) challenges you.
+One of the Rivals about challenges you (see [15 · Rivals & Champions](./15-rivals-and-champions.md)).
 
 **Choices**
-- **Accept the challenge:** a trainer battle. The rival's team is one level above the local wilds, has as many creatures as you have fit to fight (up to 3), and each is 40% Prime. Normal trainer-battle stakes and XP: win coins, or pay them if you lose.
+- **Accept the challenge:** a battle against that Rival's own team. Normal trainer-battle stakes and XP: win coins, or pay them if you lose.
 - **Walk away:** no penalty.
 
 ### 11. 📜 Wise Hermit · `hermit`

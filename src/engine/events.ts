@@ -1,6 +1,8 @@
 // Turn events: something happens on the road between turns. One event is rolled at the end of
 // every turn (see `rollEvent`), stored on the save as `s.event` until the player answers it, then
 // resolved with `resolveEvent`. Everything here is pure game logic; the UI only renders `eventView`.
+import { NPC_BY_ID, passerBy } from '../data/npcs';
+import { npcBattle, pickRival } from './npcs';
 import type { ElementType, Rarity, TimeOfDay } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
 import { NATURES, NATURE_BY_ID, ABILITIES, ITEMS, BIOME_MATERIALS, timeOfDay } from '../data/content';
@@ -338,15 +340,18 @@ const EVENTS: EventDef[] = [
   },
   {
     id: 'rival', weight: 2, time: 'day',
-    when: (s) => s.roster.some((c) => !c.ko),
-    create: () => ({ name: pick(['Rival Juniper', 'Rival Ozzie', 'Rival Marisol', 'Rival Dex', 'Rival Calla']) }),
+    when: (s) => s.roster.some((c) => !c.ko) && !!pickRival(s),
+    create: (s) => { const r = pickRival(s); return r ? { npc: r.id, name: r.name } : { npc: '', name: passerBy('road') }; },
     view: (_s, d) => ({
       title: 'Rival Challenge', icon: '🤺',
-      text: `${d.name} blocks the path. "Think you're Circuit material? Prove it." Their team is a level above the local wilds. Normal trainer stakes: win coins, or pay them if you lose.`,
+      text: `${d.name} blocks the path. “${NPC_BY_ID[d.npc as string]?.lines.greet ?? 'Think you’re Circuit material? Prove it.'}” Normal trainer stakes: win coins, or pay them if you lose.`,
       choices: [{ id: 'fight', label: 'Accept the challenge' }, { id: 'decline', label: 'Walk away', detail: '"Figures." No penalty.' }],
     }),
     resolve: (s, d, choice) => {
       if (choice !== 'fight') return { text: `${d.name} scoffs and lets you pass.`, tone: 'info' };
+      const rival = NPC_BY_ID[d.npc as string];
+      if (rival) { const battle = npcBattle(s, rival); return { text: `${rival.name} sends out ${nameOf(battle.sides[1].team[0])}!`, tone: 'info', battle }; }
+      // (an event rolled before Rivals were people)
       const lvl = baseWildLevel(s, here(s)) + 1;
       const size = Math.min(3, Math.max(1, s.roster.filter((c) => !c.ko).length));
       const foes = Array.from({ length: size }, () => createCreature(wildSpecies(s, Math.random() < 0.4 ? 'prime' : 'common', lvl), lvl));

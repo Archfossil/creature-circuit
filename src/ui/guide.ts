@@ -156,6 +156,9 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'trainers', title: 'Trainers & Arbiters', body: [
         'Every city has a Trainer Hall: battle a local trainer once per turn (a city action).',
+        'Rivals: some of the trainers you meet are Rivals, with favourite types, a team that grows with the season and an Ace: a tougher creature with the same bond as your starter, marked with a gold star ★ in battle. ☰ Menu → Rival Trainers keeps your record with each, the creatures they’ve shown, and lets you invite them to a rematch in a city or town.',
+        'Revenge: beat a Rival or Champion who beat you last time for extra coins, XP and an item. The more losses you’re avenging, the bigger the bonus (up to three).',
+        'Champions tour the cities and towns. Chat with them or challenge them there. The Circuit Standings (in Rival Trainers) show who’s on course for the Finals; a Rival who keeps beating you, or whom you battle most, can earn a place.',
         'Each city’s Arbiter guards a Merit. Their arenas have tricks that favour the Arbiter (ice floes, fog, lightning…), described before you challenge. A prepared trainer can use some of them: Watson’s lightning heals Electric creatures, yours included.',
         'Cliff’s Crumbling Plateau is a timer: it shrinks every round (watch the ⏳ counter), and if it’s gone before you beat him, you’re rung out and lose.',
         'Some Arbiters have conditions. Salem (Aurora Peak) only battles trainers who have walked a full lap of Cloud Island (see Places → Cloud Island). Stella (Iron Coast) only battles trainers who clear the Iron Coast Gauntlet: beat 2 local trainers per Tier without leaving the city. You can rest at the Stable between matches, but leaving resets it. Once cleared, she’ll battle you any time.',

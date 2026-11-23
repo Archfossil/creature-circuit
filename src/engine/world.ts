@@ -5,6 +5,8 @@ import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, 
 import { INSTINCT_BY_ID } from '../data/instincts';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Retrain, Match, BattleKind } from './state';
+import { npcNamed, passerBy } from '../data/npcs';
+import { circuitField, npcBattle, npcTeam, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
 import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
 import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
@@ -222,7 +224,7 @@ export function eatTrailMix(s: GameState): boolean {
 export type Outcome =
   | { t: 'nothing'; roll: number; die?: number; /** Hush Smoke turned this encounter face into Nothing or a find. */ hushed?: boolean; dark?: boolean; refund?: boolean }
   | { t: 'encounter'; roll: number; stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle; die?: number }
-  | { t: 'trainer'; roll: number; name: string; battle: Battle }
+  | { t: 'trainer'; roll: number; name: string; battle: Battle; /** What a Rival says. */ line?: string }
   | { t: 'item'; roll: number; itemRoll: number; items: { id: string; n: number }[]; coins: number; die?: number; hushed?: boolean }
   | { t: 'itemChoice'; roll: number; options: Find[]; die?: number; hushed?: boolean }
   /** Forest Floor: a sign of Dahlia's Trail. `found`: enough signs to reach her arena. */
@@ -648,10 +650,10 @@ export function bestOfferings(speciesId: string): { id: string; bonus: number }[
     .sort((a, b) => b.bonus - a.bonus || a.id.localeCompare(b.id));
 }
 
-const TRAINER_NAMES = ['Hiker Rosa', 'Ranger Theo', 'Birder Juno', 'Camper Malik', 'Angler Pip', 'Botanist Ines', 'Geologist Rhea', 'Drifter Kane', 'Scout Ola', 'Painter Wren'];
-
 function trainerEncounter(s: GameState, node: MapNode, r: number): Outcome {
-  const name = pick(TRAINER_NAMES);
+  const rival = Math.random() < rivalChance(s) ? pickRival(s) : null;
+  if (rival) return { t: 'trainer', roll: r, name: rival.name, battle: npcBattle(s, rival), line: rival.lines.greet };
+  const name = passerBy('road');
   const lvl = wildLevel(s, node);
   const tier = tierOf(s);
   const n = Math.min(s.roster.filter((c) => !c.ko).length, roll(tier >= 3 ? 3 : 2));
@@ -661,8 +663,6 @@ function trainerEncounter(s: GameState, node: MapNode, r: number): Outcome {
 }
 
 // ── City Trainer Halls ──────────────────────────────────────────
-const HALL_TRAINERS = ['Ace Mira', 'Veteran Bo', 'Rival Sky', 'Captain Lio', 'Scout Tamsin', 'Ranger Ode', 'Ace Juniper', 'Veteran Hale'];
-
 /** Why you can't battle in this city's Trainer Hall right now (null = you can). */
 export function hallBlock(s: GameState): string | null {
   if (NODE_BY_ID[s.location]?.kind !== 'city') return 'Trainer Halls are in cities.';
@@ -677,10 +677,15 @@ export function hallBlock(s: GameState): string | null {
  * action's Initiative. City trainers are a touch above the wild band (+1 level), lean toward the
  * city's type, and bring 2 creatures (3 from Tier 3) or as many as you have healthy.
  */
-export function hallBattle(s: GameState): { name: string; battle: Battle } | null {
+export function hallBattle(s: GameState): { name: string; battle: Battle; line?: string } | null {
   if (hallBlock(s)) return null;
   s.initiative -= cityActionCost(s);
   (s.flags.sparred ??= []).push(s.location);
+  const rival = Math.random() < rivalChance(s) ? pickRival(s) : null;
+  if (rival) {
+    log(s, `${rival.name} took up your challenge at the ${here(s).name} Trainer Hall.`);
+    return { name: rival.name, battle: npcBattle(s, rival), line: rival.lines.greet };
+  }
   const node = here(s);
   const tier = tierOf(s);
   const lvl = Math.max(1, tierBandLevel(tier) + 1);
@@ -688,7 +693,7 @@ export function hallBattle(s: GameState): { name: string; battle: Battle } | nul
   const cityType = CITIES[node.id]?.type;
   const team = Array.from({ length: size }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl, cityType ? [cityType] : [], undefined, cityType ? [...new Set([...BIOME_TYPES[node.biome], cityType])] : undefined).id, lvl));
   for (const c of team) autoSpend(c, false);
-  const name = pick(HALL_TRAINERS);
+  const name = passerBy('hall');
   const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });
   log(s, `Accepted a challenge from ${name} at the ${node.name} Trainer Hall.`);
   return { name, battle };
@@ -1094,6 +1099,7 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     s.initiative = Math.min(QUICK_STEP_MAX, s.initiative + QUICK_STEP_REFUND);
     out.text.push(`Quick Step: a clean getaway. +${QUICK_STEP_REFUND} Initiative back.`);
   }
+  out.text.push(...settleNpc(s, b, out.coins, ctx.kind !== 'endgame'));
   // morale for participants
   for (const uid of b.participants) {
     const c = s.roster.find((x) => x.uid === uid);
@@ -1442,12 +1448,10 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
   }
 }
 
-const CHAMPIONS = ['Champion Ivo', 'Champion Selene', 'Champion Marisol', 'Champion Dez', 'Champion Okon', 'Champion Hale', 'Champion Tamsin', 'Champion Bram', 'Champion Noor'];
-
 export function startEndgame(s: GameState) {
-  const rivals = [...CHAMPIONS].sort(() => Math.random() - 0.5).slice(0, 7);
+  const field = circuitField(s).map((x) => x.name);
   s.phase = 'endgame';
-  s.endgame = { round: 0, bracket: [s.trainer.name, ...rivals], eliminated: false };
+  s.endgame = { round: 0, bracket: [s.trainer.name, ...field], eliminated: false };
   for (const c of [...s.roster, ...s.reserve]) fullRestore(c);
 }
 
@@ -1456,14 +1460,16 @@ export function endgameBattle(s: GameState): Battle {
   const opponent = eg.bracket[1 + eg.round];
   const avg = Math.round(s.roster.reduce((a, c) => a + c.level, 0) / Math.max(1, s.roster.length));
   const lvl = Math.max(9, avg) + eg.round;
-  const team = [0, 1, 2].map(() => {
+  const npc = npcNamed(opponent);
+  // (a bracket drawn before the Champions had teams of their own can hold a name nobody goes by now)
+  const team = npc ? npcTeam(s, npc, 3, lvl) : [0, 1, 2].map(() => {
     const sp = pick(SPECIES.filter((x) => x.rarity !== 'legendary' && (x.stage >= 2 || x.rarity === 'apex')));
     const c = createCreature(sp.id, lvl);
     autoSpend(c, false);
     return c;
   });
   for (const c of s.roster) fullRestore(c);
-  return createBattle(playerSide(s), { kind: 'champion', name: opponent, team, active: 0, mods: {} }, weather(s), { biome: 'meadow' });
+  return createBattle(playerSide(s), { kind: 'champion', name: opponent, ...(npc ? { npc: npc.id } : {}), team, active: 0, mods: {} }, weather(s), { biome: 'meadow' });
 }
 
 // ── Turn flow ───────────────────────────────────────────────────
@@ -1612,6 +1618,8 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   s.flags.sparred = [];
   s.flags.paid = [];
   s.flags.challenged = [];
+  const notes = npcTurn(s);
+  if (notes.length) s.npcNotes = [...(s.npcNotes ?? []), ...notes];
   const season = seasonForTurn(s.turn);
   report.seasonChanged = season !== prevSeason;
   // hotseat passes null: the coming turn's weather is rolled once, when the first trainer starts it (rollRoundWeather)

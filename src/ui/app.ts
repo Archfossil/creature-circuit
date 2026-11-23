@@ -12,6 +12,8 @@ import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits } from '../engine/state';
 import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
+import * as N from '../engine/npcs';
+import type { Npc } from '../data/npcs';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
@@ -1010,6 +1012,7 @@ export class App {
     await this.showInbox();
     // Teamwork that grew while travelling last turn
     if (s.teamworkNews?.length) { toast(`🤝 Teamwork grew on the road: ${s.teamworkNews.join(' · ')}.`, 'good', 6000); s.teamworkNews = []; save(s); }
+    if (s.npcNotes?.length) { for (const t of s.npcNotes) toast(t, 'info', 6000); s.npcNotes = []; save(s); }
     // Teamwork that fell with a Loyalty (a pair's cap is half the lower Loyalty of the two)
     if (s.teamworkFell?.length) { toast(`🤝 Teamwork fell as Loyalty dropped: ${s.teamworkFell.join(' · ')}.`, 'bad', 7000); s.teamworkFell = []; save(s); }
     // one event per trainer per turn, from the second round, rolled here at the start of the turn
@@ -1672,7 +1675,7 @@ export class App {
       } else if (out.t === 'trainer') {
         await rollDice('Explore', [{ sides: 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], `${out.name} challenges you!`, 700, { read: true });
         this.busy = false;
-        await this.runBattle(out.battle, { kind: 'trainer', intro: `${out.name} wants to battle!` });
+        await this.runBattle(out.battle, { kind: 'trainer', intro: out.line ? `${out.name}: “${out.line}”` : `${out.name} wants to battle!` });
         return;
       } else if (out.t === 'legendary') {
         this.busy = false;
@@ -1765,12 +1768,13 @@ export class App {
         h('div', { class: 'pl-top' },
           h('b', null, nameOf(c)), h('span', { class: 'lv' }, `Lv ${c.level}`),
           h('span', { class: 'pl-types' }, sp.types.map((t) => typeIconImg(t, 16))),
+          c.ace ? h('span', { class: 'ace-tag', title: 'Their Ace: like your starter, it has a special bond (+1 Vigor, no attribute under 1)' }, '★ Ace') : null,
           recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
           sn.zero ? h('span', { class: 'zero-tag', title: `Zeroing In: +${sn.zero} to its next accuracy roll, from missing. Misses stack it up to +${ZERO_IN_MAX}; leaving the field loses it.` }, h('i', { class: 'zi' }, '⌖'), ` +${sn.zero}`) : null,
           guard && !sn.ko ? h('span', { class: 'guard-tag', title: `${guard.text} Its Instinct protects it from status effects.`, 'aria-label': `Status protection: ${guard.text}` }, '🛡', guard.label === '🛡' ? '' : ` ${guard.label}`) : null,
           sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
         h('div', { class: 'pl-vit' },
-          h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: x.ko ? 'ko' : '' })))),
+          h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: `${x.ko ? 'ko' : ''} ${x.ace ? 'ace' : ''}`, title: x.ace ? 'Their Ace: a tougher creature with a special bond' : '' })))),
         // the Health bar (notched into hearts) and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
         h('div', { class: `pl-bars ${side === 0 ? 'mine' : 'foe'}` },
           healthBar(maxHearts(c), sn, { over: sn.over }),
@@ -2191,6 +2195,7 @@ export class App {
         tile('🔄', 'Carving Shrine', 'Carve type totems and creature effigies. Free to look.', !cost ? costTag : W.facilityPaid(s, 'shrine') ? '✓ paid' : `${costTag} to carve`, () => this.shrine()),
         tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials. Free to look.', !cost ? costTag : W.facilityPaid(s, 'workbench') ? '✓ paid' : `${costTag} to craft`, () => this.workbench()),
         this.workTile(),
+        ...this.npcTiles(),
         tile('🤺', 'Trainer Hall', W.hallBlock(s) && s.flags.sparred?.includes(id) ? 'You’ve battled here this turn. Come back next turn.' : `Battle a local trainer once per turn. Trainer battles earn +${TRAINER_BATTLE_XP_BONUS} XP for every creature that fights, win or lose, plus coins if you win.`, costTag, () => this.trainerHall(), !!s.flags.sparred?.includes(id)),
         id === 'aurora' ? tile('🌀', 'Cloud Island Portal', W.portalOpen(s)
           ? `Open ${seasonForTurn(s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}).`}`
@@ -2237,6 +2242,128 @@ export class App {
     await this.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
   }
 
+  // ════════════════════════════════════════════════════════════
+  // Rivals and Champions
+  // ════════════════════════════════════════════════════════════
+  private npcPortrait(npc: Npc) { return trainerPortrait(npc.kind === 'champion' ? championLook(npc.name) : roamingLook(npc.name)); }
+
+  /** City and town tiles for the Rivals and Champions who are here. */
+  private npcTiles() {
+    const s = this.s;
+    return N.npcsHere(s).map((npc) => {
+      const r = N.recordWith(s, npc);
+      return tile(npc.kind === 'champion' ? '🏅' : '🤺', npc.name, r?.invite ? 'Here for your rematch!' : `${npc.blurb}`, r ? `${r.won}–${r.lost}` : 'new', () => this.npcSheet(npc));
+    });
+  }
+
+  /** Someone who's here: pass the time, or challenge them. */
+  npcSheet(npc: Npc) {
+    const s = this.s;
+    const body = h('div');
+    const render = (said = npc.lines.greet) => {
+      const r = N.recordWith(s, npc);
+      const why = N.challengeNpcBlock(s, npc);
+      const rev = N.revengeBonus(r?.owed ?? 0);
+      const chatted = r?.chatted === N.npcStay(s.turn);
+      body.replaceChildren(
+        h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null,
+          h('div', { class: 'row gap-s wrap' }, npc.types.map((t) => typeChip(t, true)), r ? h('small', { class: 'muted' }, `You ${r.won}, them ${r.lost} · ${N.npcMood(r)}`) : h('small', { class: 'muted' }, 'You haven’t met.')),
+          h('p', { class: 'small' }, npc.blurb), h('p', null, `“${said}”`))),
+        rev ? h('p', { class: 'small good-text' }, `🔥 Revenge: beating them now pays ${rev.coins + 1}× coins, +${rev.xp} XP for everyone who fights, and ${itemInfo(rev.item).icon} ${itemInfo(rev.item).name}.`) : '',
+        h('p', { class: 'small muted' }, `Their team is about Lv ${N.npcLevel(s, npc)}. Normal trainer stakes: win coins, or pay them if you lose.`),
+        h('div', { class: 'row end gap wrap' },
+          h('button', { class: 'btn ghost', disabled: chatted, title: chatted ? 'You’ve caught up already.' : '', onclick: () => {
+            const c = N.chatWith(s, npc);
+            if (!c) return;
+            if (c.gift) toast(`${npc.name} shares a ${itemInfo(c.gift).icon} ${itemInfo(c.gift).name}.`, 'good');
+            save(s); this.renderHud(); render(c.line);
+          } }, '💬 Chat'),
+          h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: async () => {
+            const b = N.challengeNpc(s, npc);
+            if (!b) return;
+            closeAllSheets(); save(s); this.renderHud();
+            await this.runBattle(b, { kind: 'trainer', intro: `${npc.name}: “${npc.lines.greet}”` });
+          } }, `⚔️ Challenge · ${W.cityActionCost(s)}⚡`)),
+        why ? h('small', { class: 'muted' }, why) : '');
+    };
+    render();
+    openSheet(npc.name, body, { wide: true });
+  }
+
+  /** Menu → Rival Trainers: everyone met, with records, the creatures they've shown and rematches; and the Circuit Standings. */
+  rivalsSheet() {
+    const s = this.idOwner();
+    const mine = s === this.s && !this.watching && s.phase === 'map';
+    const body = h('div');
+    let tab: 'rivals' | 'standings' = 'rivals';
+    const render = () => {
+      const met = [...N.RIVALS, ...N.CHAMPIONS].filter((x) => N.recordWith(s, x)).sort((a, b) => (N.recordWith(s, b)!.last?.turn ?? 0) - (N.recordWith(s, a)!.last?.turn ?? 0));
+      body.replaceChildren(
+        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : '🏆 Circuit Standings'))),
+        tab === 'standings' ? this.standingsBody(s) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
+          : h('p', { class: 'muted' }, 'You haven’t met anyone yet. Rivals turn up on roads and meadows, in Trainer Halls and in the morning; Champions tour the cities and towns.'),
+        tab === 'rivals' ? h('p', { class: 'small muted' }, `Met ${met.filter((x) => x.kind === 'rival').length} of ${N.RIVALS.length} Rivals and ${met.filter((x) => x.kind === 'champion').length} of ${N.CHAMPIONS.length} Champions.`) : '');
+    };
+    render();
+    openSheet('🥇 Rival Trainers', body, { wide: true });
+  }
+
+  private npcCard(s: GameState, npc: Npc, mine: boolean, changed: () => void) {
+    const r = N.recordWith(s, npc)!;
+    const rev = N.revengeBonus(r.owed);
+    const why = N.inviteBlock(s, npc);
+    const at = (id: string) => NODE_BY_ID[id]?.name ?? id;
+    const where = npc.kind === 'champion' && !r.invite ? N.championAt(s, npc) : null;
+    return h('div', { class: 'npc-card', style: `--tc:${TYPE_COLOR[npc.types[0]]}` },
+      h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null,
+        h('div', { class: 'row gap-s wrap' }, h('b', null, npc.name), npc.types.map((t) => typeChip(t, true)), h('span', { class: 'chip' }, N.npcMood(r)), N.isContender(s, npc) ? h('span', { class: 'chip good', title: 'Your battles have made a Circuit contender of them' }, '📈 Contender') : null),
+        h('p', { class: 'small' }, npc.blurb),
+        h('p', { class: 'small' }, h('b', null, `You ${r.won} · Them ${r.lost}`), r.revenges ? ` · 🔥 ${r.revenges} avenged` : '', h('span', { class: 'muted' }, ` · Met turn ${r.met}${r.last ? ` · Last: you ${r.last.won ? 'won' : 'lost'} at ${at(r.last.at)}, turn ${r.last.turn}` : ''} · From ${at(npc.home)} · ${N.npcMerits(s, npc).length}/8 Merits`)),
+        rev ? h('p', { class: 'small good-text' }, `🔥 Revenge is waiting: ${rev.coins + 1}× coins, +${rev.xp} XP and ${itemInfo(rev.item).icon} ${itemInfo(rev.item).name}.`) : null)),
+      h('div', { class: 'npc-team', 'aria-label': 'Their creatures' }, N.npcLineup(s, npc).map((sp, i) => {
+        const seen = r.seen.includes(i), ace = i === 0;
+        return h('span', { class: `npc-mon ${seen ? '' : 'unseen'} ${ace ? 'ace' : ''}`, title: seen ? `${sp.name} · about Lv ${N.npcLevel(s, npc)}${ace ? ' · their Ace' : ''}` : ace ? 'Their Ace (not seen yet)' : 'Not seen yet' },
+          h('img', { src: portrait(sp.id), alt: seen ? sp.name : 'Unknown creature' }), ace ? h('i', null, '★') : null, h('small', null, seen ? sp.name : '???'));
+      })),
+      r.invite ? h('div', { class: 'row gap-s wrap' }, h('span', { class: 'small' }, `🤝 Rematch at ${at(r.invite.at)}, turns ${r.invite.from}–${r.invite.until}.`),
+        mine ? h('button', { class: 'btn ghost sm', onclick: () => { this.markNextStop(r.invite!.at); } }, '📍 Mark it') : null,
+        mine ? h('button', { class: 'btn ghost sm', onclick: () => { N.cancelInvite(s, npc); save(s); changed(); } }, 'Call it off') : null)
+        : h('div', { class: 'row gap-s wrap' },
+          where ? h('span', { class: 'small muted' }, `🏅 Now at ${at(where)}.`) : null,
+          mine ? h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, changed) }, '🤝 Invite to a rematch') : null,
+          mine && why ? h('small', { class: 'muted' }, why) : null));
+  }
+
+  /** Choose where a rematch happens: they travel there and wait a few turns. */
+  inviteSheet(npc: Npc, changed: () => void) {
+    const s = this.s;
+    const from = NODE_BY_ID[s.location];
+    const stops = [...N.inviteStops()].sort((a, b) => Math.hypot(NODE_BY_ID[a].x - from.x, NODE_BY_ID[a].z - from.z) - Math.hypot(NODE_BY_ID[b].x - from.x, NODE_BY_ID[b].z - from.z));
+    const close = openSheet(`🤝 Rematch with ${npc.name}`, h('div', null,
+      h('p', null, `Where? ${npc.name} will be there in ${N.INVITE_TRAVEL} turns and wait ${N.INVITE_WAIT} turns for you.`),
+      h('div', { class: 'list' }, stops.map((id) => h('button', { class: 'choice', onclick: () => {
+        if (!N.inviteNpc(s, npc, id)) return;
+        close(); save(s); changed();
+        toast(`🤝 ${npc.name} will meet you at ${NODE_BY_ID[id].name} from turn ${N.recordWith(s, npc)!.invite!.from}.`, 'good', 4000);
+      } }, h('b', null, NODE_BY_ID[id].name), h('small', { class: 'muted' }, `${NODE_BY_ID[id].kind === 'city' ? 'City' : 'Town'}${id === s.location ? ' · you’re here' : ''}`))))));
+  }
+
+  private standingsBody(s: GameState) {
+    const rows = N.standings(s);
+    return h('div', null,
+      h('p', { class: 'small muted' }, `Who’s on course for the Circuit. The top ${N.FIELD} fill the bracket on Turn 100. A Rival you battle often, or who keeps beating you, climbs fast.`),
+      h('table', { class: 'tid-record standings' },
+        h('thead', null, h('tr', null, h('th', null, ''), h('th', null, 'Trainer'), h('th', null, 'Merits'), h('th', null, 'You · Them'))),
+        h('tbody', null, rows.map((x, i) => {
+          const r = N.recordWith(s, x.npc);
+          return h('tr', { class: `${x.seeded ? 'in' : ''} ${i === N.FIELD - 1 ? 'cut' : ''}` },
+            h('td', null, String(i + 1)),
+            h('td', null, x.npc.kind === 'champion' ? '🏅 ' : '🤺 ', x.npc.name, ' ', x.npc.types.map((t) => typeIconImg(t, 14)), x.contender ? ' 📈' : ''),
+            h('td', null, `${x.merits}/8`), h('td', null, r ? `${r.won} · ${r.lost}` : '—'));
+        }))),
+      s.circuitNews?.length ? h('div', null, h('h4', null, '📰 Circuit news'), s.circuitNews.slice(0, 8).map((x) => h('p', { class: 'small' }, h('span', { class: 'muted' }, `Turn ${x.turn} · `), x.text))) : '');
+  }
+
   /** City Trainer Hall: battle a local trainer (once per city per turn). */
   async trainerHall() {
     const s = this.s;
@@ -2246,7 +2373,7 @@ export class App {
     if (!r) return;
     closeAllSheets();
     this.renderHud();
-    await this.runBattle(r.battle, { kind: 'trainer', intro: `${r.name} accepts your challenge in the ${NODE_BY_ID[s.location].name} Trainer Hall!` });
+    await this.runBattle(r.battle, { kind: 'trainer', intro: r.line ? `${r.name} is at the ${NODE_BY_ID[s.location].name} Trainer Hall: “${r.line}”` : `${r.name} accepts your challenge in the ${NODE_BY_ID[s.location].name} Trainer Hall!` });
   }
 
   spend(cost?: number): boolean {
@@ -2629,6 +2756,7 @@ export class App {
         (() => { const keys = W.townKeyItems(s, s.location); return tile('🛒', 'Market', keys.length ? `Sells the ${keys.map((k) => itemInfo(k).name).join(' and the ')}. ${keys.map((k) => itemInfo(k).text).join(' ')}` : 'Local goods.', '0⚡', () => this.market(true)); })(),
         tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials.', '0⚡', () => this.workbench(true)),
         this.workTile(),
+        ...this.npcTiles(),
         t.special === 'stadium' ? tile('🏆', 'Grand Tournament', 'Be here with all 8 Merits as Turn 100 ends to enter the bracket.', '', () => this.stadiumSheet()) : null,
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Or have it retrained overnight with a new Nature, Ability or Instinct.', '', () => this.schoolSheet()) : null,
         t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
@@ -3399,7 +3527,7 @@ export class App {
       : null;
     const fact = (label: string, value: string | number) => h('div', { class: 'tid-fact' }, h('b', null, String(value)), h('small', null, label));
     const rec = st.record ?? {};
-    const RECORD_ROWS: [BattleKind, string][] = [['wild', 'Wild creatures'], ['trainer', 'Trainers'], ['arbiter', 'Arbiters'], ['legendary', 'Legendaries'], ['rival', 'Rival duels'], ['endgame', 'Circuit Finals']];
+    const RECORD_ROWS: [BattleKind, string][] = [['wild', 'Wild creatures'], ['trainer', 'Trainers'], ['arbiter', 'Arbiters'], ['legendary', 'Legendaries'], ['rival', 'Duels'], ['endgame', 'Circuit Finals']];
     const rows = RECORD_ROWS.filter(([k]) => k === 'wild' || k === 'trainer' || k === 'arbiter' || rec[k]);
     const types = Object.entries(st.moveTypes ?? {}).filter(([t, n]) => (n ?? 0) > 0 && t in TYPE_LABEL).sort((a, b) => b[1]! - a[1]!) as [ElementType, number][];
     const used = types.reduce((a, [, n]) => a + n, 0);
@@ -3507,6 +3635,7 @@ export class App {
     const mine = this.logOwner();
     const close = openSheet('Menu', h('div', null, this.soundControls(), h('div', { class: 'tiles' },
       tile('📇', 'Trainer ID', `${this.idOwner().trainer.name} of ${NODE_BY_ID[this.idOwner().trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
+      tile('🥇', 'Rival Trainers', (() => { const n = N.RIVALS.concat(N.CHAMPIONS).filter((x) => N.recordWith(this.idOwner(), x)).length; return `${n} met. Records, rematches and the Circuit Standings.`; })(), '', () => { close(); this.rivalsSheet(); }),
       tile('📖', 'Creature Codex', `${this.idOwner().dex.caught.length} recruited · ${this.idOwner().dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),

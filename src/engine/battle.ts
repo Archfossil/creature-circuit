@@ -15,6 +15,8 @@ export type SideKind = 'player' | 'wild' | 'trainer' | 'arbiter' | 'champion';
 export interface Side {
   kind: SideKind;
   name: string;
+  /** The Rival or Champion this is (data/npcs.ts). */
+  npc?: string;
   team: CreatureInst[];
   active: number;
   mods: Partial<Stats>;

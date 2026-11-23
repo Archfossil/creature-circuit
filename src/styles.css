@@ -590,6 +590,27 @@ button.dex-entry:hover { border-color: var(--ink); }
 .team-balls { margin-left: auto; display: flex; gap: 3px; }
 .team-balls i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--ink); }
 .team-balls i.ko { background: #bbb; }
+/* a Rival's or Champion's Ace: a gold star instead of a dot */
+.team-balls i.ace { width: 15px; height: 15px; margin: -3px -1px; border: 0; border-radius: 0; background: #e0a400; clip-path: polygon(50% 0, 62% 35%, 98% 35%, 69% 57%, 79% 92%, 50% 71%, 21% 92%, 31% 57%, 2% 35%, 38% 35%); }
+.team-balls i.ace.ko { background: #999; }
+.ace-tag { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: #ffd84a; border: 1.5px solid var(--ink); color: var(--ink); white-space: nowrap; }
+.npc-tabs { margin-bottom: 10px; }
+.npc-card { border: 2px solid var(--ink); border-left: 8px solid var(--tc); border-radius: 14px; padding: 10px 12px; background: var(--paper); display: grid; gap: 8px; }
+.npc-head { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: start; }
+.npc-head img { width: 72px; height: 72px; object-fit: contain; }
+.npc-head p { margin: 4px 0; }
+.npc-team { display: flex; flex-wrap: wrap; gap: 6px; }
+.npc-mon { position: relative; display: grid; justify-items: center; width: 84px; font-size: 11px; }
+.npc-mon img { width: 54px; height: 54px; object-fit: contain; }
+.npc-mon small { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.npc-mon.unseen img { filter: brightness(0); opacity: .35; }
+.npc-mon i { position: absolute; top: 0; right: 12px; color: #c98f00; font-style: normal; font-size: 16px; }
+table.standings { width: 100%; }
+.standings td:nth-child(2), .standings th:nth-child(2) { text-align: left; }
+.standings img { vertical-align: -2px; }
+.plate .lv { white-space: nowrap; }
+.standings tr.in td { font-weight: 700; }
+.standings tr.cut td { border-bottom: 2px dashed var(--ink); }
 .battle-bottom { position: absolute; left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); bottom: calc(8px + var(--sab)); background: rgba(255,250,240,0.97); border: 2.5px solid var(--ink); border-radius: 20px; box-shadow: 0 4px 0 var(--ink); padding: 10px; display: grid; gap: 8px; }
 .battle-log { font-family: var(--font-head); font-size: 16px; font-weight: 600; min-height: 24px; padding: 2px 4px; }
 .battle-log.good { color: var(--good); } .battle-log.bad { color: var(--bad); } .battle-log.info { color: var(--info); }

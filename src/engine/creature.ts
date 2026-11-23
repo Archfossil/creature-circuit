@@ -22,6 +22,8 @@ export interface CreatureInst {
   moraleMark?: number;
   /** Special bond: the trainer's starter. +1 Vigor and no attribute under 1 (before its Nature); it never leaves over low Morale, and can't be released or traded away. */
   bond?: boolean;
+  /** A Rival's or Champion's Ace (only theirs: it's never recruited). It has the special bond too. */
+  ace?: boolean;
   bonus: Partial<Stats>;
   extraEnergy: EnergyMap;
   unlocked: string[];       // progression node ids (current stage chart)

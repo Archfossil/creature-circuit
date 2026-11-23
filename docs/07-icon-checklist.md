@@ -89,6 +89,8 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `workbench`: 🛠️: Workbench (craft consumables from materials; city and town tiles).
 - [ ] `swap-team`: 🔄: Swap Team (active team ↔ totems).
 - [ ] `trainer-hall`: 🤺: Trainer Hall.
+- [ ] `rivals`: 🥇 Rival Trainers (menu), 🤺 a Rival and 🏅 a Champion (tiles, standings), 📈 contender, 🔥 Revenge, 🤝 rematch, 📰 Circuit news.
+- [ ] `ace`: ★ a Rival's or Champion's Ace (gold star among the team's dots, nameplate tag, Rival Trainers).
 - [ ] `gauntlet`: ⚓: Iron Coast Gauntlet (Stella's trainer gauntlet).
 - [ ] `arbiter-arena`: 🏟️: Arbiter challenge tile.
 - [ ] `ferry`: ⛴️: Arbiter reached by ferry (Kilauea).
