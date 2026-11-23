@@ -24,7 +24,7 @@ import { nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, max
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
 import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
-import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
+import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { ABILITIES, NATURES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
@@ -1241,7 +1241,7 @@ export class App {
     const n = NODE_BY_ID[id];
     if (n.kind === 'city') return `${TYPE_LABEL[n.cityType!]} City · Arbiter ${CITIES[id].arbiter}${this.s.merits.includes(id) ? ' ✓' : ''}`;
     if (n.kind === 'town') return 'Town · Safe haven';
-    if (n.kind === 'stadium') return 'Circuit Stadium · Be here at the end of Turn 100';
+    if (n.kind === 'stadium') return 'Town · Be here at the end of Turn 100';
     if (n.kind === 'legendary') return 'Legendary grounds';
     if (n.kind === 'arena') { const c = CITIES[n.arenaOf!]; return `${TYPE_LABEL[c.type]} Arena · Arbiter ${c.arbiter}${this.s.merits.includes(c.nodeId) ? ' ✓' : ''}`; }
     if (n.biome === 'prism') return `Rainbow Plains · ${TYPE_LABEL[W.prismType(this.s)]} creatures today · Wild Lv ~${W.baseWildLevel(this.s, n)} · ★ +1 rarity`;
@@ -1265,7 +1265,7 @@ export class App {
     if (node.kind === 'city') out.push(btn('🏙️', 'City', () => this.citySheet(), { cls: 'hl' }));
     if (node.kind === 'arena') out.push(btn('🏟️', 'Arena', () => this.arbiter(), { cls: 'hl' }));
     if (node.kind === 'town') out.push(btn('🏘️', 'Town', () => this.townSheet(), { cls: 'hl' }));
-    if (node.kind === 'stadium') out.push(btn('🏟️', 'Stadium', () => this.stadiumSheet(), { cls: 'hl' }));
+    if (node.kind === 'stadium') out.push(btn('🏟️', 'Stadium', () => this.townSheet(), { cls: 'hl' }));
     // getting around: the Bike (once a turn) and a Taxi Ticket (in a city)
     if (hasItem(s, 'bike') && !W.travelBlock(s)) out.push(btn('🚲', s.flags.bikeRoll ? `Ride ${s.flags.bikeRoll}` : 'Bike', () => void this.bikeFlow(), { cost: 0, disabled: !!W.bikeBlock(s) }));
     if (W.taxiTargets(s).length) out.push(btn('🚕', 'Taxi', () => this.taxiFlow()));
@@ -1313,13 +1313,13 @@ export class App {
   }
 
   /** Double-tap shortcuts: travel straight to an adjacent node (blocked moves leave the preview up to explain
-   *  why), or open the City / Town menu of the place you're standing in. Arenas and the Stadium are left to
-   *  their buttons, since those start battles. */
+   *  why), or open the City / Town menu of the place you're standing in. Arenas are left to
+   *  their button, since it starts battles. */
   onNodeDoubleTap(id: string) {
     if (!settings().doubleTapTravel || this.busy || this.watching || !this.s || this.s.phase !== 'map') return;
     if (id === this.s.location) {
       const kind = NODE_BY_ID[id].kind;
-      if (kind !== 'city' && kind !== 'town') return;
+      if (kind !== 'city' && !isTown(id)) return;
       $('.node-preview')?.remove();
       this.selected = null;
       if (kind === 'city') this.citySheet(); else this.townSheet();
@@ -1341,7 +1341,7 @@ export class App {
       const c = CITIES[id];
       extra.push(h('p', { class: 'small' }, c.blurb));
       extra.push(h('p', { class: 'small' }, h('b', null, c.arena.name), ' — ', c.arena.text));
-    } else if (n.kind === 'town') { const keys = W.townKeyItems(this.s, id); extra.push(h('p', { class: 'small' }, TOWNS[id].blurb, keys.length ? h('b', null, ` Sells: ${keys.map((k) => itemInfo(k).name).join(', ')}.`) : null)); }
+    } else if (isTown(id)) { const keys = W.townKeyItems(this.s, id); extra.push(h('p', { class: 'small' }, TOWNS[id].blurb, keys.length ? h('b', null, ` Sells: ${keys.map((k) => itemInfo(k).name).join(', ')}.`) : null)); }
     else if (n.kind === 'wild') {
       extra.push(h('p', { class: 'small row gap-s' }, 'Wild types:', ...BIOME_TYPES[n.biome].map((t: ElementType) => typeIconImg(t, 18))));
     } else if (n.kind === 'arena') {
@@ -1430,7 +1430,7 @@ export class App {
       if (out.t === 'arrive') {
         const n = out.node;
         toast(`Arrived at ${n.name}`, 'info');
-        if (n.kind === 'city' || n.kind === 'town') save(s);
+        if (n.kind === 'city' || isTown(n.id)) save(s);
       } else if (out.t === 'nothing') {
         if (out.roll) await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: out.dark ? 'bad' : 'info', label: out.hushed ? '💨 3 Hushed: Nothing' : '1–2 Nothing' }], out.dark ? 'Nothing but the dark. Your team shivers. (−1 Morale)' : out.hushed ? 'Something stirs, then slinks off from the Hush Smoke.' : 'Nothing but wind and birdsong.', 600, { read: true });
         if (out.refund) { toast(`🌲 Ranger’s instinct: +1 Initiative back (${W.rangerRefundsLeft(s)} more this turn).`, 'good', 2600); this.renderHud(); }
@@ -2426,6 +2426,7 @@ export class App {
         (() => { const keys = W.townKeyItems(s, s.location); return tile('🛒', 'Market', keys.length ? `Sells the ${keys.map((k) => itemInfo(k).name).join(' and the ')}. ${keys.map((k) => itemInfo(k).text).join(' ')}` : 'Local goods.', '0⚡', () => this.market(true)); })(),
         tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials.', '0⚡', () => this.workbench(true)),
         this.workTile(),
+        t.special === 'stadium' ? tile('🏆', 'Grand Tournament', 'Be here with all 8 Merits as Turn 100 ends to enter the bracket.', '', () => this.stadiumSheet()) : null,
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Or have it retrained overnight with a new Nature, Ability or Instinct.', '', () => this.schoolSheet()) : null,
         t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
@@ -2759,7 +2760,7 @@ export class App {
 
   stadiumSheet() {
     const s = this.s;
-    openSheet('Circuit Stadium', h('div', null,
+    openSheet('🏆 Grand Tournament', h('div', null,
       h('p', null, 'The grand tournament of Margos convenes here when the year ends. Be standing in this stadium as Turn 100 ends with all 8 Merits to enter the bracket.'),
       h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Merits: ${s.merits.length}/8`), h('span', { class: 'chip' }, `Turn ${s.turn}/100`)),
       h('p', { class: 'small muted' }, 'Bracket: 8 trainers, 3v3 elimination. Your team is fully restored between matches.')));

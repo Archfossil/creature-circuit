@@ -1721,6 +1721,24 @@ describe('Cloud Island (Salem)', () => {
   });
 });
 
+describe('Circuit Stadium as a town', () => {
+  const at = () => { const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff'); s.location = 'stadium'; return s; };
+  it('has a stable, a market, a workbench and odd jobs', () => {
+    const s = at(), c = s.roster[0];
+    c.ko = true; c.health = 0; c.vitality = 0;
+    W.rest(s, 'stadium');
+    expect([c.ko, c.health]).toEqual([false, maxHealth(c)]);
+    expect(W.marketStock('stadium').length).toBeGreaterThan(3);
+    for (const id of W.marketStock('stadium')) expect(ITEMS[id], id).toBeDefined();
+    expect(W.canCraftHere(s)).toBe(true);
+    expect(W.workBlock(s)).toBeNull();
+  });
+  it('is never given a roaming key item', () => {
+    expect(KEY_ITEM_TOWNS).not.toContain('stadium');
+    for (let i = 0; i < 100; i++) expect(W.townKeyItems(at(), 'stadium')).toEqual([]);
+  });
+});
+
 describe('roaming key items', () => {
   it('the Canopy Rope and Root Whistle go to two different eligible towns each game', () => {
     expect(KEY_ITEM_TOWNS.sort()).toEqual(['dustmere', 'lumber', 'mistfall', 'ridgeway', 'saltmarsh']);

@@ -263,7 +263,10 @@ export const TOWNS: Record<string, { blurb: string; sells: string[]; key?: strin
   quillhaven: { blurb: 'A quiet meadow town around the Margos Research Facility, where field researchers study creatures released into their care.', sells: ['salve', 'totem', 'sunberry', 'calm-tea', 'homing-feather'], special: 'research' },
   lanternglade: { blurb: 'Paper lanterns hang in the mist over a hidden glade. Past the last lantern, the Rainbow Plains change color with every new day.', sells: ['salve', 'totem', 'calm-tea', 'trail-mix', 'moonberry'] },
   depths: { blurb: 'Lantern-lit ledges at the bottom of the endless canyon. Leave an offering at the edge of the dark, and something that craves it climbs up to meet you.', sells: ['salve', 'totem', 'canyon-ochre', 'ember-charcoal'], special: 'depths' },
+  stadium: { blurb: 'The tournament grounds at the heart of Margos. Between seasons, the stalls and stables around the arena serve trainers on the road.', sells: ['salve', 'elixir', 'calm-tea', 'totem', 'sunberry', 'trail-mix', 'homing-feather'], special: 'stadium' },
 };
+/** A town, or Circuit Stadium, which works as one (stable, market, workbench, odd jobs …). */
+export const isTown = (id: string) => ['town', 'stadium'].includes(NODE_BY_ID[id]?.kind);
 
 // ── Roaming key items ───────────────────────────────────────────
 /**
@@ -277,9 +280,9 @@ export const CLASSIC_KEY_TOWNS: Record<string, string> = { 'canopy-rope': 'lumbe
 /**
  * Towns that can stock a roaming key item: every town without a special facility (Battle School,
  * Research Facility, Shifting Depths, and any added later), except Black Sand Cove, which is only
- * reachable by ferry, and Lantern Glade, behind a wisp: either would lock a key item behind another one.
+ * reachable by ferry, and Lantern Glade, behind a wisp: either would lock a key item behind another one. Circuit Stadium never sells them.
  */
-export const KEY_ITEM_TOWNS = Object.keys(TOWNS).filter((id) => !TOWNS[id].special && id !== 'blackSand' && id !== LANTERN_GLADE);
+export const KEY_ITEM_TOWNS = Object.keys(TOWNS).filter((id) => !TOWNS[id].special && id !== 'stadium' && id !== 'blackSand' && id !== LANTERN_GLADE);
 
 /** Which types live near each biome — the wild type pool. */
 export const BIOME_TYPES: Record<Biome, ElementType[]> = {

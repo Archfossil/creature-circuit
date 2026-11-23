@@ -10,7 +10,7 @@ export const GUIDE: GuideCategory[] = [
     id: 'basics', icon: '🧭', label: 'Basics',
     topics: [
       { id: 'goal', title: 'The goal', body: [
-        'Earn 8 Merits by beating the Arbiters of Margos’s eight cities, then be standing in Circuit Stadium when Turn 100 ends.',
+        'Earn 8 Merits by beating the Arbiters of Margos’s eight cities, then be standing in Circuit Stadium when Turn 100 ends. Until then the Stadium works as a town, with a stable and market.',
         'Everyone who makes it fights an 8-trainer bracket. Win it to be crowned Champion.',
         'The season has four seasons of 25 turns each. The Turn pill (top left) shows where you are; tap it for the calendar and weather.',
       ] },

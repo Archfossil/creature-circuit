@@ -6,7 +6,7 @@ These are the JSON templates for the game's content. The TypeScript versions, wh
 | --- | --- |
 | [`species.ts`](../src/data/species.ts) | 52 example creatures (8 types × 6, the Emberfish line, 2 legendaries) |
 | [`moves.ts`](../src/data/moves.ts) | Master Move List: physical, support, 4 elemental moves per type, 8 signature moves |
-| [`map.ts`](../src/data/map.ts) | Margos: 8 cities, 6 towns, Circuit Stadium, 2 legendary nodes, the wild routes and the type pool for each biome |
+| [`map.ts`](../src/data/map.ts) | Margos: 8 cities, 10 towns, Circuit Stadium, 2 legendary nodes, the wild routes and the type pool for each biome |
 | [`content.ts`](../src/data/content.ts) | Natures, abilities, items, offering materials, weather and the seasonal weather dice |
 
 To add content, add an entry that follows the template below. Nothing else needs to change: the UI, the procedural 3D models, the encounter tables and the arbiter teams all read from these lists.
@@ -193,7 +193,7 @@ Dual attacks are only learnable by creatures that generate both energy types.
   "requires": { "item": "ferry-pass" } }
 ```
 
-`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. A requirement on an **edge** is met by carrying the listed item; `"wisp": true` also needs a wisp in the Fog Lantern (Lantern Glade), and only applies when entering that area from outside. A requirement on a **node** needs everything it lists. `via` marks special routes: `sea` (a ferry crossing, drawn over water), `portal` (Cloud Island) and `rope` (the Forest Floor).
+`kind` is one of `wild`, `town`, `city`, `stadium`, `legendary` or `arena`. The `stadium` (Circuit Stadium) works as a town (`isTown`), with a `TOWNS` entry for its market, but is never given a roaming key item. A requirement on an **edge** is met by carrying the listed item; `"wisp": true` also needs a wisp in the Fog Lantern (Lantern Glade), and only applies when entering that area from outside. A requirement on a **node** needs everything it lists. `via` marks special routes: `sea` (a ferry crossing, drawn over water), `portal` (Cloud Island) and `rope` (the Forest Floor).
 
 An `arena` node is an Arbiter's arena that sits away from its city. It names its city in `arenaOf`, and that city's entry in `CITIES` sets `arenaNode` to the arena's id. Amber's Fire Pit on Kilauea island, reached by ferry from Kilauea Forge, works this way. Edges with `"via": "sea"` are ferry crossings: the 3D map leaves them as open water, so islands stay islands.
 

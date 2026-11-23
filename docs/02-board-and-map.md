@@ -60,6 +60,8 @@ Legendary creatures wait at seven spots across the map, each at the end of a sho
 
 The map is a series of nodes between towns and cities. Every route between two towns or cities has 3–5 wild nodes, so the journey between them is a real trip with several chances to explore, find items and meet creatures. Each node represents a biome, each creature can be caught in a specific type of biome. Between Iron Coast and Gloomshade might be mostly coasts, roads, or forests for example. A biome's wild types are reliable for hunting: about nine in ten creatures met there have only those types, weather only makes native types more common, and the rest are dual types with their first type native.
 
+**Circuit Stadium** also works as a town: it has a stable, a market, a workbench and odd jobs, as well as hosting the Grand Tournament. The roaming key items (Canopy Rope, Root Whistle) are never sold there.
+
 Legendary Nodes are specific slots on the map where legendary creatures roam. These often require some other steps to be done first before they can be unlocked.
 
 **Each Legendary exists once per game** (prototype rule). A Legendary waits at its node until it is beaten, whether it's recruited or driven off. While any trainer holds it, its node stays quiet. Releasing it at a Research Facility returns it to its node, where another trainer (or you again) can try for it. Legendaries also lose 1 Loyalty every turn and return to their node on their own at 0 Loyalty, so they cycle between trainers over a season.

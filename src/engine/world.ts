@@ -1,5 +1,5 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, NATURE_BY_ID, ABILITIES, type Recipe } from '../data/content';
 import { INSTINCT_BY_ID } from '../data/instincts';
@@ -1265,7 +1265,7 @@ export function marketStock(nodeId: string): string[] {
 export const WORK_DIE = 4;
 /** Why odd jobs aren't available here and now, or null if they are. */
 export function workBlock(s: GameState): string | null {
-  if (!['city', 'town'].includes(here(s).kind) || isCloudNode(s.location)) return 'Odd jobs are only found in cities and towns.';
+  if ((here(s).kind !== 'city' && !isTown(s.location)) || isCloudNode(s.location)) return 'Odd jobs are only found in cities and towns.';
   if (s.initiative < 1) return 'Odd jobs need Initiative: each point left rolls a d4 for coins.';
   return null;
 }
@@ -1287,7 +1287,7 @@ export function doWork(s: GameState): { rolls: number[]; coins: number } | null 
 /** Can this material fill a recipe slot of this type? Any allure for the type counts. */
 export const fitsSlot = (material: string, type: ElementType) => (itemInfo(material).allure?.[type] ?? 0) > 0;
 /** Workbenches stand in every city and town (not on Cloud Island). */
-export const canCraftHere = (s: GameState) => ['city', 'town'].includes(here(s).kind) && !isCloudNode(s.location);
+export const canCraftHere = (s: GameState) => (here(s).kind === 'city' || isTown(s.location)) && !isCloudNode(s.location);
 /** Owned materials that could fill this slot. */
 export const slotOptions = (s: GameState, type: ElementType) =>
   Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && itemInfo(id).kind === 'material' && fitsSlot(id, type));
