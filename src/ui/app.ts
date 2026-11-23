@@ -183,6 +183,7 @@ export class App {
             h('div', null, h('h3', null, sp.name), h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t))), h('p', { class: 'small' }, sp.dex),
               h('p', { class: 'small' }, h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
               INSTINCT_BY_ID[sp.instinct] ? h('p', { class: 'small' }, `${INSTINCT_ICON} `, h('b', null, INSTINCT_BY_ID[sp.instinct].name), ' — ', INSTINCT_BY_ID[sp.instinct].text) : null,
+              h('p', { class: 'small' }, '🤝 ', h('b', null, 'Special bond'), ' — +1 Vigor, and no attribute starts below 1 (before its Nature).'),
               h('p', { class: 'small muted' }, `Evolves: ${sp.name} → ${SPECIES_BY_ID[sp.evolvesTo!].name} → ${SPECIES_BY_ID[SPECIES_BY_ID[sp.evolvesTo!].evolvesTo!].name}`))),
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'),
             h('button', { class: 'btn primary', onclick: () => {

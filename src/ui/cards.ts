@@ -198,7 +198,7 @@ export function socialHelp(c: CreatureInst) {
   const next = nat?.perks[c.perks];
   const legendary = speciesOf(c).rarity === 'legendary';
   openSheet('Morale & Loyalty', h('div', { class: 'social-help' },
-    c.bond ? h('p', { class: 'social-status good' }, `🤝 Special bond: ${nameOf(c)} was your first partner. It never leaves over low Morale, and it can’t be released or traded away.`) : null,
+    c.bond ? h('p', { class: 'social-status good' }, `🤝 Special bond: ${nameOf(c)} was your first partner. It has +1 Vigor, and no attribute starts below 1 (before its Nature). It never leaves over low Morale, and it can’t be released or traded away.`) : null,
     legendary ? h('p', { class: 'social-status bad' }, `✨ Legendaries never fully settle. ${nameOf(c)} loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn, whatever its Morale, and gains none from Morale (treats still add some). At 0 Loyalty it returns to its grounds on the map: about ${c.loyalty} turn${c.loyalty === 1 ? '' : 's'} from now. Releasing it at Quillhaven’s Research Facility pays × 5 its level.`) : null,
     h('p', { class: `social-status ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}` }, status),
     h('h4', null, `💖 Morale · ${c.morale}/10`), ...MORALE_HELP.split('\n').slice(1).map((l) => h('p', { class: 'small' }, l)),
@@ -351,7 +351,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
     h('header', { class: 'ic-head' },
       h('div', null,
         h('h3', null, nameOf(c)),
-        h('div', { class: 'ic-sub' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'stage' }, `Stage ${sp.stage}`), c.bond ? h('span', { class: 'stage', title: 'Special bond: your starter never leaves, and can’t be released or traded.' }, '🤝 Bond') : null)),
+        h('div', { class: 'ic-sub' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity), h('span', { class: 'stage' }, `Stage ${sp.stage}`), c.bond ? h('span', { class: 'stage', title: 'Special bond: your starter has +1 Vigor and no attribute under 1 (before its Nature). It never leaves, and can’t be released or traded.' }, '🤝 Bond') : null)),
       h('div', { class: 'lv-badge' }, h('small', null, 'LV'), c.level)),
     h('div', { class: 'ic-art' },
       h('img', { src: portrait(sp.id), alt: sp.name }),

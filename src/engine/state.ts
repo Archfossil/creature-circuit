@@ -3,7 +3,7 @@ import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import type { BattleLog } from './battleLog';
-import { createCreature, speciesOf, NODE_ENERGY } from './creature';
+import { createCreature, fullRestore, speciesOf, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
@@ -181,7 +181,8 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
   };
   const c = createCreature(starter, 1); // starters begin at Lv 1 with an untouched chart
   c.morale = 7;
-  c.bond = true; // the starter's special bond: it never leaves, so a trainer always has a partner
+  c.bond = true; // the starter's special bond: it never leaves, so a trainer always has a partner, and it's a little tougher than others of its kind
+  fullRestore(c); // (the bond's extra Vigor)
   s.roster.push(c);
   s.following = c.uid;
   s.dex.seen.push(starter);

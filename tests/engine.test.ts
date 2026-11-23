@@ -6,7 +6,7 @@ import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, status
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
-import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES } from '../src/data/content';
+import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
@@ -497,6 +497,18 @@ describe('morale and loyalty', () => {
     W.moraleAndLoyalty(s, r2);
     expect(r2.checks[0].left).toBe(true);
     expect(s.roster).not.toContain(c);
+  });
+  it('the starter’s bond gives +1 Vigor and no attribute under 1, before its Nature', () => {
+    for (const id of STARTERS) {
+      const c = newGame('U', 'balanced', 'mangrove', id, '#000').roster[0];
+      const base = SPECIES_BY_ID[id].base, nat = NATURE_BY_ID[c.nature], wild = { ...c, bond: undefined };
+      expect([c.health, c.vitality]).toEqual([maxHealth(c), maxVitality(c)]);
+      for (const k of ['vigor', 'power', 'armor', 'focus', 'ward', 'speed', 'stamina'] as const) {
+        const before = Math.max(1, base[k]) + (k === 'vigor' ? 1 : 0);
+        expect(stats(c)[k]).toBe(Math.max(0, before + (nat.up === k ? 1 : 0) - (nat.down === k ? 1 : 0)));
+      }
+      expect(stats(wild).vigor).toBe(stats(c).vigor - 1); // others of its kind don't get it
+    }
   });
   it('the starter shares a special bond: low Morale never warns, checks or drives it away', () => {
     const s = game();

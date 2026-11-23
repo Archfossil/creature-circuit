@@ -87,7 +87,7 @@ export const GUIDE: GuideCategory[] = [
       { id: 'morale', title: 'Morale & Loyalty', body: [
         'Happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good.',
         'Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty.',
-        '🤝 Your starter shares a special bond with you: it never leaves over low Morale, and it can’t be released or traded away, so you always have a partner.',
+        '🤝 Your starter shares a special bond with you. It’s tougher than others of its kind (+1 Vigor, and no attribute starts below 1 before its Nature). It never leaves over low Morale, and it can’t be released or traded away, so you always have a partner.',
         'Treats, wins, rest and Following all lift Morale. Tap Morale or Loyalty on a card for details.',
         'Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0.',
       ] },

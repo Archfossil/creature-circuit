@@ -20,7 +20,7 @@ export interface CreatureInst {
   moraleWarned?: boolean;
   /** Morale at the end of the previous turn, to tell whether it was raised since. */
   moraleMark?: number;
-  /** Special bond: the trainer's starter. It never leaves over low Morale, and can't be released or traded away. */
+  /** Special bond: the trainer's starter. +1 Vigor and no attribute under 1 (before its Nature); it never leaves over low Morale, and can't be released or traded away. */
   bond?: boolean;
   bonus: Partial<Stats> & { health?: number; vitality?: number };
   extraEnergy: EnergyMap;
@@ -57,10 +57,18 @@ export const abilityOf = (c: CreatureInst): string => c.ability ?? speciesOf(c).
 /** A creature's Instinct id: its own if it was retrained, otherwise its species'. */
 export const instinctIdOf = (c: CreatureInst): string => c.instinct ?? speciesOf(c).instinct;
 
+/** A starter's special bond: extra Vigor, and the lowest any of its attributes can be (both before its Nature). */
+export const BOND_VIGOR = 1;
+export const BOND_MIN_STAT = 1;
+
 export function stats(c: CreatureInst, extra?: Partial<Stats>): Stats {
   const sp = speciesOf(c);
   const nat = NATURE_BY_ID[c.nature];
   const s: Stats = { ...sp.base };
+  if (c.bond) {
+    for (const k of STAT_KEYS) s[k] = Math.max(BOND_MIN_STAT, s[k]);
+    s.vigor += BOND_VIGOR;
+  }
   if (nat) { s[nat.up] += 1; s[nat.down] = Math.max(0, s[nat.down] - 1); }
   for (const k of STAT_KEYS) s[k] += c.bonus[k] ?? 0;
   if (nat) for (let i = 0; i < c.perks; i++) for (const [k, v] of Object.entries(nat.perks[i].bonus)) s[k as StatKey] += v!;
