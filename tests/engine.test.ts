@@ -3515,7 +3515,7 @@ describe('Swap Moves', () => {
       const lead = bt.sides[1].team[bt.sides[1].active], bench = foes.find((f) => f !== lead)!;
       lead.health = hp;
       if (hp === 1) lead.vitality = 0;
-      const ev: BEvent[] = resolveRound(bt, { kind: 'swap', to: 1 });
+      const ev: BEvent[] = resolveRound(bt, { kind: 'swap', to: 1 }, { kind: 'move', move: CATCH_BREATH.id }); // (left to itself, the foe might heal first)
       const rest = ev.slice(ev.findIndex((e) => e.t === 'use' && e.move === 'conjunction') + 1);
       const end = rest.findIndex((e) => e.t === 'use' || (e.t === 'send' && e.side === 1));
       return { hits: (end < 0 ? rest : rest.slice(0, end)).filter((e) => e.t === 'damage' && e.side === 1).length, bench };
