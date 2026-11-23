@@ -188,6 +188,12 @@ function handle(ws, clientId, msg) {
       send(room.sockets.get(seat.clientId), { type: 'ask', id: msg.id, from: msg.from, title: msg.title, text: msg.text, yes: msg.yes, no: msg.no, pick: msg.pick });
       return room;
     }
+    case 'ask-cancel': { // the prompt is off (answered too late, or called off): take it down
+      const seat = room.seats[msg.seat];
+      if (clientId !== room.controller || !seat || !connected(room, seat.clientId)) return room;
+      send(room.sockets.get(seat.clientId), { type: 'ask-cancel', id: msg.id });
+      return room;
+    }
     case 'answer': {
       if (room.controller) send(room.sockets.get(room.controller), { type: 'answer', id: msg.id, yes: !!msg.yes, value: msg.value });
       return room;

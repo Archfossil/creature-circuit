@@ -15,7 +15,7 @@ import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as W from '../engine/world';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
-import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg } from '../net/online';
+import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
@@ -413,6 +413,15 @@ export class App {
   }
   private isWatching = false;
   /** Online: the battle the trainer playing is in, with what has happened so far, so we can look in at any point. */
+  /** Online: another trainer's prompt on this screen (a duel pick, or a trade or duel offer). */
+  private askOpen: { id: string; close: () => void } | null = null;
+  /** Online: call off the trade or duel offer we're waiting on. */
+  private cancelAsk: (() => void) | null = null;
+  /** Viewing a battle: its events are still playing on this screen. */
+  private watchPlaying = false;
+  /** Online: the battle we're fighting, to send again when someone reconnects. */
+  private liveFight: { battle: unknown; ctx: WatchCtx; past: BEvent[] } | null = null;
+  private seatsOnline: boolean[] = [];
   private watchFight: { battle: unknown; ctx: WatchCtx; past: BEvent[] } | null = null;
   /** Stop viewing the battle on screen (set while viewing one). */
   private leaveWatch: (() => void) | null = null;
@@ -497,21 +506,37 @@ export class App {
     this.pushTimer = setTimeout(() => { this.pushTimer = null; m.by = net.id; net.send({ type: 'state', match: m }); }, 80);
   }
 
+  /** After a reconnect: the battle being fought, caught up, and the prompts still waiting (for these seats, or everyone). */
+  sendAgain(seats?: number[]) {
+    const f = this.liveFight;
+    if (f) this.feed({ kind: 'battle-start', battle: f.battle, ctx: f.ctx, past: [...f.past] });
+    this.online?.askAgain(seats);
+  }
+
   async onServer(m: ServerMsg) {
     const net = this.online;
     if (!net) return;
     switch (m.type) {
       case 'created': toast(`Room ${m.code} is open. Share the code (or link) with your friends.`, 'good', 5000); this.lobby(); break;
       case 'room':
+        if (this.lastController !== m.controller) this.closeAsk(); // whoever asked no longer runs the turn
         if (this.watchFight && this.lastController !== m.controller) { this.watchFight = null; this.leaveWatch?.(); }
         this.lastController = m.controller;
+        // a trainer came back while we play: show them the battle and any prompt waiting for them
+        {
+          const was = this.seatsOnline;
+          this.seatsOnline = m.seats.map((x) => x.online);
+          const back = m.seats.flatMap((x, i) => (x.online && was[i] === false && x.clientId !== net.id ? [i] : []));
+          if (back.length && m.started && this.feeding()) this.sendAgain(back);
+        }
         if (!m.started) this.lobby();
         else { this.closeLobby?.(); await this.syncRole(); }
         this.renderTimer();
         break;
       case 'state': this.applyState(m.match); break;
       case 'feed': await this.onFeed(m.item); break;
-      case 'ask': this.answerAsk(m); break;
+      case 'ask': await this.answerAsk(m); break;
+      case 'ask-cancel': this.closeAsk(m.id); break;
       case 'do-skip': await this.skipFor(m.seat, m.reason); break;
       case 'edit': this.applyRemoteEdit(m.seat, m.edit); break;
       case 'do-play': toast(`You’re playing ${activeMatchOf()?.players[m.seat]?.trainer.name ?? 'their'}’s turn for them.`, 'info', 4000); break;
@@ -603,7 +628,7 @@ export class App {
     const theirs = this.resync && !!sent.by && sent.by !== this.online?.id;
     const back = this.resync;
     this.resync = false;
-    if (this.feeding() && activeMatchOf() && !theirs) { if (back) this.pushState(activeMatchOf()!); return; }
+    if (this.feeding() && activeMatchOf() && !theirs) { if (back) { this.pushState(activeMatchOf()!); this.sendAgain(); } return; }
     setActiveMatch(match);
     this.activeKey = ''; // the server's copy replaces ours, so any turn we were playing restarts from it
     if (!match.players.some(stillPlaying)) { this.matchSummary(); return; }
@@ -638,7 +663,7 @@ export class App {
     if (!m) return;
     const s = m.players[m.current];
     // we were playing until now (the turn ended, or the host took over): our open windows no longer apply
-    if (!this.watching) { closeAllSheets(); this.eventWatch = null; this.liveLog = null; this.busy = false; }
+    if (!this.watching) { this.liveFight = null; this.cancelAsk?.(); closeAllSheets(); this.eventWatch = null; this.liveLog = null; this.busy = false; }
     rememberSession(this.online?.code ?? null);
     this.watching = true;
     this.s = s;
@@ -669,8 +694,9 @@ export class App {
       case 'battle-start': {
         // viewing it is up to us (a chip on the HUD opens it), unless it's a duel against us
         const ctx = item.ctx as WatchCtx;
+        if (item.past && this.watchFight) break; // sent again for someone who reconnected: we never lost it
         this.leaveWatch?.(); // still catching up on their last one
-        this.watchFight = { battle: item.battle, ctx, past: [] };
+        this.watchFight = { battle: item.battle, ctx, past: (item.past ?? []) as BEvent[] };
         if (ctx.rivalSeat !== undefined && ctx.rivalSeat >= 0 && ctx.rivalSeat === this.mySeat()) await this.viewFight();
         else this.renderHud();
         break;
@@ -680,6 +706,7 @@ export class App {
         this.watchQueue?.push(item);
         break;
       case 'battle-end':
+        this.closeAsk();
         this.watchFight = null;
         if (this.watchQueue) this.watchQueue.push(item); else this.renderHud();
         break;
@@ -692,7 +719,9 @@ export class App {
     if (!f || this.watchQueue || !this.watching) return;
     const q = new AsyncQueue<FeedItem>();
     this.watchQueue = q;
+    this.watchPlaying = true; // until the board is set up
     await this.runBattle(JSON.parse(JSON.stringify(f.battle)) as Battle, { ...f.ctx, watch: q, past: [...f.past] });
+    this.watchPlaying = false;
     if (this.watchQueue === q) this.watchQueue = null;
     if (this.watching) this.spectate();
   }
@@ -794,29 +823,53 @@ export class App {
   }
 
   /** Another trainer's trade or duel offer, answered from this browser. */
-  answerAsk(m: Extract<ServerMsg, { type: 'ask' }>) {
+  async answerAsk(m: Extract<ServerMsg, { type: 'ask' }>) {
     const net = this.online!;
+    if (this.askOpen?.id === m.id) return; // sent again after a reconnect: it's still up
+    this.closeAsk(); // a newer prompt replaces one that's still up
+    const mine = { id: m.id, close: () => { /* not up yet */ } };
+    this.askOpen = mine;
+    // a duel pick waits (a while) for the last round to finish playing here, so it doesn't cover it
+    if (m.pick) for (let i = 0; i < 100 && this.watchPlaying && this.askOpen === mine; i++) await wait(200);
+    if (this.askOpen !== mine) return;
+    const open = (title: string, body: HTMLElement, wide: boolean) => {
+      const shut = openSheet(title, body, { noClose: true, wide });
+      mine.close = shut;
+    };
+    const answer = (msg: { yes: boolean; value?: unknown }) => {
+      if (this.askOpen !== mine) return;
+      this.closeAsk();
+      net.send({ type: 'answer', id: m.id, ...msg });
+    };
     const pick = m.pick as ({ kind: 'duel'; round: number } & FoeOptions) | undefined;
     const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
     if (send?.kind === 'duel-send') {
       if (document.hidden && settings().turnPing) sfx.ping();
-      const close = openSheet(`⚔️ Your next creature against ${m.from}`, h('div', null,
+      open(`⚔️ Your next creature against ${m.from}`, h('div', null,
         h('p', { class: 'small muted' }, 'Choose within a minute, or the next in line goes in.'),
-        this.duelSendPicker(send.down, send.vs, send.options, (i) => { close(); net.send({ type: 'answer', id: m.id, yes: true, value: i }); })), { noClose: true, wide: true });
+        this.duelSendPicker(send.down, send.vs, send.options, (i) => answer({ yes: true, value: i }))), true);
       return;
     }
     if (pick?.kind === 'duel') {
       if (document.hidden && settings().turnPing) sfx.ping();
-      const close = openSheet(`⚔️ Your move against ${m.from}`, h('div', null,
+      open(`⚔️ Your move against ${m.from}`, h('div', null,
         h('p', { class: 'small muted' }, 'Choose within a minute, or your creature acts on its own instincts.'),
-        this.duelPicker(pick, pick.round, (act) => { close(); net.send({ type: 'answer', id: m.id, yes: true, value: act }); })), { noClose: true, wide: true });
+        this.duelPicker(pick, pick.round, (act) => answer({ yes: true, value: act }))), true);
       return;
     }
     if (document.hidden && settings().turnPing) sfx.ping();
-    const close = openSheet(m.title, h('div', null, h('p', null, m.text),
+    open(m.title, h('div', null, h('p', null, m.text),
       h('div', { class: 'row gap center' },
-        h('button', { class: 'btn ghost', onclick: () => { close(); net.send({ type: 'answer', id: m.id, yes: false }); } }, m.no),
-        h('button', { class: 'btn primary', onclick: () => { close(); net.send({ type: 'answer', id: m.id, yes: true }); } }, m.yes))), { noClose: true });
+        h('button', { class: 'btn ghost', onclick: () => answer({ yes: false }) }, m.no),
+        h('button', { class: 'btn primary', onclick: () => answer({ yes: true }) }, m.yes))), false);
+  }
+
+  /** Take down another trainer's prompt (a particular one, or whichever is up). */
+  closeAsk(id?: string) {
+    const open = this.askOpen;
+    if (!open || (id && open.id !== id)) return;
+    this.askOpen = null;
+    open.close();
   }
 
   /** End a trainer's turn on their behalf (host's Skip, or the turn timer ran out). */
@@ -825,6 +878,8 @@ export class App {
     if (!m || m.current !== seat) return;
     const s = m.players[seat];
     this.skipping = true;
+    this.liveFight = null;
+    this.cancelAsk?.();
     closeAllSheets();
     this.busy = false;
     this.watching = false;
@@ -1041,9 +1096,8 @@ export class App {
         h('div', { class: 'row end gap' }, h('button', { class: 'btn primary', disabled: !!err, title: err ?? '', onclick: async () => {
           close();
           const summary = h('div', null, h('p', null, `${a.trainer.name} offers a trade:`), this.offerSummary(a, give, 'You get'), this.offerSummary(b, want, 'You give'));
-          const ok = await this.askTrainer(b, `🤝 ${a.trainer.name} proposes a trade`, summary, 'Accept trade', 'Decline');
-          await this.backTo(a);
-          if (!ok) { toast(`${b.trainer.name} declined the trade.`, 'info'); return; }
+          const ok = await this.askTrainer(b, `🤝 ${a.trainer.name} proposes a trade`, summary, 'Accept trade', 'Decline', 'the trade');
+          if (!ok) return;
           const e = I.exchange(a, give, b, want);
           if (e) { toast(e, 'bad'); return; }
           sfx.good(); save(a); this.renderHud();
@@ -1071,12 +1125,11 @@ export class App {
       h('p', { class: 'small muted' }, 'Choose a wager (the winner takes it). A team that’s fully knocked out is helped home to rest, without losing coins.'),
       h('div', { class: 'row gap-s wrap' }, wagers.map((w) => h('button', { class: 'btn primary', onclick: async () => {
         close();
-        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 💰 ${w}` : ', just for honour'}. You’ll pick your creatures’ moves each round.`), 'Accept the duel', 'Decline');
-        await this.backTo(a);
-        if (!ok) { toast(`${b.trainer.name} declined the challenge.`, 'info'); return; }
+        const ok = await this.askTrainer(b, `⚔️ ${a.trainer.name} challenges you!`, h('p', null, `A duel at ${NODE_BY_ID[a.location].name}${w ? ` for 💰 ${w}` : ', just for honour'}. You’ll pick your creatures’ moves each round.`), 'Accept the duel', 'Decline', 'the challenge');
+        if (!ok) return;
         const battle = I.startChallenge(a, b);
         if (!battle) { toast(I.challengeProblem(a, b) ?? 'The duel can’t start.', 'bad'); return; }
-        await this.runBattle(battle, { kind: 'rival', rival: b, intro: `${b.trainer.name} accepts your challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
+        await this.runBattle(battle, { kind: 'rival', rival: b, intro: `${b.trainer.name} accepts ${a.trainer.name}’s challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
         for (const t of I.settleChallenge(a, b, battle, w)) toast(t, 'info', 4000);
         save(a);
         this.world.setPawnAt(a.location); this.world.focus(a.location, true);
@@ -1133,18 +1186,38 @@ export class App {
   duelPicker(o: FoeOptions, round: number, done: (a: Action) => void): HTMLElement {
     return h('div', { class: 'duel-picker' },
       h('p', null, `Round ${round}: what will `, h('b', null, o.name), ' do?'),
+      h('p', { class: 'small muted' }, `Health ${o.health} · 💨 Stamina ${o.stamina}${o.fatigue ? ` · Fatigue ${o.fatigue}` : ''}`),
       h('div', { class: 'move-grid' }, o.moves.map((id) => moveCard(MOVE_BY_ID[id], { compact: true, vs: o.vs, onClick: () => done({ kind: 'move', move: id }) }))),
       h('div', { class: 'row gap-s wrap center' },
         h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
         o.swaps.map((sw) => h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'swap', to: sw.i }) }, `🔁 Swap to ${sw.name}`))));
   }
 
-  /** Hand the device to another trainer for a yes/no answer (a trade or a challenge). */
-  askTrainer(b: GameState, title: string, content: HTMLElement, yes: string, no: string): Promise<boolean> {
+  /** Ask another trainer about `what` (a trade or a challenge): hand them the device, or ask in their own browser. */
+  async askTrainer(b: GameState, title: string, content: HTMLElement, yes: string, no: string, what: string): Promise<boolean> {
+    const a = this.s;
+    const r = await this.askAnswer(b, title, content, yes, no);
+    if (r === 'cancelled') return false;
+    await this.backTo(a);
+    if (this.s !== a) return false;
+    if (r !== 'yes') toast(r === 'away' ? `${b.trainer.name} isn’t online right now.` : r === 'silent' ? `${b.trainer.name} didn’t answer.` : `${b.trainer.name} declined ${what}.`, 'info');
+    return r === 'yes';
+  }
+  private async askAnswer(b: GameState, title: string, content: HTMLElement, yes: string, no: string): Promise<AskResult | 'cancelled'> {
     const m = activeMatchOf();
     if (this.online && m) {
-      toast(`Waiting for ${b.trainer.name} to answer…`, 'info', 4000);
-      return this.online.ask(m.players.indexOf(b), this.s.trainer.name, title, content.textContent ?? '', yes, no);
+      // nothing else can happen meanwhile: moving on or starting a battle would leave the offer out of date
+      const q = this.online.ask(m.players.indexOf(b), this.s.trainer.name, title, content.textContent ?? '', yes, no);
+      let cancelled = false;
+      const cancel = () => { cancelled = true; q.cancel(); };
+      this.cancelAsk = cancel;
+      const close = openSheet(`Waiting for ${b.trainer.name}…`, h('div', null,
+        h('p', null, `${b.trainer.name} is deciding. They have two minutes to answer.`),
+        h('div', { class: 'row end' }, h('button', { class: 'btn ghost', onclick: cancel }, 'Call it off'))), { noClose: true });
+      const r = await q.answer;
+      close();
+      if (this.cancelAsk === cancel) this.cancelAsk = null;
+      return cancelled ? 'cancelled' : r;
     }
     return new Promise((resolve) => {
       closeAllSheets();
@@ -1153,8 +1226,8 @@ export class App {
         h('img', { src: trainerPortrait(playerLook(b.trainer.name, b.trainer.color, b.trainer.look)), alt: '' }),
         content,
         h('div', { class: 'row gap center' },
-          h('button', { class: 'btn ghost', onclick: () => { close(); resolve(false); } }, no),
-          h('button', { class: 'btn primary', onclick: () => { close(); resolve(true); } }, yes))), { noClose: true });
+          h('button', { class: 'btn ghost', onclick: () => { close(); resolve('no'); } }, no),
+          h('button', { class: 'btn primary', onclick: () => { close(); resolve('yes'); } }, yes))), { noClose: true });
     });
   }
 
@@ -1568,7 +1641,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -1596,7 +1669,9 @@ export class App {
     // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
     if (!ctx.watch && W.needsLeadChoice(s) && b.round === 0) await this.pickLead(b, ctx.intro);
     // online: everyone else watches this battle live
-    this.feed({ kind: 'battle-start', battle: JSON.parse(JSON.stringify(b)), ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook, rivalSeat: ctx.rival ? activeMatchOf()?.players.indexOf(ctx.rival) : undefined } as never });
+    const live = { battle: JSON.parse(JSON.stringify(b)) as unknown, ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook, rivalSeat: ctx.rival ? activeMatchOf()?.players.indexOf(ctx.rival) : undefined } as WatchCtx, past: [] as BEvent[] };
+    if (!ctx.watch && this.online) this.liveFight = live;
+    this.feed({ kind: 'battle-start', battle: live.battle, ctx: live.ctx });
     const disp: [Snap, Snap] = [snapOf(activeOf(b.sides[0])), snapOf(activeOf(b.sides[1]))];
     const panel = h('div', { class: 'battle-ui' });
     const logLine = h('div', { class: 'battle-log' }, ctx.intro);
@@ -1648,6 +1723,8 @@ export class App {
     // ── Battle Log: every line of the fight, with the full rolls and maths, to look back on ──
     // Once the fight is under way it becomes each trainer's last battle, kept in their save (a duel: both
     // trainers, each from their own side). Spectators only keep it for this session.
+    // (the challenged trainer, viewing their own duel, reads it from their side)
+    const view: 0 | 1 = ctx.watch && ctx.rivalSeat !== undefined && ctx.rivalSeat >= 0 && ctx.rivalSeat === this.mySeat() ? 1 : 0;
     const blog: BattleLog = { title: ctx.intro, turn: s.turn, entries: [] };
     const rivalLog: BattleLog | null = ctx.rival && !ctx.watch ? { title: `${s.trainer.name} challenged you to a duel!`, turn: ctx.rival.turn, entries: [] } : null;
     this.liveLog = blog;
@@ -1660,7 +1737,7 @@ export class App {
       if (ctx.rival && rivalLog) ctx.rival.lastBattle = rivalLog;
     };
     const logEvent = (e: BEvent) => {
-      logBattleEvent(blog, b, e, whoOn);
+      logBattleEvent(blog, b, e, whoOn, view);
       if (rivalLog) logBattleEvent(rivalLog, b, e, whoOn, 1);
     };
     // a Chanko Nabe kicks in: say so, and keep a chip in the header for the whole battle
@@ -1668,9 +1745,12 @@ export class App {
     if (nabe) { note(`🍲 ${nabe}.`, { tone: 'good' }); toast(`🍲 ${nabe}!`, 'good', 3000); }
 
     let watchedEnd: Battle['over'] = null;
+    // a viewer's copy of the battle doesn't play the rounds itself: each event says which one it's from
+    const atRound = (e: BEvent & { round?: number }) => { if (ctx.watch && e.round) { b.round = e.round; $('.rnd', header).textContent = String(e.round); } };
     // looking in on a battle under way: bring the board and the log up to date without replaying it
     for (const e of ctx.past ?? []) {
-      logBattleEvent(blog, b, e, whoOn);
+      atRound(e);
+      logBattleEvent(blog, b, e, whoOn, view);
       if ('snap' in e) disp[e.side] = e.snap;
       if (e.t === 'ring') { showRing(e.left, e.total); void bv.shrinkRing(1 - e.left / e.total); }
       if (e.t === 'end') watchedEnd = e.result;
@@ -1679,6 +1759,7 @@ export class App {
     if (ctx.watch) this.leaveWatch = () => {
       this.leaveWatch = null;
       left.now = true;
+      this.watchPlaying = false;
       this.watchQueue = null;
       ctx.watch!.push({ kind: 'battle-end' });
       this.liveLog = null;
@@ -1701,15 +1782,18 @@ export class App {
 
     const play = async (events: BEvent[]) => {
       keepLogs();
-      if (!ctx.watch) this.feed({ kind: 'battle-events', events });
+      if (!ctx.watch) { const sent = events.map((e) => ({ ...e, round: b.round })); live.past.push(...sent); this.feed({ kind: 'battle-events', events: sent }); }
       for (const e of events) {
         if (left.now) return;
         if (e.t === 'end') watchedEnd = e.result;
+        atRound(e);
         try { logEvent(e); } catch (err) { console.error('battle log error', err); }
         try { await playOne(e); } catch (err) { console.error('battle fx error', err); }
       }
       renderPlate(0); renderPlate(1);
     };
+    // two people's battle, or someone else's: name the sides instead of "You" and "Foe"
+    const sideName = (side: 0 | 1) => (ctx.rival || ctx.watch ? (side === 0 ? s.trainer.name : b.sides[1].kind === 'wild' ? 'Foe' : b.sides[1].name) : side === 0 ? 'You' : 'Foe');
     const playOne = async (e: BEvent) => {
       {
         switch (e.t) {
@@ -1736,7 +1820,7 @@ export class App {
             break;
           }
           case 'clash': {
-            await rollDice('Clash! Speeds tied', [{ sides: e.dice[0], value: e.rolls[0], label: 'You', tone: e.loser === 0 ? 'bad' : 'good' }, { sides: e.dice[1], value: e.rolls[1], label: 'Foe', tone: e.loser === 1 ? 'bad' : 'good' }], e.loser === null ? 'Even clash! A coin flip decides who goes first…' : `${e.loser === 0 ? 'You' : 'Foe'} rolled lower: ${e.dmg} damage (the difference) and acts second.`, slow() ? 1300 : 500);
+            await rollDice('Clash! Speeds tied', [{ sides: e.dice[0], value: e.rolls[0], label: sideName(0), tone: e.loser === 0 ? 'bad' : 'good' }, { sides: e.dice[1], value: e.rolls[1], label: sideName(1), tone: e.loser === 1 ? 'bad' : 'good' }], e.loser === null ? 'Even clash! A coin flip decides who goes first…' : `${sideName(e.loser)} rolled lower: ${e.dmg} damage (the difference) and acts second.`, slow() ? 1300 : 500);
             // a tie on the dice too: flip a coin, with each creature's name on a face, and show who won before anyone acts
             const first = e.first ?? 0;
             if (e.coin) await coinFlip('Coin flip!', [whoOn(0), whoOn(1)], first, `${whoOn(first)} goes first!`, slow() ? 1100 : 600);
@@ -1921,11 +2005,12 @@ export class App {
           h('div', { class: 'waiting' }, `👀 Watching ${s.trainer.name}’s battle`),
           h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
           ...watchTools()));
+        this.watchPlaying = false;
         void (async () => {
           for (;;) {
             if (watchedEnd) { finish(watchedEnd); return; }
             const it = await ctx.watch!.next();
-            if (it.kind === 'battle-events') await play(it.events as BEvent[]);
+            if (it.kind === 'battle-events') { this.watchPlaying = true; try { await play(it.events as BEvent[]); } finally { this.watchPlaying = false; } }
             if (it.kind === 'battle-end' || watchedEnd) { finish(watchedEnd ?? 'fled'); return; }
           }
         })();
@@ -1935,6 +2020,7 @@ export class App {
       if (!left.now) { this.leaveWatch = null; this.engine.setView(this.world); this.busy = false; }
       return result;
     }
+    if (this.liveFight === live) this.liveFight = null;
     this.feed({ kind: 'battle-end' });
 
     // ── Aftermath ──────────────────────────────────────────────

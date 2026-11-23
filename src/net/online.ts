@@ -11,9 +11,13 @@ export type FeedItem =
   | { kind: 'toast'; text: string; tone: 'info' | 'good' | 'bad' }
   | { kind: 'dice'; title: string; dice: unknown[]; caption?: string; hold?: number }
   | { kind: 'hop'; from: string; to: string }
-  | { kind: 'battle-start'; battle: unknown; ctx: { kind: string; intro: string; city?: string; rivalSeat?: number } }
+  | { kind: 'battle-start'; battle: unknown; ctx: { kind: string; intro: string; city?: string; rivalSeat?: number }; /** Sent again after someone reconnected: what has happened so far. */ past?: unknown[] }
   | { kind: 'battle-events'; events: unknown[] }
   | { kind: 'battle-end' };
+
+interface Answer { type: 'answer'; id: string; yes: boolean; offline?: boolean; value?: unknown }
+/** How a yes/no prompt ended: `away` = they're offline, `silent` = no answer in time (or we cancelled it). */
+export type AskResult = 'yes' | 'no' | 'away' | 'silent';
 
 export type ServerMsg =
   | ({ type: 'room' } & RoomInfo)
@@ -21,7 +25,8 @@ export type ServerMsg =
   | { type: 'state'; match: Match }
   | { type: 'feed'; item: FeedItem }
   | { type: 'ask'; id: string; from: string; title: string; text: string; yes: string; no: string; pick?: unknown }
-  | { type: 'answer'; id: string; yes: boolean; offline?: boolean; value?: unknown }
+  | { type: 'ask-cancel'; id: string }
+  | Answer
   | { type: 'do-skip'; seat: number; reason: 'timeout' | 'host' }
   | { type: 'do-play'; seat: number; reason: 'host' }
   | { type: 'edit'; seat: number; edit: CreatureEdit }
@@ -53,7 +58,9 @@ export class Online {
   room: RoomInfo | null = null;
   code: string | null = null;
   private handlers = new Set<(m: ServerMsg) => void>();
-  private pending = new Map<string, (yes: boolean, value?: unknown) => void>();
+  private pending = new Map<string, (m: Answer) => void>();
+  /** The prompts we're waiting on, to put up again after a reconnect. */
+  private asked = new Map<string, Record<string, unknown>>();
   private queue: string[] = [];
   private awaiting: (() => void)[] = [];
 
@@ -77,7 +84,7 @@ export class Online {
         if (msg.type === 'pong') return;
         if (msg.type === 'room') this.room = msg;
         if (msg.type === 'created') { this.code = msg.code; rememberRoom(msg.code); }
-        if (msg.type === 'answer') { this.pending.get(msg.id)?.(msg.yes, msg.value); this.pending.delete(msg.id); return; }
+        if (msg.type === 'answer') { const done = this.pending.get(msg.id); this.pending.delete(msg.id); this.asked.delete(msg.id); done?.(msg); return; }
         for (const h of this.handlers) h(msg);
       };
     });
@@ -116,23 +123,37 @@ export class Online {
   /** Seat indexes this browser owns. */
   get mySeats(): number[] { return (this.room?.seats ?? []).map((s, i) => (s.clientId === this.id ? i : -1)).filter((i) => i >= 0); }
 
+  /** Someone (or we) reconnected: put the prompts still waiting for an answer up again (for `seats`, or everyone). */
+  askAgain(seats?: number[]) { for (const m of this.asked.values()) if (!seats || seats.includes(m.seat as number)) this.send(m); }
+
   /** Ask another seat's owner to pick something (a duel move). Resolves undefined if they're offline or take longer than `ms`. */
   pick<T>(seat: number, from: string, pick: unknown, ms = 60_000): Promise<T | undefined> {
-    const id = Math.random().toString(36).slice(2);
-    return new Promise((resolve) => {
-      this.pending.set(id, (_yes, value) => resolve(value as T | undefined));
-      this.send({ type: 'ask', id, seat, from, title: '', text: '', yes: '', no: '', pick });
-      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); resolve(undefined); } }, ms);
-    });
+    return this.prompt<T | undefined>(seat, { from, title: '', text: '', yes: '', no: '', pick }, ms, (m) => m?.value as T | undefined).answer;
   }
 
-  /** Ask another seat's owner a yes/no question (trade or duel). Resolves false if they're offline or don't answer in 2 minutes. */
-  ask(seat: number, from: string, title: string, text: string, yes: string, no: string): Promise<boolean> {
+  /** Ask another seat's owner a yes/no question (trade or duel), for up to 2 minutes or until cancelled. */
+  ask(seat: number, from: string, title: string, text: string, yes: string, no: string): { answer: Promise<AskResult>; cancel: () => void } {
+    return this.prompt<AskResult>(seat, { from, title, text, yes, no }, 120_000, (m) => (m ? (m.yes ? 'yes' : m.offline ? 'away' : 'no') : 'silent'));
+  }
+
+  /** Put a prompt on another seat's screen. Giving up on it (time, or `cancel`) takes it down again. */
+  private prompt<T>(seat: number, ask: Record<string, unknown>, ms: number, read: (m: Answer | null) => T): { answer: Promise<T>; cancel: () => void } {
     const id = Math.random().toString(36).slice(2);
-    return new Promise((resolve) => {
-      this.pending.set(id, resolve);
-      this.send({ type: 'ask', id, seat, from, title, text, yes, no });
-      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); resolve(false); } }, 120_000);
+    let giveUp = () => { /* set below */ };
+    const answer = new Promise<T>((resolve) => {
+      const timer = setTimeout(() => giveUp(), ms);
+      this.pending.set(id, (m) => { clearTimeout(timer); resolve(read(m)); });
+      giveUp = () => {
+        if (!this.pending.delete(id)) return;
+        clearTimeout(timer);
+        this.asked.delete(id);
+        this.send({ type: 'ask-cancel', id, seat });
+        resolve(read(null));
+      };
+      const msg = { type: 'ask', id, seat, ...ask };
+      this.asked.set(id, msg);
+      this.send(msg);
     });
+    return { answer, cancel: () => giveUp() };
   }
 }

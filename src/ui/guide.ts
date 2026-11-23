@@ -236,6 +236,7 @@ export const GUIDE: GuideCategory[] = [
         '- Gifts and coin or item trades reach anyone, anywhere (a courier carries them).',
         '- Creature trades and duel challenges need you both on the same spot.',
         '- In a duel, each trainer picks their own moves every round, and who goes in after a knockout.',
+        '- Online, the other trainer has two minutes to answer an offer (you can call it off) and a minute for each duel choice. If either of you drops out for a moment, the duel picks up where it was.',
         'Notes about gifts, trades and duels wait for each trainer at the start of their turn.',
       ] },
       { id: 'online', title: 'Online', body: [

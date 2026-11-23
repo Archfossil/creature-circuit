@@ -328,6 +328,7 @@ export function foeOptions(b: Battle) {
     moves: [...me.playbook],
     swaps: b.round >= 1 ? side.team.map((c, i) => ({ i, name: nameOf(c), ko: c.ko })).filter((x) => !x.ko && x.i !== side.active).map(({ i, name }) => ({ i, name })) : [],
     vs: speciesOf(activeOf(b.sides[0])).types,
+    health: `${totalHealth(me)}/${maxTotal(me)}`, stamina: `${me.stamina}/${maxStamina(me)}`, fatigue: me.fatigue,
   };
 }
 export type FoeOptions = ReturnType<typeof foeOptions>;

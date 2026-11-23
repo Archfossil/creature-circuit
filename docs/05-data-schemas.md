@@ -120,7 +120,8 @@ Shared rules (Legendaries, released Legendaries returning) look across all playe
 The match is kept in a separate local slot (`creature-circuit-online-v1`), so it never overwrites a hotseat game. The server (`server/index.mjs`) stores each room's latest match and relays these messages:
 - **`state`:** match snapshots, accepted only from the current controller.
 - **`feed`:** what watchers mirror: toasts, dice, hops and battle rounds.
-- **`ask` / `answer`:** trade and duel prompts.
+- **`ask` / `answer` / `ask-cancel`:** trade and duel prompts, and taking one down again. A prompt still waiting is re-sent, with the same id, after a reconnect.
+- **`feed` battles:** `battle-start` carries the battle (and, when re-sent after a reconnect, the `past` events); each event in `battle-events` says which `round` it's from.
 - **`host-skip` / `host-play`:** the host's controls.
 - **`do-skip`:** sent when the turn timer runs out.
 

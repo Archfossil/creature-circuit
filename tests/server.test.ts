@@ -106,6 +106,8 @@ describe('online server', () => {
     expect(pickAsk.pick).toMatchObject({ kind: 'duel' });
     a.send({ type: 'answer', id: 'q2', yes: true, value: { kind: 'move', move: 'tackle' } });
     expect((await b.wait((m) => m.type === 'answer' && m.id === 'q2')).value).toEqual({ kind: 'move', move: 'tackle' });
+    b.send({ type: 'ask-cancel', id: 'q3', seat: 0 }); // an unanswered prompt is taken down again
+    expect((await a.wait((m) => m.type === 'ask-cancel')).id).toBe('q3');
 
     // host skips Bo's turn: the host gets "do-skip" and control
     a.send({ type: 'host-skip' });
