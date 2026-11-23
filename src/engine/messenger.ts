@@ -8,13 +8,14 @@ import { itemInfo } from '../data/content';
 import type { GameState } from './state';
 import { log } from './state';
 import { doSwapOffer, eyedCreature, swapLock, thinkOfSwap, type TextOffer } from './npcTrade';
+import { dareBlock, dareText, ideaBlock, maxDareWager, startDare, thinkOfDare, type DareIdea } from './dares';
 import { nameOf } from './creature';
 import { championAt, CHAMPIONS, inviteBlock, inviteNpc, inviteStops, npcMerits, recordWith, type NpcRecord } from './npcs';
 
 export interface Text { turn: number; text: string; /** Written by the trainer. */ me?: boolean }
 /** A text that waits for an answer. */
-export type Ask = 'rematch' | 'congrats' | 'news' | 'hello' | 'trade' | 'keen';
-export interface Chat { texts: Text[]; unread: number; ask?: Ask; askTurn?: number; /** The swap they're offering, or the creature (uid) they're after. */ offer?: TextOffer; after?: string; /** The turn the trainer last wrote first. */ wrote?: number }
+export type Ask = 'rematch' | 'congrats' | 'news' | 'hello' | 'trade' | 'keen' | 'dare';
+export interface Chat { texts: Text[]; unread: number; ask?: Ask; askTurn?: number; /** The swap they're offering, or the creature (uid) they're after. */ offer?: TextOffer; after?: string; /** The challenge they're setting. */ dare?: { idea: DareIdea; wager: number }; /** The turn the trainer last wrote first. */ wrote?: number }
 export interface Reply { id: string; label: string; disabled?: string }
 
 /** Texts kept in a conversation. */
@@ -53,7 +54,10 @@ function write(s: GameState, npc: Npc, text: string, ask?: Ask) {
   c.askTurn = ask ? s.turn : undefined;
   c.offer = undefined;
   c.after = undefined;
+  c.dare = undefined;
 }
+/** They say something that needs no answer (a challenge won or lost). */
+export function say(s: GameState, npc: Npc, text: string) { add(s, npc, fill(s, text)); }
 
 // ── They write first ────────────────────────────────────────────
 /** A new turn: questions nobody answered lapse, and someone may write. Returns notes for the start of the turn. */
@@ -83,6 +87,7 @@ export function textTurn(s: GameState): string[] {
   const r = recordWith(s, npc)!, voice = VOICES[npc.id];
   const news = npcMerits(s, npc).length > npcMerits(s, npc, s.turn - 4).length;
   if (r.last && !inviteBlock(s, npc) && Math.random() < 0.5) write(s, npc, fill(s, r.last.won ? voice.grudge : voice.taunt), 'rematch');
+  else if (Math.random() < 0.35 && tryDare(s, npc)) { /* sent */ }
   else if (Math.random() < 0.35 && trySwap(s, npc)) { /* sent */ }
   else if (Math.random() < 0.25 && tryKeen(s, npc)) { /* sent */ }
   else if (news && Math.random() < 0.5) { const m = npcMerits(s, npc); write(s, npc, fill(s, voice.news, { merit: CITIES[m[m.length - 1]].accolade }), 'news'); }
@@ -101,6 +106,14 @@ export function trySwap(s: GameState, npc: Npc): boolean {
   if (!o) return false;
   write(s, npc, `${fill(s, VOICES[npc.id].swap, { thing: named(o.want, o.n) })} (Their ${named(o.give)} for your ${named(o.want, o.n)}.)`, 'trade');
   chatOf(recordWith(s, npc)!).offer = o;
+  return true;
+}
+/** They set a side challenge. */
+export function tryDare(s: GameState, npc: Npc): boolean {
+  const d = thinkOfDare(s, npc);
+  if (!d) return false;
+  write(s, npc, `${fill(s, VOICES[npc.id].dare)} (${dareText(d.idea)}${d.wager ? `, for 💰 ${d.wager}` : ''}.)`, 'dare');
+  chatOf(recordWith(s, npc)!).dare = d;
   return true;
 }
 /** They ask to meet about a creature they've taken a shine to. */
@@ -128,6 +141,11 @@ export function replies(s: GameState, npc: Npc): Reply[] {
     const o = chatWithNpc(s, npc)!.offer;
     return [{ id: 'deal', label: 'Deal! It’s on its way.', disabled: o ? swapLock(s, o) ?? undefined : 'They’ve changed their mind.' }, { id: 'kind', label: 'Not this time, but thank you!' }, { id: 'cheeky', label: 'You’ll have to do better than that.' }];
   }
+  if (ask === 'dare') {
+    const d = chatWithNpc(s, npc)!.dare;
+    const why = !d ? 'They’ve changed their mind.' : dareBlock(s, npc) ?? ideaBlock(s, npc, d.idea) ?? (d.wager > maxDareWager(s, npc) ? 'You can’t cover the wager.' : null);
+    return [{ id: 'dare', label: `You’re on!${d?.wager ? ` 💰 ${d.wager}` : ''}`, disabled: why ?? undefined }, { id: 'kind', label: 'I can’t just now. Good luck, though!' }, { id: 'cheeky', label: 'I’d win too easily.' }];
+  }
   if (ask === 'keen') return [{ id: 'meet', label: `Let’s talk. Meet me at ${NODE_BY_ID[nearbyStop(s)].name}.`, disabled: inviteBlock(s, npc) ?? undefined }, { id: 'kind', label: 'Sorry, we’re too close. Good eye, though!' }, { id: 'cheeky', label: 'Not for all the berries in Margos.' }];
   if (ask === 'congrats') return [{ id: 'kind', label: 'Thank you! That means a lot.' }, { id: 'cheeky', label: 'Try to keep up!' }];
   if (ask === 'news') return [{ id: 'kind', label: 'Well done! You earned it.' }, { id: 'cheeky', label: 'Only just, I bet.' }];
@@ -142,13 +160,18 @@ export function reply(s: GameState, npc: Npc, id: string): boolean {
   add(s, npc, opt.label, true);
   c.ask = undefined;
   c.askTurn = undefined;
-  const { offer, after } = c;
+  const { offer, after, dare } = c;
+  c.dare = undefined;
   c.offer = undefined;
   c.after = undefined;
   if (id === 'deal' && offer) {
     doSwapOffer(s, npc, offer);
     r.rapport++;
     add(s, npc, `${fill(s, voice.warm)} (${named(offer.give)} received.)`);
+  } else if (id === 'dare' && dare) {
+    startDare(s, npc, dare.idea, dare.wager);
+    r.rapport++;
+    add(s, npc, `It’s on! ${dareText(dare.idea)}, starting now.`);
   } else if (id === 'meet') {
     inviteNpc(s, npc, stop);
     r.keen = after;

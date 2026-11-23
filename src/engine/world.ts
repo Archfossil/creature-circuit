@@ -6,6 +6,7 @@ import { INSTINCT_BY_ID } from '../data/instincts';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { npcNamed, passerBy } from '../data/npcs';
+import { noteBattle, noteNabe, tally } from './dares';
 import { circuitField, mercyOffer, npcBattle, npcTeam, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
 import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
@@ -1065,6 +1066,7 @@ function recordBattle(s: GameState, b: Battle, kind: BattleKind) {
 export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean; wipeTo?: string; /** The creature (uid) a Rival or Champion who won helps up, instead of a wipe. */ mercy?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   s.hotpot = undefined;
+  noteBattle(s, b);
   for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
   recordBattle(s, b, ctx.kind);
   if (b.over === 'win') {
@@ -1192,6 +1194,7 @@ export function attemptRecruit(s: GameState, wild: CreatureInst, totem: string, 
     if (s.roster.length < 3) s.roster.push(wild); else s.reserve.push(wild);
     if (!s.dex.caught.includes(wild.species)) s.dex.caught.push(wild.species);
     s.stats.recruited++;
+    for (const t of speciesOf(wild).types) tally(s, `recruit:${t}`);
     log(s, `${nameOf(wild)} accepted your offering and joined you!`);
   }
   return { dice, mods, total, need, success };
@@ -1241,6 +1244,7 @@ export function rest(s: GameState, nodeId: string) {
   const advanced = s.trainer.home === nodeId || s.trainer.style === 'balanced'; // Wanderers are at home anywhere
   const buff = Object.fromEntries(Object.entries(ci.hotpot.buff).map(([k, v]) => [k, v! * (advanced ? 2 : 1)]));
   s.hotpot = { city: nodeId, buff };
+  noteNabe(s, nodeId);
   return { advanced, buff };
 }
 
@@ -1389,6 +1393,7 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
   else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable or with Rousing Salts.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained up to 2 hearts, and its Fatigue is cleared.`; }
   else if (id === 'energy-tonic') { const t = speciesOf(c).types[0]; c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
   else if (it.kind === 'treat') {
+    tally(s, 'treats');
     const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;
     c.morale = Math.min(10, c.morale + mor); addLoyalty(c, loy); msg = `${nameOf(c)} happily munches the ${it.name}! (+${mor} Morale, +${loy} Loyalty)`;
   }

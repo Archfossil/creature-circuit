@@ -6,7 +6,7 @@ import { ITEMS } from '../src/data/content';
 import * as N from '../src/engine/npcs';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
-import { newGame, migrate, type GameState } from '../src/engine/state';
+import { newGame, migrate, moveTrainer, type GameState } from '../src/engine/state';
 import { createCreature, speciesOf, stats, STAT_KEYS, recommendPlaybook, fits, energy, moveWorth, learnable } from '../src/engine/creature';
 import { bestSwapMove, swapMoveOf, swapMoveSet } from '../src/engine/swaps';
 import { teamworkOf } from '../src/engine/teamwork';
@@ -18,6 +18,7 @@ import type { Battle } from '../src/engine/battle';
 import * as T from '../src/engine/messenger';
 import { VOICES } from '../src/data/texts';
 import * as X from '../src/engine/npcTrade';
+import * as D from '../src/engine/dares';
 
 const game = () => {
   const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
@@ -503,5 +504,124 @@ describe('how Rivals, Champions and the AI play', () => {
       for (let k = 0; k < 30 && !lead.ko; k++) { b.aiSwapped = b.round + 1; resolveRound(b, { kind: 'move', move: b.sides[0].team[b.sides[0].active].playbook[0] }); if (b.needSwap) break; }
       if (lead.ko) expect(activeOf(b.sides[1]).ace).toBeFalsy();
     }
+  });
+});
+
+describe('side challenges', () => {
+  const met = (turn = 30) => { const s = game(); s.turn = turn; s.coins = 50; N.meet(s, rival); N.meet(s, champ); N.meet(s, NPC_BY_ID.pim); return s; };
+  const idea = (kind: D.DareKind, n: number, target?: string): D.DareIdea => ({ kind, n, turns: 8, ...(target ? { target } : {}) });
+  it('everyone has three ideas, all possible, the same until the next stay', () => {
+    const s = met();
+    for (const npc of NPCS) {
+      const list = D.ideas(s, npc);
+      expect(list.length, npc.id).toBe(3);
+      expect(new Set(list.map((d) => d.kind)).size).toBe(3);
+      for (const d of list) { expect(D.ideaBlock(s, npc, d)).toBeNull(); expect(D.dareText(d)).not.toMatch(/undefined/); }
+      expect(D.ideas(s, npc)).toEqual(list);
+    }
+    for (const k of Object.keys(D.DARE_ICON) as D.DareKind[]) expect(D.dareText({ kind: k, n: 2, turns: 5, target: k === 'recruit' ? 'fire' : 'thunder' })).not.toMatch(/undefined/);
+  });
+  it('one each and two in all, with a wager both can cover', () => {
+    const s = met();
+    expect(D.startDare(s, NPC_BY_ID.sol, idea('walk', 5))).toBe(false); // not met
+    expect(D.startDare(s, rival, idea('walk', 5), 7)).toBe(false); // not a wager on offer
+    s.coins = 3;
+    expect(D.startDare(s, rival, idea('walk', 5), 5)).toBe(false);
+    s.coins = 50;
+    expect(D.startDare(s, rival, idea('walk', 5), 5)).toBe(true);
+    expect(D.startDare(s, rival, idea('finds', 5))).toBe(false);
+    expect(D.startDare(s, champ, idea('finds', 5))).toBe(true);
+    expect(D.startDare(s, NPC_BY_ID.pim, idea('craft', 2))).toBe(false);
+  });
+  it('counts only what happens after it starts, and pays the winner', () => {
+    const s = met();
+    s.stats.steps = 40;
+    D.startDare(s, rival, idea('walk', 5), 5);
+    expect(D.checkDares(s)).toEqual([]);
+    s.stats.steps = 44;
+    expect(D.myProgress(s, D.dareWith(s, rival)!)).toBe(4);
+    s.stats.steps = 45;
+    const [r] = D.checkDares(s);
+    expect(r.won).toBe(true);
+    expect(s.coins).toBe(50 + D.darePrize(s, idea('walk', 5)).coins + 5);
+    expect(s.inventory.dewberry).toBeGreaterThan(0);
+    expect(D.dareWith(s, rival)).toBeUndefined();
+    expect(T.chatWithNpc(s, rival)!.texts.slice(-1)[0].text).toBe(VOICES.bex.beaten);
+    expect(D.dareBlock(s, rival)).toMatch(/breath/);
+  });
+  it('every kind can be won by doing it', () => {
+    const win = (kind: D.DareKind, n: number, target: string | undefined, act: (s: GameState) => void) => {
+      const s = met();
+      expect(D.startDare(s, rival, idea(kind, n, target)), kind).toBe(true);
+      expect(D.checkDares(s), kind).toEqual([]);
+      act(s);
+      expect(D.checkDares(s).map((x) => x.won), kind).toEqual([true]);
+    };
+    const battle = (s: GameState) => { const b = createBattle(W.playerSide(s), { kind: 'wild', name: 'w', team: [createCreature('zapup', 1)], active: 0, mods: {} }, WEATHER.clear); b.over = 'win'; W.finishBattle(s, b, { kind: 'wild' }); };
+    const s0 = met();
+    const far = [...D.walkSteps(s0.location)].find(([, n]) => n >= 8)![0];
+    win('race', 1, far, (s) => moveTrainer(s, far));
+    win('arbiter', 1, 'aurora', (s) => s.merits.push('aurora'));
+    win('codex', 2, undefined, (s) => s.dex.seen.push('x', 'y'));
+    win('solo', 3, undefined, (s) => {
+      const d = D.dareWith(s, rival)!;
+      s.roster[0].wins += 2; s.roster[1].wins += 2;
+      expect(D.myProgress(s, d)).toBe(2); // they must all be one creature's
+      const joined = createCreature('zapup', 3); joined.wins = 9; s.roster.push(joined);
+      expect(D.myProgress(s, d)).toBe(2); // nor what a newcomer did before
+      s.roster[0].wins++;
+    });
+    expect(Object.keys(D.DARE_ICON)).not.toContain('rain');
+    win('night', 1, undefined, (s) => { s.turn = 32; battle(s); });
+    win('nabe', 2, undefined, (s) => { W.rest(s, 'aurora'); W.rest(s, 'aurora'); expect(D.checkDares(s)).toEqual([]); W.rest(s, 'iron'); });
+    win('coasts', 2, undefined, (s) => { moveTrainer(s, 'iron'); moveTrainer(s, 'blackSand'); });
+    win('finds', 1, undefined, (s) => { W.claimFind(s, { itemRoll: 1, items: [{ id: 'salve', n: 1 }], coins: 0 }); });
+    win('craft', 1, undefined, (s) => { s.stats.crafted = 1; });
+    win('treats', 1, undefined, (s) => { s.inventory.sunberry = 1; W.useItem(s, 'sunberry', s.roster[0].uid); });
+    win('recruit', 1, 'electric', (s) => { for (let i = 0; i < 80 && !D.myProgress(s, D.dareWith(s, rival)!); i++) { s.inventory.totem = 5; W.attemptRecruit(s, createCreature('zapup', 1), 'totem', []); } });
+  });
+  it('they finish on their turn: not before, and a trainer who got there the same turn still wins', () => {
+    const s = met();
+    D.startDare(s, rival, idea('walk', 99), 5);
+    const d = D.dareWith(s, rival)!;
+    const notes: string[] = [];
+    while (s.turn < d.due) { s.turn++; notes.push(...D.dareTurn(s)); const p = D.theirProgress(s, d); expect(p.at).toBeLessThan(p.of); }
+    expect(D.dareWith(s, rival)).toBe(d);
+    expect(notes.filter((x) => x.includes('halfway')).length).toBe(1);
+    s.turn++;
+    expect(D.dareTurn(s).some((x) => x.includes('won the challenge'))).toBe(true);
+    expect(s.coins).toBe(45);
+    const t = met();
+    D.startDare(t, rival, idea('walk', 5));
+    t.stats.steps = (t.stats.steps ?? 0) + 5;
+    t.turn = D.dareWith(t, rival)!.due + 1;
+    expect(D.dareTurn(t)[0]).toMatch(/Challenge won/);
+  });
+  it('a race: they set out about as far away, and their pace is beatable', () => {
+    const s = met();
+    for (const npc of [rival, champ]) {
+      const far = [...D.walkSteps(s.location)].find(([, n]) => n >= 12)!;
+      D.startDare(s, npc, { kind: 'race', target: far[0], n: 1, turns: 0 });
+      const d = D.dareWith(s, npc)!;
+      expect(Math.abs(d.dist! - far[1])).toBeLessThanOrEqual(2);
+      expect(d.due - s.turn + 1).toBeGreaterThanOrEqual(Math.ceil(far[1] / 5));
+    }
+    // being carried home doesn't count as arriving
+    const t = met();
+    const far = [...D.walkSteps(t.location)].find(([, n]) => n >= 8)![0];
+    D.startDare(t, rival, idea('race', 1, far));
+    moveTrainer(t, far, { wiped: true });
+    t.location = 'thunder';
+    expect(D.checkDares(t)).toEqual([]);
+  });
+  it('they text dares, which can be taken up; giving up counts as a loss; saves keep them', () => {
+    const s = met();
+    expect(T.tryDare(s, rival)).toBe(true);
+    expect(T.reply(s, rival, 'dare')).toBe(true);
+    expect(D.dareWith(s, rival)).toBeTruthy();
+    const back = migrate(JSON.parse(JSON.stringify(s)))!;
+    expect(D.dareWith(back, rival)).toEqual(D.dareWith(s, rival));
+    expect(D.giveUp(s, rival)!.won).toBe(false);
+    expect(N.recordWith(s, rival)!.daresLost).toBe(1);
   });
 });

@@ -15,6 +15,7 @@ import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
 import * as X from '../engine/npcTrade';
+import * as D from '../engine/dares';
 import type { Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import * as W from '../engine/world';
@@ -1359,6 +1360,11 @@ export class App {
 
   renderHud() {
     const s = this.s;
+    // a side challenge the trainer has just finished first
+    if (!this.watching && s.phase === 'map') {
+      const won = D.checkDares(s);
+      if (won.length) { sfx.good(); for (const x of won) toast(x.text, 'good', 6000); save(s); }
+    }
     const unread = T.unreadTexts(this.idOwner());
     const node = NODE_BY_ID[s.location];
     const w = W.weather(s);
@@ -2316,12 +2322,12 @@ export class App {
     const s = this.idOwner();
     const mine = s === this.s && !this.watching && s.phase === 'map';
     const body = h('div');
-    let tab: 'rivals' | 'chats' | 'standings' = mine && T.unreadTexts(s) ? 'chats' : 'rivals';
+    let tab: 'rivals' | 'chats' | 'dares' | 'standings' = mine && T.unreadTexts(s) ? 'chats' : 'rivals';
     const render = () => {
       const met = [...N.RIVALS, ...N.CHAMPIONS].filter((x) => N.recordWith(s, x)).sort((a, b) => (N.recordWith(s, b)!.last?.turn ?? 0) - (N.recordWith(s, a)!.last?.turn ?? 0));
       body.replaceChildren(
-        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'chats', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : t === 'chats' ? `💬 Messages${T.unreadTexts(s) ? ` (${T.unreadTexts(s)})` : ''}` : '🏆 Circuit Standings'))),
-        tab === 'standings' ? this.standingsBody(s) : tab === 'chats' ? this.chatsBody(s, mine, render) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
+        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'chats', 'dares', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : t === 'chats' ? `💬 Messages${T.unreadTexts(s) ? ` (${T.unreadTexts(s)})` : ''}` : t === 'dares' ? `🎯 Challenges${D.activeDares(s).length ? ` (${D.activeDares(s).length})` : ''}` : '🏆 Circuit Standings'))),
+        tab === 'standings' ? this.standingsBody(s) : tab === 'chats' ? this.chatsBody(s, mine, render) : tab === 'dares' ? this.daresBody(s, mine, render) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
           : h('p', { class: 'muted' }, 'You haven’t met anyone yet. Rivals turn up on roads and meadows, in Trainer Halls and in the morning; Champions tour the cities and towns.'),
         tab === 'rivals' ? h('p', { class: 'small muted' }, `Met ${met.filter((x) => x.kind === 'rival').length} of ${N.RIVALS.length} Rivals and ${met.filter((x) => x.kind === 'champion').length} of ${N.CHAMPIONS.length} Champions.`) : '');
     };
@@ -2339,7 +2345,7 @@ export class App {
       h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null,
         h('div', { class: 'row gap-s wrap' }, h('b', null, npc.name), npc.types.map((t) => typeChip(t, true)), h('span', { class: 'chip' }, N.npcMood(r)), N.isContender(s, npc) ? h('span', { class: 'chip good', title: 'Your battles have made a Circuit contender of them' }, '📈 Contender') : null),
         h('p', { class: 'small' }, npc.blurb),
-        h('p', { class: 'small' }, h('b', null, `You ${r.won} · Them ${r.lost}`), r.revenges ? ` · 🔥 ${r.revenges} avenged` : '', h('span', { class: 'muted' }, ` · Met turn ${r.met}${r.last ? ` · Last: you ${r.last.won ? 'won' : 'lost'} at ${at(r.last.at)}, turn ${r.last.turn}` : ''} · From ${at(npc.home)} · ${N.npcMerits(s, npc).length}/8 Merits`)),
+        h('p', { class: 'small' }, h('b', null, `You ${r.won} · Them ${r.lost}`), r.revenges ? ` · 🔥 ${r.revenges} avenged` : '', r.daresWon || r.daresLost ? ` · 🎯 ${r.daresWon ?? 0}–${r.daresLost ?? 0}` : '', h('span', { class: 'muted' }, ` · Met turn ${r.met}${r.last ? ` · Last: you ${r.last.won ? 'won' : 'lost'} at ${at(r.last.at)}, turn ${r.last.turn}` : ''} · From ${at(npc.home)} · ${N.npcMerits(s, npc).length}/8 Merits`)),
         rev ? h('p', { class: 'small good-text' }, `🔥 Revenge is waiting: ${rev.coins + 1}× coins, +${rev.xp} XP and ${itemInfo(rev.item).icon} ${itemInfo(rev.item).name}.`) : null)),
       h('div', { class: 'npc-team', 'aria-label': 'Their creatures' }, N.npcLineup(s, npc).map((sp, i) => {
         const seen = r.seen.includes(i), ace = i === 0;
@@ -2388,6 +2394,7 @@ export class App {
       body.replaceChildren(log, mine ? h('div', { class: 'chat-say' },
         ...(answers.length ? say(answers, (id) => T.reply(s, npc, id)) : [...say(T.openers(s, npc), (id) => T.writeFirst(s, npc, id)),
           h('button', { class: 'btn ghost sm', onclick: () => this.npcTradeSheet(npc, N.npcsHere(s).includes(npc), () => { render(); changed(); }) }, '🔄 Trade'),
+          (() => { const no = D.dareBlock(s, npc); return h('button', { class: 'btn ghost sm', disabled: !!no, title: no ?? '', onclick: () => this.dareSheet(npc, () => { render(); changed(); }) }, '🎯 Challenge'); })(),
           h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? '', onclick: () => this.inviteSheet(npc, () => { render(); changed(); }) }, '🤝 Arrange to meet')]),
         N.recordWith(s, npc)?.invite ? h('small', { class: 'muted' }, `Meeting at ${NODE_BY_ID[N.recordWith(s, npc)!.invite!.at].name}, turns ${N.recordWith(s, npc)!.invite!.from}–${N.recordWith(s, npc)!.invite!.until}.`) : '') : h('p', { class: 'small muted' }, 'You can answer on your own turn.'));
       requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
@@ -2395,6 +2402,46 @@ export class App {
     render();
     if (mine) { save(s); this.renderHud(); changed(); }
     openSheet(`💬 ${npc.name}`, body, { wide: true });
+  }
+
+  /** Side challenges under way: both sides' progress. */
+  private daresBody(s: GameState, mine: boolean, changed: () => void) {
+    const list = D.activeDares(s);
+    const bar = (who: string, at: number, of: number, color: string, text: string) => h('div', { class: 'dare-row' }, h('small', null, who), h('div', { class: 'dare-bar' }, h('i', { style: `width:${Math.round((100 * at) / Math.max(1, of))}%;background:${color}` })), h('small', { class: 'muted' }, text));
+    return h('div', null, list.length ? h('div', { class: 'list' }, list.map(({ npc, dare: d }) => {
+      const me = D.myProgress(s, d), they = D.theirProgress(s, d), p = D.darePrize(s, d);
+      const steps = d.kind === 'race' ? D.walkSteps(s.location).get(d.target!) : undefined;
+      const left = d.due - s.turn + 1;
+      return h('div', { class: 'npc-card', style: `--tc:${TYPE_COLOR[npc.types[0]]}` },
+        h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null,
+          h('b', null, `${D.DARE_ICON[d.kind]} ${D.dareText(d)}`),
+          h('p', { class: 'small muted' }, `Against ${npc.name}. Prize: 💰 ${p.coins}${d.wager ? ` + 💰 ${d.wager} wager` : ''} and ${itemInfo(p.item).icon} ${itemInfo(p.item).name}. They’ll finish by the end of turn ${d.due} (${left === 1 ? 'this turn' : `${left} turns`}).`),
+          bar('You', d.kind === 'race' ? (me ? 1 : 0) : me, d.n, 'var(--good)', d.kind === 'race' ? (steps !== undefined ? `${steps} steps to go` : 'off the paths') : d.n > 1 ? `${me}/${d.n}` : me ? 'done' : 'not yet'),
+          bar(npc.name.split(' ').pop()!, they.at, they.of, 'var(--accent)', d.kind === 'race' ? `${they.of - they.at} steps to go` : d.n > 1 ? `${they.at}/${they.of}` : 'on the way'),
+          mine ? h('div', { class: 'row gap-s wrap' }, d.target && NODE_BY_ID[d.target] ? h('button', { class: 'btn ghost sm', onclick: () => this.markNextStop(d.target!) }, '📍 Mark it') : null,
+            h('button', { class: 'btn ghost sm', onclick: async () => { if (!(await confirmSheet('Give up the challenge?', `${npc.name} wins${d.wager ? ` the 💰 ${d.wager} wager` : ''}.`, 'Give up'))) return; const x = D.giveUp(s, npc); if (x) toast(x.text, 'info', 4000); save(s); this.renderHud(); changed(); } }, 'Give up')) : null)));
+    })) : h('p', { class: 'muted' }, 'No challenges under way. Set one from a conversation (💬 Messages), or wait for someone to dare you.'),
+    h('p', { class: 'small muted' }, `Up to ${D.DARES_MAX} at once, one with each person. First to finish wins.`));
+  }
+
+  /** Set a side challenge: what, and for how much. */
+  dareSheet(npc: Npc, changed: () => void) {
+    const s = this.s;
+    let wager = 0;
+    const body = h('div');
+    const render = () => {
+      const max = D.maxDareWager(s, npc);
+      body.replaceChildren(
+        h('p', null, `What shall it be? Whoever finishes first wins. ${npc.name} will take up any of these.`),
+        h('div', { class: 'row gap-s wrap' }, h('small', { class: 'muted' }, 'Wager:'), D.WAGERS.map((w) => h('button', { class: `pick ${w === wager ? 'sel' : ''}`, disabled: w > max, 'aria-pressed': String(w === wager), onclick: () => { wager = w; render(); } }, w ? `💰 ${w}` : 'Just for fun'))),
+        h('div', { class: 'list' }, D.ideas(s, npc).map((d) => { const p = D.darePrize(s, d); return h('button', { class: 'choice', onclick: () => {
+          if (!D.startDare(s, npc, d, wager)) return;
+          close(); save(s); this.renderHud(); changed();
+          toast(`🎯 Challenge on with ${npc.name}: ${D.dareText(d)}!`, 'good', 4000);
+        } }, h('b', null, `${D.DARE_ICON[d.kind]} ${D.dareText(d)}`), h('small', { class: 'muted' }, `Prize: 💰 ${p.coins}${wager ? ` + 💰 ${wager} wager` : ''} and ${itemInfo(p.item).icon} ${itemInfo(p.item).name}${d.kind === 'race' ? ` · ${D.walkSteps(s.location).get(d.target!)} steps away` : ` · they’ll need about ${d.turns} turns`}`)); })));
+    };
+    const close = openSheet(`🎯 Challenge ${npc.name}`, body);
+    render();
   }
 
   /** Trade with a Rival or Champion: face to face (creatures too) or by courier (coins and items). */

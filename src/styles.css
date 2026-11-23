@@ -606,6 +606,9 @@ button.dex-entry:hover { border-color: var(--ink); }
 .bubble { margin: 0; max-width: 78%; align-self: flex-start; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 14px 14px 14px 4px; background: #fff; }
 .bubble.me { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: #fff0c2; }
 .chat-say { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.dare-row { display: grid; grid-template-columns: 70px 1fr 92px; gap: 8px; align-items: center; margin: 3px 0; }
+.dare-bar { height: 10px; border: 1.5px solid var(--ink); border-radius: 99px; overflow: hidden; background: #fff; }
+.dare-bar i { display: block; height: 100%; }
 .npc-tabs { margin-bottom: 10px; }
 .npc-card { border: 2px solid var(--ink); border-left: 8px solid var(--tc); border-radius: 14px; padding: 10px 12px; background: var(--paper); display: grid; gap: 8px; }
 .npc-head { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: start; }

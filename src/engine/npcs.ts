@@ -11,6 +11,7 @@ import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { NATURES, itemInfo } from '../data/content';
 import type { GameState } from './state';
 import { earnCoins, log, tierOf } from './state';
+import { dareTurn, type Dare } from './dares';
 import { textStoodUp, textTurn, type Chat } from './messenger';
 import { createBattle, type Battle } from './battle';
 import { createCreature, fullRestore, gainXp, recommendPlaybook, type CreatureInst } from './creature';
@@ -43,6 +44,11 @@ export interface NpcRecord {
   swaps?: Record<number, { species: string; nature: string; nickname?: string }>;
   /** A creature of this trainer's (uid) they've said they want. */
   keen?: string;
+  /** A side challenge under way, when the last one ended, and how they've gone (engine/dares.ts). */
+  dare?: Dare;
+  dared?: number;
+  daresWon?: number;
+  daresLost?: number;
 }
 /** A rematch arranged: they're at `at` from turn `from` until the end of turn `until`. */
 export interface Invite { at: string; from: number; until: number; /** You've seen each other there. */ met?: boolean }
@@ -364,7 +370,7 @@ export function npcTurn(s: GameState): string[] {
     // only people you know are worth interrupting for
     if (recordWith(s, npc)) notes.push(`📰 ${text}`);
   }
-  notes.push(...textTurn(s));
+  notes.push(...dareTurn(s), ...textTurn(s));
   if (s.circuitNews) s.circuitNews.length = Math.min(s.circuitNews.length, 20);
   return notes;
 }

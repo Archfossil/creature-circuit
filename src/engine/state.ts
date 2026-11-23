@@ -4,6 +4,7 @@ import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
 import type { BattleLog } from './battleLog';
 import type { NpcRecord } from './npcs';
+import { noteArrival } from './dares';
 import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
@@ -156,6 +157,8 @@ export interface GameState {
   npcNotes?: string[];
   /** The turn a Rival or Champion last texted of their own accord, and how many Merits they've heard about. */
   lastText?: number;
+  /** Running counts for side challenges (engine/dares.ts). */
+  tally?: Record<string, number>;
   npcMerits?: number;
 }
 
@@ -253,6 +256,7 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } 
   }
   // reaching your marked next stop clears the marker
   if (s.waypoint === id) s.waypoint = undefined;
+  if (!opts.wiped) noteArrival(s, id);
   s.location = id;
 }
 

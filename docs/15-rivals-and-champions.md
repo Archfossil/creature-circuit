@@ -91,19 +91,41 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 
 ## Messenger
 
-Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (twelve lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
+Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (fifteen lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
 
 - **They write first:** only people you've met, at most one text every 3 turns from anyone, and every 8 from the same person. It's a rematch offer after a battle, congratulations on a Merit (as soon as there's a free moment), news of their own, a hello, or a treat by courier from someone friendly. Being stood up always gets a text.
 - **Answers:** a kind reply warms them to you. A cheeky one only costs goodwill with a firm friend. Accepting a rematch sets it at the nearest city or town. A question lapses after 6 turns.
 - **You write first:** say hello, bring up the last match, ask where a Champion is (one you haven't met, if there is one), or invite them to a rematch. Once every 4 turns with each person (invitations aside).
 - The last 16 texts with each person are kept.
 
+## Side challenges
+
+Menu → 🥇 Rival Trainers → 🎯 Challenges (`src/engine/dares.ts`). Set one from a conversation, or take up one they text. Whoever finishes first wins.
+
+| Kind | What |
+|---|---|
+| 🏁 Race | Reach a place 10–18 steps off. They set out from about as far away and cover 3 steps a turn (4 if their rating is 50 or more) |
+| 🏟️ Arbiter | Beat an Arbiter neither of you has beaten (about 9–12 turns) |
+| 📖 Codex | See 5 new Codex creatures (7–9 turns) |
+| 🗿 Recruit | Recruit 2 of a type (8) |
+| 🥇 Solo | Knock out 3 creatures with a single creature, over any number of battles (6) |
+| 🌙 Night | Win 4 battles at night (8) |
+| 🍲 Chanko | Eat a Chanko Nabe in 3 different cities (10) |
+| 🌊 Coasts | Visit Iron Coast and Black Sand Cove (10) |
+| 👣 Walk | Walk 25 steps (6) |
+| 🧺 Finds | Find 8 items while exploring (7) |
+| 🛠️ Craft | Craft 3 items (7) |
+| 🍓 Treats | Feed 8 treats (6) |
+
+- **Nothing that hangs on the weather:** a trainer can't choose it. (Night is fine: every even turn is one.)
+- **Ideas:** each person has three every 5 turns: one of the first three kinds and two sillier ones.
+- **Pace:** they finish at the end of a set turn (Champions a turn sooner), shown to the trainer, with a note when they're halfway. A trainer who finishes the same turn wins.
+- **Limits:** one with each person, two at once, and 4 turns between challenges with the same person. Not with someone miffed.
+- **Prize:** 6 + 3 × Tier coins and a Dewberry (a Moonberry for the first three kinds). An optional wager of 5 or 10 coins, if both can cover it, goes to the winner. Losing costs only the wager.
+- Giving up, or a place reached by being sent home, doesn't win it.
+
 ## Balance notes
 
 - [ ] **Win rates** with smart playbooks and swaps (the challenger: an AI with a random team that knows recommended playbooks but never swaps). Rivals are beaten about 85% of the time to turn 25 and 45% after, Champions 50–75% to turn 25 and 20–35% after. A person who swaps and builds a team should do better; watch the late Champions.
 - [ ] **Losing on purpose for Revenge:** each loss costs coins, Morale and a 3-turn rest, but an Energy Tonic (💰 30) after three is worth watching.
 - [ ] **Contenders** who lost to you 5 times still qualify (they're who you've met most). Check that feels earned.
-
-## Still to come
-
-- **Side challenges:** races to a place, first to beat an Arbiter, Codex races and sillier ones.
