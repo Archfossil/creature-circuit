@@ -53,7 +53,8 @@ export const GUIDE: GuideCategory[] = [
         '- Some events only happen by day (trainers, trades, errands) and some only at night (campfires, stars, trouble after dark).',
       ] },
       { id: 'weather', title: 'Weather & seasons', body: [
-        'The weather is rolled at the start of each turn. It can boost or weaken attack types, change Speed, and bring out other creature types when exploring.',
+        'The weather is rolled at the start of each turn. It can boost or weaken attack types, change Speed, and make some creature types more common where they already live.',
+        'Tap a wild node to see its wild types. Nearly every creature there has only those types; now and then a dual type with just its first type native strays in.',
         'Tap the weather pill (top left) to see what today’s weather does.',
       ] },
     ],

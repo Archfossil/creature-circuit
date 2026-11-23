@@ -477,25 +477,36 @@ function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
   return { t: 'encounter', roll: r, stars, rarity, battle };
 }
 
+/** Chance that an encounter is a stray: a dual type with only its first type native. Higher where just one local is about. */
+export const STRAY_CHANCE = 0.1;
+export const STRAY_CHANCE_THIN = 0.25;
+
 /**
- * A wild species for this node. With a `time` of day, only creatures out at that time are picked
- * (diurnal by day, nocturnal by night, crepuscular always). A type with nobody awake is skipped;
- * if nobody at all is awake, the time is ignored.
+ * A wild species for this node. Nearly all are locals: every type they have is one of the area's. The
+ * rest are strays. `boost` (the weather) makes types already native here twice as common and never
+ * brings in others. With a `time` of day, only creatures out at that time are picked (diurnal by day,
+ * nocturnal by night, crepuscular always): a type with nobody awake is skipped, and if nobody at all
+ * is awake, the time is ignored. `types_` replaces the area's types.
  */
 export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost: ElementType[] = [], time?: TimeOfDay, types_?: ElementType[]): Species {
-  const pool = types_ ?? BIOME_TYPES[node.biome];
+  const types = types_ ?? BIOME_TYPES[node.biome];
   const stageCap = stageCapFor(level);
-  const types = TYPES.filter((t) => pool.includes(t) || boost.includes(t));
-  const weightOf = (t: ElementType) => (pool.includes(t) ? 3 : 0) + (boost.includes(t) ? 2 : 0);
-  const listFor = (t: ElementType) => {
-    const all = speciesPool(node.biome, t, rarity, stageCap);
-    return time ? all.filter((x) => isActive(x, time)) : all;
-  };
-  let options = types.map((t) => ({ t, list: listFor(t) })).filter((o) => o.list.length);
-  if (!options.length) options = types.map((t) => ({ t, list: speciesPool(node.biome, t, rarity, stageCap) }));
-  const { list } = weightedPick(options.map((o) => ({ v: o, w: weightOf(o.t) })));
   // prefer the highest stage allowed, but keep some variety
-  return weightedPick(list.map((x) => ({ v: x, w: x.stage === stageCap ? 3 : 1 })));
+  const choose = (list: Species[]) => weightedPick(list.map((x) => ({ v: x, w: x.stage === stageCap ? 3 : 1 })));
+  const byType = (poolFor: (t: ElementType) => Species[]) => {
+    const options = types.map((t) => ({ t, list: poolFor(t) })).filter((o) => o.list.length);
+    return options.length ? choose(weightedPick(options.map((o) => ({ v: o.list, w: boost.includes(o.t) ? 2 : 1 })))) : null;
+  };
+  if (node.biome === 'prism') {
+    const all = (t: ElementType) => speciesPool('prism', t, rarity, stageCap);
+    return byType((t) => all(t).filter((x) => !time || isActive(x, time))) ?? byType(all)!;
+  }
+  const area = areaPool(node.biome, rarity, stageCap, time, types);
+  const locals = new Set([...area.locals.values()].flat()).size;
+  if (area.strays.length && (!locals || Math.random() < (locals === 1 ? STRAY_CHANCE_THIN : STRAY_CHANCE))) {
+    return byType((t) => area.strays.filter((x) => x.types[0] === t))!;
+  }
+  return byType((t) => area.locals.get(t) ?? []) ?? pickSpecies(node, rarity, level, boost, undefined, types_);
 }
 
 // ── Shifting Depths: Explore the Depths ─────────────────────────
@@ -556,13 +567,36 @@ export function depthsSpecies(material: string, rarity: Rarity, level: number): 
 /** Highest evolution stage that can appear at a wild level. */
 export const stageCapFor = (level: number) => (level >= 10 ? 3 : level >= 6 ? 2 : 1);
 
-/** The species a biome can produce for a given type, rarity and stage cap (shared by encounters and the Codex). */
-export function speciesPool(biome: Biome, type: ElementType, rarity: Rarity, stageCap: number): Species[] {
-  let cands = SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity && x.stage <= stageCap);
-  if (!cands.length) cands = SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity);
-  if (!cands.length) cands = SPECIES.filter((x) => x.rarity === 'common' && x.stage === 1);
-  const inBiome = cands.filter((x) => x.biomes.includes(biome));
-  return inBiome.length ? inBiome : cands;
+interface AreaPool { locals: Map<ElementType, Species[]>; strays: Species[] }
+const areaCache = new Map<string, AreaPool>();
+/**
+ * Who can turn up in a biome. Locals, by type (a dual type is under both): every type is native, from
+ * those that list this biome, or for a type with nobody awake, from all who'd fit. Strays: dual types
+ * listing this biome whose first type is native and second isn't.
+ */
+function areaPool(biome: Biome, rarity: Rarity, stageCap: number, time?: TimeOfDay, types: ElementType[] = BIOME_TYPES[biome]): AreaPool {
+  const key = `${biome}|${rarity}|${stageCap}|${time ?? ''}|${types.join()}`;
+  const hit = areaCache.get(key);
+  if (hit) return hit;
+  const out = SPECIES.filter((x) => x.rarity === rarity && x.stage <= stageCap && (!time || isActive(x, time)));
+  const native = out.filter((x) => x.types.every((t) => types.includes(t)));
+  const locals = new Map(types.map((t) => {
+    const all = native.filter((x) => x.types.includes(t));
+    const listed = all.filter((x) => x.biomes.includes(biome));
+    return [t, listed.length ? listed : all] as const;
+  }));
+  const strays = out.filter((x) => types.includes(x.types[0]) && x.biomes.includes(biome) && !native.includes(x));
+  const pool = { locals, strays };
+  areaCache.set(key, pool);
+  return pool;
+}
+
+/** The species of a given type (locals of it, and strays led by it) a biome can produce at a rarity and stage cap (shared by encounters and the Codex). */
+export function speciesPool(biome: Biome, type: ElementType, rarity: Rarity, stageCap: number, time?: TimeOfDay): Species[] {
+  // the Rainbow Plains: anyone led by the day's type
+  if (biome === 'prism') return SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity && x.stage <= stageCap);
+  const area = areaPool(biome, rarity, stageCap, time);
+  return [...(area.locals.get(type) ?? []), ...area.strays.filter((x) => x.types[0] === type)];
 }
 
 // ── Creature Codex helpers ──────────────────────────────────────
@@ -581,7 +615,7 @@ export function encounterSpots(speciesId: string): Spot[] {
     if (node.kind !== 'wild' || sp.rarity === 'legendary') continue;
     if (!BIOME_TYPES[node.biome].includes(sp.types[0])) continue;
     if (node.biome === 'prism' && sp.rarity === 'common') continue; // the Rainbow Plains bump every Common up to Prime
-    const cap = [1, 2, 3].find((c) => speciesPool(node.biome, sp.types[0], sp.rarity, c).includes(sp));
+    const cap = [1, 2, 3].find((c) => (['day', 'night'] as const).some((t) => speciesPool(node.biome, sp.types[0], sp.rarity, c, t).includes(sp)));
     if (cap) out.push({ node, minStage: cap });
   }
   return out;
@@ -652,7 +686,7 @@ export function hallBattle(s: GameState): { name: string; battle: Battle } | nul
   const lvl = Math.max(1, tierBandLevel(tier) + 1);
   const size = Math.max(1, Math.min(s.roster.filter((c) => !c.ko).length, tier >= 3 ? 3 : 2));
   const cityType = CITIES[node.id]?.type;
-  const team = Array.from({ length: size }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl, cityType ? [cityType] : []).id, lvl));
+  const team = Array.from({ length: size }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl, cityType ? [cityType] : [], undefined, cityType ? [...new Set([...BIOME_TYPES[node.biome], cityType])] : undefined).id, lvl));
   for (const c of team) autoSpend(c, false);
   const name = pick(HALL_TRAINERS);
   const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });

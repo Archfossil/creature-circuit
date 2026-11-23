@@ -175,6 +175,6 @@ export interface WeatherDef {
   typeBoost?: Partial<Record<ElementType, number>>; // flat damage mod for that attack type
   evasion?: number;
   speed?: number;
-  encounter?: ElementType[]; // more likely to appear
+  encounter?: ElementType[]; // twice as common where they're native (never brought in from elsewhere)
   fx?: 'rain' | 'snow' | 'storm' | 'fog' | 'heat' | 'aurora' | 'petals' | 'wind' | 'none';
 }

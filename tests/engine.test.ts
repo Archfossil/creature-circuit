@@ -936,6 +936,29 @@ describe('day & night', () => {
     // every type keeps someone out at each time of day, so no type vanishes entirely
     for (const time of ['day', 'night'] as const) expect(SPECIES.filter((sp) => isActive(sp, time)).length).toBeGreaterThan(100);
   });
+  it('an area’s encounters are nearly all locals, whatever the weather, and strays share their first type', () => {
+    const biomes = [...new Set(MAP_NODES.filter((n) => n.kind === 'wild' && n.biome !== 'prism').map((n) => n.biome))];
+    const weathers = Object.values(WEATHER).map((w) => w.encounter ?? []);
+    let strays = 0, total = 0;
+    for (const biome of biomes) {
+      const node = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === biome)!;
+      const T = BIOME_TYPES[biome];
+      for (const boost of weathers) for (const time of ['day', 'night'] as const) for (const rarity of ['common', 'prime', 'apex'] as const) for (let i = 0; i < 12; i++) {
+        const sp = W.pickSpecies(node, rarity, 4, boost, time);
+        expect(T, `${sp.name} in ${biome}`).toContain(sp.types[0]);
+        expect(sp.rarity).toBe(rarity);
+        total++;
+        if (!sp.types.every((t) => T.includes(t))) strays++;
+      }
+    }
+    expect(strays / total).toBeLessThan(0.17);
+    expect(strays).toBeGreaterThan(0);
+  });
+  it('weather makes a native type more common', () => {
+    const node = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === 'badlands')!;
+    const rate = (boost: ('rock' | 'grass')[]) => { let n = 0; for (let i = 0; i < 3000; i++) if (W.pickSpecies(node, 'common', 1, boost, 'day').types.includes('rock')) n++; return n / 3000; };
+    expect(rate(['rock'])).toBeGreaterThan(rate([]) + 0.04);
+  });
   it('wild encounters only bring out creatures awake at that time', () => {
     for (const node of MAP_NODES.filter((n) => n.kind === 'wild')) {
       for (const time of ['day', 'night'] as const) {
@@ -2414,7 +2437,7 @@ describe('Creature Codex', () => {
   it('listed spots really can produce the species', () => {
     for (const sp of SPECIES.filter((x) => x.rarity !== 'legendary')) {
       for (const { node, minStage } of W.encounterSpots(sp.id)) {
-        expect(W.speciesPool(node.biome, sp.types[0], sp.rarity, minStage)).toContain(sp);
+        expect((['day', 'night'] as const).some((t) => W.speciesPool(node.biome, sp.types[0], sp.rarity, minStage, t).includes(sp)), `${sp.id} ${node.name}`).toBe(true);
       }
     }
   });
