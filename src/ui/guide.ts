@@ -114,7 +114,7 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'battlelog', title: 'Battle Log', body: [
         'Tap 📜 Log at the top of a battle (or press L) to see everything so far, round by round: each move used, every accuracy and damage roll with the numbers behind it, statuses, buffs, Clashes and coin flips.',
-        'After a battle, ☰ Menu → Last Battle Log shows it again (until you reload the page).',
+        'After a battle, ☰ Menu → Last Battle Log shows it again, with the result. Each trainer keeps their own in the save until their next battle, even after a reload. In a duel, both trainers get a log told from their own side.',
       ] },
       { id: 'types', title: 'Types', body: [
         'Each Elemental move shows how it lands on the current opponent: 2× Super effective, ½ Resisted, No effect…',

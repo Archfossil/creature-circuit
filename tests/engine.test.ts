@@ -8,6 +8,7 @@ import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
+import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
@@ -1940,6 +1941,35 @@ describe('AI move variety', () => {
     const sets = new Set(Array.from({ length: 20 }, () => createCreature('zapup', 8).playbook.slice().sort().join()));
     expect(sets.size).toBeGreaterThan(1);
     for (const c of Array.from({ length: 10 }, () => createCreature('zapup', 8))) expect(fits(energy(c), c.playbook)).toBe(true);
+  });
+});
+
+describe('battle log', () => {
+  it('tells a duel from each trainer’s own side, and is kept in each save', () => {
+    const a = newGame('A', 'balanced', 'mangrove', 'puddlit', '#000'), d = newGame('D', 'balanced', 'mangrove', 'zapup', '#111');
+    d.location = a.location;
+    const bt = I.startChallenge(a, d)!;
+    const mine: BattleLog = { title: 'm', turn: 1, entries: [] }, theirs: BattleLog = { title: 't', turn: 1, entries: [] };
+    const who = (side: 0 | 1) => bt.sides[side].team[bt.sides[side].active].species;
+    for (let i = 0; i < 200 && !bt.over; i++) {
+      const ev = bt.needSwap ? sendIn(bt, bt.sides[0].team.findIndex((c) => !c.ko)) : resolveRound(bt, { kind: 'move', move: bt.sides[0].team[bt.sides[0].active].playbook[0] });
+      for (const e of ev) { logBattleEvent(mine, bt, e, who); logBattleEvent(theirs, bt, e, who, 1); }
+    }
+    expect(bt.over).toMatch(/win|lose/);
+    expect(mine.result).toBe(bt.over);
+    expect(theirs.result).toBe(bt.over === 'win' ? 'lose' : 'win');
+    const hits = (l: BattleLog) => l.entries.filter((e) => / took \d+ damage/.test(e.text)).slice(-5).map((e) => e.side);
+    expect(hits(mine).length).toBeGreaterThan(0);
+    expect(hits(theirs)).toEqual(hits(mine).map((x) => (x === 0 ? 1 : 0)));
+    a.lastBattle = mine; d.lastBattle = theirs;
+    const back = JSON.parse(JSON.stringify(newMatch([a, d])));
+    expect(back.players.map((p: typeof a) => migrate(p)!.lastBattle)).toEqual([mine, theirs]);
+  });
+  it('keeps only the latest lines of a marathon', () => {
+    const l: BattleLog = { title: '', turn: 1, entries: [] };
+    for (let i = 0; i < BATTLE_LOG_MAX + 20; i++) addLine(l, { round: i, text: `${i}` });
+    expect(l.entries).toHaveLength(BATTLE_LOG_MAX);
+    expect(l.entries[BATTLE_LOG_MAX - 1].round).toBe(BATTLE_LOG_MAX + 19);
   });
 });
 

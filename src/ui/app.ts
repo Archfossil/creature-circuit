@@ -17,6 +17,7 @@ import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, type FeedItem, type ServerMsg } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
+import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapPreview, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { nameOf, speciesOf, abilityOf, instinctIdOf, maxHealth, maxVitality, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
@@ -29,9 +30,6 @@ import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/move
 import { ABILITIES, NATURES, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
-
-/** One line of the 📜 Battle Log: what happened (`text`), the rolls and maths behind it (`detail`), and whose side it was. */
-interface BattleLogEntry { round: number; text: string; tone?: string; detail?: string; side?: 0 | 1 }
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3', '#a51d2d', '#1f3a93'];
 /** Rarity die faces (placeholders until the custom die-star icons arrive). */
@@ -85,7 +83,10 @@ export class App {
   busy = false;
   selected: string | null = null;
   /** The current (or most recent) battle's log, for the 📜 Battle Log. Kept in memory only, not saved. */
-  lastBattleLog: { title: string; entries: BattleLogEntry[] } | null = null;
+  /** The battle being fought or watched right now (null between battles). Finished ones: GameState.lastBattle. */
+  liveLog: BattleLog | null = null;
+  /** Online: the last battle this browser watched (this session only). */
+  watchedLog: BattleLog | null = null;
 
   constructor(root: HTMLElement) {
     this.engine = new Engine(root);
@@ -417,7 +418,7 @@ export class App {
     useMatchSlot('hotseat');
     setActiveMatch(null);
     rememberRoom(null);
-    this.watching = false; this.activeKey = '';
+    this.watching = false; this.activeKey = ''; this.watchedLog = null;
     this.world.setRivals([]);
     this.title();
   }
@@ -946,7 +947,7 @@ export class App {
         if (!ok) { toast(`${b.trainer.name} declined the challenge.`, 'info'); return; }
         const battle = I.startChallenge(a, b);
         if (!battle) { toast(I.challengeProblem(a, b) ?? 'The duel can’t start.', 'bad'); return; }
-        await this.runBattle(battle, { kind: 'rival', intro: `${b.trainer.name} accepts your challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
+        await this.runBattle(battle, { kind: 'rival', rival: b, intro: `${b.trainer.name} accepts your challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
         for (const t of I.settleChallenge(a, b, battle, w)) toast(t, 'info', 4000);
         save(a);
         this.world.setPawnAt(a.location); this.world.focus(a.location, true);
@@ -1436,7 +1437,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; watch?: AsyncQueue<FeedItem>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; watch?: AsyncQueue<FeedItem>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -1475,7 +1476,7 @@ export class App {
       b.arena ? h('span', { class: 'chip arena', style: `--tc:${TYPE_COLOR[arenaType!]}` }, '🏟 ', CITIES[ctx.city!].arena.name, ` · Tier ${b.arena.tier}`) : null,
       ringTimer,
       h('span', { class: 'chip' }, `Round `, h('b', { class: 'rnd' }, '1')),
-      h('button', { class: 'chip log-btn', title: 'Battle Log: every move, roll and hit so far (L)', onclick: () => this.battleLogSheet() }, '📜 Log'),
+      h('button', { class: 'chip log-btn', title: 'Battle Log: every move, roll and hit so far (L)', onclick: () => this.battleLogSheet(blog) }, '📜 Log'),
       b.sides[0].buff && Object.keys(b.sides[0].buff).length ? h('span', { class: 'chip good', title: `Chanko Nabe: ${W.buffText(b.sides[0].buff)} for your team this battle` }, '🍲 ', W.buffText(b.sides[0].buff)) : null);
     panel.append(header, plates[1], h('div', { class: 'battle-stack' }, plates[0], h('div', { class: 'battle-bottom' }, logLine, controls)));
     this.ui.replaceChildren(panel);
@@ -1520,53 +1521,26 @@ export class App {
     const whoOn = (side: 0 | 1) => nameOf(b.sides[side].team.find((x) => x.uid === disp[side].uid) ?? activeOf(b.sides[side]));
 
     // ── Battle Log: every line of the fight, with the full rolls and maths, to look back on ──
-    const blog: BattleLogEntry[] = [];
-    this.lastBattleLog = { title: ctx.intro, entries: blog };
-    const note = (text: string, opts: { tone?: string; detail?: string; side?: 0 | 1 } = {}) => blog.push({ round: b.round, text, ...opts });
+    // Once the fight is under way it becomes each trainer's last battle, kept in their save (a duel: both
+    // trainers, each from their own side). Spectators only keep it for this session.
+    const blog: BattleLog = { title: ctx.intro, turn: s.turn, entries: [] };
+    const rivalLog: BattleLog | null = ctx.rival && !ctx.watch ? { title: `${s.trainer.name} challenged you to a duel!`, turn: ctx.rival.turn, entries: [] } : null;
+    this.liveLog = blog;
+    const note = (text: string, opts: { tone?: string } = {}) => addLine(blog, { round: b.round, text, ...opts });
     note(ctx.intro, { tone: 'info' });
+    if (rivalLog) addLine(rivalLog, { round: b.round, text: rivalLog.title, tone: 'info' });
+    const keepLogs = () => {
+      if (ctx.watch) { this.watchedLog = blog; return; }
+      s.lastBattle = blog;
+      if (ctx.rival && rivalLog) ctx.rival.lastBattle = rivalLog;
+    };
+    const logEvent = (e: BEvent) => {
+      logBattleEvent(blog, b, e, whoOn);
+      if (rivalLog) logBattleEvent(rivalLog, b, e, whoOn, 1);
+    };
     // a Chanko Nabe kicks in: say so, and keep a chip in the header for the whole battle
     const nabe = !ctx.watch && s.hotpot && b.sides[0].buff && Object.keys(b.sides[0].buff).length ? `${CITIES[s.hotpot.city]?.hotpot.name ?? 'Chanko Nabe'}: ${W.buffText(b.sides[0].buff)} this battle` : null;
     if (nabe) { note(`🍲 ${nabe}.`, { tone: 'good' }); toast(`🍲 ${nabe}!`, 'good', 3000); }
-    const KIND_TEXT: Record<string, string> = { physical: 'Physical · Power vs Armor', elemental: 'Elemental · Focus vs Ward', support: 'Support', swap: 'Swap Move' };
-    const logEvent = (e: BEvent) => {
-      switch (e.t) {
-        case 'say': note(e.text, { tone: e.tone }); break;
-        case 'arena': note(e.text, { tone: 'bad' }); break;
-        case 'ring': note(`Plateau: ${e.left} of ${e.total} rounds left.`, { tone: e.left <= 2 ? 'bad' : undefined }); break;
-        case 'use': note(e.kind === 'swap' ? `${whoOn(e.side)} swaps in with ${e.name}!` : `${whoOn(e.side)} used ${e.name}.`, { side: e.side, detail: [e.type ? TYPE_LABEL[e.type] : null, KIND_TEXT[e.kind]].filter(Boolean).join(' · ') }); break;
-        case 'roll': {
-          const rolled = e.natural ?? e.value;
-          if (e.die === 20) { note(`${e.label}: rolled ${rolled}. ${e.hit ? 'It stays to fight.' : 'It loses interest…'}`, { side: e.side }); break; }
-          const mods = e.mods?.length ? ` ${partsText(e.mods)} = ${e.value}` : '';
-          const verdict = e.crit ? 'Critical hit! (double damage)' : e.hit ? 'Hit!' : 'Miss.';
-          note(`${whoOn(e.side)} · ${e.label}: ${verdict}`, { side: e.side, tone: e.hit ? undefined : 'bad', detail: `d${e.die} rolled ${rolled}${mods}, needed ${e.need}+${e.label === 'Accuracy' ? ` (Evasion ${e.need})` : ''}.` });
-          break;
-        }
-        case 'clash':
-          note(`Clash! Speeds tied: you rolled ${e.rolls[0]} (d${e.dice[0]}), the foe rolled ${e.rolls[1]} (d${e.dice[1]}).`, { detail: e.loser === null ? 'Even clash: no damage, and a coin flip decided turn order.' : `${e.loser === 0 ? 'You' : 'The foe'} rolled lower: ${e.dmg} damage (the difference) and acted second.` });
-          if (e.coin && e.first !== undefined) note(`💰 Coin flip: ${whoOn(e.first)} won and acts first.`, { side: e.first, tone: e.first === 0 ? 'good' : 'bad' });
-          break;
-        case 'tired': note(`${whoOn(e.side)} · Fatigue check: ${e.fail ? 'catching breath!' : 'kept going.'}`, { side: e.side, tone: e.fail ? 'bad' : undefined, detail: `d10 rolled ${e.value} vs Fatigue ${e.fatigue} (${e.fail ? 'at or under' : 'over'} it).` }); break;
-        case 'damage': {
-          const target = b.sides[e.side].team.find((x) => x.uid === e.snap.uid);
-          const eff = e.eff >= 2 ? ' Super effective!' : e.eff > 0 && e.eff < 1 ? ' Not very effective.' : '';
-          const k = e.calc;
-          const chainText = (i: number) => { const ch = k?.cascade?.[i]; return ch ? ` (cascade d${ch.die}: ${ch.rolls.join(' + ')})` : ''; };
-          const math = k ? `${k.dice.length ? `${k.dice.map((d, i) => `d${d} rolled ${k.rolls[i]}${chainText(i)}`).join(' + ')} ` : ''}${partsText(k.parts)}`.trim().replace(/^\+ /, '') + ` = ${k.raw}${k.mult !== 1 ? ` × ${k.mult} type` : ''}${k.crit ? ' × 2 crit' : ''} → ${k.total} damage.` : '';
-          const left = target ? ` ${nameOf(target)}: Health ${e.snap.ko ? 'KO' : `${e.snap.health}/${maxHealth(target)}`}, Vitality ${e.snap.vitality}/${maxVitality(target)}.` : '';
-          note(`${whoOn(e.side)} took ${e.amount} damage${e.crit ? ' (critical)' : ''}.${eff}`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: `${math}${left}`.trim() || undefined });
-          break;
-        }
-        case 'heal': if (e.amount > 0) note(`${whoOn(e.side)} recovered ${e.amount} Health.`, { side: e.side, tone: 'good' }); break;
-        case 'status': note(`${whoOn(e.side)} is afflicted with ${STATUS_INFO[e.status].icon} ${STATUS_INFO[e.status].name}.`, { side: e.side, tone: e.side === 0 ? 'bad' : 'good', detail: STATUS_INFO[e.status].text }); break;
-        case 'buff': note(`${whoOn(e.side)}: ${e.text}.`, { side: e.side }); break;
-        case 'zero': if (e.bonus > 0) note(`⌖ ${whoOn(e.side)} is zeroing in: +${e.bonus} to its next accuracy roll.`, { side: e.side, detail: `A miss adds Zeroing In (up to +${ZERO_IN_MAX} over several misses). The next accuracy roll uses it up, and it's lost if the creature leaves the field.` }); break;
-        case 'send': { const c = b.sides[e.side].team.find((x) => x.uid === e.snap.uid); if (c) note(`${e.side === 0 ? 'You send' : `${b.sides[1].name} sends`} in ${nameOf(c)} (Lv ${c.level}).`, { side: e.side }); break; }
-        case 'xp': { const c = b.sides[0].team.find((x) => x.uid === e.uid); if (c) note(e.reason === 'ko' ? `${nameOf(c)} gained ${e.amount} XP for knocking out ${e.foe ?? 'its foe'}.` : `${nameOf(c)} gained ${e.amount} XP for battling${e.bonus ? ` (incl. +${e.bonus} trainer battle bonus)` : ''}.`, { tone: 'good', detail: e.levels ? `Reached Lv ${c.level}!` : undefined }); break; }
-        case 'end': note(e.result === 'win' ? 'Victory!' : e.result === 'lose' ? 'Your team is out of creatures.' : e.result === 'escaped' ? 'Got away safely.' : 'The foe fled.', { tone: e.result === 'win' || e.result === 'escaped' ? 'good' : 'bad' }); break;
-        default: break; // 'ko' is already announced by a 'say'
-      }
-    };
 
     bv.trainerHop(0); bv.trainerHop(1);
     await Promise.all([bv.setCreature(0, activeOf(b.sides[0]).species), bv.setCreature(1, activeOf(b.sides[1]).species)]);
@@ -1574,6 +1548,7 @@ export class App {
 
     let watchedEnd: Battle['over'] = null;
     const play = async (events: BEvent[]) => {
+      keepLogs();
       if (!ctx.watch) this.feed({ kind: 'battle-events', events });
       for (const e of events) {
         if (e.t === 'end') watchedEnd = e.result;
@@ -1725,7 +1700,7 @@ export class App {
           else if (ev.key === 'Enter') { ev.preventDefault(); const id = readoutFor; readoutFor = null; act({ kind: 'move', move: id }); }
           return;
         }
-        if (ev.key.toLowerCase() === 'l') { this.battleLogSheet(); return; }
+        if (ev.key.toLowerCase() === 'l') { this.battleLogSheet(blog); return; }
         if (ctx.watch) { if (ev.key.toLowerCase() === 't') showTypes(); return; } // spectators: the type chart and log only
         if (!controls.querySelector('.move-grid')) return;
         const me = activeOf(b.sides[0]);
@@ -1739,6 +1714,7 @@ export class App {
       addEventListener('keydown', onKey);
       const finish = (r: Battle['over']) => {
         removeEventListener('keydown', onKey);
+        this.liveLog = null;
         // Teamwork earned from swaps this battle
         if (!ctx.watch && b.teamworkGains?.length) toast(`🤝 Teamwork grew: ${b.teamworkGains.map(riseText).join(' · ')}.`, 'good', 6000);
         resolve(r);
@@ -3121,20 +3097,25 @@ export class App {
     openSheet('Trainer ID', body, { wide: true });
   }
 
-  /** The 📜 Battle Log: every move, roll, hit and status of the current (or last) battle, grouped by round. */
-  battleLogSheet() {
-    const lg = this.lastBattleLog;
-    if (!lg) { toast('No battle yet this session.', 'info'); return; }
+  /** Whose saved log this screen shows: the trainer taking their turn, or (watching online) this browser's own. */
+  logOwner(): GameState | null { return this.watching ? activeMatchOf()?.players[this.mySeat()] ?? null : this.s; }
+
+  /** The 📜 Battle Log: every move, roll, hit and status of a battle, grouped by round. */
+  battleLogSheet(lg: BattleLog) {
+    const live = lg === this.liveLog;
+    const outcome = lg.result === 'win' ? 'Won' : lg.result === 'lose' ? 'Lost' : lg.result === 'escaped' ? 'Ran away' : lg.result === 'fled' ? 'The foe fled' : 'Unfinished';
     const rounds = new Map<number, BattleLogEntry[]>();
     for (const e of lg.entries) { if (!rounds.has(e.round)) rounds.set(e.round, []); rounds.get(e.round)!.push(e); }
     const body = h('div', { class: 'blog' },
+      live ? null : h('p', null, h('b', null, `Turn ${lg.turn} · ${outcome}`), ` · ${lg.title}`),
       h('p', { class: 'small muted' }, 'Every move, roll and hit, with the numbers behind them. ', h('span', { class: 'blog-you' }, 'Your side'), ' · ', h('span', { class: 'blog-foe' }, 'the foe'), '.'),
       [...rounds.entries()].map(([r, list]) => h('section', { class: 'blog-round' },
         h('h4', null, r === 0 ? 'Start' : `Round ${r}`),
         h('ol', null, list.map((e) => h('li', { class: `blog-line ${e.tone ?? ''} ${e.side === 0 ? 'you' : e.side === 1 ? 'foe' : ''}` },
           h('span', null, e.text), e.detail ? h('small', null, e.detail) : null))))));
     openSheet(`📜 Battle Log`, body, { wide: true });
-    // open at the latest line
+    // during a battle, open at the latest line; afterwards, read it from the start
+    if (!live) return;
     requestAnimationFrame(() => { const sc = body.closest('.sheet-body') as HTMLElement | null; if (sc) sc.scrollTop = sc.scrollHeight; });
   }
 
@@ -3182,13 +3163,15 @@ export class App {
   }
 
   menu() {
+    const mine = this.logOwner();
     const close = openSheet('Menu', h('div', null, this.soundControls(), h('div', { class: 'tiles' },
       tile('📇', 'Trainer ID', `${this.s.trainer.name} of ${NODE_BY_ID[this.s.trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
       tile('📖', 'Creature Codex', `${this.s.dex.caught.length} recruited · ${this.s.dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
       tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
-      this.lastBattleLog ? tile('⚔️', 'Last Battle Log', 'Every move, roll and hit from your last battle.', '', () => { close(); this.battleLogSheet(); }) : null,
+      mine?.lastBattle ? tile('⚔️', 'Last Battle Log', `Turn ${mine.lastBattle.turn}: every move, roll and hit from ${mine.trainer.name}’s last battle.`, '', () => { close(); this.battleLogSheet(mine.lastBattle!); }) : null,
+      this.watchedLog ? tile('👀', 'Last Watched Battle', 'The log of the last battle you watched (until you reload the page).', '', () => { close(); this.battleLogSheet(this.watchedLog!); }) : null,
       this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'The full guide, by topic: basics, creatures, battles, places, multiplayer.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound and volume, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),

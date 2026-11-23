@@ -96,6 +96,7 @@ Each creature the player owns is saved as an instance of a species:
 
 The save also holds:
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`. A retraining course adds `retrain: { nature?, ability?, instinct? }` (the ids it changes to), earns no XP, and lasts until the next morning.
+- **`lastBattle`** (optional): the log of this trainer's latest battle, as `{ title, turn, result?, entries }` (see `engine/battleLog.ts`). Saved copies leave it out.
 - **`trainer.look`:** the trainer's customisation: skin, hair, hair style, hat, jacket and pants.
 
 A **hotseat match** is saved under its own key as `{ version, players: GameState[], current, rolls }`:

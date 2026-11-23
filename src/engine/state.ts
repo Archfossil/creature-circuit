@@ -2,6 +2,7 @@ import type { StatKey } from '../data/schema';
 import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
+import type { BattleLog } from './battleLog';
 import { createCreature, speciesOf, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
@@ -144,6 +145,8 @@ export interface GameState {
   /** The node this trainer has marked as where they mean to go next (a reminder between turns). Only shown
    *  on this trainer's own screen; reaching it clears it (moveTrainer). */
   waypoint?: string;
+  /** The 📜 log of this trainer's latest battle, to look back on (replaced by the next one; left out of saved copies). */
+  lastBattle?: BattleLog;
 }
 
 const KEY = 'creature-circuit-save-v1';
@@ -383,7 +386,7 @@ export function saveCopy(kind: SaveKind, data: GameState | Match, name?: string)
   const copy: SavedCopy = {
     id: Math.random().toString(36).slice(2) + Date.now().toString(36), kind, savedAt: Date.now(),
     name: (name ?? '').trim().slice(0, 40) || defaultCopyName(kind, data),
-    summary: describeSave(kind, data), data: JSON.parse(JSON.stringify(data)),
+    summary: describeSave(kind, data), data: JSON.parse(JSON.stringify(data, (k, v) => (k === 'lastBattle' ? undefined : v))), // logs would crowd the library's storage
   };
   return writeCopies([copy, ...list]) ?? copy;
 }
