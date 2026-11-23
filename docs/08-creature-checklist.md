@@ -10,11 +10,11 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 
 | | Count |
 |---|---|
-| Creatures in the game | 386 |
+| Creatures in the game | 401 |
 | Hand-made (design done, art to do) | 53 |
-| Final art delivered | 0 of 386 |
-| **Placeholders to replace** | **333** |
-| Families (3 stages) to design | 100 of 108 |
+| Final art delivered | 0 of 401 |
+| **Placeholders to replace** | **348** |
+| Families (3 stages) to design | 105 of 113 |
 | Legendaries to design | 33 of 36 |
 
 ## How to use this list
@@ -22,7 +22,7 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 - **Design ☐**: the creature has a real name, concept, flavour text and stat direction. Tick ☑ when approved.
 - **Art ☐**: the creature has final art (portrait and model or sprite). Tick ☑ when delivered. No creature has final art yet: every one, hand-made or placeholder, uses the procedural model.
 - Hand-made creatures start with Design ☑ because they already have a real name, look and flavour text.
-- **Types, biomes, Out by, Ability, Instinct and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
+- **Types, biomes, Out by, Ability, Instinct and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day; with Rock, Steel or Water in it, or a mix, it is out at any time) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
 - **Instinct** is the creature's passive in battle (it fires on its own: when it takes the field, loses a heart, is hit, and so on). Every stage of a family shares one. All 48, with their exact rules and who has them: [14 · Instinct Checklist](./14-instinct-checklist.md).
 - **Swapping one in (developers):** add the species in `src/data/species.ts`, then point its slot in `HANDMADE_SLOTS` or `HANDMADE_LEGENDARIES` (`src/data/roster.ts`) at it. The placeholder disappears; regenerate this file.
 - A new Legendary also needs a roaming node on the map (`src/data/map.ts`).
@@ -35,10 +35,10 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 | 2 | [Charm](#charm) | ☑ | ☐ | ☐ | ☐ | Fey Grove, Forest, Meadow |
 | 3 | [Electric](#electric) | ☑ | ☐ | ☐ | ☐ | Badlands, Road, Desert |
 | 4 | [Fire](#fire) | ☑ | ☐ | ☐ | ☐ | Volcanic, Desert |
-| 5 | [Grass](#grass) | ☑ | ☐ | ☐ | ☐ | Forest, Meadow, Swamp |
-| 6 | [Rock](#rock) | ☑ | ☐ | ☐ | ☐ | Canyon, Mountain, Badlands |
+| 5 | [Grass](#grass) | ☑ | ☐ | ☐ | ☐ | Forest, Meadow, Swamp, Fey Grove |
+| 6 | [Rock](#rock) | ☑ | ☐ | ☐ | ☐ | Canyon, Mountain, Badlands, Volcanic |
 | 7 | [Steel](#steel) | ☑ | ☐ | ☐ | ☐ | Coast, Road, Mountain |
-| 8 | [Water](#water) | ☑ | ☐ | ☐ | ☐ | Lake, River, Swamp, Coast |
+| 8 | [Water](#water) | ☑ | ☐ | ☐ | ☐ | Lake, River, Swamp, Coast, Tundra |
 | 9 | [Astral / Charm](#astral--charm) | ☐ | ☐ | ☐ | ☐ | Cloud |
 | 10 | [Astral / Electric](#astral--electric) | ☐ | ☐ | ☐ | ☐ | Cloud |
 | 11 | [Astral / Fire](#astral--fire) | ☐ | ☐ | ☐ | ☑ | Mountain, Tundra, Cloud |
@@ -78,7 +78,7 @@ Spawns in: Tundra, Mountain.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Twinkit** | `twinkit` | Astral | Nocturnal | Star Seeker | Starlit Gaze | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
 | Common | 2 | **Lumenox** | `lumenox` | Astral | Nocturnal | Star Seeker | Starlit Gaze | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
-| Common | 3 | **Polarion** | `polarion` | Astral / Water | Nocturnal | Star Seeker | Starlit Gaze | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
+| Common | 3 | **Polarion** | `polarion` | Astral / Water | Day & night | Star Seeker | Starlit Gaze | Sig: Borealis Lance | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Stelmite** | `ph-astral-mono-prime-1` | Astral | Nocturnal | Star Seeker | Comet Tail | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Stelling** | `ph-astral-mono-prime-2` | Astral | Nocturnal | Star Seeker | Comet Tail | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Stelarch** | `ph-astral-mono-prime-3` | Astral | Nocturnal | Star Seeker | Comet Tail | — | Placeholder | ☐ | ☐ |
@@ -112,7 +112,7 @@ Spawns in: Badlands, Road, Desert.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Zapup** | `zapup` | Electric | Diurnal | Trailblazer | Static Field | Sig: Stormcall | Hand-made | ☑ | ☐ |
 | Common | 2 | **Voltusk** | `voltusk` | Electric | Diurnal | Trailblazer | Static Field | Sig: Stormcall | Hand-made | ☑ | ☐ |
-| Common | 3 | **Stormhound** | `stormhound` | Electric / Steel | Diurnal | Trailblazer | Static Field | Sig: Stormcall | Hand-made | ☑ | ☐ |
+| Common | 3 | **Stormhound** | `stormhound` | Electric / Steel | Day & night | Trailblazer | Static Field | Sig: Stormcall | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Zapmite** | `ph-electric-mono-prime-1` | Electric | Diurnal | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Zapling** | `ph-electric-mono-prime-2` | Electric | Diurnal | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Zaparch** | `ph-electric-mono-prime-3` | Electric | Diurnal | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
@@ -129,7 +129,7 @@ Spawns in: Volcanic, Desert.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Cindercub** | `cindercub` | Fire | Diurnal | Forager | Eruption | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Common | 2 | **Blazmane** | `blazmane` | Fire | Diurnal | Forager | Eruption | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
-| Common | 3 | **Pyrothane** | `pyrothane` | Fire / Rock | Diurnal | Forager | Eruption | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
+| Common | 3 | **Pyrothane** | `pyrothane` | Fire / Rock | Day & night | Forager | Eruption | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Pyromite** | `ph-fire-mono-prime-1` | Fire | Diurnal | Baby-Doll Eyes | Sunbather | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Pyroling** | `ph-fire-mono-prime-2` | Fire | Diurnal | Baby-Doll Eyes | Sunbather | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Pyroarch** | `ph-fire-mono-prime-3` | Fire | Diurnal | Baby-Doll Eyes | Sunbather | — | Placeholder | ☐ | ☐ |
@@ -140,13 +140,13 @@ Spawns in: Volcanic, Desert.
 
 ## Grass
 
-Spawns in: Forest, Meadow, Swamp.
+Spawns in: Forest, Meadow, Swamp, Fey Grove.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Sproutle** | `sproutle` | Grass | Diurnal | Forager | Deep Roots | Sig: Overgrowth | Hand-made | ☑ | ☐ |
 | Common | 2 | **Thornback** | `thornback` | Grass | Diurnal | Forager | Deep Roots | Sig: Overgrowth | Hand-made | ☑ | ☐ |
-| Common | 3 | **Redwarden** | `redwarden` | Grass / Rock | Diurnal | Forager | Deep Roots | Sig: Overgrowth | Hand-made | ☑ | ☐ |
+| Common | 3 | **Redwarden** | `redwarden` | Grass / Rock | Day & night | Forager | Deep Roots | Sig: Overgrowth | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Sprigmite** | `ph-grass-mono-prime-1` | Grass | Diurnal | Star Seeker | Spore Puff | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Sprigling** | `ph-grass-mono-prime-2` | Grass | Diurnal | Star Seeker | Spore Puff | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Sprigarch** | `ph-grass-mono-prime-3` | Grass | Diurnal | Star Seeker | Spore Puff | — | Placeholder | ☐ | ☐ |
@@ -157,7 +157,7 @@ Spawns in: Forest, Meadow, Swamp.
 
 ## Rock
 
-Spawns in: Canyon, Mountain, Badlands.
+Spawns in: Canyon, Mountain, Badlands, Volcanic.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -191,13 +191,13 @@ Spawns in: Coast, Road, Mountain.
 
 ## Water
 
-Spawns in: Lake, River, Swamp, Coast.
+Spawns in: Lake, River, Swamp, Coast, Tundra.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Common | 1 | **Puddlit** | `puddlit` | Water | Day & night | Quick Step | Rain Dancer | Sig: Riptide | Hand-made | ☑ | ☐ |
 | Common | 2 | **Marshfin** | `marshfin` | Water | Day & night | Quick Step | Rain Dancer | Sig: Riptide | Hand-made | ☑ | ☐ |
-| Common | 3 | **Mangrovore** | `mangrovore` | Water / Grass | Diurnal | Quick Step | Rain Dancer | Sig: Riptide | Hand-made | ☑ | ☐ |
+| Common | 3 | **Mangrovore** | `mangrovore` | Water / Grass | Day & night | Quick Step | Rain Dancer | Sig: Riptide | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Aquamite** | `ph-water-mono-prime-1` | Water | Day & night | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Aqualing** | `ph-water-mono-prime-2` | Water | Day & night | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Aquaarch** | `ph-water-mono-prime-3` | Water | Day & night | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
@@ -280,16 +280,16 @@ Spawns in: Mountain.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Cragstarkit** | `ph-rock-astral-common-1` | Rock / Astral | Nocturnal | Baby-Doll Eyes | Menace | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
-| Common | 2 | **Cragstarox** | `ph-rock-astral-common-2` | Rock / Astral | Nocturnal | Baby-Doll Eyes | Menace | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
-| Common | 3 | **Cragstaror** | `ph-rock-astral-common-3` | Rock / Astral | Nocturnal | Baby-Doll Eyes | Menace | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Cragstarmite** | `ph-rock-astral-prime-1` | Rock / Astral | Nocturnal | Trailblazer | Shadow | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Cragstarling** | `ph-rock-astral-prime-2` | Rock / Astral | Nocturnal | Trailblazer | Shadow | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Cragstararch** | `ph-rock-astral-prime-3` | Rock / Astral | Nocturnal | Trailblazer | Shadow | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Cragstarwisp** | `ph-rock-astral-apex-1` | Rock / Astral | Nocturnal | Lucky Charm | Hold Fast | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Cragstarwyrm** | `ph-rock-astral-apex-2` | Rock / Astral | Nocturnal | Lucky Charm | Hold Fast | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Cragstartitan** | `ph-rock-astral-apex-3` | Rock / Astral | Nocturnal | Lucky Charm | Hold Fast | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Cragstareon** | `ph-rock-astral-legendary` | Rock / Astral | Nocturnal | Trailblazer | Comet Tail | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Cragstarkit** | `ph-rock-astral-common-1` | Rock / Astral | Day & night | Baby-Doll Eyes | Menace | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
+| Common | 2 | **Cragstarox** | `ph-rock-astral-common-2` | Rock / Astral | Day & night | Baby-Doll Eyes | Menace | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
+| Common | 3 | **Cragstaror** | `ph-rock-astral-common-3` | Rock / Astral | Day & night | Baby-Doll Eyes | Menace | Sig: Mesa Breaker | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Cragstarmite** | `ph-rock-astral-prime-1` | Rock / Astral | Day & night | Trailblazer | Shadow | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Cragstarling** | `ph-rock-astral-prime-2` | Rock / Astral | Day & night | Trailblazer | Shadow | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Cragstararch** | `ph-rock-astral-prime-3` | Rock / Astral | Day & night | Trailblazer | Shadow | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Cragstarwisp** | `ph-rock-astral-apex-1` | Rock / Astral | Day & night | Lucky Charm | Hold Fast | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Cragstarwyrm** | `ph-rock-astral-apex-2` | Rock / Astral | Day & night | Lucky Charm | Hold Fast | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Cragstartitan** | `ph-rock-astral-apex-3` | Rock / Astral | Day & night | Lucky Charm | Hold Fast | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Cragstareon** | `ph-rock-astral-legendary` | Rock / Astral | Day & night | Trailblazer | Comet Tail | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Steel / Astral
 
@@ -297,16 +297,16 @@ Spawns in: Mountain.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Ferrostarkit** | `ph-steel-astral-common-1` | Steel / Astral | Nocturnal | Star Seeker | Steel Coat | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
-| Common | 2 | **Ferrostarox** | `ph-steel-astral-common-2` | Steel / Astral | Nocturnal | Star Seeker | Steel Coat | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
-| Common | 3 | **Ferrostaror** | `ph-steel-astral-common-3` | Steel / Astral | Nocturnal | Star Seeker | Steel Coat | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Ferrostarmite** | `ph-steel-astral-prime-1` | Steel / Astral | Nocturnal | Quick Step | Lucid Mind | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Ferrostarling** | `ph-steel-astral-prime-2` | Steel / Astral | Nocturnal | Quick Step | Lucid Mind | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Ferrostararch** | `ph-steel-astral-prime-3` | Steel / Astral | Nocturnal | Quick Step | Lucid Mind | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Ferrostarwisp** | `ph-steel-astral-apex-1` | Steel / Astral | Nocturnal | Baby-Doll Eyes | Keen Edge | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Ferrostarwyrm** | `ph-steel-astral-apex-2` | Steel / Astral | Nocturnal | Baby-Doll Eyes | Keen Edge | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Ferrostartitan** | `ph-steel-astral-apex-3` | Steel / Astral | Nocturnal | Baby-Doll Eyes | Keen Edge | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Ferrostareon** | `ph-steel-astral-legendary` | Steel / Astral | Nocturnal | Baby-Doll Eyes | Supernova | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Ferrostarkit** | `ph-steel-astral-common-1` | Steel / Astral | Day & night | Star Seeker | Steel Coat | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
+| Common | 2 | **Ferrostarox** | `ph-steel-astral-common-2` | Steel / Astral | Day & night | Star Seeker | Steel Coat | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
+| Common | 3 | **Ferrostaror** | `ph-steel-astral-common-3` | Steel / Astral | Day & night | Star Seeker | Steel Coat | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Ferrostarmite** | `ph-steel-astral-prime-1` | Steel / Astral | Day & night | Quick Step | Lucid Mind | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Ferrostarling** | `ph-steel-astral-prime-2` | Steel / Astral | Day & night | Quick Step | Lucid Mind | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Ferrostararch** | `ph-steel-astral-prime-3` | Steel / Astral | Day & night | Quick Step | Lucid Mind | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Ferrostarwisp** | `ph-steel-astral-apex-1` | Steel / Astral | Day & night | Baby-Doll Eyes | Keen Edge | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Ferrostarwyrm** | `ph-steel-astral-apex-2` | Steel / Astral | Day & night | Baby-Doll Eyes | Keen Edge | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Ferrostartitan** | `ph-steel-astral-apex-3` | Steel / Astral | Day & night | Baby-Doll Eyes | Keen Edge | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Ferrostareon** | `ph-steel-astral-legendary` | Steel / Astral | Day & night | Baby-Doll Eyes | Supernova | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Water / Astral
 
@@ -314,16 +314,16 @@ Spawns in: Tundra, Cloud.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Aquastarkit** | `ph-water-astral-common-1` | Water / Astral | Nocturnal | Forager | Rain Dancer | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Common | 2 | **Aquastarox** | `ph-water-astral-common-2` | Water / Astral | Nocturnal | Forager | Rain Dancer | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Common | 3 | **Aquastaror** | `ph-water-astral-common-3` | Water / Astral | Nocturnal | Forager | Rain Dancer | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Aquastarmite** | `ph-water-astral-prime-1` | Water / Astral | Nocturnal | Sweet Scent | Starlit Gaze | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Aquastarling** | `ph-water-astral-prime-2` | Water / Astral | Nocturnal | Sweet Scent | Starlit Gaze | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Aquastararch** | `ph-water-astral-prime-3` | Water / Astral | Nocturnal | Sweet Scent | Starlit Gaze | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Aquastarwisp** | `ph-water-astral-apex-1` | Water / Astral | Nocturnal | Star Seeker | Fresh Spring | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Aquastarwyrm** | `ph-water-astral-apex-2` | Water / Astral | Nocturnal | Star Seeker | Fresh Spring | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquastartitan** | `ph-water-astral-apex-3` | Water / Astral | Nocturnal | Star Seeker | Fresh Spring | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Nimbalune** | `nimbalune` | Water / Astral | Nocturnal | Sweet Scent | Second Wave | Map: Eye of the Sky | Hand-made | ☑ | ☐ |
+| Common | 1 | **Aquastarkit** | `ph-water-astral-common-1` | Water / Astral | Day & night | Forager | Rain Dancer | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Common | 2 | **Aquastarox** | `ph-water-astral-common-2` | Water / Astral | Day & night | Forager | Rain Dancer | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Common | 3 | **Aquastaror** | `ph-water-astral-common-3` | Water / Astral | Day & night | Forager | Rain Dancer | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Aquastarmite** | `ph-water-astral-prime-1` | Water / Astral | Day & night | Sweet Scent | Starlit Gaze | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Aquastarling** | `ph-water-astral-prime-2` | Water / Astral | Day & night | Sweet Scent | Starlit Gaze | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Aquastararch** | `ph-water-astral-prime-3` | Water / Astral | Day & night | Sweet Scent | Starlit Gaze | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Aquastarwisp** | `ph-water-astral-apex-1` | Water / Astral | Day & night | Star Seeker | Fresh Spring | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Aquastarwyrm** | `ph-water-astral-apex-2` | Water / Astral | Day & night | Star Seeker | Fresh Spring | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Aquastartitan** | `ph-water-astral-apex-3` | Water / Astral | Day & night | Star Seeker | Fresh Spring | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Nimbalune** | `nimbalune` | Water / Astral | Day & night | Sweet Scent | Second Wave | Map: Eye of the Sky | Hand-made | ☑ | ☐ |
 
 ## Charm / Electric
 
@@ -382,16 +382,16 @@ Spawns in: Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Pixistonekit** | `ph-charm-rock-common-1` | Charm / Rock | Nocturnal | Star Seeker | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
-| Common | 2 | **Pixistoneox** | `ph-charm-rock-common-2` | Charm / Rock | Nocturnal | Star Seeker | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
-| Common | 3 | **Pixistoneor** | `ph-charm-rock-common-3` | Charm / Rock | Nocturnal | Star Seeker | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Pixistonemite** | `ph-charm-rock-prime-1` | Charm / Rock | Nocturnal | Quick Step | Bedrock | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Pixistoneling** | `ph-charm-rock-prime-2` | Charm / Rock | Nocturnal | Quick Step | Bedrock | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Pixistonearch** | `ph-charm-rock-prime-3` | Charm / Rock | Nocturnal | Quick Step | Bedrock | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Pixistonewisp** | `ph-charm-rock-apex-1` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Captivate | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Pixistonewyrm** | `ph-charm-rock-apex-2` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Captivate | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pixistonetitan** | `ph-charm-rock-apex-3` | Charm / Rock | Nocturnal | Baby-Doll Eyes | Captivate | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pixistoneeon** | `ph-charm-rock-legendary` | Charm / Rock | Nocturnal | Keen Nose | Jagged Shell | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Pixistonekit** | `ph-charm-rock-common-1` | Charm / Rock | Day & night | Star Seeker | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pixistoneox** | `ph-charm-rock-common-2` | Charm / Rock | Day & night | Star Seeker | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pixistoneor** | `ph-charm-rock-common-3` | Charm / Rock | Day & night | Star Seeker | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Pixistonemite** | `ph-charm-rock-prime-1` | Charm / Rock | Day & night | Quick Step | Bedrock | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Pixistoneling** | `ph-charm-rock-prime-2` | Charm / Rock | Day & night | Quick Step | Bedrock | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Pixistonearch** | `ph-charm-rock-prime-3` | Charm / Rock | Day & night | Quick Step | Bedrock | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Pixistonewisp** | `ph-charm-rock-apex-1` | Charm / Rock | Day & night | Baby-Doll Eyes | Captivate | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Pixistonewyrm** | `ph-charm-rock-apex-2` | Charm / Rock | Day & night | Baby-Doll Eyes | Captivate | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pixistonetitan** | `ph-charm-rock-apex-3` | Charm / Rock | Day & night | Baby-Doll Eyes | Captivate | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pixistoneeon** | `ph-charm-rock-legendary` | Charm / Rock | Day & night | Keen Nose | Jagged Shell | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Steel / Charm
 
@@ -399,16 +399,16 @@ Spawns in: Mountain, Road, Coast.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Ferrobloomkit** | `ph-steel-charm-common-1` | Steel / Charm | Nocturnal | Baby-Doll Eyes | Polished Plate | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
-| Common | 2 | **Ferrobloomox** | `ph-steel-charm-common-2` | Steel / Charm | Nocturnal | Baby-Doll Eyes | Polished Plate | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
-| Common | 3 | **Ferrobloomor** | `ph-steel-charm-common-3` | Steel / Charm | Nocturnal | Baby-Doll Eyes | Polished Plate | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Ferrobloommite** | `ph-steel-charm-prime-1` | Steel / Charm | Nocturnal | Trailblazer | Pure Heart | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Ferrobloomling** | `ph-steel-charm-prime-2` | Steel / Charm | Nocturnal | Trailblazer | Pure Heart | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Ferrobloomarch** | `ph-steel-charm-prime-3` | Steel / Charm | Nocturnal | Trailblazer | Pure Heart | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Ferrobloomwisp** | `ph-steel-charm-apex-1` | Steel / Charm | Nocturnal | Lucky Charm | Corrode | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Ferrobloomwyrm** | `ph-steel-charm-apex-2` | Steel / Charm | Nocturnal | Lucky Charm | Corrode | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Ferrobloomtitan** | `ph-steel-charm-apex-3` | Steel / Charm | Nocturnal | Lucky Charm | Corrode | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Ferrobloomeon** | `ph-steel-charm-legendary` | Steel / Charm | Nocturnal | Lucky Charm | Curtain Call | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Ferrobloomkit** | `ph-steel-charm-common-1` | Steel / Charm | Day & night | Baby-Doll Eyes | Polished Plate | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
+| Common | 2 | **Ferrobloomox** | `ph-steel-charm-common-2` | Steel / Charm | Day & night | Baby-Doll Eyes | Polished Plate | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
+| Common | 3 | **Ferrobloomor** | `ph-steel-charm-common-3` | Steel / Charm | Day & night | Baby-Doll Eyes | Polished Plate | Sig: Foundry Hammer | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Ferrobloommite** | `ph-steel-charm-prime-1` | Steel / Charm | Day & night | Trailblazer | Pure Heart | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Ferrobloomling** | `ph-steel-charm-prime-2` | Steel / Charm | Day & night | Trailblazer | Pure Heart | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Ferrobloomarch** | `ph-steel-charm-prime-3` | Steel / Charm | Day & night | Trailblazer | Pure Heart | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Ferrobloomwisp** | `ph-steel-charm-apex-1` | Steel / Charm | Day & night | Lucky Charm | Corrode | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Ferrobloomwyrm** | `ph-steel-charm-apex-2` | Steel / Charm | Day & night | Lucky Charm | Corrode | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Ferrobloomtitan** | `ph-steel-charm-apex-3` | Steel / Charm | Day & night | Lucky Charm | Corrode | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Ferrobloomeon** | `ph-steel-charm-legendary` | Steel / Charm | Day & night | Lucky Charm | Curtain Call | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Water / Charm
 
@@ -416,16 +416,16 @@ Spawns in: Lake, Cloud.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Aquabloomkit** | `ph-water-charm-common-1` | Water / Charm | Nocturnal | Star Seeker | Slick Scales | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Common | 2 | **Aquabloomox** | `ph-water-charm-common-2` | Water / Charm | Nocturnal | Star Seeker | Slick Scales | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Common | 3 | **Aquabloomor** | `ph-water-charm-common-3` | Water / Charm | Nocturnal | Star Seeker | Slick Scales | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Aquabloommite** | `ph-water-charm-prime-1` | Water / Charm | Nocturnal | Quick Step | Disarming Smile | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Aquabloomling** | `ph-water-charm-prime-2` | Water / Charm | Nocturnal | Quick Step | Disarming Smile | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Aquabloomarch** | `ph-water-charm-prime-3` | Water / Charm | Nocturnal | Quick Step | Disarming Smile | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Aquabloomwisp** | `ph-water-charm-apex-1` | Water / Charm | Nocturnal | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Aquabloomwyrm** | `ph-water-charm-apex-2` | Water / Charm | Nocturnal | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquabloomtitan** | `ph-water-charm-apex-3` | Water / Charm | Nocturnal | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Aquabloomeon** | `ph-water-charm-legendary` | Water / Charm | Nocturnal | Trailblazer | Glamour | Map: Boglight Hollow | Placeholder | ☐ | ☐ |
+| Common | 1 | **Aquabloomkit** | `ph-water-charm-common-1` | Water / Charm | Day & night | Star Seeker | Slick Scales | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Common | 2 | **Aquabloomox** | `ph-water-charm-common-2` | Water / Charm | Day & night | Star Seeker | Slick Scales | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Common | 3 | **Aquabloomor** | `ph-water-charm-common-3` | Water / Charm | Day & night | Star Seeker | Slick Scales | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Aquabloommite** | `ph-water-charm-prime-1` | Water / Charm | Day & night | Quick Step | Disarming Smile | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Aquabloomling** | `ph-water-charm-prime-2` | Water / Charm | Day & night | Quick Step | Disarming Smile | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Aquabloomarch** | `ph-water-charm-prime-3` | Water / Charm | Day & night | Quick Step | Disarming Smile | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Aquabloomwisp** | `ph-water-charm-apex-1` | Water / Charm | Day & night | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Aquabloomwyrm** | `ph-water-charm-apex-2` | Water / Charm | Day & night | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Aquabloomtitan** | `ph-water-charm-apex-3` | Water / Charm | Day & night | Baby-Doll Eyes | Second Wave | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Aquabloomeon** | `ph-water-charm-legendary` | Water / Charm | Day & night | Trailblazer | Glamour | Map: Boglight Hollow | Placeholder | ☐ | ☐ |
 
 ## Electric / Fire
 
@@ -467,16 +467,16 @@ Spawns in: Desert, Badlands.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Zapstonekit** | `ph-electric-rock-common-1` | Electric / Rock | Diurnal | Baby-Doll Eyes | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
-| Common | 2 | **Zapstoneox** | `ph-electric-rock-common-2` | Electric / Rock | Diurnal | Baby-Doll Eyes | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
-| Common | 3 | **Zapstoneor** | `ph-electric-rock-common-3` | Electric / Rock | Diurnal | Baby-Doll Eyes | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Zapstonemite** | `ph-electric-rock-prime-1` | Electric / Rock | Diurnal | Trailblazer | Rockfall | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Zapstoneling** | `ph-electric-rock-prime-2` | Electric / Rock | Diurnal | Trailblazer | Rockfall | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Zapstonearch** | `ph-electric-rock-prime-3` | Electric / Rock | Diurnal | Trailblazer | Rockfall | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Zapstonewisp** | `ph-electric-rock-apex-1` | Electric / Rock | Diurnal | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Zapstonewyrm** | `ph-electric-rock-apex-2` | Electric / Rock | Diurnal | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zapstonetitan** | `ph-electric-rock-apex-3` | Electric / Rock | Diurnal | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapstoneeon** | `ph-electric-rock-legendary` | Electric / Rock | Diurnal | Star Seeker | Dust Devil | Map: Dunecrown Mesa | Placeholder | ☐ | ☐ |
+| Common | 1 | **Zapstonekit** | `ph-electric-rock-common-1` | Electric / Rock | Day & night | Baby-Doll Eyes | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Common | 2 | **Zapstoneox** | `ph-electric-rock-common-2` | Electric / Rock | Day & night | Baby-Doll Eyes | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Common | 3 | **Zapstoneor** | `ph-electric-rock-common-3` | Electric / Rock | Day & night | Baby-Doll Eyes | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Zapstonemite** | `ph-electric-rock-prime-1` | Electric / Rock | Day & night | Trailblazer | Rockfall | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Zapstoneling** | `ph-electric-rock-prime-2` | Electric / Rock | Day & night | Trailblazer | Rockfall | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Zapstonearch** | `ph-electric-rock-prime-3` | Electric / Rock | Day & night | Trailblazer | Rockfall | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Zapstonewisp** | `ph-electric-rock-apex-1` | Electric / Rock | Day & night | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Zapstonewyrm** | `ph-electric-rock-apex-2` | Electric / Rock | Day & night | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zapstonetitan** | `ph-electric-rock-apex-3` | Electric / Rock | Day & night | Lucky Charm | Lock-On | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapstoneeon** | `ph-electric-rock-legendary` | Electric / Rock | Day & night | Star Seeker | Dust Devil | Map: Dunecrown Mesa | Placeholder | ☐ | ☐ |
 
 ## Electric / Steel
 
@@ -484,16 +484,16 @@ Spawns in: Road.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Zapgearkit** | `ph-electric-steel-common-1` | Electric / Steel | Diurnal | Keen Nose | Backup Battery | Sig: Stormcall | Placeholder | ☐ | ☐ |
-| Common | 2 | **Zapgearox** | `ph-electric-steel-common-2` | Electric / Steel | Diurnal | Keen Nose | Backup Battery | Sig: Stormcall | Placeholder | ☐ | ☐ |
-| Common | 3 | **Zapgearor** | `ph-electric-steel-common-3` | Electric / Steel | Diurnal | Keen Nose | Backup Battery | Sig: Stormcall | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Zapgearmite** | `ph-electric-steel-prime-1` | Electric / Steel | Diurnal | Forager | Iron Will | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Zapgearling** | `ph-electric-steel-prime-2` | Electric / Steel | Diurnal | Forager | Iron Will | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Zapgeararch** | `ph-electric-steel-prime-3` | Electric / Steel | Diurnal | Forager | Iron Will | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Zapgearwisp** | `ph-electric-steel-apex-1` | Electric / Steel | Diurnal | Sweet Scent | Storm Rider | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Zapgearwyrm** | `ph-electric-steel-apex-2` | Electric / Steel | Diurnal | Sweet Scent | Storm Rider | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Zapgeartitan** | `ph-electric-steel-apex-3` | Electric / Steel | Diurnal | Sweet Scent | Storm Rider | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Zapgeareon** | `ph-electric-steel-legendary` | Electric / Steel | Diurnal | Sweet Scent | Tempered | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Zapgearkit** | `ph-electric-steel-common-1` | Electric / Steel | Day & night | Keen Nose | Backup Battery | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Common | 2 | **Zapgearox** | `ph-electric-steel-common-2` | Electric / Steel | Day & night | Keen Nose | Backup Battery | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Common | 3 | **Zapgearor** | `ph-electric-steel-common-3` | Electric / Steel | Day & night | Keen Nose | Backup Battery | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Zapgearmite** | `ph-electric-steel-prime-1` | Electric / Steel | Day & night | Forager | Iron Will | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Zapgearling** | `ph-electric-steel-prime-2` | Electric / Steel | Day & night | Forager | Iron Will | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Zapgeararch** | `ph-electric-steel-prime-3` | Electric / Steel | Day & night | Forager | Iron Will | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Zapgearwisp** | `ph-electric-steel-apex-1` | Electric / Steel | Day & night | Sweet Scent | Storm Rider | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Zapgearwyrm** | `ph-electric-steel-apex-2` | Electric / Steel | Day & night | Sweet Scent | Storm Rider | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Zapgeartitan** | `ph-electric-steel-apex-3` | Electric / Steel | Day & night | Sweet Scent | Storm Rider | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Zapgeareon** | `ph-electric-steel-legendary` | Electric / Steel | Day & night | Sweet Scent | Tempered | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Water / Electric
 
@@ -501,16 +501,16 @@ Spawns in: Cloud.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Aquavoltkit** | `ph-water-electric-common-1` | Water / Electric | Diurnal | Sweet Scent | Wet Coat | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Common | 2 | **Aquavoltox** | `ph-water-electric-common-2` | Water / Electric | Diurnal | Sweet Scent | Wet Coat | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Common | 3 | **Aquavoltor** | `ph-water-electric-common-3` | Water / Electric | Diurnal | Sweet Scent | Wet Coat | Sig: Riptide | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Aquavoltmite** | `ph-water-electric-prime-1` | Water / Electric | Diurnal | Star Seeker | Static Field | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Aquavoltling** | `ph-water-electric-prime-2` | Water / Electric | Diurnal | Star Seeker | Static Field | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Aquavoltarch** | `ph-water-electric-prime-3` | Water / Electric | Diurnal | Star Seeker | Static Field | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Aquavoltwisp** | `ph-water-electric-apex-1` | Water / Electric | Diurnal | Quick Step | Undercurrent | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Aquavoltwyrm** | `ph-water-electric-apex-2` | Water / Electric | Diurnal | Quick Step | Undercurrent | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Aquavolttitan** | `ph-water-electric-apex-3` | Water / Electric | Diurnal | Quick Step | Undercurrent | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Aquavolteon** | `ph-water-electric-legendary` | Water / Electric | Diurnal | Forager | Overclock | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Aquavoltkit** | `ph-water-electric-common-1` | Water / Electric | Day & night | Sweet Scent | Wet Coat | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Common | 2 | **Aquavoltox** | `ph-water-electric-common-2` | Water / Electric | Day & night | Sweet Scent | Wet Coat | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Common | 3 | **Aquavoltor** | `ph-water-electric-common-3` | Water / Electric | Day & night | Sweet Scent | Wet Coat | Sig: Riptide | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Aquavoltmite** | `ph-water-electric-prime-1` | Water / Electric | Day & night | Star Seeker | Static Field | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Aquavoltling** | `ph-water-electric-prime-2` | Water / Electric | Day & night | Star Seeker | Static Field | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Aquavoltarch** | `ph-water-electric-prime-3` | Water / Electric | Day & night | Star Seeker | Static Field | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Aquavoltwisp** | `ph-water-electric-apex-1` | Water / Electric | Day & night | Quick Step | Undercurrent | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Aquavoltwyrm** | `ph-water-electric-apex-2` | Water / Electric | Day & night | Quick Step | Undercurrent | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Aquavolttitan** | `ph-water-electric-apex-3` | Water / Electric | Day & night | Quick Step | Undercurrent | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Aquavolteon** | `ph-water-electric-legendary` | Water / Electric | Day & night | Forager | Overclock | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Fire / Grass
 
@@ -535,16 +535,16 @@ Spawns in: Desert, Volcanic, Canyon.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Pyrostonekit** | `ph-fire-rock-common-1` | Fire / Rock | Diurnal | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 2 | **Pyrostoneox** | `ph-fire-rock-common-2` | Fire / Rock | Diurnal | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 3 | **Pyrostoneor** | `ph-fire-rock-common-3` | Fire / Rock | Diurnal | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Pyrostonemite** | `ph-fire-rock-prime-1` | Fire / Rock | Diurnal | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Pyrostoneling** | `ph-fire-rock-prime-2` | Fire / Rock | Diurnal | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Pyrostonearch** | `ph-fire-rock-prime-3` | Fire / Rock | Diurnal | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Pyrostonewisp** | `ph-fire-rock-apex-1` | Fire / Rock | Diurnal | Trailblazer | Last Blaze | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Pyrostonewyrm** | `ph-fire-rock-apex-2` | Fire / Rock | Diurnal | Trailblazer | Last Blaze | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pyrostonetitan** | `ph-fire-rock-apex-3` | Fire / Rock | Diurnal | Trailblazer | Last Blaze | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pyrostoneeon** | `ph-fire-rock-legendary` | Fire / Rock | Diurnal | Lucky Charm | Hold Fast | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Pyrostonekit** | `ph-fire-rock-common-1` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pyrostoneox** | `ph-fire-rock-common-2` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pyrostoneor** | `ph-fire-rock-common-3` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Pyrostonemite** | `ph-fire-rock-prime-1` | Fire / Rock | Day & night | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Pyrostoneling** | `ph-fire-rock-prime-2` | Fire / Rock | Day & night | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Pyrostonearch** | `ph-fire-rock-prime-3` | Fire / Rock | Day & night | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Pyrostonewisp** | `ph-fire-rock-apex-1` | Fire / Rock | Day & night | Trailblazer | Last Blaze | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Pyrostonewyrm** | `ph-fire-rock-apex-2` | Fire / Rock | Day & night | Trailblazer | Last Blaze | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pyrostonetitan** | `ph-fire-rock-apex-3` | Fire / Rock | Day & night | Trailblazer | Last Blaze | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pyrostoneeon** | `ph-fire-rock-legendary` | Fire / Rock | Day & night | Lucky Charm | Hold Fast | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Fire / Steel
 
@@ -552,16 +552,16 @@ Spawns in: Desert, Volcanic, Canyon.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Pyrogearkit** | `ph-fire-steel-common-1` | Fire / Steel | Diurnal | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 2 | **Pyrogearox** | `ph-fire-steel-common-2` | Fire / Steel | Diurnal | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 3 | **Pyrogearor** | `ph-fire-steel-common-3` | Fire / Steel | Diurnal | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Pyrogearmite** | `ph-fire-steel-prime-1` | Fire / Steel | Diurnal | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Pyrogearling** | `ph-fire-steel-prime-2` | Fire / Steel | Diurnal | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Pyrogeararch** | `ph-fire-steel-prime-3` | Fire / Steel | Diurnal | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Pyrogearwisp** | `ph-fire-steel-apex-1` | Fire / Steel | Diurnal | Forager | Wildfire | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Pyrogearwyrm** | `ph-fire-steel-apex-2` | Fire / Steel | Diurnal | Forager | Wildfire | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pyrogeartitan** | `ph-fire-steel-apex-3` | Fire / Steel | Diurnal | Forager | Wildfire | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pyrogeareon** | `ph-fire-steel-legendary` | Fire / Steel | Diurnal | Trailblazer | Keen Edge | Map: Caldera Heart | Placeholder | ☐ | ☐ |
+| Common | 1 | **Pyrogearkit** | `ph-fire-steel-common-1` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pyrogearox** | `ph-fire-steel-common-2` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pyrogearor** | `ph-fire-steel-common-3` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Pyrogearmite** | `ph-fire-steel-prime-1` | Fire / Steel | Day & night | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Pyrogearling** | `ph-fire-steel-prime-2` | Fire / Steel | Day & night | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Pyrogeararch** | `ph-fire-steel-prime-3` | Fire / Steel | Day & night | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Pyrogearwisp** | `ph-fire-steel-apex-1` | Fire / Steel | Day & night | Forager | Wildfire | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Pyrogearwyrm** | `ph-fire-steel-apex-2` | Fire / Steel | Day & night | Forager | Wildfire | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pyrogeartitan** | `ph-fire-steel-apex-3` | Fire / Steel | Day & night | Forager | Wildfire | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pyrogeareon** | `ph-fire-steel-legendary` | Fire / Steel | Day & night | Trailblazer | Keen Edge | Map: Caldera Heart | Placeholder | ☐ | ☐ |
 
 ## Fire / Water
 
@@ -569,16 +569,16 @@ Spawns in: Desert, Volcanic, Canyon.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Pyrotidekit** | `ph-fire-water-common-1` | Fire / Water | Diurnal | Sweet Scent | Stoke | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 2 | **Pyrotideox** | `ph-fire-water-common-2` | Fire / Water | Diurnal | Sweet Scent | Stoke | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 3 | **Pyrotideor** | `ph-fire-water-common-3` | Fire / Water | Diurnal | Sweet Scent | Stoke | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Pyrotidemite** | `ph-fire-water-prime-1` | Fire / Water | Diurnal | Star Seeker | Rain Dancer | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Pyrotideling** | `ph-fire-water-prime-2` | Fire / Water | Diurnal | Star Seeker | Rain Dancer | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Pyrotidearch** | `ph-fire-water-prime-3` | Fire / Water | Diurnal | Star Seeker | Rain Dancer | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Pyrotidewisp** | `ph-fire-water-apex-1` | Fire / Water | Diurnal | Quick Step | Eruption | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Pyrotidewyrm** | `ph-fire-water-apex-2` | Fire / Water | Diurnal | Quick Step | Eruption | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Pyrotidetitan** | `ph-fire-water-apex-3` | Fire / Water | Diurnal | Quick Step | Eruption | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Pyrotideeon** | `ph-fire-water-legendary` | Fire / Water | Diurnal | Baby-Doll Eyes | Fresh Spring | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Pyrotidekit** | `ph-fire-water-common-1` | Fire / Water | Day & night | Sweet Scent | Stoke | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pyrotideox** | `ph-fire-water-common-2` | Fire / Water | Day & night | Sweet Scent | Stoke | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pyrotideor** | `ph-fire-water-common-3` | Fire / Water | Day & night | Sweet Scent | Stoke | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Pyrotidemite** | `ph-fire-water-prime-1` | Fire / Water | Day & night | Star Seeker | Rain Dancer | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Pyrotideling** | `ph-fire-water-prime-2` | Fire / Water | Day & night | Star Seeker | Rain Dancer | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Pyrotidearch** | `ph-fire-water-prime-3` | Fire / Water | Day & night | Star Seeker | Rain Dancer | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Pyrotidewisp** | `ph-fire-water-apex-1` | Fire / Water | Day & night | Quick Step | Eruption | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Pyrotidewyrm** | `ph-fire-water-apex-2` | Fire / Water | Day & night | Quick Step | Eruption | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Pyrotidetitan** | `ph-fire-water-apex-3` | Fire / Water | Day & night | Quick Step | Eruption | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Pyrotideeon** | `ph-fire-water-legendary` | Fire / Water | Day & night | Baby-Doll Eyes | Fresh Spring | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Grass / Rock
 
@@ -586,16 +586,16 @@ Spawns in: Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Sprigstonekit** | `ph-grass-rock-common-1` | Grass / Rock | Diurnal | Keen Nose | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Common | 2 | **Sprigstoneox** | `ph-grass-rock-common-2` | Grass / Rock | Diurnal | Keen Nose | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Common | 3 | **Sprigstoneor** | `ph-grass-rock-common-3` | Grass / Rock | Diurnal | Keen Nose | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Sprigstonemite** | `ph-grass-rock-prime-1` | Grass / Rock | Diurnal | Forager | Bedrock | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Sprigstoneling** | `ph-grass-rock-prime-2` | Grass / Rock | Diurnal | Forager | Bedrock | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Sprigstonearch** | `ph-grass-rock-prime-3` | Grass / Rock | Diurnal | Forager | Bedrock | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Sprigstonewisp** | `ph-grass-rock-apex-1` | Grass / Rock | Diurnal | Sweet Scent | Spore Puff | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Sprigstonewyrm** | `ph-grass-rock-apex-2` | Grass / Rock | Diurnal | Sweet Scent | Spore Puff | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Sprigstonetitan** | `ph-grass-rock-apex-3` | Grass / Rock | Diurnal | Sweet Scent | Spore Puff | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Sprigstoneeon** | `ph-grass-rock-legendary` | Grass / Rock | Diurnal | Quick Step | Jagged Shell | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Sprigstonekit** | `ph-grass-rock-common-1` | Grass / Rock | Day & night | Keen Nose | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 2 | **Sprigstoneox** | `ph-grass-rock-common-2` | Grass / Rock | Day & night | Keen Nose | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 3 | **Sprigstoneor** | `ph-grass-rock-common-3` | Grass / Rock | Day & night | Keen Nose | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Sprigstonemite** | `ph-grass-rock-prime-1` | Grass / Rock | Day & night | Forager | Bedrock | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Sprigstoneling** | `ph-grass-rock-prime-2` | Grass / Rock | Day & night | Forager | Bedrock | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Sprigstonearch** | `ph-grass-rock-prime-3` | Grass / Rock | Day & night | Forager | Bedrock | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Sprigstonewisp** | `ph-grass-rock-apex-1` | Grass / Rock | Day & night | Sweet Scent | Spore Puff | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Sprigstonewyrm** | `ph-grass-rock-apex-2` | Grass / Rock | Day & night | Sweet Scent | Spore Puff | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Sprigstonetitan** | `ph-grass-rock-apex-3` | Grass / Rock | Day & night | Sweet Scent | Spore Puff | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Sprigstoneeon** | `ph-grass-rock-legendary` | Grass / Rock | Day & night | Quick Step | Jagged Shell | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Grass / Steel
 
@@ -603,16 +603,16 @@ Spawns in: Forest, Fey Grove, Meadow, River, Swamp, Forest Floor.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Spriggearkit** | `ph-grass-steel-common-1` | Grass / Steel | Diurnal | Star Seeker | Bloomrush | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Common | 2 | **Spriggearox** | `ph-grass-steel-common-2` | Grass / Steel | Diurnal | Star Seeker | Bloomrush | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Common | 3 | **Spriggearor** | `ph-grass-steel-common-3` | Grass / Steel | Diurnal | Star Seeker | Bloomrush | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Spriggearmite** | `ph-grass-steel-prime-1` | Grass / Steel | Diurnal | Quick Step | Polished Plate | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Spriggearling** | `ph-grass-steel-prime-2` | Grass / Steel | Diurnal | Quick Step | Polished Plate | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Spriggeararch** | `ph-grass-steel-prime-3` | Grass / Steel | Diurnal | Quick Step | Polished Plate | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Spriggearwisp** | `ph-grass-steel-apex-1` | Grass / Steel | Diurnal | Baby-Doll Eyes | Firm Roots | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Spriggearwyrm** | `ph-grass-steel-apex-2` | Grass / Steel | Diurnal | Baby-Doll Eyes | Firm Roots | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Spriggeartitan** | `ph-grass-steel-apex-3` | Grass / Steel | Diurnal | Baby-Doll Eyes | Firm Roots | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Spriggeareon** | `ph-grass-steel-legendary` | Grass / Steel | Diurnal | Star Seeker | Corrode | Map: not placed | Placeholder | ☐ | ☐ |
+| Common | 1 | **Spriggearkit** | `ph-grass-steel-common-1` | Grass / Steel | Day & night | Star Seeker | Bloomrush | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 2 | **Spriggearox** | `ph-grass-steel-common-2` | Grass / Steel | Day & night | Star Seeker | Bloomrush | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 3 | **Spriggearor** | `ph-grass-steel-common-3` | Grass / Steel | Day & night | Star Seeker | Bloomrush | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Spriggearmite** | `ph-grass-steel-prime-1` | Grass / Steel | Day & night | Quick Step | Polished Plate | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Spriggearling** | `ph-grass-steel-prime-2` | Grass / Steel | Day & night | Quick Step | Polished Plate | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Spriggeararch** | `ph-grass-steel-prime-3` | Grass / Steel | Day & night | Quick Step | Polished Plate | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Spriggearwisp** | `ph-grass-steel-apex-1` | Grass / Steel | Day & night | Baby-Doll Eyes | Firm Roots | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Spriggearwyrm** | `ph-grass-steel-apex-2` | Grass / Steel | Day & night | Baby-Doll Eyes | Firm Roots | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Spriggeartitan** | `ph-grass-steel-apex-3` | Grass / Steel | Day & night | Baby-Doll Eyes | Firm Roots | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Spriggeareon** | `ph-grass-steel-legendary` | Grass / Steel | Day & night | Star Seeker | Corrode | Map: not placed | Placeholder | ☐ | ☐ |
 
 ## Grass / Water
 
@@ -620,16 +620,16 @@ Spawns in: River, Swamp.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Sprigtidekit** | `ph-grass-water-common-1` | Grass / Water | Diurnal | Trailblazer | Deep Roots | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Common | 2 | **Sprigtideox** | `ph-grass-water-common-2` | Grass / Water | Diurnal | Trailblazer | Deep Roots | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Common | 3 | **Sprigtideor** | `ph-grass-water-common-3` | Grass / Water | Diurnal | Trailblazer | Deep Roots | Sig: Overgrowth | Placeholder | ☐ | ☐ |
-| Prime | 1 | **Sprigtidemite** | `ph-grass-water-prime-1` | Grass / Water | Diurnal | Lucky Charm | Slick Scales | — | Placeholder | ☐ | ☐ |
-| Prime | 2 | **Sprigtideling** | `ph-grass-water-prime-2` | Grass / Water | Diurnal | Lucky Charm | Slick Scales | — | Placeholder | ☐ | ☐ |
-| Prime | 3 | **Sprigtidearch** | `ph-grass-water-prime-3` | Grass / Water | Diurnal | Lucky Charm | Slick Scales | — | Placeholder | ☐ | ☐ |
-| Apex | 1 | **Sprigtidewisp** | `ph-grass-water-apex-1` | Grass / Water | Diurnal | Keen Nose | Bramble Coat | — | Placeholder | ☐ | ☐ |
-| Apex | 2 | **Sprigtidewyrm** | `ph-grass-water-apex-2` | Grass / Water | Diurnal | Keen Nose | Bramble Coat | — | Placeholder | ☐ | ☐ |
-| Apex | 3 | **Sprigtidetitan** | `ph-grass-water-apex-3` | Grass / Water | Diurnal | Keen Nose | Bramble Coat | — | Placeholder | ☐ | ☐ |
-| Legendary | — | **Sprigtideeon** | `ph-grass-water-legendary` | Grass / Water | Diurnal | Sweet Scent | Second Wave | Map: Willowheart Isle | Placeholder | ☐ | ☐ |
+| Common | 1 | **Sprigtidekit** | `ph-grass-water-common-1` | Grass / Water | Day & night | Trailblazer | Deep Roots | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 2 | **Sprigtideox** | `ph-grass-water-common-2` | Grass / Water | Day & night | Trailblazer | Deep Roots | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 3 | **Sprigtideor** | `ph-grass-water-common-3` | Grass / Water | Day & night | Trailblazer | Deep Roots | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Prime | 1 | **Sprigtidemite** | `ph-grass-water-prime-1` | Grass / Water | Day & night | Lucky Charm | Slick Scales | — | Placeholder | ☐ | ☐ |
+| Prime | 2 | **Sprigtideling** | `ph-grass-water-prime-2` | Grass / Water | Day & night | Lucky Charm | Slick Scales | — | Placeholder | ☐ | ☐ |
+| Prime | 3 | **Sprigtidearch** | `ph-grass-water-prime-3` | Grass / Water | Day & night | Lucky Charm | Slick Scales | — | Placeholder | ☐ | ☐ |
+| Apex | 1 | **Sprigtidewisp** | `ph-grass-water-apex-1` | Grass / Water | Day & night | Keen Nose | Bramble Coat | — | Placeholder | ☐ | ☐ |
+| Apex | 2 | **Sprigtidewyrm** | `ph-grass-water-apex-2` | Grass / Water | Day & night | Keen Nose | Bramble Coat | — | Placeholder | ☐ | ☐ |
+| Apex | 3 | **Sprigtidetitan** | `ph-grass-water-apex-3` | Grass / Water | Day & night | Keen Nose | Bramble Coat | — | Placeholder | ☐ | ☐ |
+| Legendary | — | **Sprigtideeon** | `ph-grass-water-legendary` | Grass / Water | Day & night | Sweet Scent | Second Wave | Map: Willowheart Isle | Placeholder | ☐ | ☐ |
 
 ## Rock / Steel
 
@@ -684,6 +684,52 @@ Spawns in: Coast.
 
 ---
 
+## Extra families
+
+Placeholder families beside the roster table (`EXTRA_FAMILIES` in `src/data/roster.ts`): a second single-type Common, out at the time of day its type was missing from the wild. To swap one in, add the real family in `src/data/species.ts` (with its `activity`) and remove its entry.
+
+**Electric** · spawns in Badlands, Road, Desert · concept: a lantern-tailed gecko that hunts by its own sparks
+
+| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Common | 1 | **Zapduskkit** | `ph-electric-dusk-common-1` | Electric | Nocturnal | Lucky Charm | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Common | 2 | **Zapduskox** | `ph-electric-dusk-common-2` | Electric | Nocturnal | Lucky Charm | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
+| Common | 3 | **Zapduskor** | `ph-electric-dusk-common-3` | Electric | Nocturnal | Lucky Charm | Hair Trigger | Sig: Stormcall | Placeholder | ☐ | ☐ |
+
+**Fire** · spawns in Volcanic, Canyon, Desert · concept: a coal-shelled beetle that glows after sundown
+
+| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Common | 1 | **Pyroduskkit** | `ph-fire-dusk-common-1` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pyroduskox** | `ph-fire-dusk-common-2` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pyroduskor** | `ph-fire-dusk-common-3` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+
+**Grass** · spawns in River, Swamp, Forest · concept: a moonflower toad that blooms in the dark
+
+| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Common | 1 | **Sprigduskkit** | `ph-grass-dusk-common-1` | Grass | Nocturnal | Baby-Doll Eyes | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 2 | **Sprigduskox** | `ph-grass-dusk-common-2` | Grass | Nocturnal | Baby-Doll Eyes | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+| Common | 3 | **Sprigduskor** | `ph-grass-dusk-common-3` | Grass | Nocturnal | Baby-Doll Eyes | Creeping Vines | Sig: Overgrowth | Placeholder | ☐ | ☐ |
+
+**Astral** · spawns in Tundra, Mountain · concept: a sundog hare that bends daylight into halos
+
+| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Common | 1 | **Stelsunkit** | `ph-astral-sun-common-1` | Astral | Diurnal | Forager | Fixed Star | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
+| Common | 2 | **Stelsunox** | `ph-astral-sun-common-2` | Astral | Diurnal | Forager | Fixed Star | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
+| Common | 3 | **Stelsunor** | `ph-astral-sun-common-3` | Astral | Diurnal | Forager | Fixed Star | Sig: Borealis Lance | Placeholder | ☐ | ☐ |
+
+**Charm** · spawns in Lake, Fey Grove, Meadow · concept: a ribbon-finned songbird that duets with its reflection
+
+| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Common | 1 | **Pixisunkit** | `ph-charm-sun-common-1` | Charm | Diurnal | Quick Step | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pixisunox** | `ph-charm-sun-common-2` | Charm | Diurnal | Quick Step | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pixisunor** | `ph-charm-sun-common-3` | Charm | Diurnal | Quick Step | Heartmend | Sig: Moonveil Kiss | Placeholder | ☐ | ☐ |
+
+---
+
 ## Hand-made creatures outside the roster table
 
 The original hand-made Prime and Apex creatures, from before the roster table existed. They appear in the wild but don’t fill a roster slot. Design could move them into a matching slot (replacing that slot’s placeholder family) or keep them as extras. Either way they need art.
@@ -691,19 +737,19 @@ The original hand-made Prime and Apex creatures, from before the roster table ex
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Prime | 1 | **Orbuddle** | `orbuddle` | Astral | Nocturnal | Lucky Charm | Fixed Star | — | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Nebulith** | `nebulith` | Astral / Rock | Nocturnal | Lucky Charm | Fixed Star | — | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Nebulith** | `nebulith` | Astral / Rock | Day & night | Lucky Charm | Fixed Star | — | Hand-made | ☑ | ☐ |
 | Apex | 1 | **Zenithar** | `zenithar` | Astral | Nocturnal | Star Seeker | Shadow | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Puffwisp** | `puffwisp` | Charm | Nocturnal | Sweet Scent | Glamour | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Velvetuft** | `velvetuft` | Charm | Nocturnal | Sweet Scent | Glamour | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Mirageon** | `mirageon` | Charm / Water | Nocturnal | Lucky Charm | Heartmend | — | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Mirageon** | `mirageon` | Charm / Water | Day & night | Lucky Charm | Heartmend | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Fizzlet** | `fizzlet` | Electric | Diurnal | Keen Nose | Overclock | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Arcwing** | `arcwing` | Electric | Diurnal | Keen Nose | Overclock | — | Hand-made | ☑ | ☐ |
 | Apex | 1 | **Tempestrix** | `tempestrix` | Electric / Astral | Day & night | Star Seeker | Hair Trigger | — | Hand-made | ☑ | ☐ |
-| Prime | 1 | **Emberwick** | `emberwick` | Fire | Diurnal | Sweet Scent | Ember Hide | — | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Lavalume** | `lavalume` | Fire | Diurnal | Sweet Scent | Ember Hide | — | Hand-made | ☑ | ☐ |
-| Apex | 1 | **Calderex** | `calderex` | Fire / Rock | Diurnal | Forager | Last Blaze | — | Hand-made | ☑ | ☐ |
-| Common | 1 | **Emberfish** | `emberfish` | Fire / Water | Diurnal | Forager | Sunbather | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Cinderkoi** | `cinderkoi` | Fire / Water | Diurnal | Lucky Charm | Sunbather | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
+| Prime | 1 | **Emberwick** | `emberwick` | Fire | Day & night | Sweet Scent | Ember Hide | — | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Lavalume** | `lavalume` | Fire | Day & night | Sweet Scent | Ember Hide | — | Hand-made | ☑ | ☐ |
+| Apex | 1 | **Calderex** | `calderex` | Fire / Rock | Day & night | Forager | Last Blaze | — | Hand-made | ☑ | ☐ |
+| Common | 1 | **Emberfish** | `emberfish` | Fire / Water | Day & night | Forager | Sunbather | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Cinderkoi** | `cinderkoi` | Fire / Water | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Shadeleaf** | `shadeleaf` | Grass | Nocturnal | Keen Nose | Bramble Coat | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Gloomoth** | `gloomoth` | Grass / Charm | Nocturnal | Keen Nose | Bramble Coat | — | Hand-made | ☑ | ☐ |
 | Apex | 1 | **Canopyre** | `canopyre` | Grass | Diurnal | Sweet Scent | Creeping Vines | — | Hand-made | ☑ | ☐ |
@@ -711,7 +757,7 @@ The original hand-made Prime and Apex creatures, from before the roster table ex
 | Prime | 2 | **Boulderon** | `boulderon` | Rock | Day & night | Lucky Charm | Hold Fast | — | Hand-made | ☑ | ☐ |
 | Apex | 1 | **Stratagon** | `stratagon` | Rock / Steel | Day & night | Keen Nose | Bedrock | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Cogling** | `cogling` | Steel | Day & night | Trailblazer | Keen Edge | — | Hand-made | ☑ | ☐ |
-| Prime | 2 | **Anvilisk** | `anvilisk` | Steel / Fire | Diurnal | Trailblazer | Keen Edge | — | Hand-made | ☑ | ☐ |
+| Prime | 2 | **Anvilisk** | `anvilisk` | Steel / Fire | Day & night | Trailblazer | Keen Edge | — | Hand-made | ☑ | ☐ |
 | Apex | 1 | **Leviathorn** | `leviathorn` | Steel | Day & night | Quick Step | Polished Plate | — | Hand-made | ☑ | ☐ |
 | Prime | 1 | **Bubbloon** | `bubbloon` | Water | Day & night | Sweet Scent | Fresh Spring | — | Hand-made | ☑ | ☐ |
 | Prime | 2 | **Tidecall** | `tidecall` | Water | Day & night | Sweet Scent | Fresh Spring | — | Hand-made | ☑ | ☐ |

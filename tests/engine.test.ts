@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
-import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES } from '../src/data/roster';
+import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES, EXTRA_FAMILIES, extraId } from '../src/data/roster';
 import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
@@ -926,9 +926,12 @@ describe('day & night', () => {
   });
   it('a species’ activity comes from its types, with hand-picked exceptions', () => {
     expect(activityFromTypes(['astral'])).toBe('nocturnal');
-    expect(activityFromTypes(['charm', 'water'])).toBe('nocturnal');
+    expect(activityFromTypes(['charm', 'astral'])).toBe('nocturnal');
+    expect(activityFromTypes(['charm', 'water'])).toBe('crepuscular'); // Rock, Steel and Water keep no hours
     expect(activityFromTypes(['fire'])).toBe('diurnal');
-    expect(activityFromTypes(['grass', 'rock'])).toBe('diurnal');
+    expect(activityFromTypes(['grass', 'electric'])).toBe('diurnal');
+    expect(activityFromTypes(['grass', 'rock'])).toBe('crepuscular');
+    expect(SPECIES_BY_ID.emberwick.activity).toBe('crepuscular');
     expect(activityFromTypes(['fire', 'astral'])).toBe('crepuscular');
     expect(activityFromTypes(['water'])).toBe('crepuscular');
     expect(SPECIES_BY_ID.shadeleaf.activity).toBe('nocturnal');
@@ -953,6 +956,24 @@ describe('day & night', () => {
     }
     expect(strays / total).toBeLessThan(0.17);
     expect(strays).toBeGreaterThan(0);
+  });
+  it('every area has at least two locals, and every one of its types, at any time (Common and Prime)', () => {
+    for (const biome of Object.keys(BIOME_TYPES) as (keyof typeof BIOME_TYPES)[]) {
+      if (biome === 'prism') continue;
+      const T = BIOME_TYPES[biome];
+      for (const rarity of ['common', 'prime'] as const) for (const time of ['day', 'night'] as const) {
+        const locals = (t: (typeof T)[number]) => W.speciesPool(biome, t, rarity, 1, time).filter((x) => x.types.every((y) => T.includes(y)));
+        for (const t of T) expect(locals(t).length, `${t} in ${biome}, ${rarity} ${time}`).toBeGreaterThan(0);
+        expect(new Set(T.flatMap(locals)).size, `${biome} ${rarity} ${time}`).toBeGreaterThan(1);
+      }
+    }
+  });
+  it('the extra families keep their own hours in areas of their type', () => {
+    for (const f of EXTRA_FAMILIES) for (const st of [1, 2, 3]) {
+      const sp = SPECIES_BY_ID[extraId(f, st)];
+      expect([sp.types, sp.activity, sp.evolvesTo]).toEqual([[f.type], f.activity, st < 3 ? extraId(f, st + 1) : undefined]);
+      for (const b of f.biomes) expect(BIOME_TYPES[b]).toContain(f.type);
+    }
   });
   it('weather makes a native type more common', () => {
     const node = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === 'badlands')!;
@@ -2424,7 +2445,7 @@ describe('roster table', () => {
   it('placeholders are flagged, uniquely named and turn up in the wild', () => {
     const ph = SPECIES.filter((x) => x.placeholder);
     // every family slot and Legendary slot, minus the hand-made families and Legendaries filling them
-    expect(ph.length).toBe(36 * 3 * 3 - Object.keys(HANDMADE_SLOTS).length * 3 + 36 - Object.keys(HANDMADE_LEGENDARIES).length);
+    expect(ph.length).toBe(36 * 3 * 3 - Object.keys(HANDMADE_SLOTS).length * 3 + 36 - Object.keys(HANDMADE_LEGENDARIES).length + EXTRA_FAMILIES.length * 3);
     expect(new Set(SPECIES.map((x) => x.name.toLowerCase())).size).toBe(SPECIES.length);
     for (const sp of ph.filter((x) => x.rarity !== 'legendary' && x.stage === 1)) expect(W.encounterSpots(sp.id).length, sp.id).toBeGreaterThan(0);
   });

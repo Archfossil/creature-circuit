@@ -66,6 +66,10 @@ Slots already filled by hand-made creatures are mapped in `HANDMADE_SLOTS` (the 
 
 Placeholder families appear in the wild like any other species. Placeholder Legendaries have no map node yet, so the Codex says they aren't placed.
 
+**Extra families** (`EXTRA_FAMILIES`) sit beside the table: five placeholder Commons, each a second single-type family out at the time of day its type was missing from the wild (Electric, Fire and Grass by night; Astral and Charm by day). Their ids are `ph-<type>-<dusk|sun>-common-<stage>`. To replace one, add the real family with its `activity` and remove the entry.
+
+**Activity** comes from a species' types (`activityFromTypes`): all night-leaning types (Astral, Charm) make it nocturnal, all day-leaning ones (Electric, Fire, Grass) diurnal, and a mix, or any Rock, Steel or Water, leaves it out at any time. `activity` on the species or `ACTIVITY_OVERRIDE` sets it by hand.
+
 **Replacing a placeholder:**
 1. Add the real species to the hand-made list in `species.ts`.
 2. Add its slot to `HANDMADE_SLOTS` / `HANDMADE_LEGENDARIES`.

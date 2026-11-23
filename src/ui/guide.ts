@@ -48,7 +48,7 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'daynight', title: 'Day & night', body: [
         'Day and night alternate: odd turns (1, 3, 5 …) are day, even turns (2, 4, 6 …) are night. The pill next to the turn counter shows which it is, and the map darkens at night.',
-        '- Wild creatures keep their own hours. Diurnal creatures (mostly Fire, Grass and Electric) only come out by day, nocturnal ones (mostly Astral and Charm) only at night, and the rest any time.',
+        '- Wild creatures keep their own hours. Diurnal creatures (mostly Fire, Grass and Electric) only come out by day and nocturnal ones (mostly Astral and Charm) only at night. The rest, including nearly any with Rock, Steel or Water in them, are out any time.',
         '- Each creature’s Codex page says when it’s out, and the Codex can filter by day or night.',
         '- Some events only happen by day (trainers, trades, errands) and some only at night (campfires, stars, trouble after dark).',
       ] },

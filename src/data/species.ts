@@ -43,6 +43,7 @@ function sp(d: Def): Species {
     evolvesTo: d.next, base: baseStats(d.rarity, d.stage, d.bias, d.weak), energy: energyFor(d.types, d.rarity, d.stage),
     rt, ability: d.ability, instinct: d.instinct, signature: d.sig, biomes: d.biomes, dex: d.dex,
     look: { shape: d.shape, primary: d.c[0], secondary: d.c[1], crest: d.crest },
+    ...(d.activity ? { activity: d.activity } : {}),
     ...(d.bulkSwap ? { bulkSwap: d.bulkSwap } : {}),
     ...(d.placeholder ? { placeholder: true } : {}),
   };
@@ -95,16 +96,16 @@ const HANDMADE: Species[] = [
   sp({ id: 'cinderkoi', name: 'Cinderkoi', types: ['fire', 'water'], rarity: 'prime', stage: 2, bias: ['speed', 'focus'], shape: 'fish', c: ['#d0021b', '#ffe08a'], crest: 'halo', biomes: ['volcanic', 'coast'], ability: 'luckyCharm', instinct: 'sunbather', sig: 'sig-caldera', dex: 'Kilauea fishers say a Cinderkoi leaping from the lava lake brings a year of good fortune.' }),
 
   // ── GRASS ────────────────────────────────────────────
-  sp({ id: 'sproutle', name: 'Sproutle', types: ['grass'], rarity: 'common', stage: 1, next: 'thornback', bias: ['vigor'], shape: 'quad', c: ['#5ea832', '#c6e98a'], crest: 'leaf', biomes: GRA, ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', bulkSwap: { health: 'armor', vitality: 'ward' }, dex: 'Buries its feet in sunlit soil to nap. Grows a new leaf every birthday.' }),
-  sp({ id: 'thornback', name: 'Thornback', types: ['grass'], rarity: 'common', stage: 2, next: 'redwarden', bias: ['vigor', 'armor'], shape: 'quad', c: ['#417505', '#a3d36b'], crest: 'spikes', biomes: GRA, ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', dex: 'Thorny bark armor shields its soft underside. Shy around fire.' }),
+  sp({ id: 'sproutle', name: 'Sproutle', types: ['grass'], rarity: 'common', stage: 1, next: 'thornback', bias: ['vigor'], shape: 'quad', c: ['#5ea832', '#c6e98a'], crest: 'leaf', biomes: [...GRA, 'grove'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', bulkSwap: { health: 'armor', vitality: 'ward' }, dex: 'Buries its feet in sunlit soil to nap. Grows a new leaf every birthday.' }),
+  sp({ id: 'thornback', name: 'Thornback', types: ['grass'], rarity: 'common', stage: 2, next: 'redwarden', bias: ['vigor', 'armor'], shape: 'quad', c: ['#417505', '#a3d36b'], crest: 'spikes', biomes: [...GRA, 'grove'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', dex: 'Thorny bark armor shields its soft underside. Shy around fire.' }),
   sp({ id: 'redwarden', name: 'Redwarden', types: ['grass', 'rock'], rarity: 'common', stage: 3, bias: ['vigor', 'armor'], weak: 'speed', shape: 'golem', c: ['#6b3b1e', '#4f9a1e'], crest: 'leaf', biomes: ['forest'], ability: 'forager', instinct: 'deep-roots', sig: 'sig-overgrowth', dex: 'Stands guard on the Gloomshade forest floor. Mistaken for a redwood until it moves.' }),
   sp({ id: 'shadeleaf', name: 'Shadeleaf', types: ['grass'], rarity: 'prime', stage: 1, next: 'gloomoth', bias: ['evasion'], shape: 'sprite', c: ['#2f5d1a', '#c1ff7a'], crest: 'antenna', biomes: ['forest', 'swamp'], ability: 'keenNose', instinct: 'bramble-coat', dex: 'A caterpillar that drinks moonlight through its leaves.' }),
   sp({ id: 'gloomoth', name: 'Gloomoth', types: ['grass', 'charm'], rarity: 'prime', stage: 2, bias: ['evasion', 'focus'], shape: 'bird', c: ['#24401a', '#e1a6ff'], crest: 'antenna', biomes: ['forest'], ability: 'keenNose', instinct: 'bramble-coat', dex: 'Its wing scales glow faintly, the only light in the deep Gloomshade.' }),
   sp({ id: 'canopyre', name: 'Canopyre', types: ['grass'], rarity: 'apex', stage: 1, bias: ['vigor', 'focus'], shape: 'serpent', c: ['#1f4d12', '#9be35a'], crest: 'leaf', biomes: ['forest'], ability: 'sweetScent', instinct: 'creeping-vines', dex: 'Coils through the canopy so slowly that moss grows on its scales.' }),
 
   // ── ROCK ─────────────────────────────────────────────
-  sp({ id: 'pebbark', name: 'Pebbark', types: ['rock'], rarity: 'common', stage: 1, next: 'cragjaw', bias: ['armor'], shape: 'quad', c: ['#b57204', '#e8c98e'], crest: 'ears', biomes: ROC, ability: 'keenNose', instinct: 'menace', sig: 'sig-mesa', dex: 'A pup that digs for shiny pebbles and barks echoes off canyon walls.' }),
-  sp({ id: 'cragjaw', name: 'Cragjaw', types: ['rock'], rarity: 'common', stage: 2, next: 'mesahound', bias: ['armor', 'power'], shape: 'quad', c: ['#9a5d06', '#d8b072'], crest: 'spikes', biomes: ROC, ability: 'keenNose', instinct: 'menace', sig: 'sig-mesa', dex: 'Can chew through sandstone. Its bite reshapes canyon tunnels.' }),
+  sp({ id: 'pebbark', name: 'Pebbark', types: ['rock'], rarity: 'common', stage: 1, next: 'cragjaw', bias: ['armor'], shape: 'quad', c: ['#b57204', '#e8c98e'], crest: 'ears', biomes: [...ROC, 'volcanic'], ability: 'keenNose', instinct: 'menace', sig: 'sig-mesa', dex: 'A pup that digs for shiny pebbles and barks echoes off canyon walls.' }),
+  sp({ id: 'cragjaw', name: 'Cragjaw', types: ['rock'], rarity: 'common', stage: 2, next: 'mesahound', bias: ['armor', 'power'], shape: 'quad', c: ['#9a5d06', '#d8b072'], crest: 'spikes', biomes: [...ROC, 'volcanic'], ability: 'keenNose', instinct: 'menace', sig: 'sig-mesa', dex: 'Can chew through sandstone. Its bite reshapes canyon tunnels.' }),
   sp({ id: 'mesahound', name: 'Mesahound', types: ['rock'], rarity: 'common', stage: 3, bias: ['armor', 'power'], shape: 'quad', c: ['#7b4705', '#f0c27a'], crest: 'plates', biomes: ['canyon'], ability: 'keenNose', instinct: 'menace', sig: 'sig-mesa', dex: 'The namesake of Houndmouth Canyon. Its howl shifts the walls.' }),
   sp({ id: 'rubblet', name: 'Rubblet', types: ['rock'], rarity: 'prime', stage: 1, next: 'boulderon', bias: ['vigor'], weak: 'speed', shape: 'blob', c: ['#8a7a66', '#b57204'], crest: 'crystal', biomes: ['canyon', 'mountain'], ability: 'luckyCharm', instinct: 'hold-fast', dex: 'Rolls downhill on purpose. Collects gemstones in its cracks.' }),
   sp({ id: 'boulderon', name: 'Boulderon', types: ['rock'], rarity: 'prime', stage: 2, bias: ['vigor', 'armor'], weak: 'speed', shape: 'golem', c: ['#6e6152', '#e09b2d'], crest: 'crystal', biomes: ['canyon', 'mountain'], ability: 'luckyCharm', instinct: 'hold-fast', dex: 'Its geode heart glows when it is happy.' }),
@@ -119,8 +120,8 @@ const HANDMADE: Species[] = [
   sp({ id: 'leviathorn', name: 'Leviathorn', types: ['steel'], rarity: 'apex', stage: 1, bias: ['armor', 'vigor'], shape: 'serpent', c: ['#6f7884', '#a7f0ff'], crest: 'spikes', biomes: ['coast'], ability: 'quickStep', instinct: 'polished-plate', dex: 'Iron scales the size of shields. Surfaces only when the tide turns metallic.' }),
 
   // ── WATER ────────────────────────────────────────────
-  sp({ id: 'puddlit', name: 'Puddlit', types: ['water'], rarity: 'common', stage: 1, next: 'marshfin', bias: ['evasion'], shape: 'blob', c: ['#50e3c2', '#1d6f8c'], crest: 'fin', biomes: WAT, ability: 'quickStep', instinct: 'rain-dancer', sig: 'sig-riptide', dex: 'Hops between puddles after rain. Gets grumpy in droughts.' }),
-  sp({ id: 'marshfin', name: 'Marshfin', types: ['water'], rarity: 'common', stage: 2, next: 'mangrovore', bias: ['evasion', 'focus'], shape: 'serpent', c: ['#2fbfa0', '#0f4f66'], crest: 'fin', biomes: WAT, ability: 'quickStep', instinct: 'rain-dancer', sig: 'sig-riptide', dex: 'Slips between mangrove roots faster than the eye can follow.' }),
+  sp({ id: 'puddlit', name: 'Puddlit', types: ['water'], rarity: 'common', stage: 1, next: 'marshfin', bias: ['evasion'], shape: 'blob', c: ['#50e3c2', '#1d6f8c'], crest: 'fin', biomes: [...WAT, 'tundra'], ability: 'quickStep', instinct: 'rain-dancer', sig: 'sig-riptide', dex: 'Hops between puddles after rain. Gets grumpy in droughts.' }),
+  sp({ id: 'marshfin', name: 'Marshfin', types: ['water'], rarity: 'common', stage: 2, next: 'mangrovore', bias: ['evasion', 'focus'], shape: 'serpent', c: ['#2fbfa0', '#0f4f66'], crest: 'fin', biomes: [...WAT, 'tundra'], ability: 'quickStep', instinct: 'rain-dancer', sig: 'sig-riptide', dex: 'Slips between mangrove roots faster than the eye can follow.' }),
   sp({ id: 'mangrovore', name: 'Mangrovore', types: ['water', 'grass'], rarity: 'common', stage: 3, bias: ['vigor', 'focus'], shape: 'quad', c: ['#1d7a6b', '#7bbf3f'], crest: 'leaf', biomes: ['swamp'], ability: 'quickStep', instinct: 'rain-dancer', sig: 'sig-riptide', dex: 'Mangroves sprout from its back. Katy\'s roots open for it alone.' }),
   sp({ id: 'bubbloon', name: 'Bubbloon', types: ['water'], rarity: 'prime', stage: 1, next: 'tidecall', bias: ['ward'], shape: 'sprite', c: ['#9df5ff', '#3a8cff'], crest: 'halo', biomes: ['lake', 'river'], ability: 'sweetScent', instinct: 'fresh-spring', dex: 'Floats inside its own bubble. Pops when embarrassed.' }),
   sp({ id: 'tidecall', name: 'Tidecall', types: ['water'], rarity: 'prime', stage: 2, bias: ['ward', 'focus'], shape: 'bird', c: ['#50e3c2', '#f4f9ff'], crest: 'fin', biomes: ['coast', 'lake'], ability: 'sweetScent', instinct: 'fresh-spring', dex: 'Its cry raises the tide a finger-width. Fishermen follow its flocks.' }),
@@ -138,20 +139,21 @@ export const SPECIES: Species[] = [...HANDMADE, ...PLACEHOLDER_DEFS.map(sp)];
 // ── Day & night activity ────────────────────────────────────────
 /**
  * Each type leans toward day or night (or neither). A species' activity comes from its types:
- * only night-leaning types → nocturnal, only day-leaning → diurnal, anything else (a mix, or no
- * leaning) → crepuscular, out at any time. ACTIVITY_OVERRIDE sets a species by hand.
+ * all night-leaning → nocturnal, all day-leaning → diurnal, anything else (a mix, or any type with no
+ * leaning: Rock, Steel, Water) → crepuscular, out at any time. ACTIVITY_OVERRIDE sets a species by hand.
  */
 export const TYPE_ACTIVITY: Record<ElementType, 'day' | 'night' | null> = {
   astral: 'night', charm: 'night', electric: 'day', fire: 'day', grass: 'day', rock: null, steel: null, water: null,
 };
 export const ACTIVITY_OVERRIDE: Record<string, Activity> = {
   shadeleaf: 'nocturnal', // lives in the shade of the forest floor
+  emberwick: 'crepuscular', lavalume: 'crepuscular', // a candle flame, followed home on dark nights
   gloomoth: 'nocturnal', // a moth of the dark canopy
 };
 export function activityFromTypes(types: ElementType[]): Activity {
   const lean = types.map((t) => TYPE_ACTIVITY[t]);
-  if (lean.includes('night') && !lean.includes('day')) return 'nocturnal';
-  if (lean.includes('day') && !lean.includes('night')) return 'diurnal';
+  if (lean.every((x) => x === 'night')) return 'nocturnal';
+  if (lean.every((x) => x === 'day')) return 'diurnal';
   return 'crepuscular';
 }
 for (const s of SPECIES) s.activity = s.activity ?? ACTIVITY_OVERRIDE[s.id] ?? activityFromTypes(s.types);

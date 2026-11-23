@@ -5,7 +5,7 @@
 // generated PLACEHOLDER (id `ph-<type>-<type|mono>-<rarity>-<stage>`, `placeholder: true`) so the
 // game has a full roster to test with. To swap one in: add the real species in species.ts and point
 // its slot in `HANDMADE_SLOTS` / `HANDMADE_LEGENDARIES` below at it; the placeholder disappears.
-import type { Biome, BodyShape, CreatureLook, ElementType, Rarity, StatKey } from './schema';
+import type { Activity, Biome, BodyShape, CreatureLook, ElementType, Rarity, StatKey } from './schema';
 import { TYPES, TYPE_COLOR, TYPE_LABEL } from './types';
 import { BIOME_TYPES } from './map';
 import { INSTINCT_POOL } from './instincts';
@@ -14,7 +14,7 @@ export interface Def {
   id: string; name: string; types: ElementType[]; rarity: Rarity; stage: 1 | 2 | 3; next?: string;
   bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest'];
   biomes: Biome[]; ability: string; instinct: string; sig?: string; dex: string;
-  placeholder?: boolean; bulkSwap?: import('./schema').Species['bulkSwap'];
+  placeholder?: boolean; activity?: Activity; bulkSwap?: import('./schema').Species['bulkSwap'];
 }
 
 export type FamilyRarity = 'common' | 'prime' | 'apex';
@@ -54,6 +54,21 @@ export const HANDMADE_LEGENDARIES: Record<string, string> = {
   'steel+water': 'thalassor',
   'water+astral': 'nimbalune',
 };
+
+/**
+ * Placeholder families beside the table, where the wild was short of someone: a single-type Common out
+ * at the time of day its type's first family isn't. Ids are `ph-<type>-<key>-common-<stage>`. To replace
+ * one, add the real family in species.ts and remove its entry here.
+ */
+export interface ExtraFamily { type: ElementType; key: 'dusk' | 'sun'; activity: Activity; biomes: Biome[]; shape: BodyShape; concept: string }
+export const EXTRA_FAMILIES: ExtraFamily[] = [
+  { type: 'electric', key: 'dusk', activity: 'nocturnal', biomes: ['badlands', 'road', 'desert'], shape: 'quad', concept: 'a lantern-tailed gecko that hunts by its own sparks' },
+  { type: 'fire', key: 'dusk', activity: 'nocturnal', biomes: ['volcanic', 'canyon', 'desert'], shape: 'blob', concept: 'a coal-shelled beetle that glows after sundown' },
+  { type: 'grass', key: 'dusk', activity: 'nocturnal', biomes: ['river', 'swamp', 'forest'], shape: 'blob', concept: 'a moonflower toad that blooms in the dark' },
+  { type: 'astral', key: 'sun', activity: 'diurnal', biomes: ['tundra', 'mountain'], shape: 'quad', concept: 'a sundog hare that bends daylight into halos' },
+  { type: 'charm', key: 'sun', activity: 'diurnal', biomes: ['lake', 'grove', 'meadow'], shape: 'bird', concept: 'a ribbon-finned songbird that duets with its reflection' },
+];
+export const extraId = (f: ExtraFamily, stage: number) => `ph-${f.type}-${f.key}-common-${stage}`;
 
 /** Look up a slot whichever order the two types are given in. */
 export function findCombo(types: ElementType[]): ElementType[] | undefined {
@@ -141,6 +156,28 @@ function placeholderFamily(types: ElementType[], rarity: FamilyRarity, ci: numbe
   }));
 }
 
+function extraFamily(f: ExtraFamily): Def[] {
+  const t = f.type;
+  const instinct = familyInstinct([t], 0);
+  return ([1, 2, 3] as const).map((stage) => ({
+    id: extraId(f, stage),
+    name: cap(HEAD[t] + f.key + SUFFIX.common[stage - 1]),
+    types: [t], rarity: 'common' as const, stage,
+    next: stage < 3 ? extraId(f, stage + 1) : undefined,
+    bias: stage === 1 ? [BIAS[t][1]] : [BIAS[t][1], BIAS[t][0]],
+    shape: f.shape,
+    c: [shade(TYPE_COLOR[t], f.key === 'dusk' ? -0.35 - 0.08 * stage : 0.2), f.key === 'dusk' ? '#ffe27a' : '#fff6d8'],
+    crest: CREST[t],
+    biomes: f.biomes,
+    ability: ABILITIES[(TYPES.indexOf(t) + 5) % ABILITIES.length],
+    instinct,
+    sig: SIG[t],
+    dex: `Placeholder: a second ${TYPE_LABEL[t]} Common family, stage ${stage} of 3, out by ${f.key === 'dusk' ? 'night' : 'day'}. Concept: ${f.concept}. To be replaced with a real creature.`,
+    placeholder: true,
+    activity: f.activity,
+  }));
+}
+
 function placeholderLegendary(types: ElementType[], ci: number): Def {
   const [t1, t2] = types;
   return {
@@ -159,11 +196,11 @@ function placeholderLegendary(types: ElementType[], ci: number): Def {
   };
 }
 
-/** Placeholder defs for every slot not already filled by a hand-made creature. */
-export const PLACEHOLDER_DEFS: Def[] = TYPE_COMBOS.flatMap((types, ci) => [
+/** Placeholder defs for every slot not already filled by a hand-made creature, then the extra families (last, so they don't shift anyone's Instinct). */
+export const PLACEHOLDER_DEFS: Def[] = [...TYPE_COMBOS.flatMap((types, ci) => [
   ...FAMILY_RARITIES.flatMap((r) => (HANDMADE_SLOTS[`${slotKey(types)}/${r}`] ? [] : placeholderFamily(types, r, ci))),
   ...(HANDMADE_LEGENDARIES[slotKey(types)] ? [] : [placeholderLegendary(types, ci)]),
-]);
+]), ...EXTRA_FAMILIES.flatMap(extraFamily)];
 
 export interface RosterSlot {
   types: ElementType[];

@@ -1,7 +1,7 @@
 // Generates docs/08-creature-checklist.md: every creature in the game, slot by slot, marking which
 // are generated placeholders still waiting for a real design and art. Run: npm run docs:creatures
 import { writeFileSync } from 'node:fs';
-import { ROSTER, FAMILY_RARITIES, type RosterSlot } from '../src/data/roster';
+import { ROSTER, FAMILY_RARITIES, EXTRA_FAMILIES, extraId, type RosterSlot } from '../src/data/roster';
 import { SPECIES, SPECIES_BY_ID } from '../src/data/species';
 import { TYPE_LABEL } from '../src/data/types';
 import { ABILITIES, BIOME_INFO, ACTIVITY_INFO } from '../src/data/content';
@@ -29,7 +29,7 @@ function row(sp: Species, family: string) {
 }
 
 const inRoster = new Set(ROSTER.flatMap((s) => [...s.common, ...s.prime, ...s.apex, s.legendary]));
-const extras = SPECIES.filter((sp) => !inRoster.has(sp.id));
+const extras = SPECIES.filter((sp) => !inRoster.has(sp.id) && !sp.placeholder);
 const total = SPECIES.length;
 const placeholders = SPECIES.filter((sp) => sp.placeholder).length;
 
@@ -51,7 +51,7 @@ lines.push(
   `| Hand-made (design done, art to do) | ${total - placeholders} |`,
   `| Final art delivered | 0 of ${total} |`,
   `| **Placeholders to replace** | **${placeholders}** |`,
-  `| Families (3 stages) to design | ${ROSTER.reduce((n, s) => n + FAMILY_RARITIES.filter((r) => SPECIES_BY_ID[s[r][0]]?.placeholder).length, 0)} of ${ROSTER.length * 3} |`,
+  `| Families (3 stages) to design | ${ROSTER.reduce((n, s) => n + FAMILY_RARITIES.filter((r) => SPECIES_BY_ID[s[r][0]]?.placeholder).length, 0) + EXTRA_FAMILIES.length} of ${ROSTER.length * 3 + EXTRA_FAMILIES.length} |`,
   `| Legendaries to design | ${ROSTER.filter((s) => SPECIES_BY_ID[s.legendary]?.placeholder).length} of ${ROSTER.length} |`,
   '',
   '## How to use this list',
@@ -59,7 +59,7 @@ lines.push(
   '- **Design ☐**: the creature has a real name, concept, flavour text and stat direction. Tick ☑ when approved.',
   '- **Art ☐**: the creature has final art (portrait and model or sprite). Tick ☑ when delivered. No creature has final art yet: every one, hand-made or placeholder, uses the procedural model.',
   '- Hand-made creatures start with Design ☑ because they already have a real name, look and flavour text.',
-  '- **Types, biomes, Out by, Ability, Instinct and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).',
+  '- **Types, biomes, Out by, Ability, Instinct and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day; with Rock, Steel or Water in it, or a mix, it is out at any time) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).',
   '- **Instinct** is the creature\'s passive in battle (it fires on its own: when it takes the field, loses a heart, is hit, and so on). Every stage of a family shares one. All 48, with their exact rules and who has them: [14 · Instinct Checklist](./14-instinct-checklist.md).',
   '- **Swapping one in (developers):** add the species in `src/data/species.ts`, then point its slot in `HANDMADE_SLOTS` or `HANDMADE_LEGENDARIES` (`src/data/roster.ts`) at it. The placeholder disappears; regenerate this file.',
   '- A new Legendary also needs a roaming node on the map (`src/data/map.ts`).',
@@ -84,6 +84,14 @@ for (const s of ROSTER) {
   lines.push('| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const r of FAMILY_RARITIES) for (const id of s[r]) lines.push(row(SPECIES_BY_ID[id], cap(r)));
   lines.push(row(SPECIES_BY_ID[s.legendary], 'Legendary'), '');
+}
+
+lines.push('---', '', '## Extra families', '', 'Placeholder families beside the roster table (`EXTRA_FAMILIES` in `src/data/roster.ts`): a second single-type Common, out at the time of day its type was missing from the wild. To swap one in, add the real family in `src/data/species.ts` (with its `activity`) and remove its entry.', '');
+for (const f of EXTRA_FAMILIES) {
+  lines.push(`**${TYPE_LABEL[f.type]}** · spawns in ${f.biomes.map((b) => BIOME_INFO[b].label).join(', ')} · concept: ${f.concept}`, '');
+  lines.push('| Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
+  for (const st of [1, 2, 3]) lines.push(row(SPECIES_BY_ID[extraId(f, st)], 'Common'));
+  lines.push('');
 }
 
 if (extras.length) {
