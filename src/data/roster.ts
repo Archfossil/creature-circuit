@@ -5,14 +5,14 @@
 // generated PLACEHOLDER (id `ph-<type>-<type|mono>-<rarity>-<stage>`, `placeholder: true`) so the
 // game has a full roster to test with. To swap one in: add the real species in species.ts and point
 // its slot in `HANDMADE_SLOTS` / `HANDMADE_LEGENDARIES` below at it; the placeholder disappears.
-import type { Activity, Biome, BodyShape, CreatureLook, ElementType, Rarity, StatKey } from './schema';
+import type { Activity, Biome, BodyShape, CreatureLook, ElementType, EyeStyle, Rarity, StatKey } from './schema';
 import { TYPES, TYPE_COLOR, TYPE_LABEL } from './types';
 import { BIOME_TYPES } from './map';
 import { INSTINCT_POOL } from './instincts';
 
 export interface Def {
   id: string; name: string; types: ElementType[]; rarity: Rarity; stage: 1 | 2 | 3; next?: string;
-  bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest'];
+  bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest']; eyes?: EyeStyle; marks?: CreatureLook['marks'];
   biomes: Biome[]; ability: string; instinct: string; sig?: string; dex: string;
   placeholder?: boolean; activity?: Activity; bulky?: true;
 }
@@ -60,13 +60,13 @@ export const HANDMADE_LEGENDARIES: Record<string, string> = {
  * at the time of day its type's first family isn't. Ids are `ph-<type>-<key>-common-<stage>`. To replace
  * one, add the real family in species.ts and remove its entry here.
  */
-export interface ExtraFamily { type: ElementType; key: 'dusk' | 'sun'; activity: Activity; biomes: Biome[]; shape: BodyShape; concept: string }
+export interface ExtraFamily { type: ElementType; key: 'dusk' | 'sun'; activity: Activity; biomes: Biome[]; shape: BodyShape; names: [string, string, string]; concept: string }
 export const EXTRA_FAMILIES: ExtraFamily[] = [
-  { type: 'electric', key: 'dusk', activity: 'nocturnal', biomes: ['badlands', 'road', 'desert'], shape: 'quad', concept: 'a lantern-tailed gecko that hunts by its own sparks' },
-  { type: 'fire', key: 'dusk', activity: 'nocturnal', biomes: ['volcanic', 'canyon', 'desert'], shape: 'blob', concept: 'a coal-shelled beetle that glows after sundown' },
-  { type: 'grass', key: 'dusk', activity: 'nocturnal', biomes: ['river', 'swamp', 'forest'], shape: 'blob', concept: 'a moonflower toad that blooms in the dark' },
-  { type: 'astral', key: 'sun', activity: 'diurnal', biomes: ['tundra', 'mountain'], shape: 'quad', concept: 'a sundog hare that bends daylight into halos' },
-  { type: 'charm', key: 'sun', activity: 'diurnal', biomes: ['lake', 'grove', 'meadow'], shape: 'bird', concept: 'a ribbon-finned songbird that duets with its reflection' },
+  { type: 'electric', key: 'dusk', activity: 'nocturnal', biomes: ['badlands', 'road', 'desert'], shape: 'lizard', names: ['Glimnewt', 'Lampskink', 'Beacodrake'], concept: 'a lantern-tailed gecko that hunts by its own sparks' },
+  { type: 'fire', key: 'dusk', activity: 'nocturnal', biomes: ['volcanic', 'canyon', 'desert'], shape: 'beetle', names: ['Coalgrub', 'Cinderbug', 'Furnarab'], concept: 'a coal-shelled beetle that glows after sundown' },
+  { type: 'grass', key: 'dusk', activity: 'nocturnal', biomes: ['river', 'swamp', 'forest'], shape: 'toad', names: ['Moontad', 'Bloomtoad', 'Lunacroak'], concept: 'a moonflower toad that blooms in the dark' },
+  { type: 'astral', key: 'sun', activity: 'diurnal', biomes: ['tundra', 'mountain'], shape: 'hare', names: ['Dawnhop', 'Halohare', 'Sunjack'], concept: 'a sundog hare that bends daylight into halos' },
+  { type: 'charm', key: 'sun', activity: 'diurnal', biomes: ['lake', 'grove', 'meadow'], shape: 'bird', names: ['Ribbonchick', 'Trillwing', 'Serenadove'], concept: 'a ribbon-finned songbird that duets with its reflection' },
 ];
 export const extraId = (f: ExtraFamily, stage: number) => `ph-${f.type}-${f.key}-common-${stage}`;
 
@@ -78,19 +78,29 @@ export function findCombo(types: ElementType[]): ElementType[] | undefined {
 // ── Placeholder generation ──────────────────────────────────────
 const HEAD: Record<ElementType, string> = { astral: 'Stel', charm: 'Pixi', electric: 'Zap', fire: 'Pyro', grass: 'Sprig', rock: 'Crag', steel: 'Ferro', water: 'Aqua' };
 const LINK: Record<ElementType, string> = { astral: 'star', charm: 'bloom', electric: 'volt', fire: 'flare', grass: 'leaf', rock: 'stone', steel: 'gear', water: 'tide' };
-const SUFFIX: Record<FamilyRarity, [string, string, string]> = {
-  common: ['kit', 'ox', 'or'], prime: ['mite', 'ling', 'arch'], apex: ['wisp', 'wyrm', 'titan'],
+/** Name endings by body shape, one per stage, so a placeholder's name says what it looks like. */
+const SUFFIX: Record<BodyShape, [string, string, string]> = {
+  quad: ['kit', 'pard', 'ox'], blob: ['pip', 'ling', 'arch'], bird: ['chick', 'wing', 'gale'], serpent: ['worm', 'coil', 'wyrm'],
+  golem: ['nub', 'hulk', 'titan'], sprite: ['wisp', 'fae', 'nymph'], fish: ['fry', 'fin', 'maw'], lizard: ['newt', 'saur', 'drake'],
+  lion: ['cub', 'mane', 'regal'], wraith: ['boo', 'shade', 'djinn'], slime: ['drip', 'goo', 'gloop'], beetle: ['grub', 'bug', 'scarab'],
+  toad: ['tad', 'toad', 'croak'], hare: ['hop', 'hare', 'jack'], ape: ['chimp', 'grip', 'brute'],
 };
 const BIAS: Record<ElementType, [StatKey, StatKey]> = {
   astral: ['speed', 'focus'], charm: ['evasion', 'focus'], electric: ['speed', 'power'], fire: ['power', 'vigor'],
   grass: ['vigor', 'armor'], rock: ['armor', 'power'], steel: ['armor', 'ward'], water: ['vigor', 'focus'],
 };
-const SHAPES: Record<ElementType, [BodyShape, BodyShape, BodyShape, BodyShape]> = { // common, prime, apex, legendary
-  astral: ['quad', 'sprite', 'bird', 'bird'], charm: ['sprite', 'blob', 'serpent', 'sprite'],
-  electric: ['quad', 'sprite', 'bird', 'bird'], fire: ['quad', 'blob', 'golem', 'bird'],
-  grass: ['quad', 'sprite', 'serpent', 'serpent'], rock: ['quad', 'blob', 'golem', 'golem'],
-  steel: ['golem', 'sprite', 'serpent', 'golem'], water: ['fish', 'blob', 'serpent', 'serpent'],
+/** Body shapes a type's families draw on (six each, so a slot's three families always differ). */
+const SHAPES: Record<ElementType, [BodyShape, BodyShape, BodyShape, BodyShape, BodyShape, BodyShape]> = {
+  astral: ['lion', 'sprite', 'wraith', 'hare', 'bird', 'quad'], charm: ['slime', 'hare', 'wraith', 'sprite', 'serpent', 'lion'],
+  electric: ['lizard', 'bird', 'beetle', 'quad', 'lion', 'hare'], fire: ['lion', 'slime', 'lizard', 'wraith', 'golem', 'beetle'],
+  grass: ['toad', 'ape', 'lizard', 'sprite', 'beetle', 'serpent'], rock: ['ape', 'beetle', 'golem', 'lizard', 'quad', 'toad'],
+  steel: ['beetle', 'golem', 'ape', 'serpent', 'lizard', 'lion'], water: ['slime', 'fish', 'toad', 'lizard', 'serpent', 'blob'],
 };
+const LEGEND_SHAPE: Record<ElementType, BodyShape> = { astral: 'bird', charm: 'wraith', electric: 'lion', fire: 'lizard', grass: 'serpent', rock: 'golem', steel: 'golem', water: 'serpent' };
+const familyShape = (types: ElementType[], ri: number, ci: number): BodyShape => SHAPES[types[0]][(ci + ri * 2) % 6];
+/** Eyes and markings vary from family to family; rarer ones look fiercer. */
+const familyEyes = (shape: BodyShape, ri: number, ci: number): EyeStyle | undefined => (shape === 'wraith' ? 'glow' : ri === 2 || (ri === 1 && ci % 2) ? 'fierce' : ci % 5 === 3 ? 'sleepy' : undefined);
+const familyMarks = (ri: number, ci: number): CreatureLook['marks'] => ([undefined, 'spots', 'stripes'] as const)[(ci + ri) % 3];
 const CREST: Record<ElementType, NonNullable<CreatureLook['crest']>> = {
   astral: 'halo', charm: 'ears', electric: 'antenna', fire: 'flame', grass: 'leaf', rock: 'crystal', steel: 'plates', water: 'fin',
 };
@@ -137,14 +147,17 @@ function placeholderFamily(types: ElementType[], rarity: FamilyRarity, ci: numbe
   const [t1, t2] = types;
   const ri = FAMILY_RARITIES.indexOf(rarity);
   const stem = HEAD[t1] + (t2 ? LINK[t2] : '');
+  const shape = familyShape(types, ri, ci);
   const instinct = familyInstinct(types, ri);
   return ([1, 2, 3] as const).map((stage) => ({
     id: phId(types, rarity, stage),
-    name: cap(stem + SUFFIX[rarity][stage - 1]),
+    name: cap(stem + SUFFIX[shape][stage - 1]),
     types, rarity, stage,
     next: stage < 3 ? phId(types, rarity, stage + 1) : undefined,
     bias: stage === 1 ? [BIAS[t1][0]] : [BIAS[t1][0], t2 ? BIAS[t2][0] : BIAS[t1][1]],
-    shape: SHAPES[t1][ri],
+    shape,
+    eyes: familyEyes(shape, ri, ci),
+    marks: familyMarks(ri, ci),
     c: [shade(TYPE_COLOR[t1], -0.14 * (stage - 1)), t2 ? TYPE_COLOR[t2] : shade(TYPE_COLOR[t1], 0.55)],
     crest: stage === 3 && rarity === 'apex' ? 'horns' : CREST[t2 ?? t1],
     biomes: biomesFor(types),
@@ -161,11 +174,12 @@ function extraFamily(f: ExtraFamily): Def[] {
   const instinct = familyInstinct([t], 0);
   return ([1, 2, 3] as const).map((stage) => ({
     id: extraId(f, stage),
-    name: cap(HEAD[t] + f.key + SUFFIX.common[stage - 1]),
+    name: f.names[stage - 1],
     types: [t], rarity: 'common' as const, stage,
     next: stage < 3 ? extraId(f, stage + 1) : undefined,
     bias: stage === 1 ? [BIAS[t][1]] : [BIAS[t][1], BIAS[t][0]],
     shape: f.shape,
+    ...(f.key === 'dusk' ? { eyes: 'sleepy' as const } : {}),
     c: [shade(TYPE_COLOR[t], f.key === 'dusk' ? -0.35 - 0.08 * stage : 0.2), f.key === 'dusk' ? '#ffe27a' : '#fff6d8'],
     crest: CREST[t],
     biomes: f.biomes,
@@ -185,7 +199,8 @@ function placeholderLegendary(types: ElementType[], ci: number): Def {
     name: cap(HEAD[t1] + (t2 ? LINK[t2] : '') + 'eon'),
     types, rarity: 'legendary', stage: 1,
     bias: [BIAS[t1][0], t2 ? BIAS[t2][0] : BIAS[t1][1]],
-    shape: SHAPES[t1][3],
+    shape: LEGEND_SHAPE[t1],
+    eyes: LEGEND_SHAPE[t1] === 'wraith' ? 'glow' : 'fierce',
     c: [shade(TYPE_COLOR[t1], -0.25), t2 ? TYPE_COLOR[t2] : '#ffd84a'],
     crest: 'halo',
     biomes: biomesFor(types),

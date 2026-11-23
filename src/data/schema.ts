@@ -12,10 +12,16 @@ export type Rarity = 'common' | 'prime' | 'apex' | 'legendary';
 export type StatKey = 'vigor' | 'power' | 'armor' | 'focus' | 'ward' | 'speed' | 'evasion' | 'stamina';
 export type Stats = Record<StatKey, number>;
 
-export type BodyShape = 'blob' | 'quad' | 'bird' | 'serpent' | 'golem' | 'sprite' | 'fish';
+export type BodyShape = 'blob' | 'quad' | 'bird' | 'serpent' | 'golem' | 'sprite' | 'fish'
+  | 'lizard' | 'lion' | 'wraith' | 'slime' | 'beetle' | 'toad' | 'hare' | 'ape';
+/** Eye styles: round (the default), fierce (browed), sleepy (half-lidded) or glow (lit, no pupils). */
+export type EyeStyle = 'round' | 'fierce' | 'sleepy' | 'glow';
 
 export interface CreatureLook {
   shape: BodyShape;
+  eyes?: EyeStyle;
+  /** A pattern on the body, in the secondary colour. */
+  marks?: 'spots' | 'stripes';
   primary: string;   // hex body color
   secondary: string; // hex accent color
   /** Extra decoration keyed by the creature's main type (ears, flames, leaves, crystal...) */

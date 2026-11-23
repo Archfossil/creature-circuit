@@ -109,14 +109,14 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 | Signature | Learned by |
 |---|---|
-| Borealis Lance | Twinkit, Lumenox, Polarion, Stelbloomkit, Stelbloomox, Stelbloomor, Stelvoltkit, Stelvoltox, Stelvoltor, Stelflarekit, Stelflareox, Stelflareor, Stelleafkit, Stelleafox, Stelleafor, Stelsunkit, Stelsunox, Stelsunor |
-| Moonveil Kiss | Mossprite, Fernixie, Glamorwyn, Pixivoltkit, Pixivoltox, Pixivoltor, Pixiflarekit, Pixiflareox, Pixiflareor, Pixileafkit, Pixileafox, Pixileafor, Pixistonekit, Pixistoneox, Pixistoneor, Pixisunkit, Pixisunox, Pixisunor |
-| Stormcall | Zapup, Voltusk, Stormhound, Zapflarekit, Zapflareox, Zapflareor, Zapleafkit, Zapleafox, Zapleafor, Zapstonekit, Zapstoneox, Zapstoneor, Zapgearkit, Zapgearox, Zapgearor, Zapduskkit, Zapduskox, Zapduskor |
-| Caldera Roar | Cindercub, Blazmane, Pyrothane, Emberfish, Cinderkoi, Pyroleafkit, Pyroleafox, Pyroleafor, Pyrostonekit, Pyrostoneox, Pyrostoneor, Pyrogearkit, Pyrogearox, Pyrogearor, Pyrotidekit, Pyrotideox, Pyrotideor, Pyroduskkit, Pyroduskox, Pyroduskor |
-| Overgrowth | Sproutle, Thornback, Redwarden, Sprigstonekit, Sprigstoneox, Sprigstoneor, Spriggearkit, Spriggearox, Spriggearor, Sprigtidekit, Sprigtideox, Sprigtideor, Sprigduskkit, Sprigduskox, Sprigduskor |
-| Mesa Breaker | Pebbark, Cragjaw, Mesahound, Cragstarkit, Cragstarox, Cragstaror, Craggearkit, Craggearox, Craggearor, Cragtidekit, Cragtideox, Cragtideor |
-| Foundry Hammer | Rivetail, Ferrocrab, Ironclawd, Ferrostarkit, Ferrostarox, Ferrostaror, Ferrobloomkit, Ferrobloomox, Ferrobloomor, Ferrotidekit, Ferrotideox, Ferrotideor |
-| Riptide | Puddlit, Marshfin, Mangrovore, Aquastarkit, Aquastarox, Aquastaror, Aquabloomkit, Aquabloomox, Aquabloomor, Aquavoltkit, Aquavoltox, Aquavoltor |
+| Borealis Lance | Twinkit, Lumenox, Polarion, Stelbloomboo, Stelbloomshade, Stelbloomdjinn, Stelvolthop, Stelvolthare, Stelvoltjack, Stelflarechick, Stelflarewing, Stelflaregale, Stelleafkit, Stelleafpard, Stelleafox, Dawnhop, Halohare, Sunjack |
+| Moonveil Kiss | Mossprite, Fernixie, Glamorwyn, Pixivoltwisp, Pixivoltfae, Pixivoltnymph, Pixiflareworm, Pixiflarecoil, Pixiflarewyrm, Pixileafcub, Pixileafmane, Pixileafregal, Pixistonedrip, Pixistonegoo, Pixistonegloop, Ribbonchick, Trillwing, Serenadove |
+| Stormcall | Zapup, Voltusk, Stormhound, Zapflarekit, Zapflarepard, Zapflareox, Zapleafcub, Zapleafmane, Zapleafregal, Zapstonehop, Zapstonehare, Zapstonejack, Zapgearnewt, Zapgearsaur, Zapgeardrake, Glimnewt, Lampskink, Beacodrake |
+| Caldera Roar | Cindercub, Blazmane, Pyrothane, Emberfish, Cinderkoi, Pyroleafnewt, Pyroleafsaur, Pyroleafdrake, Pyrostoneboo, Pyrostoneshade, Pyrostonedjinn, Pyrogearnub, Pyrogearhulk, Pyrogeartitan, Pyrotidegrub, Pyrotidebug, Pyrotidescarab, Coalgrub, Cinderbug, Furnarab |
+| Overgrowth | Sproutle, Thornback, Redwarden, Sprigstonetad, Sprigstonetoad, Sprigstonecroak, Spriggearchimp, Spriggeargrip, Spriggearbrute, Sprigtidenewt, Sprigtidesaur, Sprigtidedrake, Moontad, Bloomtoad, Lunacroak |
+| Mesa Breaker | Pebbark, Cragjaw, Mesahound, Cragstarchimp, Cragstargrip, Cragstarbrute, Craggearnewt, Craggearsaur, Craggeardrake, Cragtidekit, Cragtidepard, Cragtideox |
+| Foundry Hammer | Rivetail, Ferrocrab, Ironclawd, Ferrostarnub, Ferrostarhulk, Ferrostartitan, Ferrobloomnub, Ferrobloomhulk, Ferrobloomtitan, Ferrotidecub, Ferrotidemane, Ferrotideregal |
+| Riptide | Puddlit, Marshfin, Mangrovore, Aquastartad, Aquastartoad, Aquastarcroak, Aquabloomtad, Aquabloomtoad, Aquabloomcroak, Aquavoltfry, Aquavoltfin, Aquavoltmaw |
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|

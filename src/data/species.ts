@@ -42,7 +42,7 @@ function sp(d: Def): Species {
     id: d.id, name: d.name, types: d.types as Species['types'], rarity: d.rarity, stage: d.stage,
     evolvesTo: d.next, base: baseStats(d.rarity, d.stage, d.bias, d.weak), energy: energyFor(d.types, d.rarity, d.stage),
     rt, ability: d.ability, instinct: d.instinct, signature: d.sig, biomes: d.biomes, dex: d.dex,
-    look: { shape: d.shape, primary: d.c[0], secondary: d.c[1], crest: d.crest },
+    look: { shape: d.shape, primary: d.c[0], secondary: d.c[1], crest: d.crest, ...(d.eyes ? { eyes: d.eyes } : {}), ...(d.marks ? { marks: d.marks } : {}) },
     ...(d.activity ? { activity: d.activity } : {}),
     ...(d.bias.includes('vigor') ? { sturdy: true as const } : {}),
     ...(d.bulky ? { bulky: true as const } : {}),

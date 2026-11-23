@@ -48,7 +48,7 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `instinct` | Its battle passive (an id from `INSTINCTS` in `instincts.ts`). Every stage of a family shares one. See [14 · Instinct Checklist](./14-instinct-checklist.md). |
 | `signature` | A Signature Move, unlocked through a progression-chart node. |
 | `sturdy`, `bulky` (optional) | How its charts raise Vigor. A first stage has one Vigor node, last; later stages (and species that never evolve) have two, one of them early. `sturdy` species (a Vigor bias, set automatically) have one instead of two, and `bulky` ones (Sproutle) have none at that stage. |
-| `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
+| `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish, lizard, lion, wraith, slime, beetle, toad, hare, ape`. Optional `eyes` (`round, fierce, sleepy, glow`) and `marks` (`spots, stripes`) vary it. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
 ### The roster table (`roster.ts`)
 The roster has one **slot** for each type combination: 8 single types plus 28 dual pairs, 36 in all. Each slot holds:
@@ -60,7 +60,8 @@ That makes 324 family creatures and 36 Legendaries. `ROSTER` lists the species i
 Slots already filled by hand-made creatures are mapped in `HANDMADE_SLOTS` (the eight Common starter lines) and `HANDMADE_LEGENDARIES` (Solstara, Thalassor). Every other slot gets a generated **placeholder**:
 - **Ids:** `ph-<type>-<type|mono>-<rarity>-<stage>`, or `ph-…-legendary`.
 - **Flag:** `placeholder: true`.
-- **Names:** stitched from type syllables (e.g. Pyrotideling).
+- **Names:** type syllables plus an ending for the body shape and stage (`SUFFIX`), e.g. Pyrotidegrub → Pyrotidebug → Pyrotidescarab.
+- **Looks:** the body shape comes from six per leading type (`SHAPES`), so a slot's three families always differ. Eyes (`round`, `fierce`, `sleepy`, `glow`) and markings (`spots`, `stripes`) vary by family. Shapes are built in `render/creatureModel.ts`: quad, blob, bird, serpent, golem, sprite, fish, lizard, lion, wraith, slime, beetle, toad, hare and ape.
 - **Stats, energy, looks, biomes and ability:** derived from the types and rarity.
 - **Instinct:** dealt in turn from one of the family's types' pools (`familyInstinct`), so every Instinct goes to a similar number of families.
 
