@@ -39,6 +39,8 @@ export interface Species {
   ability: string;        // ability id (overworld passive)
   instinct: string;       // Instinct id (data/instincts.ts): its passive in battle
   signature?: string;     // move id unlocked via progression
+  /** Already bulky: what its chart gives instead of the +1 Health (`health`) and +1 Vitality (`vitality`) nodes at this stage. */
+  bulkSwap?: { health: keyof Stats; vitality: keyof Stats };
   biomes: Biome[];        // where it can be encountered in the wild
   dex: string;            // flavor text for the index card
   look: CreatureLook;

@@ -14,7 +14,7 @@ export interface Def {
   id: string; name: string; types: ElementType[]; rarity: Rarity; stage: 1 | 2 | 3; next?: string;
   bias: StatKey[]; weak?: StatKey; shape: BodyShape; c: [string, string]; crest: CreatureLook['crest'];
   biomes: Biome[]; ability: string; instinct: string; sig?: string; dex: string;
-  placeholder?: boolean;
+  placeholder?: boolean; bulkSwap?: import('./schema').Species['bulkSwap'];
 }
 
 export type FamilyRarity = 'common' | 'prime' | 'apex';

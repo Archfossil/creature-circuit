@@ -210,6 +210,7 @@ export function autoPlaybook(c: CreatureInst, varied = false): string[] {
 //              a                    a  +1 best stat
 //            /   \                  b  +2 primary energy      c  +1 Health
 //           b     c                 d  Signature (or Focus)   e  +1 second stat (needs b AND c)
+//                                   (c and h give other stats for an already bulky species: Species.bulkSwap)
 //          / \   / \                f  +1 Speed
 //         d   e     f               g  +2 secondary energy
 //         |   |     |               h  +1 Vitality            i  +1 Stamina
@@ -250,14 +251,16 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
   const nodes: ProgNode[] = [
     statNode({ id: 'a', row: 0, col: 1, requires: [] }, first),
     energyNode({ id: 'b', row: 1, col: 0, requires: ['a'] }, prim),
-    { id: 'c', row: 1, col: 2, requires: ['a'], label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
+    sp.bulkSwap ? statNode({ id: 'c', row: 1, col: 2, requires: ['a'] }, sp.bulkSwap.health)
+      : { id: 'c', row: 1, col: 2, requires: ['a'], label: '+1 Health', text: 'Health pool +1 per Vitality.', icon: '♥', kind: 'stat', apply: (cc) => { cc.bonus.health = (cc.bonus.health ?? 0) + 1; } },
     sp.signature
       ? { id: 'd', row: 2, col: 0, requires: ['b'], label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name} (${sigSummary(MOVE_BY_ID[sp.signature])}).`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
       : statNode({ id: 'd', row: 2, col: 0, requires: ['b'] }, 'focus'),
     statNode({ id: 'e', row: 2, col: 1, requires: ['b', 'c'] }, second),
     statNode({ id: 'f', row: 2, col: 2, requires: ['c'] }, 'speed'),
     energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
-    { id: 'h', row: 3, col: 1, requires: ['e'], label: '+1 Vitality', text: 'One more Vitality heart.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
+    sp.bulkSwap ? statNode({ id: 'h', row: 3, col: 1, requires: ['e'] }, sp.bulkSwap.vitality)
+      : { id: 'h', row: 3, col: 1, requires: ['e'], label: '+1 Vitality', text: 'One more Vitality heart.', icon: '✚', kind: 'stat', apply: (cc) => { cc.bonus.vitality = (cc.bonus.vitality ?? 0) + 1; } },
     statNode({ id: 'i', row: 3, col: 2, requires: ['f'] }, 'stamina'),
   ];
   if (sp.evolvesTo) {
@@ -397,7 +400,7 @@ export function autoSpend(c: CreatureInst, allowEvolve: boolean) {
     if (av.length === 0) {
       // chart exhausted (or only Evolve left, which wild creatures skip): generic growth
       c.points--;
-      const k = pick(TRAINABLE);
+      const k = pick(speciesOf(c).bulkSwap ? TRAINABLE.filter((x) => x !== 'vigor') : TRAINABLE);
       c.bonus[k] = (c.bonus[k] ?? 0) + 1;
       continue;
     }

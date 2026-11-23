@@ -47,6 +47,7 @@ To add content, add an entry that follows the template below. Nothing else needs
 | `ability` | An overworld passive (see `ABILITIES`). It is active only while the creature is **Following**. |
 | `instinct` | Its battle passive (an id from `INSTINCTS` in `instincts.ts`). Every stage of a family shares one. See [14 · Instinct Checklist](./14-instinct-checklist.md). |
 | `signature` | A Signature Move, unlocked through a progression-chart node. |
+| `bulkSwap` (optional) | For an already bulky species: the stats its chart gives instead of the +1 Health and +1 Vitality nodes, e.g. Sproutle's `{ "health": "armor", "vitality": "ward" }`. It's per stage, so the next stage has the usual nodes. |
 | `look` | Drives the procedural low-poly model. `shape` is one of `blob, quad, bird, serpent, golem, sprite, fish`. `crest` is one of `horns, ears, flame, leaf, crystal, fin, halo, spikes, antenna, plates`. |
 
 ### The roster table (`roster.ts`)

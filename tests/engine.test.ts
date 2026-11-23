@@ -2493,6 +2493,18 @@ describe('progression skill tree', () => {
       expect(tree.some((n) => n.kind === (sp.evolvesTo ? 'evolve' : 'capstone')), sp.id).toBe(true);
     }
   });
+  it('Sproutle’s chart has no Health, Vitality or Vigor until it evolves', () => {
+    const c = createCreature('sproutle', 1);
+    c.points = 20;
+    const hp = maxHealth(c), vit = maxVitality(c);
+    for (const id of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']) expect(unlockNode(c, id), id).toBe(true);
+    expect([maxHealth(c), maxVitality(c)]).toEqual([hp, vit]);
+    expect([c.bonus.armor, c.bonus.ward]).toEqual([1, 1]);
+    for (let i = 0; i < 30; i++) { const w = createCreature('sproutle', 14); expect(w.bonus.vigor ?? 0).toBe(0); }
+    expect(unlockNode(c, 'evo')).toBe(true);
+    expect(c.species).toBe('thornback');
+    expect(progressionTree(c).map((n) => n.label)).toEqual(expect.arrayContaining(['+1 Health', '+1 Vitality']));
+  });
   it('a node needs ALL of its connecting nodes, not just one', () => {
     const c = fresh('emberfish');
     expect(avail(c)).toEqual(['a']);
