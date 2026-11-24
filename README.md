@@ -49,7 +49,7 @@ npm run build && npm start     # http://localhost:8787 (set PORT to change it)
 ```
 src/
   data/      schema.ts (content types) · types.ts (type chart) · species.ts · roster.ts (type-combo roster table + placeholders) · moves.ts · map.ts · content.ts · npcs.ts · texts.ts (the last few hand on the region's own data under the names the game uses)
-  regions/   types.ts (what a region is made of) · margos/ (map, Rivals and Champions, what they say and wear, starters, weather dice; docs/16-region-packages.md)
+  regions/   types.ts (what a region is made of) · active.ts (the region being played; `onRegion` for anything worked out from it) · margos/ (map, Rivals and Champions, what they say and wear, starters, weather dice; docs/16-region-packages.md)
   engine/    pure game rules, no DOM
              creature.ts (stats, energy, playbooks, progression) · battle.ts (combat) · world.ts (map, explore, cities, turns) · events.ts (start-of-turn events) · state.ts (save)
   render/    engine.ts (WebGL renderer) · world.ts (3D map) · land.ts (coastline math) · battle.ts (3D arena) · creatureModel.ts (procedural creatures) · trainerModel.ts (trainer minis)

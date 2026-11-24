@@ -1,7 +1,7 @@
 import type { Region } from '../types';
 import { STARTERS } from './codex';
 import { NPC_OUTFITS } from './looks';
-import { CITIES, MAP_SCALE, TOWNS, edges, nodes } from './map';
+import { CITIES, CLASSIC_KEY_TOWNS, DEPTHS_STAIR, KEY_ITEM_TOWNS, MAP_SCALE, ROAMING_KEY_ITEMS, TOWNS, WISP_SPOTS, edges, nodes } from './map';
 import { NPCS } from './npcs';
 import { VOICES } from './voices';
 import { WEATHER_DICE } from './weather';
@@ -9,7 +9,10 @@ import { WEATHER_DICE } from './weather';
 export const MARGOS: Region = {
   id: 'margos',
   name: 'Margos',
-  map: { scale: MAP_SCALE, nodes, edges, cities: CITIES, towns: TOWNS },
+  map: {
+    scale: MAP_SCALE, nodes, edges, cities: CITIES, towns: TOWNS,
+    places: { wispSpots: WISP_SPOTS, roamingKeyItems: ROAMING_KEY_ITEMS, keyItemTowns: KEY_ITEM_TOWNS, classicKeyTowns: CLASSIC_KEY_TOWNS, depthsStair: DEPTHS_STAIR, coasts: ['iron', 'blackSand'] },
+  },
   codex: { starters: STARTERS },
   people: { npcs: NPCS, voices: VOICES, looks: NPC_OUTFITS },
   weather: WEATHER_DICE,

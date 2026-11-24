@@ -1,20 +1,39 @@
 // The map being played on. The places themselves are in the region's package (src/regions); the names here
 // are how the rest of the game reads them, along with what's the same on every map.
-import type { MapNode, MapEdge, Biome, ElementType } from './schema';
-import { MARGOS } from '../regions';
+import type { City, MapNode, MapEdge, Biome, ElementType } from './schema';
+import { onRegion } from '../regions/active';
+import type { Town } from '../regions/types';
 
-// Margos's own places, until they become gimmicks (docs/16-region-packages.md, step 6)
+// Margos's own places, until they become gimmicks (docs/16-region-packages.md, step 6). Elsewhere, they match nowhere.
 export {
-  CLOUD_RING, CLOUD_EYE, CLOUD_NODES, isCloudNode, LANTERN_GLADE, RAINBOW_PLAINS, WISP_REGION, inWispRegion, isRainbowPlains,
-  FOREST_FLOOR, DEPTHS_STAIR, WISP_SPOTS, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS,
+  CLOUD_RING, CLOUD_EYE, CLOUD_NODES, isCloudNode, LANTERN_GLADE, RAINBOW_PLAINS, WISP_REGION, inWispRegion, isRainbowPlains, FOREST_FLOOR,
 } from '../regions/margos/map';
 
-export const MAP_SCALE = MARGOS.map.scale;
-export const MAP_NODES = MARGOS.map.nodes;
-export const MAP_EDGES = MARGOS.map.edges;
-export const CITIES = MARGOS.map.cities;
-export const TOWNS = MARGOS.map.towns;
-export const NODE_BY_ID: Record<string, MapNode> = Object.fromEntries(MAP_NODES.map((n) => [n.id, n]));
+export let MAP_SCALE: number;
+export let MAP_NODES: MapNode[];
+export let MAP_EDGES: MapEdge[];
+export let CITIES: Record<string, City>;
+export let TOWNS: Record<string, Town>;
+export let NODE_BY_ID: Record<string, MapNode>;
+// see regions/types.ts → Places
+export let WISP_SPOTS: string[];
+export let ROAMING_KEY_ITEMS: string[];
+export let KEY_ITEM_TOWNS: string[];
+export let CLASSIC_KEY_TOWNS: Record<string, string>;
+export let DEPTHS_STAIR: string | undefined;
+onRegion(({ map }) => {
+  MAP_SCALE = map.scale;
+  MAP_NODES = map.nodes;
+  MAP_EDGES = map.edges;
+  CITIES = map.cities;
+  TOWNS = map.towns;
+  NODE_BY_ID = Object.fromEntries(MAP_NODES.map((n) => [n.id, n]));
+  WISP_SPOTS = map.places.wispSpots;
+  ROAMING_KEY_ITEMS = map.places.roamingKeyItems;
+  KEY_ITEM_TOWNS = map.places.keyItemTowns;
+  CLASSIC_KEY_TOWNS = map.places.classicKeyTowns;
+  DEPTHS_STAIR = map.places.depthsStair;
+});
 
 export function neighbors(id: string): { node: MapNode; edge: MapEdge }[] {
   const out: { node: MapNode; edge: MapEdge }[] = [];

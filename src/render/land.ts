@@ -1,5 +1,6 @@
 // Pure terrain math for the world map: noise and where the land is. No three.js here, so the
 // map tests can check the coastline (e.g. that Kilauea stays an island).
+import { onRegion } from '../regions/active';
 import { MAP_NODES, MAP_EDGES, NODE_BY_ID, MAP_SCALE } from '../data/map';
 import type { MapNode } from '../data/schema';
 
@@ -15,7 +16,8 @@ export const fbm = (x: number, z: number) => vnoise(x, z) * 0.55 + vnoise(x * 2.
 export const smooth = (e0: number, e1: number, x: number) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
 // Land segments (sea routes excluded so islands stay islands)
-export const SEGS: [MapNode, MapNode][] = MAP_EDGES.filter((e) => e.via !== 'sea' && e.via !== 'portal' && e.b !== 'ironwake' && e.a !== 'ironwake').map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]);
+export let SEGS: [MapNode, MapNode][];
+onRegion(() => { SEGS = MAP_EDGES.filter((e) => e.via !== 'sea' && e.via !== 'portal' && e.b !== 'ironwake' && e.a !== 'ironwake').map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]); });
 
 export function segDist(px: number, pz: number, a: MapNode, b: MapNode) {
   const dx = b.x - a.x, dz = b.z - a.z;

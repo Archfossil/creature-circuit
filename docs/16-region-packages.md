@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 and 2 are built ([the safety net](#the-safety-net), and [Margos's data in its own package](#margoss-package-so-far)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 3 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far) and [the active region](#the-active-region)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -202,7 +202,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 |---|---|---|---|
 | 1 | **Safety net** ✅ built | S | Nothing |
 | 2 | **Move Margos's data** into `src/regions/margos` behind the same names ✅ built | M | Nothing |
-| 3 | **Active region**, plus a tiny test-only second region | M | Nothing |
+| 3 | **Active region**, plus a tiny test-only second region ✅ built | M | Nothing |
 | 4 | **Codex** separated from the species library | M | Nothing |
 | 5 | **Arenas** as a per-region table | S–M | Nothing |
 | 6 | **Gimmicks** as plug-ins, one at a time | **L** | Nothing |
@@ -245,10 +245,20 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 
 `src/regions/margos` holds the map, cities and towns (`map.ts`), Rivals and Champions (`npcs.ts`), what they say (`voices.ts`) and wear (`looks.ts`), the starters (`codex.ts`) and the weather dice (`weather.ts`). The old names in `src/data` and `render/npcLooks.ts` read from it, so nothing else in the game changed.
 
-- **Finding what's left:** outside `src/regions`, every file that names `MARGOS` or imports `regions/margos` is one step 3 or 6 has to change.
+- **Finding what's left:** apart from `active.ts`, only `data/map.ts` still reads `regions/margos`, for the places that become gimmicks in step 6.
 - **Packages only import types** from the rest of the game. The data files read the packages while the game loads, so anything more could go round in a circle.
 - **Left for their own steps:** the species a region uses (step 4), arena effects (5), gimmicks and Margos-only events (6), and the turn and Merit numbers (8).
 - **Shared, not Margos's:** which types belong to each biome (`BIOME_TYPES`). The species library uses it to place the placeholders. A region decides where its biomes are.
+
+### The active region
+
+`setRegion` in `src/regions/active.ts` changes region, and everything kept from a region's data is made inside `onRegion`, which runs at once and again on every change. The names the game uses (`NODE_BY_ID`, `CITIES`, `RIVALS`…) are the same, and always the active region's.
+
+- **Nothing in the game calls `setRegion` yet.** There's one region to play, and a save doesn't record its region until step 8.
+- **A new list or cache made from a region's data goes in `onRegion`.** `tests/regions.test.ts` fails if a switch to the test region (`tests/regions/testRegion.ts`) isn't the same as having started there: its data, teams, coastline and three whole seasons. It also checks that its saves mention nothing of Margos, and that Margos is the saved baseline again afterwards.
+- **It was tested by breaking it:** 26 rebuilds were stopped one at a time, and 23 were caught. The other three are caches that can't be wrong yet. Two hold species (`areaCache`, `usual`), and step 4 must make the tests catch them. The third (`built`) is keyed by Rival and Champion, who have different ids in each region; it would matter if one visits another region.
+- **Places the rules ask for** (wisp spots, key item towns, the Depths' stair, the two coasts of a challenge) are now in the package, as `map.places`.
+- **Still Margos's:** the default home in the new-journey wizard and in Stadium Mode (`thunder`), and the stadium's id, which the test region shares. They go with the other city ids in step 6, or step 9 for the wizard.
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

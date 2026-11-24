@@ -1,5 +1,6 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
+import { onRegion } from '../regions/active';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, NATURE_BY_ID, ABILITIES, type Recipe } from '../data/content';
 import { INSTINCT_BY_ID } from '../data/instincts';
@@ -563,7 +564,7 @@ export function exploreDepths(s: GameState, material: string): { stars: { face: 
   if (depthsBlock(s, material)) return null;
   s.initiative -= DEPTHS_COST;
   addItem(s, material, -1);
-  const stair = NODE_BY_ID[DEPTHS_STAIR];
+  const stair = NODE_BY_ID[DEPTHS_STAIR ?? s.location];
   const { stars, rarity } = rollRarity(s, stair);
   const level = wildLevel(s, stair);
   const sp = depthsSpecies(material, rarity, level);
@@ -593,6 +594,7 @@ export const stageCapFor = (level: number) => (level >= 10 ? 3 : level >= 6 ? 2 
 
 interface AreaPool { locals: Map<ElementType, Species[]>; strays: Species[] }
 const areaCache = new Map<string, AreaPool>();
+onRegion(() => areaCache.clear());
 /**
  * Who can turn up in a biome. Locals, by type (a dual type is under both): every type is native, from
  * those that list this biome, or for a type with nobody awake, from all who'd fit. Strays: dual types
@@ -646,6 +648,7 @@ export function encounterSpots(speciesId: string): Spot[] {
 }
 
 const biomeCache = new Map<string, Biome[]>();
+onRegion(() => biomeCache.clear());
 /** Biomes where this species or an earlier stage of it turns up (its wild nodes, or its Legendary node). For Codex filters. */
 export function speciesBiomes(speciesId: string): Biome[] {
   let out = biomeCache.get(speciesId);
@@ -1736,4 +1739,3 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   }
   return report;
 }
-

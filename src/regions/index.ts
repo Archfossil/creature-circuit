@@ -1,2 +1,2 @@
-// Every region there is. Margos is the only one until the active region arrives (docs/16-region-packages.md, step 3).
+// Every region there is.
 export { MARGOS } from './margos';

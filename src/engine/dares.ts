@@ -1,6 +1,7 @@
 // Side challenges ("dares") with Rivals and Champions: races, first-to contests and sillier ones. Both sides
 // start level and whoever gets there first wins. The trainer's side is measured from what they really do;
 // the other's is a pace set when it's agreed, so they finish at the end of a known turn (`due`).
+import { onRegion } from '../regions/active';
 import { NPCS, type Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import { CITIES, NODE_BY_ID, WISP_SPOTS, neighbors } from '../data/map';
@@ -24,7 +25,8 @@ export interface DareResult { npc: Npc; won: boolean; text: string }
 
 export const DARES_MAX = 2;
 export const WAGERS = [0, 5, 10];
-const COASTS = ['iron', 'blackSand'];
+let COASTS: string[];
+onRegion((r) => { COASTS = r.map.places.coasts; });
 /** Running counts of things challenges ask for (GameState.tally). */
 export const tally = (s: GameState, key: string, n = 1) => { (s.tally ??= {})[key] = (s.tally[key] ?? 0) + n; };
 const count = (s: GameState, key: string) => s.tally?.[key] ?? 0;
@@ -115,6 +117,7 @@ export function ideaBlock(s: GameState, npc: Npc, d: DareIdea): string | null {
     if (s.merits.includes(d.target!)) return 'You hold that Merit already.';
     if (npcMerits(s, npc).includes(d.target!)) return 'They hold that Merit already.';
   }
+  if (d.kind === 'coasts' && COASTS.length < 2) return 'There’s nowhere to race between.';
   if (d.kind === 'race' && !((walkSteps(s.location).get(d.target!) ?? 0) >= 6)) return 'You’re too close for a race.';
   return null;
 }

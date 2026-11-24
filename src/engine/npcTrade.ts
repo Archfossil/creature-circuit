@@ -9,6 +9,7 @@ import { createCreature, creaturePower, nameOf, speciesOf, type CreatureInst } f
 import { stageCapFor } from './world';
 import { uid as newUid } from './dice';
 import { giftable, receiveCreature, removeCreature } from './interactions';
+import { onRegion } from '../regions/active';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { MIFFED, chanceOf, meet, npcCreature, npcRoster, npcStay, npcTier, npcsHere, recordWith, seededly, type NpcRecord } from './npcs';
 
@@ -45,6 +46,7 @@ export function potentialOf(species: string, nature: string): number {
 }
 /** The usual strength at a level, from a spread of ordinary creatures. */
 const usual = new Map<number, number>();
+onRegion(() => usual.clear());
 function usualAt(level: number): number {
   let u = usual.get(level);
   if (u === undefined) {

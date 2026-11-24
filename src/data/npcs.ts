@@ -3,7 +3,7 @@
 // are lives in the region's package (src/regions); how they behave (teams, records, standings, invitations) is in engine/npcs.ts.
 // Everyone else a trainer bumps into is a passer-by with a made-up name (`passerBy`).
 import type { ElementType } from './schema';
-import { MARGOS } from '../regions';
+import { onRegion } from '../regions/active';
 
 export interface Npc {
   id: string;
@@ -19,8 +19,9 @@ export interface Npc {
   lines: { greet: string; gloat: string; concede: string; chat: string };
 }
 
-export const NPCS: Npc[] = MARGOS.people.npcs;
-export const NPC_BY_ID: Record<string, Npc> = Object.fromEntries(NPCS.map((x) => [x.id, x]));
+export let NPCS: Npc[];
+export let NPC_BY_ID: Record<string, Npc>;
+onRegion((r) => { NPCS = r.people.npcs; NPC_BY_ID = Object.fromEntries(NPCS.map((x) => [x.id, x])); });
 export const npcNamed = (name: string) => NPCS.find((x) => x.name === name);
 
 // ── Passers-by ───────────────────────────────────────────────────

@@ -5,6 +5,7 @@
 // sees the same teams and the same tour, and saves stay small. What a trainer's own save keeps
 // (GameState.npcs) is their history with each one they've met.
 import type { ElementType, Species } from '../data/schema';
+import { onRegion } from '../regions/active';
 import { NPCS, NPC_BY_ID, type Npc } from '../data/npcs';
 import { CITIES, NODE_BY_ID, TOWNS, isCloudNode } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
@@ -56,8 +57,9 @@ export interface NpcRecord {
 /** A rematch arranged: they're at `at` from turn `from` until the end of turn `until`. */
 export interface Invite { at: string; from: number; until: number; /** You've seen each other there. */ met?: boolean }
 
-export const RIVALS = NPCS.filter((x) => x.kind === 'rival');
-export const CHAMPIONS = NPCS.filter((x) => x.kind === 'champion');
+export let RIVALS: Npc[];
+export let CHAMPIONS: Npc[];
+onRegion(() => { RIVALS = NPCS.filter((x) => x.kind === 'rival'); CHAMPIONS = NPCS.filter((x) => x.kind === 'champion'); });
 
 // ── Seeded randomness ───────────────────────────────────────────
 const hash = (text: string) => { let h = 2166136261; for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return h >>> 0; };
@@ -117,6 +119,7 @@ export function taughtTo(s: GameState, npc: Npc, slot: number, sp: Species): { t
 }
 /** Built creatures, to copy (picking a playbook is slow). */
 const built = new Map<string, string>();
+onRegion(() => built.clear());
 /** One of their creatures as it stands at a level. */
 export function npcCreature(s: GameState, npc: Npc, slot: number, level: number, as?: { species: string; nature: string }): CreatureInst {
   const sp = formAt(as ? SPECIES_BY_ID[as.species] : npcFamilies(s, npc)[slot], level);
@@ -274,7 +277,8 @@ export function rivalChance(s: GameState): number {
 /** Champions tour the cities and towns, staying `STAY` turns in each. */
 export const STAY = 5;
 export const npcStay = (turn: number) => Math.floor((turn - 1) / STAY);
-const STOPS = [...Object.keys(CITIES), ...Object.keys(TOWNS)].filter((id) => NODE_BY_ID[id] && !isCloudNode(id) && !['lanternglade', 'stadium'].includes(id));
+let STOPS: string[];
+onRegion(() => { STOPS = [...Object.keys(CITIES), ...Object.keys(TOWNS)].filter((id) => NODE_BY_ID[id] && !isCloudNode(id) && !['lanternglade', 'stadium'].includes(id)); });
 export function championAt(s: GameState, npc: Npc, turn = s.turn): string {
   const i = CHAMPIONS.indexOf(npc);
   // a fresh shuffle of the stops each stay, dealt out so no two Champions share one

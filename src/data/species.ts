@@ -1,6 +1,6 @@
 import type { Species, ElementType, Rarity, StatKey, Stats, Biome, EnergyMap, Activity, TimeOfDay } from './schema';
 import { PLACEHOLDER_DEFS, type Def } from './roster';
-import { MARGOS } from '../regions';
+import { onRegion } from '../regions/active';
 
 // Example creature database (placeholder content until the official list lands).
 // Base stats are generated from rarity + stage, then nudged by a "bias" so each species feels distinct.
@@ -166,4 +166,5 @@ export const isActive = (s: Species, time: TimeOfDay) => s.activity === 'crepusc
 export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 
 /** The creatures a trainer can start with. */
-export const STARTERS = MARGOS.codex.starters;
+export let STARTERS: string[];
+onRegion((r) => { STARTERS = r.codex.starters; });

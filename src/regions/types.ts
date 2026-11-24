@@ -11,11 +11,25 @@ export interface Town { blurb: string; sells: string[]; key?: string; special?: 
 /** A Rival's or Champion's clothes. Their skin comes from their name, and the rest from whether they're a Champion. */
 export type Outfit = Omit<TrainerLook, 'skin' | 'rim' | 'cape' | 'emblem'>;
 
+/** Particular places the rules ask for. Some will become gimmicks (docs/16-region-packages.md, step 6). */
+export interface Places {
+  /** Everywhere that can be walked to with no key item: where a wisp can wait, and where a race can go. */
+  wispSpots: string[];
+  /** Key items whose town is rolled for every new game, the towns they can be in, and where they were before they roamed. */
+  roamingKeyItems: string[];
+  keyItemTowns: string[];
+  classicKeyTowns: Record<string, string>;
+  /** The wild node whose level and rarity set what the Depths turn up, if there are any. */
+  depthsStair?: string;
+  /** Two ends of the map, for the challenge to visit both. Without two, nobody sets it. */
+  coasts: string[];
+}
+
 export interface Region {
   /** Never changes: it will be in saves. */
   id: string;
   name: string;
-  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town> };
+  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places };
   codex: { starters: string[] };
   /** Rivals and Champions, and by their ids, what they say and wear. */
   people: { npcs: Npc[]; voices: Record<string, Voice>; looks: Record<string, Outfit> };

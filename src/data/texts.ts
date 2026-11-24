@@ -1,6 +1,6 @@
 // How each Rival and Champion texts (engine/messenger.ts decides when). In these lines {you} is the
 // trainer's name, {merit} a Merit's name, {place} somewhere on the map, {thing} an item and {creature} one of the trainer's creatures.
-import { MARGOS } from '../regions';
+import { onRegion } from '../regions/active';
 
 export interface Voice {
   /** They won last time, and are offering another go. */
@@ -31,4 +31,5 @@ export interface Voice {
   beaten: string;
 }
 
-export const VOICES: Record<string, Voice> = MARGOS.people.voices;
+export let VOICES: Record<string, Voice>;
+onRegion((r) => { VOICES = r.people.voices; });

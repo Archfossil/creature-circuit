@@ -3,11 +3,12 @@
 // Champions keep their cape and gold base. Anyone without an outfit here falls back to a look seeded from their name.
 import { npcNamed, type Npc } from '../data/npcs';
 import { TYPE_COLOR } from '../data/types';
-import { MARGOS } from '../regions';
+import { onRegion } from '../regions/active';
 import type { Outfit } from '../regions/types';
 import { championLook, roamingLook, type TrainerLook } from './trainerModel';
 
-export const NPC_OUTFITS: Record<string, Outfit> = MARGOS.people.looks;
+export let NPC_OUTFITS: Record<string, Outfit>;
+onRegion((r) => { NPC_OUTFITS = r.people.looks; });
 
 /** A Rival's or Champion's mini. */
 export function npcLook(npc: Npc): TrainerLook {
