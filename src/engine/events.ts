@@ -9,7 +9,7 @@ import { NATURES, NATURE_BY_ID, ABILITIES, ITEMS, BIOME_MATERIALS, timeOfDay } f
 import { INSTINCTS, INSTINCT_BY_ID } from '../data/instincts';
 import { TYPE_LABEL } from '../data/types';
 import type { GameState } from './state';
-import { addItem, follower, log, tierOf, earnCoins } from './state';
+import { addItem, follower, log, record, tierOf, earnCoins } from './state';
 import type { CreatureInst } from './creature';
 import { createCreature, gainXp, maxHealth, maxStamina, maxVitality, nameOf, speciesOf, stats, addLoyalty, abilityOf, instinctIdOf } from './creature';
 import type { Battle } from './battle';
@@ -532,7 +532,7 @@ const EVENTS: EventDef[] = [
     }),
     resolve: (s, d, choice) => {
       if (!(d.cities as string[]).includes(choice)) return { text: 'You wave as the balloon drifts away.', tone: 'info' };
-      travelTo(s, choice);
+      travelTo(s, choice, [choice], false, `floated to ${CITIES[choice].name} in a hot air balloon`);
       log(s, `Rode a hot air balloon to ${CITIES[choice].name}.`);
       return { text: `The balloon sets you down gently in ${CITIES[choice].name}. What a view!`, tone: 'good' };
     },
@@ -553,7 +553,7 @@ const EVENTS: EventDef[] = [
     resolve: (s, d, choice) => {
       if (choice !== 'ride') return { text: 'The coach rolls on into the night without you.', tone: 'info' };
       s.coins -= d.price as number;
-      travelTo(s, d.city as string);
+      travelTo(s, d.city as string, [d.city as string], false, `took the Night Coach to ${CITIES[d.city as string].name}`);
       log(s, `Took the Night Coach to ${CITIES[d.city as string].name}.`);
       return { text: `You doze off to the rocking of the coach and wake in ${CITIES[d.city as string].name}.`, tone: 'good' };
     },
@@ -963,7 +963,10 @@ export function resolveEvent(s: GameState, choiceId: string, targetUid?: string)
     target = team(s).find((c) => c.uid === targetUid);
     if (!target || choice.canPick?.(target)) return null;
   }
+  const at = s.location;
+  const named = target && nameOf(target);
   const result = BY_ID[s.event.id].resolve(s, s.event.data, choiceId, target);
+  record(s, 'event', `met an event: ${view.icon} ${view.title}`, { at, more: `Chose “${choice.label}”${named ? ` (${named})` : ''}. “${result.text}”` });
   s.event = undefined;
   return result;
 }

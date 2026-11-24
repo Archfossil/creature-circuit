@@ -410,6 +410,11 @@ button.status-tag { font-family: inherit; color: inherit; cursor: pointer; }
 .villager:nth-child(2) { animation-delay: -0.7s; } .villager:nth-child(3) { animation-delay: -1.4s; }
 .tips, .journal { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .tips li, .journal li { background: var(--paper-2); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+.wl-filters { display: grid; gap: 6px; margin-bottom: 10px; }
+.wl-chip { cursor: pointer; } .wl-chip.on { background: var(--tc, var(--ink)); color: #fff; }
+.world-log li { padding: 0; background: none; } .world-log .wl-turn { font-weight: 800; padding: 6px 2px 0; }
+.wl-entry { display: flex; gap: 8px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; background: var(--paper-2); border: 0; border-left: 6px solid var(--tc); border-radius: 10px; padding: 8px 12px; }
+.wl-entry p { margin: 2px 0 0; }
 .journal small { font-weight: 800; color: var(--muted); }
 .howto ol { padding-left: 20px; display: grid; gap: 8px; margin: 0; }
 .howto li { line-height: 1.45; }

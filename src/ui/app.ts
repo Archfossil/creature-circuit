@@ -9,8 +9,8 @@ import { BattleView } from '../render/battle';
 import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, type TrainerLook } from '../render/trainerModel';
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
-import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits } from '../engine/state';
-import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
+import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
@@ -917,7 +917,7 @@ export class App {
     this.watching = false;
     this.activeKey = `${seat}:${s.turn}`;
     this.s = s;
-    if (s.event) { s.event = undefined; log(s, 'The waiting event passed by.'); }
+    if (s.event) { record(s, 'event', 'let an event pass by'); s.event = undefined; log(s, 'The waiting event passed by.'); }
     toast(reason === 'timeout' ? `⏱ Time’s up: ${s.trainer.name}’s turn ends.` : `⏭ The host skipped ${s.trainer.name}’s turn.`, 'info', 4000);
     try { await this.endTurn(false, true); } finally { this.skipping = false; }
   }
@@ -1469,6 +1469,7 @@ export class App {
       h('div', { class: 'hud-pill coins' }, '💰 ', h('b', null, s.coins)),
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
         h('span', { class: `merit ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '' })))),
+      h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.worldLogSheet(), 'aria-label': 'World Log', title: 'World Log: what every trainer has been doing' }, '🗞️'),
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.trainerId(), 'aria-label': 'Trainer ID', title: 'Trainer ID: your home town, style and records' }, '📇'),
       h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': unread ? `Menu (${unread} unread message${unread === 1 ? '' : 's'})` : 'Menu' }, '☰', unread ? h('i', { class: 'hud-dot' }, String(unread)) : null));
     const loc = h('div', { class: 'loc-card', style: node.cityType ? `--tc:${TYPE_COLOR[node.cityType]}` : '' },
@@ -1515,6 +1516,7 @@ export class App {
       h('small', { class: 'cloud-chip-link' }, 'Tap for the rules')) : '';
     this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team, cloudChip, floorChip), h('div', { class: 'hud-bottom' }, eventPill, fightPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
+    this.worldLogLive?.();
   }
 
   nodeSubtitle(id: string) {
@@ -1743,6 +1745,7 @@ export class App {
         const got = W.claimFind(s, pickIt);
         sfx.good();
         toast(`Found ${label(got)}${isCloudNode(s.location) ? ' (held in your Cloud satchel until you escape)' : ''}`, 'good', 3200);
+        record(s, 'explore', `kept ${label(got)}`);
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
         await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], s.location === FOREST_FLOOR ? 'Something moves in the dark…' : 'Something rustles nearby…', 700, { read: true });
@@ -2169,6 +2172,7 @@ export class App {
     if (result === 'lose') { sfx.bad(); say(b.surrendered === 0 ? 'You surrendered.' : 'Your team is out of creatures…', 'bad'); await wait(900); }
     if (result === 'fled') await wait(500);
     const wild = b.sides[1].team[0];
+    W.recordResult(s, b, ctx.kind, ctx.city);
     if (result === 'win' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) {
       await this.recruitFlow(wild);
     }
@@ -3686,7 +3690,7 @@ export class App {
         const res = await this.runBattle(b, { kind: 'endgame', intro: `${rounds[eg.round]}! ${b.sides[1].name} takes the field.` });
         if (res === 'win') {
           eg.round++;
-          if (eg.round >= 3) { s.phase = 'champion'; save(s); this.champion(); return; }
+          if (eg.round >= 3) { s.phase = 'champion'; record(s, 'battle', 'became Champion of the Creature Circuit! 🏆'); save(s); this.champion(); return; }
         } else { eg.eliminated = true; s.phase = 'over'; save(s); this.gameOver(); return; }
         save(s);
         this.engine.setView(this.world);
@@ -3905,7 +3909,8 @@ export class App {
       tile('📖', 'Creature Codex', `${this.idOwner().dex.caught.length} recruited · ${this.idOwner().dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),
-      tile('📜', 'Journal', 'Recent events.', '', () => { close(); this.journal(); }),
+      tile('🗞️', 'World Log', activeMatchOf() ? 'Where every trainer has been, and what happened there.' : 'Where you’ve been, and what happened there.', '', () => { close(); this.worldLogSheet(); }),
+      tile('📜', 'Journal', 'Your own notes.', '', () => { close(); this.journal(); }),
       mine?.lastBattle ? tile('⚔️', 'Last Battle Log', `Turn ${mine.lastBattle.turn}: every move, roll and hit from ${mine.trainer.name}’s last battle.`, '', () => { close(); this.battleLogSheet(mine.lastBattle!); }) : null,
       this.watchedLog ? tile('👀', 'Last Watched Battle', 'The log of the last battle you watched (until you reload the page).', '', () => { close(); this.battleLogSheet(this.watchedLog!); }) : null,
       this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
@@ -4082,6 +4087,45 @@ export class App {
       })) : h('p', { class: 'small muted' }, 'No material appeals to it.'),
       h('p', { class: 'small' }, h('b', null, 'Also: '), `Sunberries and Dewberries give +1 and Moonberries +2 to any creature. A ${sp.types.map((t) => TYPE_LABEL[t]).join(' or ')} Totem gives +3, and a ${sp.name} Effigy gives +5. Carve either at a city’s Carving Shrine.`)),
       { wide: true });
+  }
+
+  /** Redraws the World Log while it's open. */
+  private worldLogLive: (() => void) | null = null;
+  /** Everything every trainer has done out in the world, newest first; it keeps up while it's open. */
+  worldLogSheet() {
+    const KINDS: [DeedKind, string, string][] = [['move', '👣', 'Travel'], ['explore', '🔍', 'Exploring'], ['battle', '⚔️', 'Battles'], ['event', '❓', 'Events'], ['place', '🏕️', 'Other']];
+    const icon = Object.fromEntries(KINDS.map(([k, i]) => [k, i]));
+    let who = '', kind: DeedKind | '' = '', top = -1;
+    const filters = h('div', { class: 'wl-filters' }), list = h('ul', { class: 'journal world-log' });
+    const body = h('div', null, h('p', { class: 'small muted' }, 'Newest first. Tap an entry to see where it happened.'), filters, list);
+    const chip = (label: string, on: boolean, go: () => void, color?: string) => h('button', { class: `chip wl-chip ${on ? 'on' : ''}`, 'aria-pressed': String(on), style: color ? `--tc:${color}` : '', onclick: () => { go(); draw(true); } }, label);
+    const draw = (force = false) => {
+      const all = worldLog(this.s);
+      const newest = all[0]?.deed.n ?? 0;
+      if (!force && newest === top) return;
+      top = newest;
+      const players = activeMatchOf()?.players ?? [this.s];
+      filters.replaceChildren(
+        ...(players.length > 1 ? [h('div', { class: 'row gap-s wrap' }, chip('Everyone', !who, () => { who = ''; }), players.map((p) => chip(p.trainer.name, who === p.trainer.name, () => { who = p.trainer.name; }, p.trainer.color)))] : []),
+        h('div', { class: 'row gap-s wrap' }, chip('All', !kind, () => { kind = ''; }), KINDS.map(([k, i, label]) => chip(`${i} ${label}`, kind === k, () => { kind = k; }))));
+      const shown = all.filter(({ who: p, deed: d }) => (!who || p.trainer.name === who || d.other === who) && (!kind || d.kind === kind));
+      let turn = 0;
+      list.replaceChildren(...shown.flatMap(({ who: p, deed: d }) => [
+        ...(d.turn !== turn ? [h('li', { class: 'wl-turn' }, `${TIME_INFO[timeOfDay(d.turn)].icon} Turn ${turn = d.turn}`)] : []),
+        h('li', null, h('button', { class: 'wl-entry', style: `--tc:${p.trainer.color}`, onclick: () => { close(); this.showPlace(d.at); } },
+          h('span', null, icon[d.kind]), h('div', null, h('div', null, h('b', null, p.trainer.name), ` ${d.text}`, d.kind === 'move' ? '' : h('small', null, ` · ${NODE_BY_ID[d.at]?.name ?? d.at}`)), d.more ? h('p', { class: 'small muted' }, d.more) : null)))]));
+      if (!shown.length) list.append(h('li', null, 'Nothing yet.'));
+    };
+    draw(true);
+    const live = () => { if (body.isConnected) draw(); else if (this.worldLogLive === live) this.worldLogLive = null; };
+    const close = openSheet('🗞️ World Log', body, { wide: true });
+    this.worldLogLive = live;
+  }
+  /** Look at a place on the map (if the map is what's showing). */
+  private showPlace(id: string) {
+    if (document.querySelector('.battle-ui') || !NODE_BY_ID[id]) return;
+    this.world.focus(id);
+    if (!this.busy) { this.selected = id; this.showNodePreview(id); }
   }
 
   journal() {

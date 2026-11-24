@@ -4,7 +4,7 @@
 import type { Npc } from '../data/npcs';
 import { BIOME_MATERIALS, ITEMS, itemInfo } from '../data/content';
 import type { GameState } from './state';
-import { log } from './state';
+import { log, record } from './state';
 import { createCreature, creaturePower, nameOf, speciesOf, type CreatureInst } from './creature';
 import { stageCapFor } from './world';
 import { uid as newUid } from './dice';
@@ -190,6 +190,7 @@ export function trade(s: GameState, npc: Npc, mine: Mine, theirs: Theirs): strin
   if (mine.coins) gave.push(`${mine.coins} coins`);
   if (!t.warmed) { t.warmed = true; r.rapport++; }
   if (r.invite) r.invite.met = true;
+  record(s, 'place', `traded ${gave.join(', ')} to ${npc.name} for ${got.join(', ')}`);
   log(s, `Traded ${gave.join(', ')} to ${npc.name} for ${got.join(', ')}.`);
   return null;
 }

@@ -404,6 +404,7 @@ Shown when creating a trainer.
 **☰ Menu tiles**
 - [ ] `menu-codex`: 📖 Creature Codex
 - [ ] `menu-status-effects`: 🌀 Status Effects
+- [ ] `menu-world-log`: 🗞️ World Log (also on the top bar)
 - [ ] `menu-journal`: 📜 Journal
 - [ ] `menu-trainer-look`: 🧢 Trainer Look
 - [ ] `menu-how-to-play`: ❓ How to Play

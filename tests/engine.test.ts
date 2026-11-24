@@ -7,7 +7,7 @@ import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS
 import type { MapNode } from '../src/data/schema';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
-import { rollWisp, wispLit, moveTrainer } from '../src/engine/state';
+import { rollWisp, wispLit, moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
@@ -3897,5 +3897,44 @@ describe('Surrender', () => {
     expect(b.over).toBe('win');
     I.settleChallenge(a, z, b, 10);
     expect([me.morale, me.ko, a.coins, z.coins, z.initiative, z.location]).toEqual([5, false, 51, 31, 4, 'w1']);
+  });
+});
+
+describe('World Log', () => {
+  afterEach(() => setActiveMatch(null));
+  const pair = () => {
+    const a = newGame('A', 'balanced', 'thunder', 'emberfish', '#fff'), b = newGame('B', 'balanced', 'iron', 'puddlit', '#000');
+    setActiveMatch(newMatch([a, b]));
+    return { a, b };
+  };
+  it('merges every trainer’s deeds in the order they happened', () => {
+    const { a, b } = pair();
+    moveTrainer(a, 'w1');
+    W.rest(b, 'iron');
+    moveTrainer(a, 'thunder', { wiped: true });
+    const seen = worldLog(b).map((x) => [x.who.trainer.name, x.deed.kind, x.deed.at]);
+    expect(seen).toEqual([['A', 'move', 'thunder'], ['B', 'place', 'iron'], ['A', 'move', 'w1']]);
+    expect(worldLog(a)).toEqual(worldLog(b));
+    expect(worldLog(a)[0].deed.text).toMatch(/sent back to/);
+  });
+  it('tells the move, then what exploring turned up, then how the battle went (once)', () => {
+    const { a } = pair();
+    W.moveTo(a, neighbors('thunder').find((x) => x.node.kind === 'wild' && W.canMoveTo(a, x.node.id).ok)!.node.id);
+    expect(a.deeds!.map((d) => d.kind)).toEqual(['explore', 'move']);
+    const bt = createBattle(W.playerSide(a), side('trainer', [createCreature('zapup', 3)]), WEATHER.clear);
+    resolveRound(bt, { kind: 'surrender' });
+    W.recordResult(a, bt, 'trainer');
+    W.finishBattle(a, bt, { kind: 'trainer' });
+    expect(a.deeds!.filter((d) => d.kind === 'battle').map((d) => d.text)).toEqual(['surrendered to trainer']);
+  });
+  it('tells of events where they happened, and keeps only the latest entries', () => {
+    const { a } = pair();
+    E.rollEvent(a, 'balloon');
+    E.resolveEvent(a, E.eventView(a)!.choices[0].id);
+    expect(a.deeds!.map((d) => d.kind)).toEqual(['event', 'move']);
+    expect(a.deeds![0].at).toBe('thunder');
+    for (let i = 0; i < 200; i++) record(a, 'place', `x${i}`);
+    expect(a.deeds!.length).toBe(DEEDS_MAX);
+    expect(a.deeds![0].text).toBe('x199');
   });
 });

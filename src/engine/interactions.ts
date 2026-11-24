@@ -2,7 +2,7 @@
 // creature trades (both trainers on the same node), and battle challenges (same node; the challenged
 // trainer must accept). All pure game logic; the UI handles asking each trainer.
 import type { GameState } from './state';
-import { log, stillPlaying, moveTrainer } from './state';
+import { log, record, stillPlaying, moveTrainer } from './state';
 import type { CreatureInst } from './creature';
 import { fullRestore, gainXp, nameOf, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import type { Battle } from './battle';
@@ -92,6 +92,7 @@ export function exchange(a: GameState, oa: Offer, b: GameState, ob: Offer = empt
   if (ca) receiveCreature(b, ca);
   if (cb) receiveCreature(a, cb);
   const gift = offerIsEmpty(ob);
+  record(a, 'place', gift ? `sent ${textA} to ${b.trainer.name}` : `traded ${textA} to ${b.trainer.name} for ${textB}`, { other: b.trainer.name });
   log(a, gift ? `Sent ${textA} to ${b.trainer.name}.` : `Traded ${textA} to ${b.trainer.name} for ${textB}.`);
   log(b, gift ? `Received ${textA} from ${a.trainer.name}.` : `Traded ${textB} to ${a.trainer.name} for ${textA}.`);
   notify(b, gift ? `📦 ${a.trainer.name} sent you ${textA}.` : `🤝 You traded ${textB} to ${a.trainer.name} for ${textA}.`);

@@ -8,7 +8,7 @@ import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { npcNamed, passerBy } from '../data/npcs';
 import { noteBattle, noteNabe, tally } from './dares';
 import { circuitField, mercyOffer, npcBattle, npcTeam, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
-import { tierOf, follower, addItem, hasItem, log, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
+import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
 import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -118,8 +118,8 @@ export function travelBlock(s: GameState): string | null {
 }
 
 /** Arrive somewhere by a ride: `passed` are the nodes travelled through (counted as visited, and as steps when `steps`). */
-export function travelTo(s: GameState, dest: string, passed: string[] = [dest], steps = false) {
-  moveTrainer(s, dest);
+export function travelTo(s: GameState, dest: string, passed: string[] = [dest], steps = false, how?: string) {
+  moveTrainer(s, dest, { how });
   for (const id of passed) if (!s.visited.includes(id)) s.visited.push(id);
   if (steps) s.stats.steps = (s.stats.steps ?? 0) + passed.length;
 }
@@ -169,7 +169,7 @@ export function rideBike(s: GameState, dest: string): string[] | null {
   const path = bikeReach(s, n)[dest];
   if (!path) return null;
   s.flags.bikeRoll = 0;
-  travelTo(s, dest, path, true);
+  travelTo(s, dest, path, true, `rode the Bike to ${NODE_BY_ID[dest].name}`);
   log(s, `Rode the Bike ${path.length} step${path.length === 1 ? '' : 's'} to ${NODE_BY_ID[dest].name}.`);
   return path;
 }
@@ -184,7 +184,7 @@ export function taxiTargets(s: GameState): string[] {
 export function rideTaxi(s: GameState, id: string): boolean {
   if (!taxiTargets(s).includes(id)) return false;
   addItem(s, 'taxi-ticket', -1);
-  travelTo(s, id);
+  travelTo(s, id, [id], false, `took a taxi to ${CITIES[id].name}`);
   s.initiative = 0;
   log(s, `Took a taxi to ${CITIES[id].name}.`);
   return true;
@@ -198,7 +198,7 @@ export function featherTargets(s: GameState): string[] {
 export function useFeather(s: GameState, id: string): boolean {
   if (!featherTargets(s).includes(id)) return false;
   addItem(s, 'homing-feather', -1);
-  travelTo(s, id);
+  travelTo(s, id, [id], false, `flew to ${CITIES[id].name} with a Homing Feather`);
   s.initiative = 0;
   log(s, `A Homing Feather carried you to ${CITIES[id].name}.`);
   return true;
@@ -246,7 +246,9 @@ export function moveTo(s: GameState, id: string): Outcome | null {
   const node = NODE_BY_ID[id];
   if (node.kind === 'legendary') {
     if (!legendaryHere(s, node)) return { t: 'nothing', roll: 0 };
-    return { t: 'legendary', battle: legendaryBattle(s, node) };
+    const battle = legendaryBattle(s, node);
+    record(s, 'explore', `came face to face with ${foeLabel(battle)}`);
+    return { t: 'legendary', battle };
   }
   if (node.kind !== 'wild') return { t: 'arrive', node };
   return explore(s);
@@ -267,6 +269,7 @@ export const rangerRefundsLeft = (s: GameState) => (s.trainer.style === 'nature'
 
 function explore(s: GameState): Outcome {
   const out = exploreRoll(s);
+  recordExplore(s, out);
   // (a refund only counts when it gives something back: not at a full 5)
   if (out.t === 'nothing' && out.roll && rangerRefundsLeft(s) > 0 && s.initiative < 5) {
     s.flags.rangerRefunds = (s.flags.rangerRefunds ?? 0) + 1;
@@ -274,6 +277,23 @@ function explore(s: GameState): Outcome {
     return { ...out, refund: true };
   }
   return out;
+}
+
+/** Who or what a battle is against, for the World Log. */
+function foeLabel(b: Battle): string {
+  const foe = b.sides[1], c = foe.team[0];
+  return b.legendary ? `the Legendary ${speciesOf(c).name}` : foe.kind === 'wild' ? `a wild ${speciesOf(c).name} (Lv ${c.level})` : foe.kind === 'arbiter' ? `Arbiter ${foe.name.replace(/^Arbiter /, '')}` : foe.name;
+}
+const findText = (f: { items: { id: string; n: number }[]; coins: number }) =>
+  [...f.items.map((i) => `${itemInfo(i.id).icon} ${itemDisplayName(i.id)}${i.n > 1 ? ` ×${i.n}` : ''}`), ...(f.coins ? [`💰 ${f.coins} coins`] : [])].join(', ');
+/** The World Log: what exploring turned up (a Keen Nose find waits for its choice). */
+function recordExplore(s: GameState, o: Outcome) {
+  if (o.t === 'nothing') record(s, 'explore', o.dark ? 'explored and found only the dark (−1 Morale)' : 'explored and found nothing');
+  else if (o.t === 'item') record(s, 'explore', `explored and found ${findText(o)}`);
+  else if (o.t === 'itemChoice') record(s, 'explore', 'explored, and a Keen Nose picked up three scents');
+  else if (o.t === 'trail') record(s, 'explore', o.found ? 'followed Dahlia’s Trail to her arena' : `found a sign of Dahlia’s Trail (${o.steps}/${o.need})`);
+  else if (o.t === 'encounter') record(s, 'explore', `explored and ran into ${foeLabel(o.battle)}`);
+  else if (o.t === 'trainer') record(s, 'explore', `explored and was challenged by ${o.name}`);
 }
 
 function exploreRoll(s: GameState): Outcome {
@@ -1063,8 +1083,23 @@ function recordBattle(s: GameState, b: Battle, kind: BattleKind) {
   for (const [t, n] of Object.entries(b.moveTypes ?? {})) mt[t] = (mt[t] ?? 0) + n;
 }
 
+/** The World Log: how a battle went. Once per battle (before a win's recruiting, so they read in order). */
+export function recordResult(s: GameState, b: Battle, kind: BattleKind, city?: string) {
+  if (b.recorded || !b.over) return;
+  b.recorded = true;
+  const foe = foeLabel(b), duel = kind === 'rival';
+  const how = b.over === 'win' ? `beat ${foe}` : b.over === 'lose' ? (b.surrendered === 0 ? `surrendered to ${foe}` : `lost to ${foe}`) : b.over === 'escaped' ? `ran from ${foe}` : `met ${foe}, which slipped away`;
+  const merit = b.over === 'win' && kind === 'arbiter' && city ? (s.merits.includes(city) ? ` in a rematch, winning an Imprint of ${TYPE_LABEL[CITIES[city].type]} energy` : ` and earned the ${CITIES[city].accolade}`) : '';
+  const where = duel ? ' in a duel' : kind === 'endgame' ? ' in the Creature Circuit' : '';
+  const names = (team: CreatureInst[], uids: string[]) => team.filter((c) => uids.includes(c.uid)).map((c) => `${nameOf(c)} (Lv ${c.level}${c.ko ? ', KO' : ''})`).join(', ');
+  const ours = names(b.sides[0].team, b.participants), theirs = b.sides[1].kind === 'wild' ? '' : names(b.sides[1].team, b.foeParticipants ?? []);
+  const more = [ours && `Fought with ${ours}.`, theirs && `Against ${theirs}.`, b.surrendered === 1 && `${foe} surrendered.`].filter(Boolean).join(' ');
+  record(s, 'battle', how + where + merit, { more, other: duel ? b.sides[1].name : undefined });
+}
+
 export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean; wipeTo?: string; /** The creature (uid) a Rival or Champion who won helps up, instead of a wipe. */ mercy?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
+  recordResult(s, b, ctx.kind, ctx.city);
   s.hotpot = undefined;
   noteBattle(s, b);
   for (const id of b.seenFoes ?? []) if (!s.dex.seen.includes(id)) s.dex.seen.push(id);
@@ -1214,6 +1249,7 @@ export function attemptRecruit(s: GameState, wild: CreatureInst, totem: string, 
     for (const t of speciesOf(wild).types) tally(s, `recruit:${t}`);
     log(s, `${nameOf(wild)} accepted your offering and joined you!`);
   }
+  record(s, 'battle', success ? `recruited ${nameOf(wild)} (Lv ${wild.level})` : `tried to recruit ${nameOf(wild)}, but it refused`);
   return { dice, mods, total, need, success };
 }
 
@@ -1252,6 +1288,7 @@ export function refundFacility(s: GameState, f: Facility) {
  * City stables also serve their Chanko Nabe, a battle buff (doubled at your home city). Town stables don't.
  */
 export function rest(s: GameState, nodeId: string) {
+  record(s, 'place', 'rested at the stable');
   for (const c of [...s.roster, ...s.reserve]) fullRestore(c);
   for (const c of s.roster) c.morale = Math.min(10, c.morale + (s.trainer.style === 'caretaker' ? 2 : 1));
   const ci = CITIES[nodeId];
@@ -1313,6 +1350,7 @@ export function doWork(s: GameState): { rolls: number[]; coins: number } | null 
   s.initiative = 0;
   const coins = earnCoins(s, rolls.reduce((a, b) => a + b, 0));
   s.stats.worked = (s.stats.worked ?? 0) + rolls.length;
+  record(s, 'place', `took odd jobs and earned 💰 ${coins}`);
   log(s, `Took odd jobs in ${here(s).name} and earned ${coins} coins.`);
   return { rolls, coins };
 }
@@ -1635,6 +1673,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
     const tended = campTargets(s, Array.isArray(camping) ? camping : undefined);
     for (const c of tended) { c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; }
     s.initiative = 0;
+    record(s, 'place', 'made camp');
     log(s, tended.length ? `You made camp. ${tended.map(nameOf).join(', ')} recovered all Health and shook off Fatigue.` : 'You made camp, but no one needed tending.');
   }
   moraleAndLoyalty(s, report);
@@ -1651,8 +1690,8 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
     for (const t of rises) log(s, `Teamwork grew. ${t}.`);
   }
   if (s.turn === 100) {
-    if (s.location === 'stadium' && s.merits.length >= 8) { startEndgame(s); report.ended = 'endgame'; }
-    else { s.phase = 'over'; report.ended = 'over'; }
+    if (s.location === 'stadium' && s.merits.length >= 8) { startEndgame(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
+    else { s.phase = 'over'; report.ended = 'over'; record(s, 'place', 'finished the season'); }
     return report;
   }
   const prevSeason = seasonForTurn(s.turn);

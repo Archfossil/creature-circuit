@@ -36,6 +36,8 @@ export interface Battle {
   fleeWarned: boolean;
   status: Record<string, BattleStatus>;
   over: null | 'win' | 'lose' | 'escaped' | 'fled';
+  /** Its result is in the World Log. */
+  recorded?: boolean;
   /** The side whose trainer surrendered. */
   surrendered?: 0 | 1;
   needSwap: boolean;

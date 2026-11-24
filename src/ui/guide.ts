@@ -239,6 +239,11 @@ export const GUIDE: GuideCategory[] = [
   {
     id: 'multiplayer', icon: '👥', label: 'Multiplayer',
     topics: [
+      { id: 'world-log', title: 'World Log', body: [
+        'Tap 🗞️ on the top bar (or ☰ Menu → World Log) to see what every trainer has been doing: where they moved, what they found there, their battles, recruits and events, and rests, camps, odd jobs and trades.',
+        'Everyone sees the same log, newest first. Filter it by trainer or by kind, and tap an entry to find the place on the map. Shopping, crafting, messages and looking after your team stay private.',
+        'The Journal (☰ Menu) is your own notes.',
+      ] },
       { id: 'hotseat', title: 'Hotseat', body: [
         'Up to six trainers share this device (title screen → Hotseat). Each picks a unique colour; turns go in seat order with a pass-the-device screen between them.',
         'Everyone shares the map, the weather and the Legendaries, and you can see the other trainers’ minis on the map. Tap a name in the turn-order strip (top left) to find that trainer.',

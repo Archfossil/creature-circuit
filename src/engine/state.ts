@@ -71,6 +71,8 @@ export interface GameState {
   merits: string[];         // city ids
   hotpot?: { city: string; buff: Partial<Record<StatKey, number>> };
   log: { turn: number; text: string }[];
+  /** This trainer's part of the World Log, newest first (see record). */
+  deeds?: Deed[];
   dex: { seen: string[]; caught: string[] };
   flags: {
     freeReexploreUsed: boolean;
@@ -223,7 +225,8 @@ export const GAUNTLET_CITY = 'iron';
  * Put a trainer on a node. Every location change goes through here, so that leaving Iron Coast
  * resets an unfinished Gauntlet and leaving Cloud Island ends a lap in progress.
  */
-export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } = {}) {
+export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /** The World Log's words for a ride: "took a taxi to …". */ how?: string } = {}) {
+  const place = NODE_BY_ID[id]?.name ?? id;
   // leaving the Forest Floor, by choice or by defeat, loses Dahlia's Trail
   if (s.location === FOREST_FLOOR && id !== FOREST_FLOOR && s.flags.dahliaTrail) {
     log(s, `Left the Forest Floor: Dahlia's Trail is lost (${s.flags.dahliaTrail} found).`);
@@ -262,6 +265,7 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean } 
   if (s.waypoint === id) s.waypoint = undefined;
   if (!opts.wiped) noteArrival(s, id);
   s.location = id;
+  record(s, 'move', opts.wiped ? `was sent back to ${place} after the whole team was knocked out` : opts.how ?? `moved to ${place}`);
 }
 
 // ── Wisps (the Fog Lantern) ─────────────────────────────────────
@@ -577,6 +581,27 @@ export function addItem(s: GameState, id: string, n = 1) {
   if (s.inventory[id] <= 0) delete s.inventory[id];
 }
 export const hasItem = (s: GameState, id: string) => (s.inventory[id] ?? 0) > 0;
+
+// ── The World Log ───────────────────────────────────────────────
+// What every trainer has done out in the world, for everyone in the game to read. Each trainer keeps their own
+// part (so it's saved and sent with them); `n` counts across all of them, so it merges in the order it happened.
+export type DeedKind = 'move' | 'explore' | 'battle' | 'event' | 'place';
+/** `text` follows the trainer's name ("moved to …"). `at`: the node. `more`: the fuller story. `other`: another trainer it involved. */
+export interface Deed { n: number; turn: number; kind: DeedKind; at: string; text: string; more?: string; other?: string }
+/** The most World Log entries kept for each trainer. */
+export const DEEDS_MAX = 80;
+const inWorldWith = (s: GameState) => (activeMatch?.players.includes(s) ? activeMatch.players : [s]);
+export function record(s: GameState, kind: DeedKind, text: string, opts: { more?: string; other?: string; at?: string } = {}) {
+  const n = 1 + Math.max(0, ...inWorldWith(s).map((p) => p.deeds?.[0]?.n ?? 0));
+  const d: Deed = { n, turn: s.turn, kind, at: opts.at ?? s.location, text };
+  if (opts.more) d.more = opts.more;
+  if (opts.other) d.other = opts.other;
+  (s.deeds ??= []).unshift(d);
+  if (s.deeds.length > DEEDS_MAX) s.deeds.length = DEEDS_MAX;
+}
+/** Everyone's deeds, newest first. */
+export const worldLog = (s: GameState): { who: GameState; deed: Deed }[] =>
+  inWorldWith(s).flatMap((who) => (who.deeds ?? []).map((deed) => ({ who, deed }))).sort((a, b) => b.deed.n - a.deed.n);
 
 export function log(s: GameState, text: string) {
   s.log.unshift({ turn: s.turn, text });
