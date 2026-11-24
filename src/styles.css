@@ -32,6 +32,10 @@ body { touch-action: manipulation; user-select: none; -webkit-user-select: none;
 #ui > * { pointer-events: none; }
 #ui button, #ui .loc-card, #ui .node-preview, #ui .plate, #ui .battle-bottom, #ui .title-card, #ui .hud-pill { pointer-events: auto; }
 img { -webkit-user-drag: none; }
+/* custom icons in text (dom.ts → richText): sized by the text, whatever the images around them are */
+ico-text > img.ico { display: inline-block !important; position: static !important; width: 1.25em !important; height: 1.25em !important; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; filter: none; animation: none; vertical-align: -0.28em; object-fit: contain; }
+.die img.ico { vertical-align: middle; }
+.btn.primary ico-text > img.ico { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff); }
 input { font: inherit; user-select: text; -webkit-user-select: text; }
 h1, h2, h3, h4, h5 { font-family: var(--font-head); margin: 0; letter-spacing: 0.2px; }
 p { margin: 0.4em 0; line-height: 1.45; }

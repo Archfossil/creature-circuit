@@ -1,3 +1,4 @@
+import { PLAIN_TOTEM, typedTotem } from './icons';
 import type { Ability, Item, Nature, WeatherDef, Biome, ElementType, TimeOfDay, Activity } from './schema';
 import { TYPES, TYPE_LABEL } from './types';
 
@@ -58,7 +59,7 @@ export const ITEMS: Record<string, Item> = {
   'homing-feather': { id: 'homing-feather', name: 'Homing Feather', kind: 'travel', price: 8, icon: '🕊️', text: 'From anywhere on the mainland, fly back to your home city (a Wanderer may pick any city they’ve rested at). Uses up the rest of your Initiative this turn.' },
   'trail-mix': { id: 'trail-mix', name: 'Trail Mix', kind: 'travel', price: 6, icon: '🥜', text: '+1 Initiative this turn (up to 5). One handful a turn.' },
   // totems
-  'totem': { id: 'totem', name: 'Plain Totem', kind: 'totem', price: 4, icon: '🗿', text: 'A generic carving. +1 to any recruitment.' },
+  'totem': { id: 'totem', name: 'Plain Totem', kind: 'totem', price: 4, icon: PLAIN_TOTEM, text: 'A generic carving. +1 to any recruitment.' },
   // offering materials (found by biome)
   'pine-resin': material('pine-resin', 'Pine Resin', '🌲', { grass: 2, charm: 1 }, 'Sticky, fragrant. Forest creatures love it.'),
   'glacier-salt': material('glacier-salt', 'Glacier Salt', '🧂', { astral: 2, water: 1 }, 'Crystals from ancient ice.'),
@@ -90,7 +91,7 @@ export const ITEMS: Record<string, Item> = {
 
 // Typed totems & effigies are synthesized: "totem:fire", "effigy:cindercub"
 for (const t of TYPES) {
-  ITEMS[`totem:${t}`] = { id: `totem:${t}`, name: `${TYPE_LABEL[t]} Totem`, kind: 'totem', price: 0, icon: '🗿', text: `+3 for ${TYPE_LABEL[t]} creatures, -1 for others.` };
+  ITEMS[`totem:${t}`] = { id: `totem:${t}`, name: `${TYPE_LABEL[t]} Totem`, kind: 'totem', price: 0, icon: typedTotem(t), text: `+3 for ${TYPE_LABEL[t]} creatures, -1 for others.` };
 }
 /** Items you can only own one of: key items, and reusable gear like the Bike. */
 export const isUnique = (it: Item) => it.kind === 'key' || !!it.unique;

@@ -1,4 +1,5 @@
-import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec } from './dom';
+import { STAR_FACE } from '../data/icons';
+import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf } from './dom';
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
@@ -41,8 +42,6 @@ import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
 const TRAINER_COLORS = ['#ff6b3d', '#3d8bff', '#2fbf71', '#b05cff', '#ffcc33', '#ff4fa3', '#a51d2d', '#1f3a93'];
-/** Rarity die faces (placeholders until the custom die-star icons arrive). */
-const STAR_FACE = { full: '★', half: '☆', blank: '🚫' } as const;
 const DEFAULT_NAMES = ['Rowan', 'Juno', 'Kai', 'Mira', 'Ash', 'Tess'];
 
 /**
@@ -1355,7 +1354,7 @@ export class App {
     const m = activeMatchOf();
     if (this.online && m) {
       // nothing else can happen meanwhile: moving on or starting a battle would leave the offer out of date
-      const q = this.online.ask(m.players.indexOf(b), this.s.trainer.name, title, content.textContent ?? '', yes, no);
+      const q = this.online.ask(m.players.indexOf(b), this.s.trainer.name, title, textOf(content), yes, no);
       let cancelled = false;
       const cancel = () => { cancelled = true; q.cancel(); };
       this.cancelAsk = cancel;
@@ -1881,7 +1880,7 @@ export class App {
         ...(sn.boosts?.length && !sn.ko ? [h('button', { class: 'pl-boosts', 'aria-label': `${nameOf(c)}’s attribute changes`, onclick: () => boostSheet(nameOf(c), disp[side].boosts ?? []) },
           sn.boosts.map((x) => h('span', { class: `boost ${x.n > 0 ? 'up' : 'down'}`, title: boostWhy(x) }, `${x.n > 0 ? '▲' : '▼'} ${STAT_LABEL[x.stat]} ${signedN(x.n)}`)))] : []));
     };
-    const say = (t: string, tone?: string) => { logLine.textContent = t; logLine.className = `battle-log ${tone ?? ''}`; };
+    const say = (t: string, tone?: string) => { setText(logLine, t); logLine.className = `battle-log ${tone ?? ''}`; };
     // Normal battles slow down and explain every roll; Fast battles (Settings) keep the quick pace
     const slow = () => !settings().fastBattle;
     const pace = (ms: number) => (slow() ? Math.round(ms * 1.6) : ms);

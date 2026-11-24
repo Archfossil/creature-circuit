@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs';
+import { ICON_NAMES, iconFor, splitIcons } from '../src/data/icons';
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
@@ -3046,6 +3048,22 @@ describe('battle XP', () => {
     expect(bt.over).toBe('escaped');
     expect(ev.some((e) => e.t === 'xp')).toBe(false);
     expect(totalXp(me)).toBe(before);
+  });
+});
+
+describe('custom icons', () => {
+  it('every icon has its art, and every file in the folder is used', () => {
+    const files = readdirSync(new URL('../public/assets/icons', import.meta.url)).map((f) => f.replace('.png', ''));
+    expect(files.sort()).toEqual([...ICON_NAMES].sort());
+  });
+  it('replaces only the meaning it has art for', () => {
+    expect(splitIcons('Pay 💰 5')).toEqual(['Pay ', { name: 'coin', emoji: '💰' }, ' 5']);
+    expect(splitIcons('No icons here, just ⚡ and ★ rare')).toBe(null);
+    expect(splitIcons(`${TRAINER_STYLES.find((x) => x.id === 'haggler')!.icon} Merchant`)).toBe(null);
+    expect(splitIcons('🗿')).toBe(null); // recruited
+    expect(splitIcons('💥')).toBe(null); // the damage step
+    expect(TYPES.map((t) => iconFor(ITEMS[`totem:${t}`].icon))).toEqual(TYPES.map((t) => `totem-${t}`));
+    expect(['totem', 'dewberry', 'homing-feather', 'canopy-rope'].map((id) => iconFor(ITEMS[id].icon))).toEqual(['item-totem', 'item-dewberry', 'item-homing-feather', 'key-canopy-rope']);
   });
 });
 

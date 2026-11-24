@@ -1,3 +1,4 @@
+import { iconFor, iconUrl } from '../data/icons';
 import * as THREE from 'three';
 import { buildTrainer, playerLook, type TrainerLook, type TrainerRig } from './trainerModel';
 import type { SceneView } from './engine';
@@ -126,9 +127,17 @@ function emojiSprite(emoji: string, ring: string) {
   ctx.lineWidth = 6; ctx.strokeStyle = ring; ctx.stroke();
   ctx.font = '50px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(emoji, 48, 52);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
+  const icon = iconFor(emoji);
+  const drawEmoji = () => { ctx.fillStyle = '#000000'; ctx.fillText(emoji, 48, 52); };
+  if (!icon) ctx.fillText(emoji, 48, 52);
+  else {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 15, 14, 66, 66); tex.needsUpdate = true; };
+    img.onerror = () => { drawEmoji(); tex.needsUpdate = true; };
+    img.src = iconUrl(icon);
+  }
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
   s.scale.set(1.3, 1.3, 1);
   s.center.set(0.5, 0);
@@ -799,15 +808,19 @@ export class WorldView implements SceneView {
   }
 
   /**
-   * Where the trainer's next wisp waits (once they've checked their Fog Lantern), or null: a little
-   * bobbing light over that node.
+   * Where the trainer's next wisp waits (once they've checked their Fog Lantern), or null: the wisp,
+   * bobbing in a soft light over that node.
    */
   setWisp(id: string | null) {
     if (this.wispMark) { this.scene.remove(this.wispMark); this.wispMark = null; }
     const n = id ? NODE_BY_ID[id] : null;
     if (!n) return;
     const g = new THREE.Group();
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.7, 14, 12), new THREE.MeshStandardMaterial({ color: '#e6fdff', emissive: new THREE.Color('#5fe9ff'), emissiveIntensity: 1.8 }));
+    const tex = new THREE.TextureLoader().load(iconUrl('wisp'));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const orb = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, depthTest: false, transparent: true }));
+    orb.scale.set(3, 3, 1); // (drawn over a city's badge, which would hide it)
+    orb.renderOrder = 11;
     const halo = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), new THREE.MeshBasicMaterial({ color: '#7ff3ff', transparent: true, opacity: 0.3, depthWrite: false }));
     // a faint column of light down to the node, so the wisp is easy to spot from afar
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.9, 4, 10, 1, true), new THREE.MeshBasicMaterial({ color: '#9ff6ff', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));

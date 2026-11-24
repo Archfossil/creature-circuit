@@ -1,3 +1,4 @@
+import { STAGGER } from './icons';
 import type { Move, ElementType, StatusId, EnergyMap } from './schema';
 import { TYPES, TYPE_LABEL } from './types';
 
@@ -60,7 +61,7 @@ export const STATUS_INFO: Record<StatusId, { name: string; icon: string; text: s
   soak: { name: 'Soak', icon: '💧', text: '−2 Speed, so it is more likely to act second.' },
   shock: { name: 'Shock', icon: '⚡', text: 'Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent).' },
   snare: { name: 'Snare', icon: '🌿', text: '−1 Speed and −1 Evasion, so it is easier to hit.' },
-  stagger: { name: 'Stagger', icon: '💥', text: '−1 Power and −1 Focus: its physical and elemental attacks each deal 1 less damage.' },
+  stagger: { name: 'Stagger', icon: STAGGER, text: '−1 Power and −1 Focus: its physical and elemental attacks each deal 1 less damage.' },
   sunder: { name: 'Sunder', icon: '⚙️', text: '−1 Armor and −1 Ward: it takes 1 more damage from physical and elemental attacks.' },
   beguile: { name: 'Beguile', icon: '💗', text: '−1 to its accuracy rolls (Sure-hit moves are unaffected).' },
   daze: { name: 'Daze', icon: '✨', text: 'Its accuracy die shrinks one size (d8 → d6, d6 → d4; never below d4). Sure-hit moves are unaffected.' },

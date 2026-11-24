@@ -4,6 +4,8 @@ Every emoji in the game is a placeholder. This list covers each one that needs a
 
 **Already custom (not on this list):** the 8 type icons (`public/assets/types/`), creature portraits and trainer minis.
 
+**Adding an icon:** put the 512px original in `art/icons/` and a 160px copy in `public/assets/icons/`, both under the icon's name, then map its emoji to it in `src/data/icons.ts`. An emoji with several meanings needs a `mark` so only the right one changes. Dropdown menus, tooltips and notifications can't show images, so they keep the emoji.
+
 ## How to use this list
 
 - Tick `[x]` when the final icon is delivered. Developers swap it in afterwards.
@@ -19,21 +21,7 @@ Every emoji in the game is a placeholder. This list covers each one that needs a
 
 ## Replace first: stand-in emoji
 
-Windows 10's emoji font can't draw Emoji 13 or later, so these icons showed as blank boxes there. They have been swapped for older emoji that every system can show, but the stand-ins are rough fits. Replace these first, whatever their section's priority. They're marked **(stand-in)** in the sections below.
-
-| Was | Now | Icon names | Where |
-|---|---|---|---|
-| 🪙 | 💰 | `coin` | HUD coin pill, every price, reward and wager (★★★, the most urgent; 💰 also means the Merchant style) |
-| 🫐 | 🍒 / 🍑 | `item-dewberry` / `item-duskberry` | Treats in markets and the bag |
-| 🪶 | 🕊️ | `item-homing-feather` | Travel item, its city picker and toast |
-| 🪆 | 🎎 | `item-effigy` | Creature Effigy totem |
-| 🪵 | ⚫ / 🍯 | `mat-ember-charcoal` / `mat-heartwood-resin` | Carving materials |
-| 🪨 | ⬜ / 🌄 | `mat-river-chalk` / `biome-canyon` | Carving material, Canyon biome |
-| 🪷 | 💮 | `mat-marsh-lotus` | Carving material |
-| 🪢 | ➰ | `key-canopy-rope` | Key item, the Forest Floor descent prompt |
-| 🪨 | 💥 | `status-stagger` | Stagger status |
-| ⯪ | ☆ | `die-star-half` | Half rarity star on the dice |
-| · | 🚫 | `die-star-blank` | Blank rarity die face |
+Windows 10's emoji font can't draw Emoji 13 or later, so some icons had rough stand-ins. **All of them now have custom icons.**
 
 Until the custom icons arrive, new placeholder emoji should come from Emoji 12 or earlier so they show on Windows 10.
 
@@ -49,7 +37,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 
 ## 1. HUD & resources ★★★
 
-- [ ] `coin`: 💰: Coins. HUD coin pill, every price, reward and wager. **(stand-in)**
+- [x] `coin`: 💰: Coins. HUD coin pill, every price, reward and wager.
 - [ ] `initiative`: ⚡: Initiative, the action points. Costs on buttons and tiles ("1⚡").
 - [ ] `menu`: ☰: Main menu button (top right).
 - [ ] `merit`: 🏅: Merits earned (season results).
@@ -101,7 +89,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `forest-floor`: 🌲: The Forest Floor (Gloomshade's Dahlia tile, rules screen, HUD chip).
 - [ ] `dahlia-trail`: 🏮: Dahlia's Trail (trail found, explore result).
 - [ ] `explore-depths`: 🕳️: Explore the Depths (Shifting Depths).
-- [ ] `wisp`: 💫: A wisp (map marker, lantern check sheet, catch toast, active effect).
+- [x] `wisp`: 💫: A wisp (map marker, lantern check sheet, catch toast, active effect).
 - [ ] `notice-board`: 🗺️: Notice Board (rumors). Also the "Where to look" heading in the Codex.
 - [ ] `enrol`: 📝: Battle School "Enrol a creature" heading.
 - [ ] `retrain`: 🌅: Battle School "Retraining" heading, the "Morning" badge on a creature being retrained, and the "retraining is done" toast.
@@ -129,7 +117,7 @@ Shown on map node previews, Codex pages and filters, and material "found in" lis
 - [ ] `biome-badlands`: 🏜️
 - [ ] `biome-coast`: 🏖️
 - [ ] `biome-volcanic`: 🌋
-- [ ] `biome-canyon`: 🌄 **(stand-in)**
+- [x] `biome-canyon`: 🌄
 - [ ] `biome-cloud`: ☁️ (Cloud Island)
 - [ ] `biome-deepwood`: 🌑 (the Forest Floor)
 - [ ] `biome-prism`: 🌈 (the Rainbow Plains)
@@ -171,7 +159,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Treats**
 - [ ] `item-sunberry`: 🍓 Sunberry
-- [ ] `item-dewberry`: 🍒 Dewberry **(stand-in)**
+- [x] `item-dewberry`: 🍒 Dewberry
 - [ ] `item-moonberry`: 🍇 Moonberry
 
 **Charms**
@@ -182,21 +170,21 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 **Travel**
 - [ ] `item-bike`: 🚲 Bike (also the action-bar button)
 - [ ] `item-taxi-ticket`: 🚕 Taxi Ticket (also the action-bar button)
-- [ ] `item-homing-feather`: 🕊️ Homing Feather **(stand-in)**
+- [x] `item-homing-feather`: 🕊️ Homing Feather
 - [ ] `item-trail-mix`: 🥜 Trail Mix
 
 **Totems**
-- [ ] `item-totem`: 🗿 Plain Totem
-- [ ] `item-totem-typed`: 🗿 Typed Totem. One base design; ideally 8 variants tinted or marked per type.
-- [ ] `item-effigy`: 🎎 Creature Effigy **(stand-in)**
+- [x] `item-totem`: 🗿 Plain Totem
+- [x] `item-totem-typed`: 🗿 Typed Totem. One base design; ideally 8 variants tinted or marked per type.
+- [x] `item-effigy`: 🎎 Creature Effigy
 - [ ] `item-unknown`: ❔ Fallback for an unknown item
 
 **Offering materials (13)**
 - [ ] `mat-pine-resin`: 🌲 Pine Resin
 - [ ] `mat-glacier-salt`: 🧂 Glacier Salt
-- [ ] `mat-ember-charcoal`: ⚫ Ember Charcoal **(stand-in)**
-- [ ] `mat-river-chalk`: ⬜ River Chalk **(stand-in)**
-- [ ] `mat-marsh-lotus`: 💮 Marsh Lotus **(stand-in)**
+- [x] `mat-ember-charcoal`: ⚫ Ember Charcoal
+- [x] `mat-river-chalk`: ⬜ River Chalk
+- [x] `mat-marsh-lotus`: 💮 Marsh Lotus
 - [ ] `mat-sage-bundle`: 🌾 Sage Bundle
 - [ ] `mat-sea-glass`: 🔷 Sea Glass
 - [ ] `mat-iron-filings`: ⚙️ Iron Filings
@@ -208,8 +196,8 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Exotic finds (the Forest Floor; Heartwood Resin and Glowcap also on the Rainbow Plains)**
 - [ ] `item-root-salve`: 🌿 Root Salve
-- [ ] `item-duskberry`: 🍑 Duskberry (needs a distinct icon from Dewberry) **(stand-in)**
-- [ ] `mat-heartwood-resin`: 🍯 Heartwood Resin (needs a distinct icon from Ember Charcoal) **(stand-in)**
+- [x] `item-duskberry`: 🍑 Duskberry (needs a distinct icon from Dewberry)
+- [x] `mat-heartwood-resin`: 🍯 Heartwood Resin (needs a distinct icon from Ember Charcoal)
 - [ ] `mat-glowcap`: 🍄 Glowcap
 
 **Universal offerings (Cloud Island)**
@@ -219,7 +207,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Key items**
 - [ ] `key-fog-lantern`: 🏮 Fog Lantern (with a Check button that reveals the wisp)
-- [ ] `key-canopy-rope`: ➰ Canopy Rope **(stand-in)**
+- [x] `key-canopy-rope`: ➰ Canopy Rope
 - [ ] `key-ferry-pass`: ⛴️ Ferry Pass
 - [ ] `key-root-whistle`: 🎐 Root Whistle
 - [ ] `key-summit-pick`: ⛏️ Summit Pick
@@ -253,9 +241,9 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `readout-effects`: ✨ Effects
 
 **Dice faces**
-- [ ] `die-star-full`: ★ Rarity star (full)
-- [ ] `die-star-half`: ☆ Rarity star (half) **(stand-in)**
-- [ ] `die-star-blank`: 🚫 Blank rarity die face **(stand-in)**
+- [x] `die-star-full`: ★ Rarity star (full)
+- [x] `die-star-half`: ☆ Rarity star (half)
+- [x] `die-star-blank`: 🚫 Blank rarity die face
 - Weather die faces reuse the weather icons ([section 5](#5-weather-11--seasons-4-)), so they need no separate art.
 
 **Dice bodies** (drawn with CSS for now; the number or face sits on top)
@@ -278,7 +266,7 @@ Shown as status tags in battle, in ☰ Menu → Status Effects, and as small bad
 - [ ] `status-soak`: 💧 Soak
 - [ ] `status-shock`: ⚡ Shock
 - [ ] `status-snare`: 🌿 Snare
-- [ ] `status-stagger`: 💥 Stagger **(stand-in)**
+- [x] `status-stagger`: 💥 Stagger
 - [ ] `status-sunder`: ⚙️ Sunder
 - [ ] `status-beguile`: 💗 Beguile
 - [ ] `status-daze`: ✨ Daze

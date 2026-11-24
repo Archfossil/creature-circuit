@@ -1,5 +1,6 @@
 import { settings } from './settings';
 import { sfx } from './sound';
+import { iconUrl, splitIcons } from '../data/icons';
 
 type Child = Node | string | number | null | undefined | false | Child[];
 type Attrs = Record<string, unknown> & { class?: string; style?: string };
@@ -22,7 +23,29 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs | 
 function append(el: HTMLElement, c: Child) {
   if (c === null || c === undefined || c === false) return;
   if (Array.isArray(c)) { for (const x of c) append(el, x); return; }
-  el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  el.append(c instanceof Node ? c : el.tagName === 'OPTION' || el.tagName === 'TEXTAREA' ? String(c) : richText(String(c)));
+}
+
+/** Text with its icons drawn (data/icons.ts). Kept in one inline wrapper, so it's still one item in a flex or grid row. */
+export function richText(text: string): Node {
+  const parts = splitIcons(text);
+  if (!parts) return document.createTextNode(text);
+  const wrap = document.createElement('ico-text');
+  for (const p of parts) {
+    if (typeof p === 'string') { wrap.append(p); continue; }
+    const img = document.createElement('img');
+    img.className = 'ico'; img.alt = p.emoji; img.src = iconUrl(p.name); img.draggable = false;
+    wrap.append(img);
+  }
+  return wrap;
+}
+/** Set an element's text, icons drawn. */
+export const setText = (el: Element, text: string) => el.replaceChildren(richText(text));
+/** An element's text with its icons back as emoji (to send as plain text). */
+export function textOf(el: HTMLElement): string {
+  const copy = el.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll<HTMLImageElement>('img.ico').forEach((i) => i.replaceWith(i.alt));
+  return copy.textContent ?? '';
 }
 
 export const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T;
@@ -131,7 +154,7 @@ export async function rollDice(title: string, dice: DieSpec[], caption?: string,
       const el = performance.now() - t0;
       for (const { d, face, tag } of els) {
         if (el < spin) { face.firstElementChild!.textContent = String(1 + Math.floor(Math.random() * d.sides)); face.classList.add('rolling'); }
-        else { face.classList.remove('rolling'); face.firstElementChild!.textContent = d.face ?? String(d.value); if (d.tone) face.classList.add(d.tone); if (d.label) tag.textContent = d.label; }
+        else { face.classList.remove('rolling'); setText(face.firstElementChild!, d.face ?? String(d.value)); if (d.tone) face.classList.add(d.tone); if (d.label) tag.textContent = d.label; }
       }
       if (el < spin) requestAnimationFrame(tick); else { sfx.land(); res(); }
     };

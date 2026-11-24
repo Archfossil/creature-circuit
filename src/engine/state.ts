@@ -1,3 +1,4 @@
+import { MERCHANT } from '../data/icons';
 import type { ElementType, StatKey } from '../data/schema';
 import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
@@ -20,7 +21,7 @@ export const TRAINER_STYLES: { id: TrainerStyle; icon: string; name: string; per
   { id: 'nature', icon: '🌲', name: 'Ranger', perk: 'Up to Tier times a turn, exploring and finding Nothing gives back 1 Initiative (once at Tier 1, twice at Tier 2, and so on).', drawback: 'City actions cost +1 Initiative.' },
   { id: 'urban', icon: '🏙️', name: 'Urbanite', perk: 'City actions cost no Initiative.', drawback: 'Re-exploring costs 2 Initiative.' },
   { id: 'whisperer', icon: '🤝', name: 'Beast Whisperer', perk: '+1 to every recruitment roll.', drawback: 'Trainer battles pay half the coins (Arbiters still pay in full).' },
-  { id: 'haggler', icon: '💰', name: 'Merchant', perk: 'Markets sell at 25% off, and you earn 25% more coins whenever you earn coins (at least +1).', drawback: '−1 to every recruitment roll.' },
+  { id: 'haggler', icon: MERCHANT, name: 'Merchant', perk: 'Markets sell at 25% off, and you earn 25% more coins whenever you earn coins (at least +1).', drawback: '−1 to every recruitment roll.' },
   { id: 'drill', icon: '🎖️', name: 'Battle Master', perk: '+2 XP for every creature in every battle, win or lose.', drawback: 'Creatures in totems lose Morale every 5 turns (not 10).' },
   { id: 'caretaker', icon: '💞', name: 'Caretaker', perk: 'Camping tends 2 creatures per Initiative; stables give +1 extra Morale.', drawback: '−1 XP per battle for each creature (never below 1).' },
   { id: 'pathfinder', icon: '🧭', name: 'Pathfinder', perk: 'Your first move each turn costs no Initiative.', drawback: 'Stables cost +1 Initiative.' },
