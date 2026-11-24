@@ -104,6 +104,7 @@ The save also holds:
 - **`npcs`:** history with each Rival and Champion met, by id: `{ met, won, lost, owed, rapport, seen, revenges, last?, chatted?, invite?, chat?, trade?, swaps?, keen?, dare?, dared?, daresWon?, daresLost? }` (`engine/npcs.ts` → `NpcRecord`). `tally` counts things side challenges ask for. `circuitNews` and `npcNotes` are Circuit news and start-of-turn notes.
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`. A retraining course adds `retrain: { nature?, ability?, instinct? }` (the ids it changes to), earns no XP, and lasts until the next morning.
 - **`lastBattle`** (optional): the log of this trainer's latest battle, as `{ title, turn, result?, entries }` (see `engine/battleLog.ts`). Saved copies leave it out.
+- **`circuit`** (on the save when solo, on the match otherwise): `{ entrants: [8 of { name, seat? | npc? }] in bracket order, winners: [7 entrant indexes or null], bots? }`. Matches 0–3 are the quarterfinals, 4–5 the semifinals, 6 the final.
 - **`trainer.look`:** the trainer's customisation: skin, hair, hair style, hat, jacket (a `-pack` id adds a backpack) and pants, plus `topPattern`, `hatPattern` and `hairPattern` with their secondary colours `topColor2`, `hatColor2` and `hairColor2`.
 
 A **hotseat match** is saved under its own key as `{ version, players: GameState[], current, rolls }`:

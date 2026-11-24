@@ -137,6 +137,17 @@ function helpHome(s: GameState) {
   log(s, `Your team was knocked out in a duel. You were helped ${to === s.trainer.home ? 'home ' : ''}to ${CITIES[to].name} to rest.`);
 }
 
+/** Two trainers battled: the one on side 1's creatures that fought earn XP (side 0's already did). Returns whether it was given up before it began (no XP). */
+export function rewardDefender(b: GameState, battle: Battle): boolean {
+  const foeLevel = Math.max(...battle.sides[0].team.map((c) => c.level));
+  const unfought = battle.surrendered !== undefined && battle.round === 0;
+  for (const uid of unfought ? [] : battle.foeParticipants ?? []) {
+    const c = b.roster.find((x) => x.uid === uid) ?? b.reserve.find((x) => x.uid === uid);
+    if (c) gainXp(c, participationXp(c.level, foeLevel) + TRAINER_BATTLE_XP_BONUS);
+  }
+  return unfought;
+}
+
 /**
  * After a challenge: the winner takes the wager, `b`'s creatures that fought earn trainer-battle XP
  * (`a`'s already did in the battle), and a team that's fully knocked out is helped home.
@@ -150,12 +161,7 @@ export function settleChallenge(a: GameState, b: GameState, battle: Battle, wage
     if (aWon) { b.coins -= stake; a.coins += stake; } else { a.coins -= stake; b.coins += stake; }
     out.push(`${aWon ? a.trainer.name : b.trainer.name} wins the 💰 ${stake} wager.`);
   }
-  const foeLevel = Math.max(...a.roster.map((c) => c.level));
-  const unfought = battle.surrendered !== undefined && battle.round === 0; // given up before it began: no XP
-  for (const uid of unfought ? [] : battle.foeParticipants ?? []) {
-    const c = b.roster.find((x) => x.uid === uid) ?? b.reserve.find((x) => x.uid === uid);
-    if (c) gainXp(c, participationXp(c.level, foeLevel) + TRAINER_BATTLE_XP_BONUS);
-  }
+  const unfought = rewardDefender(b, battle);
   for (const c of b.roster) if (!c.ko) c.health = Math.max(c.health, 1);
   const gaveUp = battle.surrendered !== undefined;
   const result = aWon ? (gaveUp ? `You surrendered a duel to ${a.trainer.name} at ${NODE_BY_ID[a.location].name}.` : `${a.trainer.name} beat you in a duel at ${NODE_BY_ID[a.location].name}.`) : bWon && gaveUp ? `${a.trainer.name} surrendered a duel to you at ${NODE_BY_ID[a.location].name}!` : bWon ? `You beat ${a.trainer.name} in a duel at ${NODE_BY_ID[a.location].name}!` : `Your duel with ${a.trainer.name} ended without a winner.`;

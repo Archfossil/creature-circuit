@@ -83,7 +83,7 @@ tests/       engine tests · server tests (online protocol) · guide tests (How 
 | Stables (Chanko Nabe), Markets, Shrines, Arbiters, arena tricks (favouring the Arbiter: Watson's lightning heals Electric creatures and shocks the rest; Cliff's plateau is a ring-out timer with an on-screen countdown), Tier scaling | `world.ts` + `battle.ts` → `arenaTrick`, `ringRounds`; `render/battle.ts` → `shrinkRing` |
 | Swap Team: trade creatures between the active team (max 3) and totems, free in any city or town | `ui/app.ts` → `swapTile`, `rosterManager` |
 | Check on Creature: on the Swap Team screen, 1 Initiative for +1 Morale, active or in a totem | `world.ts` → `checkOn`; `ui/app.ts` → `rosterManager` |
-| 100 turns, seasons, weather dice, endgame bracket | `world.ts` → `endTurn`, `startEndgame` |
+| 100 turns, seasons, weather dice, endgame bracket | `world.ts` → `endTurn`, `enterCircuit`; `engine/circuit.ts` (one bracket for everyone); `ui/app.ts` → `circuitStep` |
 | Start-of-turn events | `engine/events.ts` → `rollEvent`, `eventView`, `resolveEvent` |
 
 ### Interpretations & additions (open to change)
@@ -272,6 +272,8 @@ To build out this game, please review the core design documents located in the `
 13. **[Natures, Abilities & Swap Moves (`/docs/13-natures-and-abilities.md`)](./docs/13-natures-and-abilities.md):** The traits on every creature card. Natures (up and down stats, perks unlocked at 3, 6 and 10 Loyalty), overworld Abilities (exact rules, interactions with trainer styles and items, how many creatures have each) and Swap Moves (all 29 with exact effects, how a pair unlocks them, and the Teamwork bonus). Includes balance notes, templates for new traits, build steps and an ideas backlog. A test fails if a trait is missing from this doc.
 14. **[Instinct Checklist (`/docs/14-instinct-checklist.md`)](./docs/14-instinct-checklist.md):** Every Instinct (the battle passive each species has): when it fires, its in-game text, its exact rules, how many species have it and which families, with Design and Balance checkboxes, plus the design space still open for new ones. All 48 are first drafts for redesign. Generated from the game data: regenerate with `npm run docs:instincts`.
 15. **[Rivals & Champions (`/docs/15-rivals-and-champions.md`)](./docs/15-rivals-and-champions.md):** The 12 Rivals and 8 Champions, how their teams grow, where to meet them, rematches, Revenge and the Circuit Standings, with balance notes.
+16. **[Region Packages (`/docs/16-region-packages.md`)](./docs/16-region-packages.md):** A proposal, not built yet: turning Margos into the first region package so whole new regions can be added. What moves, the steps, the risks and the decisions needed.
+17. **[World Championship (`/docs/17-world-championship.md`)](./docs/17-world-championship.md):** A proposal for after Margos: eight linked regions, a shared feed, one game day per real day, chess-clock battles, bots, and one World Champion. Casual games stay turn-based.
 ---
 
 ## 🚀 Development Roadmap & Scope

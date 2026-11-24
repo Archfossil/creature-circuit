@@ -12,7 +12,7 @@ import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
-import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
@@ -23,6 +23,7 @@ import type { Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import { alertState, askForAlerts, calm, callFor, canPush, pushSubscription, steadyInterval, testCall } from './attention';
 import * as W from '../engine/world';
+import * as C from '../engine/circuit';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
@@ -284,7 +285,8 @@ export class App {
     this.world.focus(s.location, true);
     this.engine.setView(this.world);
     this.showRivals();
-    if (s.phase === 'endgame') { this.renderHud(); this.endgameSheet(); return; }
+    this.circuitRun++;
+    if (s.phase === 'endgame') { this.renderHud(); void this.circuitStep(); return; }
     if (s.phase === 'over') { this.gameOver(); return; }
     this.renderHud();
     // (in hotseat, the waiting event opens once the trainer has taken the device: see startOfTurn)
@@ -718,8 +720,9 @@ export class App {
     const net = this.online;
     const m = activeMatchOf();
     if (!net?.room?.started || !m || this.skipping) return;
+    if (!m.players.some(stillPlaying)) return; // it's all over: the final standings are up
     const s = m.players[m.current];
-    const key = `${m.current}:${s.turn}`;
+    const key = `${m.current}:${s.turn}:${C.progress(m)}`;
     if (net.room.controller === net.id) {
       if (!this.watching && this.activeKey === key) return;
       this.activeKey = key;
@@ -910,7 +913,7 @@ export class App {
       this.closeAsk();
       net.send({ type: 'answer', id: m.id, ...msg });
     };
-    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number } & FoeOptions) | undefined;
+    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number; circuit?: boolean } & FoeOptions) | undefined;
     const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
     if (send?.kind === 'duel-send') {
       callFor('Choose your next creature!', `${m.from} is waiting for you.`);
@@ -962,9 +965,16 @@ export class App {
     closeAllSheets();
     this.busy = false;
     this.watching = false;
-    this.activeKey = `${seat}:${s.turn}`;
+    this.activeKey = `${seat}:${s.turn}:${C.progress(m)}`;
     this.s = s;
     if (s.event) { record(s, 'event', 'let an event pass by'); s.event = undefined; log(s, 'The waiting event passed by.'); }
+    if (s.phase === 'endgame') {
+      toast(`🤖 A bot plays ${s.trainer.name}’s match.`, 'info', 4000);
+      C.sendBot(m, seat);
+      this.circuitRun++;
+      try { await this.circuitStep(); } finally { this.skipping = false; }
+      return;
+    }
     toast(reason === 'timeout' ? `⏱ Time’s up: ${s.trainer.name}’s turn ends.` : `⏭ The host skipped ${s.trainer.name}’s turn.`, 'info', 4000);
     try { await this.endTurn(false, true); } finally { this.skipping = false; }
   }
@@ -1017,6 +1027,12 @@ export class App {
   async startMatch(m: Match, fresh = false) {
     setActiveMatch(m);
     const s = m.players[m.current];
+    if (s.phase === 'endgame') { // the season is over for them: on with whoever is left, or with the Circuit
+      this.showTrainer(s);
+      if (m.circuit) await this.passDevice(s);
+      await this.circuitStep();
+      return;
+    }
     this.start(s);
     await this.passDevice(s, fresh);
     await this.startOfTurn();
@@ -1040,6 +1056,7 @@ export class App {
     const m = activeMatchOf();
     if (!m) return;
     const i = nextSeat(m);
+    if (i < 0 && m.players.some((p) => p.phase === 'endgame')) { await this.circuitStep(); return; }
     if (this.online) {
       // online: hand the turn over through the server, then watch the next trainer
       if (i >= 0) m.current = i;
@@ -1222,8 +1239,8 @@ export class App {
    * the device is passed to them (choices stay secret) and back. Online: they pick in their own
    * browser; if they don't answer within a minute, their creature acts on its own instincts.
    */
-  async duelPick(a: GameState, b: GameState, battle: Battle, wager: number): Promise<Action | undefined> {
-    const opts = { ...foeOptions(battle), stake: Math.min(wager, b.coins) };
+  async duelPick(a: GameState, b: GameState, battle: Battle, wager: number, circuit = false): Promise<Action | undefined> {
+    const opts = { ...foeOptions(battle), stake: Math.min(wager, b.coins), circuit };
     const m = activeMatchOf();
     if (this.online && m) {
       return this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts });
@@ -1309,7 +1326,7 @@ export class App {
   }
 
   /** The defender's choices in a duel round: their moves, Catch Breath, and swaps. */
-  duelPicker(o: FoeOptions & { stake?: number }, round: number, done: (a: Action) => void): HTMLElement {
+  duelPicker(o: FoeOptions & { stake?: number; circuit?: boolean }, round: number, done: (a: Action) => void): HTMLElement {
     const body = h('div', { class: 'duel-picker' });
     const swaps = () => body.replaceChildren(
       h('p', null, 'Swap in for ', h('b', null, o.name), ': choose the incoming Alpha.'),
@@ -1325,7 +1342,7 @@ export class App {
         h('button', { class: 'btn ghost sm', onclick: () => giveUp() }, '🏳️ Surrender')));
     // asked in place, so it goes when the prompt does (the round can time out)
     const giveUp = () => body.replaceChildren(
-      this.surrenderTerms(o.lead, [o.stake ? `You lose the 💰 ${o.stake} wager.` : 'You lose the duel (there’s no wager).'], ['You aren’t sent anywhere to rest: you stay where you are.']),
+      this.surrenderTerms(o.lead, [o.circuit ? 'You’re out of the Creature Circuit, and your season ends here.' : o.stake ? `You lose the 💰 ${o.stake} wager.` : 'You lose the duel (there’s no wager).'], o.circuit ? [] : ['You aren’t sent anywhere to rest: you stay where you are.']),
       h('div', { class: 'row end gap' },
         h('button', { class: 'btn ghost', onclick: () => moves() }, 'Keep fighting'),
         h('button', { class: 'btn primary', onclick: () => done({ kind: 'surrender' }) }, '🏳️ Surrender')));
@@ -1453,9 +1470,11 @@ export class App {
     const ranked = [...m.players].sort((a, b) => result(b) - result(a));
     this.ui.replaceChildren(h('div', { class: 'title-screen' }, h('div', { class: 'title-card' },
       h('h1', null, '🏁 Season Over'),
+      m.circuit && C.championOf(m.circuit) ? h('p', null, h('b', null, C.championOf(m.circuit)!.name), ' is the Champion of the Creature Circuit.') : null,
+      m.circuit ? h('button', { class: 'btn ghost sm', onclick: () => this.bracketSheet() }, '🏆 See the bracket') : null,
       h('ol', { class: 'standings' }, ranked.map((p) => h('li', { style: `--tc:${p.trainer.color}` },
         h('b', null, p.trainer.name),
-        h('span', null, p.phase === 'champion' ? ' 🏆 Champion of the Circuit' : p.endgame ? ` · out in the ${['Quarterfinal', 'Semifinal', 'Grand Final'][p.endgame.round]}` : ' · missed the Circuit'),
+        h('span', null, p.phase === 'champion' ? ' 🏆 Champion of the Circuit' : p.endgame ? ` · out in the ${C.CIRCUIT_ROUNDS[p.endgame.round] ?? 'Circuit'}` : ' · missed the Circuit'),
         h('small', { class: 'muted' }, ` · ${p.merits.length}/8 Merits · ${p.stats.battlesWon} wins · ${p.stats.recruited} recruited`)))),
       h('button', { class: 'btn primary big', onclick: () => { if (this.online) { clearOnlineMatch(); this.leaveOnline(); } else { clearMatch(); this.title(); } } }, 'New Journey'))));
   }
@@ -1516,6 +1535,7 @@ export class App {
       h('div', { class: 'hud-pill coins' }, '💰 ', h('b', null, s.coins)),
       h('button', { class: 'hud-pill merits', onclick: () => this.meritsSheet() }, Object.values(CITIES).map((c) =>
         h('span', { class: `merit ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` }, h('img', { src: typeIcon(c.type), alt: '' })))),
+      this.circuitGame().circuit ? h('button', { class: 'hud-pill icon', onclick: () => this.bracketSheet(), 'aria-label': 'Circuit bracket', title: 'The Creature Circuit’s bracket' }, '🏆') : null,
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.worldLogSheet(), 'aria-label': 'World Log', title: 'World Log: what every trainer has been doing' }, '🗞️'),
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.trainerId(), 'aria-label': 'Trainer ID', title: 'Trainer ID: your home town, style and records' }, '📇'),
       h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': unread ? `Menu (${unread} unread message${unread === 1 ? '' : 's'})` : 'Menu' }, '☰', unread ? h('i', { class: 'hud-dot' }, String(unread)) : null));
@@ -1527,7 +1547,7 @@ export class App {
       // my private next-stop flag: tap to find it on the map
       marker?.waypoint ? h('button', { class: 'next-stop-chip', style: `--tc:${marker.trainer.color}`, title: 'Show your next-stop flag on the map', onclick: () => this.findNextStop() },
         '📍 ', h('small', null, 'Your next stop: '), h('b', null, NODE_BY_ID[marker.waypoint]?.name ?? '')) : null,
-      daysLeft <= 10 ? h('div', { class: 'warn' }, `⏳ ${daysLeft + 1} turns left — reach Circuit Stadium with 8 Merits!`) : null);
+      daysLeft <= 10 && s.phase === 'map' ? h('div', { class: 'warn' }, `⏳ ${daysLeft + 1} turns left — reach Circuit Stadium with 8 Merits!`) : null);
     const actions = h('div', { class: 'action-bar' }, this.actionButtons());
     const followerBtn = h('button', { class: 'follower-chip', onclick: () => this.pickFollower() },
       f ? h('img', { src: portrait(f.species), alt: '' }) : h('span', { class: 'none' }, '—'),
@@ -1612,14 +1632,14 @@ export class App {
     const cur = m?.players[m.current];
     const mySeat = m?.owners?.indexOf(net.id) ?? -1;
     const me = mySeat >= 0 ? m!.players[mySeat] : null;
-    const out: HTMLElement[] = [h('div', { class: 'watch-label', style: `--tc:${cur?.trainer.color ?? '#999'}` }, h('span', null, '👀 ', h('b', null, cur?.trainer.name ?? '…'), '’s turn'))];
+    const out: HTMLElement[] = [h('div', { class: 'watch-label', style: `--tc:${cur?.trainer.color ?? '#999'}` }, h('span', null, '👀 ', h('b', null, cur?.trainer.name ?? '…'), cur?.phase === 'endgame' ? '’s Circuit match' : '’s turn'))];
     if (me) out.push(h('button', { class: 'act', title: 'Unlock chart nodes and edit playbooks while you wait', onclick: () => this.myTeamSheet() },
       h('span', { class: 'act-ico' }, '🐾'), h('span', { class: 'act-lbl' }, 'My team')));
     if (me) out.push(h('button', { class: 'act', title: 'Look through your bag (items can be used on your turn)', onclick: () => this.myBagSheet() },
       h('span', { class: 'act-ico' }, '🎒'), h('span', { class: 'act-lbl' }, 'My bag')));
     if (net.isHost && cur) {
-      out.push(h('button', { class: 'act', title: `End ${cur.trainer.name}’s turn now`, onclick: async () => { if (await confirmSheet('Skip this turn?', `${cur.trainer.name}’s turn ends now, as if they pressed End Turn.`, 'Skip turn')) net.send({ type: 'host-skip' }); } },
-        h('span', { class: 'act-ico' }, '⏭️'), h('span', { class: 'act-lbl' }, 'Skip turn')));
+      out.push(h('button', { class: 'act', title: `End ${cur.trainer.name}’s turn now`, onclick: async () => { if (cur.phase === 'endgame' ? await confirmSheet('Send in a bot?', `A bot plays ${cur.trainer.name}’s next Circuit match. If they’re up against another trainer here, that trainer plays on.`, 'Send in a bot') : await confirmSheet('Skip this turn?', `${cur.trainer.name}’s turn ends now, as if they pressed End Turn.`, 'Skip turn')) net.send({ type: 'host-skip' }); } },
+        h('span', { class: 'act-ico' }, '⏭️'), h('span', { class: 'act-lbl' }, cur.phase === 'endgame' ? 'Send a bot' : 'Skip turn')));
       out.push(h('button', { class: 'act', title: `Take over ${cur.trainer.name}’s turn on this device`, onclick: async () => { if (await confirmSheet(`Play for ${cur.trainer.name}?`, `You’ll play the rest of ${cur.trainer.name}’s turn from this device (their own screen switches to watching).`, 'Play for them')) net.send({ type: 'host-play' }); } },
         h('span', { class: 'act-ico' }, '🎮'), h('span', { class: 'act-lbl' }, `Play for ${cur.trainer.name}`)));
     }
@@ -1928,7 +1948,7 @@ export class App {
     // (the challenged trainer, viewing their own duel, reads it from their side)
     const view: 0 | 1 = ctx.watch && ctx.rivalSeat !== undefined && ctx.rivalSeat >= 0 && ctx.rivalSeat === this.mySeat() ? 1 : 0;
     const blog: BattleLog = { title: ctx.intro, turn: s.turn, entries: [] };
-    const rivalLog: BattleLog | null = ctx.rival && !ctx.watch ? { title: `${s.trainer.name} challenged you to a duel!`, turn: ctx.rival.turn, entries: [] } : null;
+    const rivalLog: BattleLog | null = ctx.rival && !ctx.watch ? { title: ctx.kind === 'endgame' ? ctx.intro : `${s.trainer.name} challenged you to a duel!`, turn: ctx.rival.turn, entries: [] } : null;
     this.liveLog = blog;
     const note = (text: string, opts: { tone?: string } = {}) => addLine(blog, { round: b.round, text, ...opts });
     note(ctx.intro, { tone: 'info' });
@@ -2231,7 +2251,7 @@ export class App {
     // a Rival or Champion who beat the whole team may help one creature up
     const helper = ctx.kind === 'trainer' ? N.mercyOffer(s, b) : null;
     const mercy = helper ? await this.mercySheet(helper) : undefined;
-    if (!mercy && ctx.kind !== 'rival' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
+    if (!mercy && ctx.kind !== 'rival' && ctx.kind !== 'endgame' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
     const rematch = ctx.kind === 'arbiter' && s.merits.includes(ctx.city!);
     const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo, mercy });
     for (const t of summary.text) toast(t, summary.wiped || b.surrendered === 0 ? 'bad' : 'good', 3500);
@@ -2623,7 +2643,7 @@ export class App {
   private standingsBody(s: GameState) {
     const rows = N.standings(s);
     return h('div', null,
-      h('p', { class: 'small muted' }, `Who’s on course for the Circuit. The top ${N.FIELD} fill the bracket on Turn 100. A Rival you battle often, or who keeps beating you, climbs fast.`),
+      h('p', { class: 'small muted' }, `Who’s on course for the Circuit. On Turn 100 the strongest of them fill whatever places trainers leave in the bracket of eight${activeMatchOf() ? '' : ` (the top ${N.FIELD})`}. A Rival you battle often, or who keeps beating you, climbs fast.`),
       h('table', { class: 'tid-record standings' },
         h('thead', null, h('tr', null, h('th', null, ''), h('th', null, 'Trainer'), h('th', null, 'Merits'), h('th', null, 'You · Them'))),
         h('tbody', null, rows.map((x, i) => {
@@ -3381,7 +3401,7 @@ export class App {
     openSheet('🏆 Grand Tournament', h('div', null,
       h('p', null, 'The grand tournament of Margos convenes here when the year ends. Be standing in this stadium as Turn 100 ends with all 8 Merits to enter the bracket.'),
       h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Merits: ${s.merits.length}/8`), h('span', { class: 'chip' }, `Turn ${s.turn}/100`)),
-      h('p', { class: 'small muted' }, 'Bracket: 8 trainers, 3v3 elimination. Your team is fully restored between matches.')));
+      h('p', { class: 'small muted' }, 'Bracket: 8 trainers, 3v3 elimination, one Champion. Everyone here who qualifies is in the same bracket, and the strongest Champions and Rivals fill the rest. Your team is fully restored between matches.')));
   }
 
   // ════════════════════════════════════════════════════════════
@@ -3570,8 +3590,13 @@ export class App {
         ch.left ? `Rolled ${ch.roll}, above Loyalty ${ch.loyalty}: ${ch.name} leaves.` : `Rolled ${ch.roll}, not above Loyalty ${ch.loyalty}: ${ch.name} stays, but loses 1 Loyalty.`, 900, { read: true });
     }
     for (const n of r.left) toast(`${n} lost faith in you and returned to the wild…`, 'bad', 4000);
-    if (r.ended === 'endgame') { this.busy = false; save(s); this.renderHud(); this.endgameSheet(); return; }
-    if (r.ended === 'over') { this.busy = false; save(s); this.gameOver(); return; }
+    if (r.ended === 'endgame') {
+      this.busy = false; save(s); this.renderHud();
+      toast(`🏆 ${s.trainer.name} has qualified for the Creature Circuit!${match?.players.some((p) => p.phase === 'map') ? ' It begins when everyone’s season has ended.' : ''}`, 'good', 5000);
+      if (match) await this.handoff(); else await this.circuitStep();
+      return;
+    }
+    if (r.ended === 'over') { this.busy = false; save(s); if (match && this.skipping) await this.handoff(); else this.gameOver(); return; }
     if (match) {
       // hotseat: pass the device to the next trainer (the weather is rolled at the start of the round)
       this.busy = false;
@@ -3741,27 +3766,132 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Endgame
   // ════════════════════════════════════════════════════════════
-  endgameSheet() {
-    const s = this.s;
-    const eg = s.endgame!;
-    const rounds = ['Quarterfinal', 'Semifinal', 'Grand Final'];
+  /** This game's Circuit: the match's, or the solo save's. */
+  private circuitGame(): C.CircuitGame { const m = activeMatchOf(); return m && m.players.includes(this.s) ? m : C.soloGame(this.s); }
+  /** Counts up whenever the Circuit moves on or is replaced, so a match left behind can't report a result. */
+  private circuitRun = 0;
+
+  /**
+   * The Creature Circuit's next step: draw the bracket, play the matches nobody here is in, then bring up the
+   * next trainer's match (or the end). In a match it starts once everyone's season is over.
+   */
+  async circuitStep() {
+    const m = activeMatchOf();
+    const g = this.circuitGame();
+    const shared = !!m && g === m;
+    if (shared && m.players.some((p) => p.phase === 'map')) { await this.handoff(); return; }
+    const run = ++this.circuitRun;
+    const before = C.progress(g), seat = shared ? m.current : 0;
+    const c = C.openCircuit(g);
+    const next = c ? C.advance(g) : null;
+    if (c) for (let k = Math.max(0, before); k < C.progress(g); k++) this.tellResult(c, k);
+    if (!c || !next) { // nobody qualified, or it's over
+      if (shared) saveMatch(m); else save(this.s);
+      const champ = c ? C.championOf(c) : null;
+      if (champ?.seat !== undefined && (!shared || !this.online)) { this.s = g.players[champ.seat]; this.champion(); }
+      else if (shared) this.matchSummary();
+      else this.gameOver();
+      return;
+    }
+    if (!shared) { save(this.s); this.renderHud(); this.endgameSheet(next); return; }
+    const moved = next.seat !== seat || C.progress(g) !== before;
+    m.current = next.seat;
+    saveMatch(m);
+    if (this.online) {
+      // the server gives each match to the trainer it belongs to: watch until it's ours
+      if (moved) { this.activeKey = ''; this.spectate(); return; }
+      this.renderHud();
+      this.endgameSheet(next);
+      return;
+    }
+    if (this.s !== m.players[next.seat]) {
+      this.showTrainer(m.players[next.seat]);
+      await this.passDevice(this.s);
+      if (run !== this.circuitRun) return;
+    }
+    this.renderHud();
+    this.endgameSheet(next);
+  }
+
+  /** Put a trainer's token and HUD on screen (hotseat), without starting a turn. */
+  private showTrainer(s: GameState) {
+    this.s = s;
+    closeAllSheets();
+    this.world.setTitleMode(false);
+    this.world.setTrainerLook(playerLook(s.trainer.name, s.trainer.color, s.trainer.look));
+    this.world.setPawnAt(s.location);
+    this.world.focus(s.location, true);
+    this.engine.setView(this.world);
+    this.showRivals();
+  }
+
+  private tellResult(c: Circuit, k: number) {
+    const w = c.winners[k], sides = C.sidesOf(c, k);
+    if (w === null || !sides) return;
+    toast(`🏆 ${C.CIRCUIT_ROUNDS[C.roundOf(k)]}: ${c.entrants[w].name} beat ${c.entrants[sides.find((i) => i !== w)!].name}.`, 'info', 4500);
+  }
+
+  /** The bracket, round by round. */
+  bracketView(c: Circuit): HTMLElement {
+    const now = C.nextMatch(c);
+    const g = this.circuitGame();
+    const who = (i: number | null, k: number) => {
+      const e = i === null ? null : c.entrants[i];
+      const p = e?.seat !== undefined ? g.players[e.seat] : undefined;
+      return h('div', { class: `br ${p ? 'me' : ''} ${i !== null && c.winners[k] !== null && c.winners[k] !== i ? 'out' : ''} ${i !== null && c.winners[k] === i ? 'won' : ''}`, style: p ? `--tc:${p.trainer.color}` : '' }, e ? `${p ? '⭐ ' : ''}${e.name}` : '…');
+    };
+    return h('div', { class: 'bracket-wrap' }, C.CIRCUIT_ROUNDS.map((name, r) => h('div', null, h('h4', null, name),
+      h('div', { class: 'bracket' }, c.winners.map((_, k) => k).filter((k) => C.roundOf(k) === r).map((k) => {
+        const sides = C.sidesOf(c, k);
+        const feeds = k < 4 ? [k * 2, k * 2 + 1] : k === 6 ? [c.winners[4], c.winners[5]] : [c.winners[(k - 4) * 2], c.winners[(k - 4) * 2 + 1]];
+        return h('div', { class: `br-match ${k === now ? 'next' : ''}` }, who((sides ?? feeds)[0], k), h('small', { class: 'muted' }, 'vs'), who((sides ?? feeds)[1], k));
+      })))));
+  }
+  /** Look at the bracket (anyone, any time it's under way). */
+  bracketSheet() {
+    const c = this.circuitGame().circuit;
+    if (c) openSheet('🏆 The Creature Circuit', this.bracketView(c), { wide: true });
+  }
+
+  /** The bracket, with the match this trainer is about to play. */
+  endgameSheet(next: C.CircuitMatch) {
+    const g = this.circuitGame(), c = g.circuit!;
+    const foe = c.entrants[next.foe].name;
+    const rival = next.foeSeat !== undefined ? g.players[next.foeSeat] : null;
+    closeAllSheets();
     const body = h('div', { class: 'bracket-wrap' },
-      h('p', null, 'The Creature Circuit has begun! Eight trainers, 3v3 elimination. Your team is fully restored before each match.'),
-      h('div', { class: 'bracket' }, eg.bracket.map((name, i) => h('div', { class: `br ${i === 0 ? 'me' : ''} ${i > 0 && i <= eg.round ? 'out' : ''} ${i === eg.round + 1 ? 'next' : ''}` }, i === 0 ? '⭐ ' : '', name))),
-      h('div', { class: 'row end' }, h('button', { class: 'btn primary big', onclick: async () => {
-        close();
-        const b = W.endgameBattle(s);
-        const res = await this.runBattle(b, { kind: 'endgame', intro: `${rounds[eg.round]}! ${b.sides[1].name} takes the field.` });
-        if (res === 'win') {
-          eg.round++;
-          if (eg.round >= 3) { s.phase = 'champion'; record(s, 'battle', 'became Champion of the Creature Circuit! 🏆'); save(s); this.champion(); return; }
-        } else { eg.eliminated = true; s.phase = 'over'; save(s); this.gameOver(); return; }
-        save(s);
-        this.engine.setView(this.world);
-        this.renderHud();
-        this.endgameSheet();
-      } }, `Fight: ${rounds[eg.round]} vs ${eg.bracket[eg.round + 1]}`)));
-    const close = openSheet('🏆 The Creature Circuit', body, { noClose: true });
+      h('p', null, 'Eight trainers, 3v3 elimination, one Champion. Every team is fully restored before each match.'),
+      rival ? h('p', { class: 'small' }, h('b', null, `${this.s.trainer.name} meets ${rival.trainer.name}!`), next.foeBot ? ` ${rival.trainer.name} is away, so a bot commands their team.` : ' You each command your own creatures. Nobody brings a Nabe.') : null,
+      this.bracketView(c),
+      h('div', { class: 'row end' }, h('button', { class: 'btn primary big', onclick: () => { close(); void this.playCircuitMatch(next); } }, `Fight: ${C.CIRCUIT_ROUNDS[next.round]} vs ${foe}`)));
+    const close = openSheet('🏆 The Creature Circuit', body, { noClose: true, wide: true });
+  }
+
+  async playCircuitMatch(next: C.CircuitMatch) {
+    const run = ++this.circuitRun;
+    const g = this.circuitGame(), a = this.s;
+    const b = C.matchBattle(g, next);
+    const rival = next.foeSeat !== undefined ? g.players[next.foeSeat] : undefined;
+    const intro = `${C.CIRCUIT_ROUNDS[next.round]}! ${b.sides[1].name} takes the field${rival ? ` against ${a.trainer.name}` : ''}.`;
+    const here = rival && !next.foeBot ? {
+      duelLead: W.needsLeadChoice(rival) ? (bt: Battle, vs: CreatureInst | null) => this.duelLeadPick(a, rival, bt, vs) : undefined,
+      duel: (bt: Battle) => this.duelPick(a, rival, bt, 0, true), duelSend: (bt: Battle) => this.duelSendPick(a, rival, bt),
+    } : {};
+    const res = await this.runBattle(b, { kind: 'endgame', intro, ...(rival ? { rival, rivalLook: playerLook(rival.trainer.name, rival.trainer.color, rival.trainer.look) } : {}), ...here });
+    if (run !== this.circuitRun || this.s !== a || this.circuitGame().circuit !== g.circuit) return; // the host stepped in, or a newer state arrived
+    C.settle(g, next.k, res === 'win' ? next.me : next.foe, b);
+    this.tellResult(g.circuit!, next.k);
+    if (!this.online && a.phase === 'over' && activeMatchOf()) await confirmSheet(`${a.trainer.name} is out`, `Beaten in the ${C.CIRCUIT_ROUNDS[next.round]} by ${b.sides[1].name}. The Circuit goes on.`, 'Continue', 'OK');
+    const m = activeMatchOf();
+    this.engine.setView(this.world);
+    if (this.online && m) {
+      // a decided match always goes through the server, which brings in whoever is up next
+      const from = C.progress(m);
+      const then = C.advance(m);
+      for (let k = from; k < C.progress(m); k++) this.tellResult(m.circuit!, k);
+      if (then) { m.current = then.seat; saveMatch(m); this.activeKey = ''; this.spectate(); return; }
+    }
+    await this.circuitStep();
   }
 
   champion() {
@@ -3781,7 +3911,7 @@ export class App {
     const m = activeMatchOf();
     if (m && m.players.includes(this.s)) {
       save(this.s);
-      return nextSeat(m) >= 0
+      return nextSeat(m) >= 0 || m.players.some((p) => p.phase === 'endgame')
         ? h('button', { class: 'btn primary big', onclick: () => this.handoff() }, 'Continue the season →')
         : h('button', { class: 'btn primary big', onclick: () => this.matchSummary() }, 'Final standings →');
     }
@@ -3792,10 +3922,12 @@ export class App {
     this.engine.setView(this.world);
     this.world.setTitleMode(true);
     const s = this.s;
+    const c = this.circuitGame().circuit, champ = c ? C.championOf(c) : null;
     const why = s.endgame?.eliminated ? `Eliminated in the ${['Quarterfinal', 'Semifinal', 'Grand Final'][s.endgame.round]}.` : s.merits.length < 8 ? `The year ended with ${s.merits.length}/8 Merits.` : 'You weren\'t at Circuit Stadium when Turn 100 ended.';
     this.ui.replaceChildren(h('div', { class: 'title-screen' }, h('div', { class: 'title-card' },
       h('h1', null, 'Season Over'),
-      h('p', null, why),
+      h('p', null, why, champ ? ` ${champ.name} won the Circuit.` : ''),
+      c ? h('button', { class: 'btn ghost sm', onclick: () => this.bracketSheet() }, '🏆 See the bracket') : null,
       this.statsLine(),
       this.afterFinishButton())));
   }

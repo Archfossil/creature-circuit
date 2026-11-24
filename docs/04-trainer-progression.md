@@ -10,7 +10,7 @@ The goal of the game is to have a competitive team of creatures capable of winni
 
 If any players are eligible to compete in the Creature Circuit at turn 100, the game goes into the "Endgame" representing every round taken past 100.
 
-In the Endgame, Circuit Champions and all qualifying players are divided into a bracket to face off against one another in a 3v3 elimination format. There must be a minimum of 8 participating trainers (backfilled with Champion NPCs if necessary.) In the game, the top seven of the Circuit Standings fill the bracket: Champions, and any Rival who has earned a place (see [15 · Rivals & Champions](./15-rivals-and-champions.md)).
+In the Endgame, Circuit Champions and all qualifying players are divided into a bracket to face off against one another in a 3v3 elimination format. There must be a minimum of 8 participating trainers (backfilled with Champion NPCs if necessary.) In the game there is one bracket of eight, drawn once everyone's season has ended, and one winner. Every player who qualified is in it, kept apart as long as the bracket allows; when two meet they duel, each commanding their own team. The strongest of the Circuit Standings fill the rest: Champions, and any Rival who has earned a place (see [15 · Rivals & Champions](./15-rivals-and-champions.md)). Matches nobody is playing are decided by strength. If a player is away online, the host can send in a bot to play their match (`engine/circuit.ts`).
 
 # Arbiters
 

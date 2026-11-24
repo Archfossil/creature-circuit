@@ -90,9 +90,9 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 ## Circuit Standings
 
 - **Merits** are simulated, for show: they never take one from a player. Champions finish around the end of the season; most Rivals don't.
-- **The top 7** fill the bracket on Turn 100. Left alone, they're all Champions.
+- **The bracket has eight places.** Players who qualify take theirs, and the strongest of the standings fill the rest (the top 7 in a solo game). Left alone, they're all Champions. With several players, each Rival and Champion counts at the strongest any of them has made it.
 - **Contenders 📈:** a Rival who is ahead of you with at least 2 wins, or whom you've battled 5 times, climbs into the top 7, below the very best Champions.
-- **The bracket:** you meet the lowest of the seven first and the favourite last. If any contender qualifies, one of your three opponents is a contender: the one who has beaten you most.
+- **Seeding:** you meet the weakest of the field first, unless a contender has earned a place against you: then you meet them first. Their other matches are decided by strength, so an upset can change who's waiting in the final.
 
 ## Messenger
 

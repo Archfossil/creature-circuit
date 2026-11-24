@@ -5,9 +5,9 @@ import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, 
 import { INSTINCT_BY_ID } from '../data/instincts';
 import { TYPES, TYPE_LABEL } from '../data/types';
 import type { GameState, Training, Retrain, Match, BattleKind } from './state';
-import { npcNamed, passerBy } from '../data/npcs';
+import { passerBy } from '../data/npcs';
 import { noteBattle, noteNabe, tally } from './dares';
-import { circuitField, mercyOffer, npcBattle, npcTeam, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
+import { mercyOffer, npcBattle, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
 import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
 import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
@@ -1157,7 +1157,7 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     out.text.push(`${b.sides[1].name} helps ${nameOf(helped)} back up. You can carry on from here.`);
     log(s, `${b.sides[1].name} helped ${nameOf(helped)} back on its feet.`);
   }
-  if (s.roster.every((c) => c.ko) && ctx.kind !== 'rival') { // hotseat duels settle their own losses (interactions.ts)
+  if (s.roster.every((c) => c.ko) && ctx.kind !== 'rival' && ctx.kind !== 'endgame') { // duels settle their own losses (interactions.ts), and so does the Circuit
     out.wiped = true;
     const dest = wipe(s, ctx.wipeTo);
     out.text.push(`Your team was wiped out. You rush back to ${CITIES[dest].name}…`);
@@ -1555,28 +1555,11 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
   }
 }
 
-export function startEndgame(s: GameState) {
-  const field = circuitField(s).map((x) => x.name);
+/** Qualified: waiting for the Circuit, which begins once everyone's season has ended (engine/circuit.ts). */
+export function enterCircuit(s: GameState) {
   s.phase = 'endgame';
-  s.endgame = { round: 0, bracket: [s.trainer.name, ...field], eliminated: false };
+  s.endgame = { round: 0, eliminated: false };
   for (const c of [...s.roster, ...s.reserve]) fullRestore(c);
-}
-
-export function endgameBattle(s: GameState): Battle {
-  const eg = s.endgame!;
-  const opponent = eg.bracket[1 + eg.round];
-  const avg = Math.round(s.roster.reduce((a, c) => a + c.level, 0) / Math.max(1, s.roster.length));
-  const lvl = Math.max(9, avg) + eg.round;
-  const npc = npcNamed(opponent);
-  // (a bracket drawn before the Champions had teams of their own can hold a name nobody goes by now)
-  const team = npc ? npcTeam(s, npc, 3, lvl) : [0, 1, 2].map(() => {
-    const sp = pick(SPECIES.filter((x) => x.rarity !== 'legendary' && (x.stage >= 2 || x.rarity === 'apex')));
-    const c = createCreature(sp.id, lvl);
-    autoSpend(c, false);
-    return c;
-  });
-  for (const c of s.roster) fullRestore(c);
-  return createBattle(playerSide(s), { kind: 'champion', name: opponent, ...(npc ? { npc: npc.id } : {}), team, active: 0, mods: {} }, weather(s), { biome: 'meadow' });
 }
 
 // ── Turn flow ───────────────────────────────────────────────────
@@ -1711,7 +1694,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
     for (const t of rises) log(s, `Teamwork grew. ${t}.`);
   }
   if (s.turn === 100) {
-    if (s.location === 'stadium' && s.merits.length >= 8) { startEndgame(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
+    if (s.location === 'stadium' && s.merits.length >= 8) { enterCircuit(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
     else { s.phase = 'over'; report.ended = 'over'; record(s, 'place', 'finished the season'); }
     return report;
   }

@@ -4,6 +4,7 @@ import { NPCS, NPC_BY_ID, npcNamed, passerBy } from '../src/data/npcs';
 import { CITIES, FOREST_FLOOR, NODE_BY_ID } from '../src/data/map';
 import { ITEMS } from '../src/data/content';
 import * as N from '../src/engine/npcs';
+import * as C from '../src/engine/circuit';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import { newGame, migrate, moveTrainer, type GameState } from '../src/engine/state';
@@ -132,17 +133,15 @@ describe('rivals and champions', () => {
     expect(N.RIVALS.filter((x) => N.npcMerits(s, x).length === 8).length).toBeLessThan(3);
     settle(s, N.npcBattle(s, rival), 'lose'); settle(s, N.npcBattle(s, rival), 'lose');
     expect(N.isContender(s, rival)).toBe(true);
-    const field = N.circuitField(s);
-    expect(field).toHaveLength(N.FIELD);
-    expect(new Set(field).size).toBe(N.FIELD);
-    expect(field.slice(0, 3)).toContain(rival); // someone you'll meet
-    W.startEndgame(s);
-    expect(s.endgame!.bracket).toEqual(['T', ...field.map((x) => x.name)]);
-    const b = W.endgameBattle(s);
+    W.enterCircuit(s);
+    const g = C.soloGame(s), c = C.openCircuit(g)!;
+    expect(s.circuit).toBe(c);
+    expect(new Set(c.entrants.map((e) => e.name)).size).toBe(8);
+    const next = C.advance(g)!;
+    expect(c.entrants[next.foe].npc).toBe(rival.id); // the Rival who earned it is who you meet first
+    const b = C.matchBattle(g, next);
     expect(b.sides[1].team).toHaveLength(3);
-    expect(b.sides[1].team.some((c) => c.ace)).toBe(true);
-    s.endgame!.bracket[1] = 'Champion Tamsin'; // a bracket from an older save
-    expect(W.endgameBattle(s).sides[1].team).toHaveLength(3);
+    expect(b.sides[1].team.some((x) => x.ace)).toBe(true);
   });
   it('Rivals turn up on the road, in Halls and in the morning event', () => {
     const s = game();

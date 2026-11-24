@@ -56,6 +56,11 @@ export interface TrainerStats {
   trackedFrom?: number;
 }
 
+/** A place in the Circuit: a trainer in this game (by seat) or an NPC (by id). */
+export interface CircuitEntrant { name: string; seat?: number; npc?: string }
+/** The Creature Circuit, one for everyone in the game (engine/circuit.ts): eight places in bracket order, and who won each of the seven matches. `bots`: "match:entrant" a bot plays for an absent trainer. */
+export interface Circuit { entrants: CircuitEntrant[]; winners: (number | null)[]; bots?: string[] }
+
 export interface GameState {
   version: number;
   trainer: { name: string; style: TrainerStyle; home: string; color: string; look?: TrainerLookChoice };
@@ -119,7 +124,10 @@ export interface GameState {
     wispNews?: boolean;
   };
   phase: 'map' | 'endgame' | 'champion' | 'over';
-  endgame?: { round: number; bracket: string[]; eliminated: boolean };
+  /** In the Creature Circuit: the round they're in (or went out in). `bracket` is only in saves from before it was shared. */
+  endgame?: { round: number; eliminated: boolean; bracket?: string[] };
+  /** Solo: the Creature Circuit's bracket (in a match it's on the Match). */
+  circuit?: Circuit;
   stats: TrainerStats;
   /**
    * Cloud satchel: items earned on Cloud Island, held here until the trainer escapes the island
@@ -324,7 +332,7 @@ export function save(s: GameState) {
 // records whose turn it is and the shared weather rolls, so every trainer sees the same skies on a
 // given turn. Turns go in seat order: when one trainer ends their turn, the next one starts theirs.
 export const MAX_PLAYERS = 6;
-export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
+export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** the shared Creature Circuit, once it's drawn */ circuit?: Circuit; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
 const MATCH_KEY = 'creature-circuit-match-v1';
 let activeMatch: Match | null = null;
 /** Where the active match is kept: the hotseat slot, or (online) a separate slot so the two never mix. */
@@ -356,10 +364,11 @@ export const keyTownOf = (s: GameState, item: string): string => s.keyTowns?.[it
 /** A trainer still taking turns (not finished: season over or crowned Champion). */
 export const stillPlaying = (s: GameState) => s.phase === 'map' || s.phase === 'endgame';
 /** Seat index of the next trainer still playing after the current one, or -1 when everyone is done. */
+/** Whose turn comes next: the next trainer still travelling (-1 once everyone's season has reached its end; then it's the Circuit). */
 export function nextSeat(m: Match): number {
   for (let k = 1; k <= m.players.length; k++) {
     const i = (m.current + k) % m.players.length;
-    if (stillPlaying(m.players[i])) return i;
+    if (m.players[i].phase === 'map') return i;
   }
   return -1;
 }
@@ -404,7 +413,7 @@ export function parseSaveFile(text: string): { kind: 'solo'; save: GameState } |
     if (data && Array.isArray(data.players)) {
       const players = (data.players as GameState[]).map((p) => migrate(p));
       if (!players.length || players.some((p) => !p || !p.trainer)) return null;
-      return { kind: 'match', match: { version: 1, players: players as GameState[], current: Math.min(data.current ?? 0, players.length - 1), rolls: data.rolls ?? {} } };
+      return { kind: 'match', match: { version: 1, players: players as GameState[], current: Math.min(data.current ?? 0, players.length - 1), rolls: data.rolls ?? {}, ...(data.circuit ? { circuit: data.circuit as Circuit } : {}) } };
     }
     if (data && data.trainer && Array.isArray(data.roster)) {
       const s = migrate(data as GameState);

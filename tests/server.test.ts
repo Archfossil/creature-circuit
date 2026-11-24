@@ -184,6 +184,34 @@ describe('online server', () => {
   });
 });
 
+describe('the Creature Circuit online', () => {
+  it('isn’t timed, and each decided match goes to the trainer it belongs to', async () => {
+    const a = new Client('circ-a'), b = new Client('circ-b');
+    await Promise.all([a.open(), b.open()]);
+    a.send({ type: 'create' });
+    a.code = b.code = String((await a.wait((m) => m.type === 'created')).code);
+    b.send({ type: 'join' });
+    a.send({ type: 'seat', trainer: trainer('Ann') });
+    await a.wait((m) => m.type === 'room' && (m.seats as unknown[]).length === 1);
+    b.send({ type: 'seat', trainer: trainer('Bo') });
+    await a.wait((m) => m.type === 'room' && (m.seats as unknown[]).length === 2);
+    a.send({ type: 'settings', turnSeconds: 60 });
+    const at = (current: number, phase: string, done: number) => ({ ...match(current), players: match(current).players.map((p: object) => ({ ...p, phase })), ...(done < 0 ? {} : { circuit: { entrants: [], winners: Array.from({ length: 7 }, (_, i) => (i < done ? 0 : null)) } }) });
+    a.send({ type: 'start', match: at(0, 'map', -1) });
+    expect((await a.wait((m) => m.type === 'room' && m.started === true && m.controller === 'circ-a')).deadline).toBeTruthy();
+    a.send({ type: 'state', match: at(0, 'endgame', 0) });
+    expect((await a.wait((m) => m.type === 'room' && m.started === true && m.deadline === null)).controller).toBe('circ-a');
+    a.send({ type: 'state', match: at(1, 'endgame', 1) });
+    await b.wait((m) => m.type === 'room' && m.controller === 'circ-b');
+    a.send({ type: 'host-skip' }); // away: the host sends in a bot for them…
+    expect((await a.wait((m) => m.type === 'do-skip')).seat).toBe(1);
+    await b.wait((m) => m.type === 'room' && m.controller === 'circ-a');
+    a.send({ type: 'state', match: at(1, 'endgame', 2) }); // …and their next match is theirs again
+    await b.wait((m) => m.type === 'room' && m.controller === 'circ-b');
+    a.ws.close(); b.ws.close();
+  });
+});
+
 describe('server push', () => {
   const b64 = (b: Uint8Array) => Buffer.from(b).toString('base64url');
   const un64 = (t: string) => Buffer.from(t, 'base64url');

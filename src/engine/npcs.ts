@@ -5,7 +5,7 @@
 // sees the same teams and the same tour, and saves stay small. What a trainer's own save keeps
 // (GameState.npcs) is their history with each one they've met.
 import type { ElementType, Species } from '../data/schema';
-import { NPCS, NPC_BY_ID, npcNamed, type Npc } from '../data/npcs';
+import { NPCS, NPC_BY_ID, type Npc } from '../data/npcs';
 import { CITIES, NODE_BY_ID, TOWNS, isCloudNode } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { NATURES, itemInfo } from '../data/content';
@@ -349,16 +349,6 @@ export function standings(s: GameState): Standing[] {
     .sort((a, b) => b.score - a.score || a.npc.id.localeCompare(b.npc.id))
     .map((x, i) => ({ ...x, seeded: i < FIELD }));
 }
-/** The Finals' field in bracket order: who the trainer meets first, next and last, then the rest. A contender Rival is always one of the three. */
-export function circuitField(s: GameState): Npc[] {
-  const field = standings(s).filter((x) => x.seeded).map((x) => x.npc);
-  const foes = [field[FIELD - 1], field[Math.floor(FIELD / 2)], field[0]];
-  const rival = field.filter((x) => isContender(s, x)).sort((a, b) => { const p = recordWith(s, a)!, q = recordWith(s, b)!; return q.lost - p.lost || (q.won + q.lost) - (p.won + p.lost); })[0];
-  if (rival && !foes.includes(rival)) foes[1] = rival;
-  return [...foes, ...field.filter((x) => !foes.includes(x))];
-}
-export const npcInBracket = (name: string) => npcNamed(name);
-
 /** A new turn has begun: rematches nobody came to, and news of the Circuit. Returns notes for the start of the turn. */
 export function npcTurn(s: GameState): string[] {
   const notes: string[] = [];

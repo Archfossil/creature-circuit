@@ -97,10 +97,17 @@ function flushEdits(room) {
   for (const e of room.edits.splice(0)) send(ws, { type: 'edit', seat: e.seat, edit: e.edit });
 }
 
+/** What the current turn is: whose, which, and how far the Creature Circuit has got. */
+function turnKey(match) {
+  const s = match.players[match.current];
+  return `${match.current}:${s?.turn}:${s?.phase}:${match.circuit ? match.circuit.winners.filter((w) => w !== null).length : -1}`;
+}
+
 function armTimer(room) {
   if (room.timer) clearTimeout(room.timer);
   room.timer = null;
-  room.deadline = room.started && room.turnSeconds > 0 ? Date.now() + room.turnSeconds * 1000 : null;
+  const timed = room.started && room.turnSeconds > 0 && room.match?.players[room.match.current]?.phase !== 'endgame'; // the Circuit isn't timed: the host can send in a bot
+  room.deadline = timed ? Date.now() + room.turnSeconds * 1000 : null;
   if (room.deadline) room.timer = setTimeout(() => timeUp(room), room.turnSeconds * 1000);
 }
 
@@ -197,11 +204,10 @@ function handle(ws, clientId, msg) {
     }
     case 'state': { // the controller pushes the match after every action
       if (clientId !== room.controller || !msg.match) return room;
-      const turnChanged = !room.match || room.match.current !== msg.match.current || room.match.players[room.match.current]?.turn !== msg.match.players[room.match.current]?.turn;
-      const seatChanged = !room.match || room.match.current !== msg.match.current;
+      const turnChanged = !room.match || turnKey(room.match) !== turnKey(msg.match);
       room.match = msg.match;
       broadcast(room, { type: 'state', match: room.match }, clientId);
-      if (seatChanged || turnChanged) { resetControl(room); broadcast(room, roomInfo(room)); }
+      if (turnChanged) { resetControl(room); broadcast(room, roomInfo(room)); }
       return room;
     }
     case 'feed': { // spectator feed: toasts, dice, hops, battle events
