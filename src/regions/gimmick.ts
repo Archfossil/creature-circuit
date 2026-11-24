@@ -1,6 +1,7 @@
 // A region's gimmicks: rules of its own, as answers to the engine's questions (docs/16-region-packages.md). The first
 // to have an answer gives it. Like the rest of a package, a gimmick's rules only import types, so the engine's
 // functions are handed to it (`t`). Its screens are apart from them (screens.ts).
+import type { MapNode, Species } from '../data/schema';
 import type { Battle } from '../engine/battle';
 import type { EventDef } from '../engine/events';
 import type { GameState } from '../engine/state';
@@ -8,12 +9,17 @@ import type { Outcome } from '../engine/world';
 
 /** The engine's functions that gimmicks use. Add to this list as they need more (engine/tools.ts). */
 export type Tools =
-  & Pick<typeof import('../data/content'), 'ITEMS'>
-  & Pick<typeof import('../engine/dice'), 'pick' | 'roll'>
+  & Pick<typeof import('../data/content'), 'ITEMS' | 'itemInfo'>
+  & Pick<typeof import('../engine/dice'), 'pick' | 'roll' | 'weightedPick'>
   & Pick<typeof import('../engine/state'), 'addItem' | 'follower' | 'hasItem' | 'log' | 'tierOf'>
   & Pick<typeof import('../engine/creature'), 'autoSpend' | 'createCreature' | 'nameOf' | 'stats'>
   & Pick<typeof import('../engine/battle'), 'createBattle'>
-  & Pick<typeof import('../engine/world'), 'ability' | 'baseWildLevel' | 'cityActionCost' | 'discoverItem' | 'exoticFind' | 'here' | 'keyTownName' | 'pickSpecies' | 'playerSide' | 'rollRarity' | 'tierBandLevel' | 'trainerRarity' | 'weather' | 'wildLevel'>;
+  & Pick<typeof import('../engine/world'), 'ability' | 'baseWildLevel' | 'cityActionCost' | 'discoverItem' | 'exoticFind' | 'here' | 'keyTownName' | 'nearest' | 'pickSpecies' | 'playerSide' | 'rollRarity' | 'stageCapFor' | 'tierBandLevel' | 'trainerRarity' | 'weather' | 'wildLevel'>
+  & {
+    /** The region's Codex. */
+    species(): Species[];
+    node(id: string): MapNode;
+  };
 
 /** Whether an Arbiter will battle. `show`: the gimmick's screen to open instead of only saying why. */
 export interface Gate { ok: boolean; reason?: string; show?: string; cloud?: boolean }

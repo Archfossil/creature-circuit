@@ -2383,36 +2383,6 @@ export class App {
     openSheet(c.name, body, { wide: true });
   }
 
-  /** Shifting Depths → Explore the Depths: choose an offering material; a creature that craves it answers. */
-  depthsSheet() {
-    const s = this.s;
-    const mats = Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && W.depthsCalls(id).length);
-    const close = openSheet('🕳️ Explore the Depths', h('div', null,
-      h('p', null, `Choose an offering to leave at the edge of the dark. A wild creature of a type that craves it climbs up to meet you (the stronger the craving, the likelier that type), as rare as those on the Sinkhole Stair. It has already accepted the offering, so it counts toward recruiting it if you win. Costs ${W.DEPTHS_COST} Initiative and the material.`),
-      mats.length ? h('div', { class: 'list' }, mats.map((id) => {
-        const it = itemInfo(id);
-        const why = W.depthsBlock(s, id);
-        return h('button', { class: 'choice depths-offer', disabled: !!why, title: why ?? '', onclick: async () => { close(); await this.exploreDepths(id); } },
-          h('div', { class: 'row gap-s' }, h('span', { class: 'bi-ico' }, it.icon), h('b', null, `${it.name} ×${s.inventory[id]}`)),
-          h('div', { class: 'row gap-s wrap' }, h('small', { class: 'muted' }, 'Calls: '), W.depthsCalls(id).map((c) => h('span', { class: 'row gap-xs' }, typeChip(c.type, true), h('small', null, c.w >= 2 ? 'strongly' : 'sometimes')))),
-          why ? h('small', { class: 'bad-text' }, why) : null);
-      })) : h('p', { class: 'small muted' }, 'You have no offering materials. Find them by exploring (each biome has its own), or buy Canyon Ochre and Ember Charcoal at the market here.')), { wide: true });
-  }
-
-  async exploreDepths(material: string) {
-    const s = this.s;
-    if (this.busy) return;
-    const out = W.exploreDepths(s, material);
-    if (!out) { toast(W.depthsBlock(s, material) ?? 'Nothing stirs below.', 'info'); return; }
-    this.busy = true;
-    closeAllSheets();
-    save(s); this.renderHud();
-    try {
-      await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 900, { read: true });
-    } finally { this.busy = false; }
-    await this.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
-  }
-
   // ════════════════════════════════════════════════════════════
   // Rivals and Champions
   // ════════════════════════════════════════════════════════════
@@ -3003,7 +2973,7 @@ export class App {
         ...this.npcTiles(),
         t.special === 'stadium' ? tile('🏆', 'Grand Tournament', 'Be here with all 8 Merits as Turn 100 ends to enter the bracket.', '', () => this.stadiumSheet()) : null,
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Or have it retrained overnight with a new Nature, Ability or Instinct.', '', () => this.schoolSheet()) : null,
-        t.special === 'depths' ? tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${W.DEPTHS_COST}⚡ + 1 material`, () => this.depthsSheet()) : null,
+        ...(screens().tiles?.(this, s.location, '') ?? []),
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
         tile('🗺️', 'Notice Board', 'Local rumors and tips.', '', () => this.rumors())),
       h('p', { class: 'small muted' }, 'Towns are safe from the wilds. Town markets cost no Initiative; the stable costs the same as a city action.'));

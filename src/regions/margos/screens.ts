@@ -1,12 +1,17 @@
 // The screens of Margos's gimmicks (gimmicks/ has their rules).
 import type { App } from '../../ui/app';
+import { typeChip } from '../../ui/cards';
 import { closeAllSheets, h, openSheet, rollDice, tile, toast } from '../../ui/dom';
 import { sfx } from '../../ui/sound';
+import { itemInfo } from '../../data/content';
+import { STAR_FACE } from '../../data/icons';
 import { CITIES } from '../../data/map';
+import { nameOf } from '../../engine/creature';
 import { save, tierOf } from '../../engine/state';
 import { tools } from '../../engine/tools';
 import * as W from '../../engine/world';
 import { aboveFloor, dahliaBeaten, floorDie, onFloor, trailProgress } from './gimmicks/dahlia';
+import { DEPTHS_COST, depthsBlock, depthsCalls, exploreDepths, inDepths } from './gimmicks/depths';
 import { gauntletBlock, gauntletOpen, gauntletProgress } from './gimmicks/gauntlet';
 import type { Screens } from '../screens';
 
@@ -120,9 +125,41 @@ function awayTile(app: App, id: string, won: string): HTMLElement | null {
   return tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won} Find ${c.arbiter} on the island.` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market).`, '', () => {}, true);
 }
 
+const depthsTile = (app: App, town: string): HTMLElement[] => (inDepths(town) ? [tile('🕳️', 'Explore the Depths', 'Leave an offering material at the edge of the dark: a wild creature that craves it climbs up to battle you. Win, and it has already accepted your offering toward joining you.', `${DEPTHS_COST}⚡ + 1 material`, () => depthsSheet(app))] : []);
+
+/** Shifting Depths → Explore the Depths: choose an offering material; a creature that craves it answers. */
+function depthsSheet(app: App) {
+  const s = app.s;
+  const mats = Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && depthsCalls(id, tools).length);
+  const close = openSheet('🕳️ Explore the Depths', h('div', null,
+    h('p', null, `Choose an offering to leave at the edge of the dark. A wild creature of a type that craves it climbs up to meet you (the stronger the craving, the likelier that type), as rare as those on the Sinkhole Stair. It has already accepted the offering, so it counts toward recruiting it if you win. Costs ${DEPTHS_COST} Initiative and the material.`),
+    mats.length ? h('div', { class: 'list' }, mats.map((id) => {
+      const it = itemInfo(id);
+      const why = depthsBlock(s, id, tools);
+      return h('button', { class: 'choice depths-offer', disabled: !!why, title: why ?? '', onclick: async () => { close(); await goDown(app, id); } },
+        h('div', { class: 'row gap-s' }, h('span', { class: 'bi-ico' }, it.icon), h('b', null, `${it.name} ×${s.inventory[id]}`)),
+        h('div', { class: 'row gap-s wrap' }, h('small', { class: 'muted' }, 'Calls: '), depthsCalls(id, tools).map((c) => h('span', { class: 'row gap-xs' }, typeChip(c.type, true), h('small', null, c.w >= 2 ? 'strongly' : 'sometimes')))),
+        why ? h('small', { class: 'bad-text' }, why) : null);
+    })) : h('p', { class: 'small muted' }, 'You have no offering materials. Find them by exploring (each biome has its own), or buy Canyon Ochre and Ember Charcoal at the market here.')), { wide: true });
+}
+
+async function goDown(app: App, material: string) {
+  const s = app.s;
+  if (app.busy) return;
+  const out = exploreDepths(s, material, tools);
+  if (!out) { toast(depthsBlock(s, material, tools) ?? 'Nothing stirs below.', 'info'); return; }
+  app.busy = true;
+  closeAllSheets();
+  save(s); app.renderHud();
+  try {
+    await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! (+★ the Depths)`, 900, { read: true });
+  } finally { app.busy = false; }
+  await app.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
+}
+
 export const margosScreens: Screens = {
   show: { fabian: findFabian, gauntlet: gauntletSheet, floor: floorSheet },
-  tiles: gauntletTile,
+  tiles: (app, at, cost) => [...gauntletTile(app, at, cost), ...depthsTile(app, at)],
   arbiterTile: awayTile,
   chips: floorChip,
   actions: (app) => (onFloor(app.s.location) && (trailProgress(app.s, tools).found || dahliaBeaten(app.s)) ? [{ icon: '🏟️', label: 'Dahlia', go: () => { void app.arbiter(); } }] : []),

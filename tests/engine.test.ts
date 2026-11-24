@@ -10,6 +10,7 @@ import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
 import { gauntletBlock, gauntletLevel, gauntletProgress, gauntletSize } from '../src/regions/margos/gimmicks/gauntlet';
 import { tools } from '../src/engine/tools';
+import { DEPTHS_COST, depthsBlock, exploreDepths } from '../src/regions/margos/gimmicks/depths';
 import { trailNeeded } from '../src/regions/margos/gimmicks/dahlia';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
@@ -1966,11 +1967,11 @@ describe('Shifting Depths', () => {
       const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
       s.location = 'depths';
       s.inventory['ember-charcoal'] = 1; // fire 2, rock 1
-      const out = W.exploreDepths(s, 'ember-charcoal');
+      const out = exploreDepths(s, 'ember-charcoal', tools);
       expect(out).not.toBeNull();
       const wild = out!.battle.sides[1].team[0];
       expect(speciesOf(wild).types.some((t) => t === 'fire' || t === 'rock')).toBe(true);
-      expect(s.initiative).toBe(5 - W.DEPTHS_COST);
+      expect(s.initiative).toBe(5 - DEPTHS_COST);
       expect(s.inventory['ember-charcoal'] ?? 0).toBe(0);
       expect(W.acceptedOffering(s, wild)).toBe('ember-charcoal');
       expect(W.acceptedOffering(s, createCreature('zapup', 3))).toBeNull();
@@ -1979,20 +1980,20 @@ describe('Shifting Depths', () => {
   it('needs the town, Initiative and a craved material', () => {
     const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
     s.inventory['ember-charcoal'] = 1;
-    expect(W.depthsBlock(s, 'ember-charcoal')).toMatch(/Shifting Depths/);
+    expect(depthsBlock(s, 'ember-charcoal', tools)).toMatch(/Shifting Depths/);
     s.location = 'depths';
-    expect(W.depthsBlock(s, 'salve')).toMatch(/material/);
-    expect(W.depthsBlock(s, 'pine-resin')).toMatch(/don’t have/);
+    expect(depthsBlock(s, 'salve', tools)).toMatch(/material/);
+    expect(depthsBlock(s, 'pine-resin', tools)).toMatch(/don’t have/);
     s.initiative = 0;
-    expect(W.depthsBlock(s, 'ember-charcoal')).toMatch(/Initiative/);
-    expect(W.exploreDepths(s, 'ember-charcoal')).toBeNull();
+    expect(depthsBlock(s, 'ember-charcoal', tools)).toMatch(/Initiative/);
+    expect(exploreDepths(s, 'ember-charcoal', tools)).toBeNull();
   });
   it('the accepted offering counts toward recruiting, once', () => {
     let withBonus = 0, without = 0;
     for (let i = 0; i < 300; i++) {
       const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
       s.location = 'depths'; s.inventory['ember-charcoal'] = 1; s.inventory.totem = 2;
-      const wild = W.exploreDepths(s, 'ember-charcoal')!.battle.sides[1].team[0];
+      const wild = exploreDepths(s, 'ember-charcoal', tools)!.battle.sides[1].team[0];
       const r = W.attemptRecruit(s, wild, 'totem', []);
       withBonus += r.mods;
       expect(s.flags.depthsOffering).toBeUndefined();

@@ -1,5 +1,5 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, inWispRegion } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, inWispRegion } from '../data/map';
 import { activeRegion, onRegion } from '../regions/active';
 import type { Gate, GimmickBattle } from '../regions/gimmick';
 import { provide, tools } from './tools';
@@ -487,69 +487,13 @@ export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost:
   return byType((t) => area.locals.get(t) ?? []) ?? (time ? pickSpecies(node, rarity, level, boost, undefined, types_) : nearest(types, rarity, stageCap));
 }
 /** For a Codex with nobody to meet: someone of the area's types (or failing that, anyone), as near to the rarity as there is. */
-function nearest(types: ElementType[], rarity: Rarity, stageCap: number): Species {
+export function nearest(types: ElementType[], rarity: Rarity, stageCap: number): Species {
   const all = SPECIES.filter((x) => x.rarity !== 'legendary' && x.stage <= stageCap);
   const near = all.filter((x) => x.types.some((t) => types.includes(t)));
   const list = near.length ? near : all;
   const off = (x: Species) => Math.abs(RARITY_RANK[x.rarity] - RARITY_RANK[rarity]);
   const best = Math.min(...list.map(off));
   return pick(list.filter((x) => off(x) === best));
-}
-
-// ── Shifting Depths: Explore the Depths ─────────────────────────
-/** Initiative to Explore the Depths (plus one offering material). */
-export const DEPTHS_COST = 1;
-
-/** The types an offering material calls up from the Depths, with how strongly (its allure). */
-export function depthsCalls(material: string): { type: ElementType; w: number }[] {
-  const allure = itemInfo(material).allure ?? {};
-  return (Object.entries(allure) as [ElementType, number][]).filter(([, w]) => w > 0).map(([type, w]) => ({ type, w })).sort((a, b) => b.w - a.w);
-}
-
-/** Why the trainer can't Explore the Depths with this material right now (null = they can). */
-export function depthsBlock(s: GameState, material: string): string | null {
-  if (TOWNS[s.location]?.special !== 'depths') return 'You need to be at Shifting Depths.';
-  if (s.initiative < DEPTHS_COST) return `Exploring the Depths takes ${DEPTHS_COST} Initiative.`;
-  if (!s.roster.some((c) => !c.ko)) return 'Your team needs rest before going down.';
-  if (itemInfo(material).kind !== 'material' || !depthsCalls(material).length) return 'Offer a material that creatures crave.';
-  if ((s.inventory[material] ?? 0) < 1) return `You don’t have any ${itemInfo(material).name}.`;
-  return null;
-}
-
-/**
- * Explore the Depths: leave an offering material at the edge of the dark and a wild creature that
- * craves it answers. It's one of the material's types (stronger allure, likelier), with rarity rolled
- * as at the Sinkhole Stair (a rare area) and that node's level. It has already accepted the offering,
- * so the material's bonus counts toward recruiting it (s.flags.depthsOffering).
- */
-export function exploreDepths(s: GameState, material: string): { stars: { face: number; star: Star }[]; rarity: Rarity; battle: Battle } | null {
-  if (depthsBlock(s, material)) return null;
-  s.initiative -= DEPTHS_COST;
-  addItem(s, material, -1);
-  const stair = NODE_BY_ID[DEPTHS_STAIR ?? s.location];
-  const { stars, rarity } = rollRarity(s, stair);
-  const level = wildLevel(s, stair);
-  const sp = depthsSpecies(material, rarity, level);
-  const wild = createCreature(sp.id, level);
-  if (!s.dex.seen.includes(sp.id)) s.dex.seen.push(sp.id);
-  s.flags.depthsOffering = { uid: wild.uid, item: material };
-  s.stats.explored++;
-  log(s, `Left ${itemInfo(material).name} at the edge of the Depths. A wild ${sp.name} climbed up to claim it.`);
-  const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: 'canyon', quickStep: ability(s) === 'quickStep' });
-  return { stars, rarity, battle };
-}
-
-/** A species that would accept this material: one of its types matches the material's allure. */
-export function depthsSpecies(material: string, rarity: Rarity, level: number): Species {
-  const calls = depthsCalls(material);
-  const appeal = (sp: Species) => Math.max(0, ...sp.types.map((t) => calls.find((c) => c.type === t)?.w ?? 0));
-  const cap = stageCapFor(level);
-  const fits = (sp: Species) => sp.rarity !== 'legendary' && appeal(sp) > 0;
-  let list = SPECIES.filter((sp) => fits(sp) && sp.rarity === rarity && sp.stage <= cap);
-  if (!list.length) list = SPECIES.filter((sp) => fits(sp) && sp.stage <= cap);
-  if (!list.length) list = SPECIES.filter(fits);
-  if (!list.length) return nearest(calls.map((c) => c.type), rarity, cap);
-  return weightedPick(list.map((sp) => ({ v: sp, w: appeal(sp) * (sp.stage === cap ? 3 : 1) })));
 }
 
 /** Highest evolution stage that can appear at a wild level. */
@@ -1635,7 +1579,8 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
 }
 
 provide({
-  ITEMS, pick, roll,
+  ITEMS, itemInfo, pick, roll, weightedPick,
+  species: () => SPECIES, node: (id) => NODE_BY_ID[id],
   autoSpend, createBattle, createCreature, nameOf, stats,
-  ability, baseWildLevel, cityActionCost, discoverItem, exoticFind, here, keyTownName, pickSpecies, playerSide, rollRarity, tierBandLevel, trainerRarity, weather, wildLevel,
+  ability, baseWildLevel, cityActionCost, discoverItem, exoticFind, here, keyTownName, nearest, pickSpecies, playerSide, rollRarity, stageCapFor, tierBandLevel, trainerRarity, weather, wildLevel,
 });

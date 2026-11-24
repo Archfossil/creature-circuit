@@ -182,7 +182,7 @@ export function drills(g: Game): Season[] {
         b.note('pickup', W.pickUpTraining(s, pupil.uid));
         b.write(s);
         // the Depths, with each material
-        for (const m of Object.keys(MATERIALS)) { at('depths', 55); const r = W.exploreDepths(s, m); if (r) { b.note(`depths ${m}`, r.stars); b.battle(s, r.battle, { kind: 'wild' }, 'depths'); } }
+        for (const m of Object.keys(MATERIALS)) { at('depths', 55); const r = b.g.depths.exploreDepths(s, m, b.g.tools); if (r) { b.note(`depths ${m}`, r.stars); b.battle(s, r.battle, { kind: 'wild' }, 'depths'); } }
         b.write(s);
         // each Legendary: there, gone once beaten, and back when released or when its Loyalty runs out
         for (const [k, n] of map.MAP_NODES.filter((x) => x.kind === 'legendary').entries()) {

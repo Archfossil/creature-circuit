@@ -135,7 +135,7 @@ describe('the Codex', () => {
     const { W, content } = t.g, b = new Bot(t.g, 'depths');
     b.start();
     try {
-      for (const it of Object.values(content.ITEMS)) if (it.kind === 'material') for (const r of ['common', 'prime', 'apex'] as const) for (const lv of [1, 6, 10]) for (let i = 0; i < 5; i++) expect(lives).toContain(W.depthsSpecies(it.id, r, lv).id);
+      for (const it of Object.values(content.ITEMS)) if (it.kind === 'material') for (const r of ['common', 'prime', 'apex'] as const) for (const lv of [1, 6, 10]) for (let i = 0; i < 5; i++) expect(lives).toContain(t.g.depths.depthsSpecies(it.id, r, lv, t.g.tools).id);
     } finally { b.stop(); }
   });
 
@@ -338,6 +338,7 @@ describe('gimmicks', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
     const gone = ['mangrove', 'hollow', 'gloom', 'forestfloor'];
+    expect(files.filter((f) => /DEPTHS|exploreDepths/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
     expect(files.filter((f) => /FOREST_FLOOR|Dahlia/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/state.ts', 'engine/events.ts', 'ui/guide.ts', 'ui/app.ts'].includes(f))).toEqual([]);
     expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);

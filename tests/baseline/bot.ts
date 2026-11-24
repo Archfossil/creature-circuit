@@ -9,13 +9,14 @@ import type { Outcome } from '../../src/engine/world';
 
 /** The engine. A new copy for every season: its caches could let one season's dice depend on another's. */
 export async function loadGame() {
-  const [W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs] = await Promise.all([
+  const [W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, { tools }, depths] = await Promise.all([
     import('../../src/engine/world'), import('../../src/engine/state'), import('../../src/engine/battle'), import('../../src/engine/events'),
     import('../../src/engine/npcs'), import('../../src/engine/npcTrade'), import('../../src/engine/messenger'), import('../../src/engine/dares'), import('../../src/engine/interactions'),
     import('../../src/engine/creature'), import('../../src/engine/circuit'), import('../../src/engine/stadium'), import('../../src/engine/imprints'), import('../../src/engine/swaps'),
     import('../../src/data/map'), import('../../src/data/species'), import('../../src/data/content'), import('../../src/data/npcs'),
+    import('../../src/engine/tools'), import('../../src/regions/margos/gimmicks/depths'),
   ]);
-  return { W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs };
+  return { W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, tools, depths };
 }
 export type Game = Awaited<ReturnType<typeof loadGame>>;
 
@@ -198,7 +199,7 @@ export class Bot {
     act(0.3, () => { if (W.checkOn(s, this.any([...s.roster, ...s.reserve]).uid)) this.note('check'); });
     act(0.35, () => { const h = W.hallBattle(s); if (h) this.battle(s, h.battle, { kind: 'trainer' }, `hall ${h.name}`); });
     act(1, () => {
-      if (town?.special === 'depths') { const m = Object.keys(s.inventory).find((id) => !W.depthsBlock(s, id)); if (m) { const r = W.exploreDepths(s, m)!; this.note(`depths ${m}`, r.stars); this.battle(s, r.battle, { kind: 'wild' }, 'depths'); } }
+      if (town?.special === 'depths') { const m = Object.keys(s.inventory).find((id) => !this.g.depths.depthsBlock(s, id, this.g.tools)); if (m) { const r = this.g.depths.exploreDepths(s, m, this.g.tools)!; this.note(`depths ${m}`, r.stars); this.battle(s, r.battle, { kind: 'wild' }, 'depths'); } }
       else if (town?.special === 'school') {
         for (const t of [...(s.training ?? [])]) if (t.notified || this.odds(0.3)) this.note('pickup', W.pickUpTraining(s, t.creature.uid));
         const c = this.any([...s.roster, ...s.reserve]);
