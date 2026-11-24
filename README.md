@@ -15,7 +15,8 @@ Needs **Node.js 20 or newer** (the current LTS is best). Vitest 4 won't start on
 ```bash
 npm install
 npm run dev        # http://localhost:5173. Also served on your LAN, so you can open it on a phone
-npm test           # engine unit tests (Vitest)
+npm test           # engine unit tests (Vitest), and the baseline: seeded seasons must play out exactly as saved
+npm run baseline   # after changing the game on purpose: save the new baseline (review tests/baseline before committing)
 npm run build      # type-check, then a production build to dist/ (static files, host anywhere)
 npm run preview    # serve the production build
 npm run docs:creatures  # regenerate docs/08-creature-checklist.md from the game data

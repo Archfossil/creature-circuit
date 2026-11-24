@@ -1,0 +1,142 @@
+ABILITIES (8)
+  sweetScent: {"id":"sweetScent","name":"Sweet Scent","text":"Explore rolls of 3–5 become wild encounters."}
+  babyEyes: {"id":"babyEyes","name":"Baby-Doll Eyes","text":"Market prices are 25% cheaper."}
+  keenNose: {"id":"keenNose","name":"Keen Nose","text":"When you discover an item, sniff out three finds and keep the one you like."}
+  starSeeker: {"id":"starSeeker","name":"Star Seeker","text":"Roll one extra rarity die on encounters."}
+  trailblazer: {"id":"trailblazer","name":"Trailblazer","text":"Your first move each turn costs no Initiative."}
+  forager: {"id":"forager","name":"Forager","text":"Found berries and materials come in pairs."}
+  quickStep: {"id":"quickStep","name":"Quick Step","text":"Always escape from wild battles, and get 1 Initiative back when you do."}
+  luckyCharm: {"id":"luckyCharm","name":"Lucky Charm","text":"+1 to recruitment rolls."}
+ACTIVITY_INFO (3)
+  diurnal: {"label":"Diurnal","icon":"☀️","text":"Out in the wild by day only."}
+  nocturnal: {"label":"Nocturnal","icon":"🌙","text":"Out in the wild by night only."}
+  crepuscular: {"label":"Day & night","icon":"🌗","text":"Out in the wild by day and by night."}
+BIOME_INFO (17)
+  forest: {"label":"Forest","color":"#3f7a3a","icon":"🌲"}
+  grove: {"label":"Fey Grove","color":"#6aa36a","icon":"🍄"}
+  meadow: {"label":"Meadow","color":"#94c25a","icon":"🌼"}
+  mountain: {"label":"Mountain","color":"#8c8f99","icon":"⛰️"}
+  tundra: {"label":"Tundra","color":"#dfe9f2","icon":"❄️"}
+  lake: {"label":"Lake","color":"#4aa8c9","icon":"🏞️"}
+  river: {"label":"River","color":"#5fb8d6","icon":"🌊"}
+  road: {"label":"Road","color":"#c9b48a","icon":"🛤️"}
+  swamp: {"label":"Swamp","color":"#557a4a","icon":"🐊"}
+  desert: {"label":"Desert","color":"#e2c27a","icon":"🌵"}
+  badlands: {"label":"Badlands","color":"#c98f5a","icon":"🏜️"}
+  coast: {"label":"Coast","color":"#d9cfb0","icon":"🏖️"}
+  volcanic: {"label":"Volcanic","color":"#4a3a38","icon":"🌋"}
+  canyon: {"label":"Canyon","color":"#c4703a","icon":"🌄"}
+  cloud: {"label":"Cloud","color":"#f4a9d8","icon":"☁️"}
+  deepwood: {"label":"Forest Floor","color":"#1f3524","icon":"🌑"}
+  prism: {"label":"Rainbow Plains","color":"#d8e8b0","icon":"🌈"}
+BIOME_MATERIALS (17)
+  forest: ["pine-resin","moon-moss"]
+  grove: ["moon-moss","wildflower"]
+  meadow: ["wildflower","sage-bundle"]
+  mountain: ["glacier-salt","canyon-ochre"]
+  tundra: ["glacier-salt","moon-moss"]
+  lake: ["river-chalk","marsh-lotus"]
+  river: ["river-chalk","sea-glass"]
+  road: ["iron-filings","sage-bundle"]
+  swamp: ["marsh-lotus","pine-resin"]
+  desert: ["sage-bundle","ember-charcoal"]
+  badlands: ["thunder-quartz","canyon-ochre"]
+  coast: ["sea-glass","iron-filings"]
+  volcanic: ["volcanic-glass","ember-charcoal"]
+  canyon: ["canyon-ochre","thunder-quartz"]
+  cloud: ["cloud-silk","cloud-silk","stardust","stardust","moonbow-prism"]
+  deepwood: ["heartwood-resin","glowcap"]
+  prism: ["heartwood-resin","glowcap","cloud-silk","stardust","moonbow-prism"]
+ITEMS (49)
+  salve: {"id":"salve","name":"Vigor Salve","kind":"restore","price":4,"icon":"🩹","text":"Restore one lost heart (5 Health) to a creature."}
+  elixir: {"id":"elixir","name":"Hot Spring Elixir","kind":"restore","price":10,"icon":"🧪","text":"Fully restore Health and clear Fatigue."}
+  root-salve: {"id":"root-salve","name":"Root Salve","kind":"restore","price":8,"icon":"🌿","text":"A Forest Floor remedy: restore two lost hearts (10 Health) and clear Fatigue."}
+  rousing-salts: {"id":"rousing-salts","name":"Rousing Salts","kind":"restore","price":16,"icon":"🧂","text":"Revive a KO’d creature anywhere, with half its hearts (rounded up). Hard on it: +4 Fatigue, so camp or use a Calm Tea afterwards."}
+  calm-tea: {"id":"calm-tea","name":"Calm Tea","kind":"restore","price":5,"icon":"🍵","text":"Clear all Fatigue from a creature."}
+  energy-tonic: {"id":"energy-tonic","name":"Energy Tonic","kind":"restore","price":30,"icon":"⚗️","text":"Permanently +1 energy of the creature's primary type."}
+  sunberry: {"id":"sunberry","name":"Sunberry","kind":"treat","price":2,"icon":"🍓","text":"A treat: +1 Morale, +1 Loyalty."}
+  dewberry: {"id":"dewberry","name":"Dewberry","kind":"treat","price":2,"icon":"🍒","text":"A treat: +1 Morale, +1 Loyalty."}
+  duskberry: {"id":"duskberry","name":"Duskberry","kind":"treat","price":4,"icon":"🍑","text":"A Forest Floor treat: +2 Morale, +1 Loyalty."}
+  moonberry: {"id":"moonberry","name":"Moonberry","kind":"treat","price":5,"icon":"🍇","text":"A rare treat: +2 Morale, +2 Loyalty."}
+  lure-incense: {"id":"lure-incense","name":"Lure Incense","kind":"charm","price":6,"icon":"🕯️","text":"Your next explore is a guaranteed wild encounter."}
+  hush-smoke: {"id":"hush-smoke","name":"Hush Smoke","kind":"charm","price":5,"icon":"💨","text":"Your next explore can’t turn up a creature or trainer: its encounter faces become Nothing and a find instead."}
+  star-charm: {"id":"star-charm","name":"Star Charm","kind":"charm","price":8,"icon":"⭐","text":"Roll +1 rarity die on your next encounter."}
+  bike: {"id":"bike","name":"Bike","kind":"travel","unique":true,"price":25,"icon":"🚲","text":"Once a turn, roll a d6 and ride up to that many steps for free, without exploring on the way or where you stop. Not on Cloud Island or the Forest Floor, and not over the sea."}
+  taxi-ticket: {"id":"taxi-ticket","name":"Taxi Ticket","kind":"travel","price":10,"icon":"🚕","text":"In a city: ride to any other city. Uses up the rest of your Initiative this turn."}
+  homing-feather: {"id":"homing-feather","name":"Homing Feather","kind":"travel","price":8,"icon":"🕊️","text":"From anywhere on the mainland, fly back to your home city (a Wanderer may pick any city they’ve rested at). Uses up the rest of your Initiative this turn."}
+  trail-mix: {"id":"trail-mix","name":"Trail Mix","kind":"travel","price":6,"icon":"🥜","text":"+1 Initiative this turn (up to 5). One handful a turn."}
+  totem: {"id":"totem","name":"Plain Totem","kind":"totem","price":4,"icon":"🗿︁","text":"A generic carving. +1 to any recruitment."}
+  pine-resin: {"id":"pine-resin","name":"Pine Resin","kind":"material","price":3,"icon":"🌲","allure":{"grass":2,"charm":1},"text":"Sticky, fragrant. Forest creatures love it."}
+  glacier-salt: {"id":"glacier-salt","name":"Glacier Salt","kind":"material","price":3,"icon":"🧂","allure":{"astral":2,"water":1},"text":"Crystals from ancient ice."}
+  ember-charcoal: {"id":"ember-charcoal","name":"Ember Charcoal","kind":"material","price":3,"icon":"⚫","allure":{"fire":2,"rock":1},"text":"Still warm to the touch."}
+  river-chalk: {"id":"river-chalk","name":"River Chalk","kind":"material","price":3,"icon":"⬜","allure":{"water":2,"rock":1},"text":"Smooth chalk from riverbeds."}
+  marsh-lotus: {"id":"marsh-lotus","name":"Marsh Lotus","kind":"material","price":3,"icon":"💮","allure":{"water":2,"grass":1},"text":"Blooms only in still water."}
+  sage-bundle: {"id":"sage-bundle","name":"Sage Bundle","kind":"material","price":3,"icon":"🌾","allure":{"electric":1,"fire":1,"charm":1},"text":"Burned as incense on the plains."}
+  sea-glass: {"id":"sea-glass","name":"Sea Glass","kind":"material","price":3,"icon":"🔷","allure":{"steel":1,"water":2},"text":"Frosted glass from the tide."}
+  iron-filings: {"id":"iron-filings","name":"Iron Filings","kind":"material","price":3,"icon":"⚙️","allure":{"steel":2,"electric":1},"text":"Mystery ore from the Iron Coast."}
+  moon-moss: {"id":"moon-moss","name":"Moon Moss","kind":"material","price":3,"icon":"🌙","allure":{"astral":1,"charm":2},"text":"Glows faintly under starlight."}
+  thunder-quartz: {"id":"thunder-quartz","name":"Thunder Quartz","kind":"material","price":3,"icon":"💎","allure":{"electric":2,"rock":1},"text":"Fulgurite fused by lightning."}
+  wildflower: {"id":"wildflower","name":"Wildflower","kind":"material","price":3,"icon":"🌼","allure":{"charm":2,"grass":1},"text":"A bright meadow bloom."}
+  canyon-ochre: {"id":"canyon-ochre","name":"Canyon Ochre","kind":"material","price":3,"icon":"🟠","allure":{"rock":2,"fire":1},"text":"Earth pigment for carving paint."}
+  volcanic-glass: {"id":"volcanic-glass","name":"Volcanic Glass","kind":"material","price":3,"icon":"🖤","allure":{"fire":2,"steel":1},"text":"Obsidian shards."}
+  cloud-silk: {"id":"cloud-silk","name":"Cloud Silk","kind":"material","price":3,"icon":"☁️","allure":{"astral":1,"charm":1,"electric":1,"fire":1,"grass":1,"rock":1,"steel":1,"water":1},"text":"Threads spun from a passing cloud. Every creature finds it soothing: +1 to recruit any creature."}
+  stardust: {"id":"stardust","name":"Stardust","kind":"material","price":3,"icon":"✨","allure":{"astral":2,"charm":2,"electric":2,"fire":2,"grass":2,"rock":2,"steel":2,"water":2},"text":"Glittering dust that drifts down on Cloud Island. +2 to recruit any creature."}
+  heartwood-resin: {"id":"heartwood-resin","name":"Heartwood Resin","kind":"material","price":3,"icon":"🍯","allure":{"grass":3,"charm":2,"rock":1},"text":"Amber sap from the oldest trunks on the Forest Floor. A richer Pine Resin."}
+  glowcap: {"id":"glowcap","name":"Glowcap","kind":"material","price":3,"icon":"🍄","allure":{"charm":3,"grass":2,"astral":1},"text":"A mushroom that glows in the dark of the Forest Floor. A richer Moon Moss."}
+  moonbow-prism: {"id":"moonbow-prism","name":"Moonbow Prism","kind":"material","price":3,"icon":"🌈","allure":{"astral":3,"charm":3,"electric":3,"fire":3,"grass":3,"rock":3,"steel":3,"water":3},"text":"A rare shard of a rainbow seen by moonlight. +3 to recruit any creature."}
+  fog-lantern: {"id":"fog-lantern","name":"Fog Lantern","kind":"key","price":12,"icon":"🏮","text":"Catch a wisp in it and it lights the misty way to Lantern Glade and the Rainbow Plains. Check it to see where a wisp waits."}
+  canopy-rope: {"id":"canopy-rope","name":"Canopy Rope","kind":"key","price":12,"icon":"➰","text":"Lets you descend to Dahlia's arena on the forest floor."}
+  ferry-pass: {"id":"ferry-pass","name":"Ferry Pass","kind":"key","price":15,"icon":"⛴️","text":"Ride the ferry to Black Sand Cove on Kilauea island, from Mangrove Port or Kilauea Forge."}
+  root-whistle: {"id":"root-whistle","name":"Root Whistle","kind":"key","price":14,"icon":"🎐","text":"Asks the mangrove roots to open the path to Katy."}
+  summit-pick: {"id":"summit-pick","name":"Summit Pick","kind":"key","price":18,"icon":"⛏️","text":"Climb to Sunspire Summit."}
+  totem:astral: {"id":"totem:astral","name":"Astral Totem","kind":"totem","price":0,"icon":"🗿︂","text":"+3 for Astral creatures, -1 for others."}
+  totem:charm: {"id":"totem:charm","name":"Charm Totem","kind":"totem","price":0,"icon":"🗿︃","text":"+3 for Charm creatures, -1 for others."}
+  totem:electric: {"id":"totem:electric","name":"Electric Totem","kind":"totem","price":0,"icon":"🗿︄","text":"+3 for Electric creatures, -1 for others."}
+  totem:fire: {"id":"totem:fire","name":"Fire Totem","kind":"totem","price":0,"icon":"🗿︅","text":"+3 for Fire creatures, -1 for others."}
+  totem:grass: {"id":"totem:grass","name":"Grass Totem","kind":"totem","price":0,"icon":"🗿︆","text":"+3 for Grass creatures, -1 for others."}
+  totem:rock: {"id":"totem:rock","name":"Rock Totem","kind":"totem","price":0,"icon":"🗿︇","text":"+3 for Rock creatures, -1 for others."}
+  totem:steel: {"id":"totem:steel","name":"Steel Totem","kind":"totem","price":0,"icon":"🗿︈","text":"+3 for Steel creatures, -1 for others."}
+  totem:water: {"id":"totem:water","name":"Water Totem","kind":"totem","price":0,"icon":"🗿︉","text":"+3 for Water creatures, -1 for others."}
+NATURES (6)
+  {"id":"adamant","name":"Adamant","up":"power","down":"focus","text":"Favors raw physical brawling over elemental channeling.","perks":[{"cost":3,"name":"Knuckle Down","bonus":{"power":1},"text":"+1 Power"},{"cost":6,"name":"Thick Hide","bonus":{"armor":1},"text":"+1 Armor"},{"cost":10,"name":"Unbreakable","bonus":{"vigor":1,"power":1},"text":"+1 Vigor, +1 Power"}]}
+  {"id":"timid","name":"Timid","up":"speed","down":"power","text":"Prioritizes lightning-fast positioning at the cost of force.","perks":[{"cost":3,"name":"Light Feet","bonus":{"speed":1},"text":"+1 Speed"},{"cost":6,"name":"Skittish","bonus":{"evasion":1},"text":"+1 Evasion"},{"cost":10,"name":"Brave Heart","bonus":{"power":2},"text":"+2 Power"}]}
+  {"id":"fortified","name":"Fortified","up":"armor","down":"speed","text":"Builds an immovable defensive wall, sacrificing mobility.","perks":[{"cost":3,"name":"Shell Up","bonus":{"armor":1},"text":"+1 Armor"},{"cost":6,"name":"Rooted","bonus":{"ward":1},"text":"+1 Ward"},{"cost":10,"name":"Bastion","bonus":{"vigor":1,"armor":1},"text":"+1 Vigor, +1 Armor"}]}
+  {"id":"resonant","name":"Resonant","up":"focus","down":"armor","text":"Leans into elemental mastery and status effects; physical defenses go soft.","perks":[{"cost":3,"name":"Attuned","bonus":{"focus":1},"text":"+1 Focus"},{"cost":6,"name":"Harmonic","bonus":{"ward":1},"text":"+1 Ward"},{"cost":10,"name":"Crescendo","bonus":{"focus":2},"text":"+2 Focus"}]}
+  {"id":"enduring","name":"Enduring","up":"vigor","down":"ward","text":"Piles on health to soak damage, but is open to elemental energy.","perks":[{"cost":3,"name":"Deep Breath","bonus":{"stamina":2},"text":"+2 Stamina"},{"cost":6,"name":"Stubborn","bonus":{"ward":1},"text":"+1 Ward"},{"cost":10,"name":"Last Stand","bonus":{"vigor":1,"armor":1},"text":"+1 Vigor, +1 Armor"}]}
+  {"id":"volatile","name":"Volatile","up":"stamina","down":"evasion","text":"Pushes limits with demanding moves; cavalier with its own safety.","perks":[{"cost":3,"name":"Hot Blooded","bonus":{"stamina":2},"text":"+2 Stamina"},{"cost":6,"name":"Reckless","bonus":{"power":1,"focus":1},"text":"+1 Power, +1 Focus"},{"cost":10,"name":"Overdrive","bonus":{"speed":2},"text":"+2 Speed"}]}
+NATURE_BY_ID (6)
+  adamant: {"id":"adamant","name":"Adamant","up":"power","down":"focus","text":"Favors raw physical brawling over elemental channeling.","perks":[{"cost":3,"name":"Knuckle Down","bonus":{"power":1},"text":"+1 Power"},{"cost":6,"name":"Thick Hide","bonus":{"armor":1},"text":"+1 Armor"},{"cost":10,"name":"Unbreakable","bonus":{"vigor":1,"power":1},"text":"+1 Vigor, +1 Power"}]}
+  timid: {"id":"timid","name":"Timid","up":"speed","down":"power","text":"Prioritizes lightning-fast positioning at the cost of force.","perks":[{"cost":3,"name":"Light Feet","bonus":{"speed":1},"text":"+1 Speed"},{"cost":6,"name":"Skittish","bonus":{"evasion":1},"text":"+1 Evasion"},{"cost":10,"name":"Brave Heart","bonus":{"power":2},"text":"+2 Power"}]}
+  fortified: {"id":"fortified","name":"Fortified","up":"armor","down":"speed","text":"Builds an immovable defensive wall, sacrificing mobility.","perks":[{"cost":3,"name":"Shell Up","bonus":{"armor":1},"text":"+1 Armor"},{"cost":6,"name":"Rooted","bonus":{"ward":1},"text":"+1 Ward"},{"cost":10,"name":"Bastion","bonus":{"vigor":1,"armor":1},"text":"+1 Vigor, +1 Armor"}]}
+  resonant: {"id":"resonant","name":"Resonant","up":"focus","down":"armor","text":"Leans into elemental mastery and status effects; physical defenses go soft.","perks":[{"cost":3,"name":"Attuned","bonus":{"focus":1},"text":"+1 Focus"},{"cost":6,"name":"Harmonic","bonus":{"ward":1},"text":"+1 Ward"},{"cost":10,"name":"Crescendo","bonus":{"focus":2},"text":"+2 Focus"}]}
+  enduring: {"id":"enduring","name":"Enduring","up":"vigor","down":"ward","text":"Piles on health to soak damage, but is open to elemental energy.","perks":[{"cost":3,"name":"Deep Breath","bonus":{"stamina":2},"text":"+2 Stamina"},{"cost":6,"name":"Stubborn","bonus":{"ward":1},"text":"+1 Ward"},{"cost":10,"name":"Last Stand","bonus":{"vigor":1,"armor":1},"text":"+1 Vigor, +1 Armor"}]}
+  volatile: {"id":"volatile","name":"Volatile","up":"stamina","down":"evasion","text":"Pushes limits with demanding moves; cavalier with its own safety.","perks":[{"cost":3,"name":"Hot Blooded","bonus":{"stamina":2},"text":"+2 Stamina"},{"cost":6,"name":"Reckless","bonus":{"power":1,"focus":1},"text":"+1 Power, +1 Focus"},{"cost":10,"name":"Overdrive","bonus":{"speed":2},"text":"+2 Speed"}]}
+RECIPES (7)
+  {"id":"salve","out":"salve","n":2,"slots":["grass","water"],"text":"Pound a sticky plant into wet clay."}
+  {"id":"calm-tea","out":"calm-tea","n":1,"slots":["grass","charm"],"text":"Steep fragrant leaves and petals."}
+  {"id":"trail-mix","out":"trail-mix","n":1,"slots":["grass","rock"],"text":"Roast seeds on a hot stone."}
+  {"id":"lure-incense","out":"lure-incense","n":1,"slots":["charm","fire"],"text":"Smoulder something sweet."}
+  {"id":"hush-smoke","out":"hush-smoke","n":1,"slots":["fire","steel"],"text":"Burn something acrid in a tin."}
+  {"id":"star-charm","out":"star-charm","n":1,"slots":["astral","electric"],"text":"Charge a cold crystal with a spark."}
+  {"id":"elixir","out":"elixir","n":1,"slots":["water","fire","astral"],"text":"Heat spring water with salts until it glows."}
+SEASON_INFO (4)
+  spring: {"label":"Spring","icon":"🌱","dice":["clear","clear","rain","rain","bloom","windy"]}
+  summer: {"label":"Summer","icon":"🌞","dice":["clear","clear","heat","storm","drought","rain"]}
+  autumn: {"label":"Autumn","icon":"🍂","dice":["clear","fog","windy","rain","overcast","aurora"]}
+  winter: {"label":"Winter","icon":"❄️","dice":["clear","snow","blizzard","aurora","fog","overcast"]}
+TIME_INFO (2)
+  day: {"label":"Day","icon":"☀️"}
+  night: {"label":"Night","icon":"🌙"}
+WEATHER (12)
+  clear: {"id":"clear","name":"Clear Skies","icon":"☀️","text":"No effects.","fx":"none"}
+  rain: {"id":"rain","name":"Rain","icon":"🌧️","text":"Water attacks +1, Fire attacks -1.","typeBoost":{"water":1,"fire":-1},"encounter":["water","grass"],"fx":"rain"}
+  bloom: {"id":"bloom","name":"Spring Bloom","icon":"🌸","text":"Grass and Charm attacks +1.","typeBoost":{"grass":1,"charm":1},"encounter":["grass","charm"],"fx":"petals"}
+  windy: {"id":"windy","name":"Gusty Winds","icon":"🌬️","text":"All creatures +1 Speed.","speed":1,"encounter":["electric","astral"],"fx":"wind"}
+  heat: {"id":"heat","name":"Heat Wave","icon":"🥵","text":"Fire attacks +1, Water attacks -1.","typeBoost":{"fire":1,"water":-1},"encounter":["fire","rock"],"fx":"heat"}
+  storm: {"id":"storm","name":"Thunderstorm","icon":"⛈️","text":"Electric attacks +1, Water +1.","typeBoost":{"electric":1,"water":1},"encounter":["electric"],"fx":"storm"}
+  drought: {"id":"drought","name":"Drought","icon":"🏜️","text":"Rock and Fire attacks +1, Grass -1.","typeBoost":{"rock":1,"fire":1,"grass":-1},"encounter":["rock","fire"],"fx":"heat"}
+  fog: {"id":"fog","name":"Fog","icon":"🌫️","text":"All creatures +1 Evasion. Charm attacks +1.","evasion":1,"typeBoost":{"charm":1},"encounter":["charm"],"fx":"fog"}
+  overcast: {"id":"overcast","name":"Overcast","icon":"☁️","text":"Steel attacks +1.","typeBoost":{"steel":1},"encounter":["steel"],"fx":"none"}
+  snow: {"id":"snow","name":"Snowfall","icon":"🌨️","text":"All creatures -1 Speed. Astral +1.","speed":-1,"typeBoost":{"astral":1},"encounter":["astral","steel"],"fx":"snow"}
+  blizzard: {"id":"blizzard","name":"Blizzard","icon":"❄️","text":"Fire -1, Steel and Astral +1, all -1 Speed.","speed":-1,"typeBoost":{"fire":-1,"steel":1,"astral":1},"encounter":["astral","steel"],"fx":"snow"}
+  aurora: {"id":"aurora","name":"Aurora Night","icon":"🌌","text":"Astral attacks +2. Salem's arena opens.","typeBoost":{"astral":2},"encounter":["astral"],"fx":"aurora"}

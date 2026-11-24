@@ -1,0 +1,36 @@
+STRONG (8)
+  astral: ["electric","fire"]
+  charm: ["astral","grass"]
+  electric: ["steel","water"]
+  fire: ["grass","steel"]
+  grass: ["rock","water"]
+  rock: ["charm","electric"]
+  steel: ["astral","charm"]
+  water: ["fire","rock"]
+TYPES (8)
+  "astral"
+  "charm"
+  "electric"
+  "fire"
+  "grass"
+  "rock"
+  "steel"
+  "water"
+TYPE_COLOR (8)
+  astral: "#9013fe"
+  charm: "#fc88fc"
+  electric: "#f8e71c"
+  fire: "#d0021b"
+  grass: "#417505"
+  rock: "#b57204"
+  steel: "#9b9b9b"
+  water: "#50e3c2"
+TYPE_LABEL (8)
+  astral: "Astral"
+  charm: "Charm"
+  electric: "Electric"
+  fire: "Fire"
+  grass: "Grass"
+  rock: "Rock"
+  steel: "Steel"
+  water: "Water"

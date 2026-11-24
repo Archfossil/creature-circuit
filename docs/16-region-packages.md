@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: proposal. Nothing here is built yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: step 1 is built ([the safety net](#the-safety-net)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -200,7 +200,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 
 | # | Step | Size | Players see |
 |---|---|---|---|
-| 1 | **Safety net** | S | Nothing |
+| 1 | **Safety net** ✅ built | S | Nothing |
 | 2 | **Move Margos's data** into `src/regions/margos` behind the same names | M | Nothing |
 | 3 | **Active region**, plus a tiny test-only second region | M | Nothing |
 | 4 | **Codex** separated from the species library | M | Nothing |
@@ -225,6 +225,21 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 9. **Season flow.** Choose a region, finish a season, say farewell, start another: solo, hotseat and online.
 10. **Balanced starters.** Tested with a made-up species in the test region: equal energy at every stage and after every chart path, and no ordinary creature changes.
 11. **Load on demand.** Margos's code is no bigger than today, and the installed game still works offline for regions already played.
+
+### The safety net
+
+`tests/baseline.test.ts` runs with the other tests (about 30 seconds) and compares the game with a saved copy in `tests/baseline`:
+
+| Saved | What's in it |
+|---|---|
+| `data/` (14 files) | Everything in the data files, one line per item, and what the rules work out from it: neighbours, who lives where, markets, Champions' travels, the coastline |
+| `seasons/` (20 files) | 8 wandering trainers (one per style, home city and starter), 5 tours, a three-player hotseat game, Stadium Mode, and 5 drills: every event and answer, every Arbiter at every Tier, every route and gate, every gimmick, and a six-player Circuit |
+
+- **Each line of a season** is one turn: what happened, where it left the trainer, how many dice were rolled, and a mark for the rules and one for the wording. If only the wording mark changes, the test says so.
+- **When it fails** it shows the first turn that differs. A step of this plan must not make it fail. New content or a new rule will, and that's fine: run `npm run baseline`, look over what changed in `tests/baseline`, and commit it with the change.
+- **It checks its own reach.** A test fails if no season visits a biome, fights an Arbiter, or meets an event, gimmick or system on its list.
+- **It was tested by breaking the game:** 12 deliberate changes to rules, dice order, lists and wording (the Gauntlet, Salem's lap, the satchel, the Forest Floor, gates and others) were all caught.
+- **What it doesn't cover:** screens and the 3D map (`src/ui`, and all of `src/render` but the coastline and outfits), online play, loading old saves, and rules that live in a screen, like the guessing game that finds Fabian. Those have the ordinary tests or need checking by hand; step 8 covers saves and online.
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

@@ -1,0 +1,2027 @@
+RIVALS: "juniper ozzie dex calla tavi bex lune corrin pim wes nadia sol"
+CHAMPIONS: "ivo selene marisol dez okon hale bram noor"
+inviteStops (17)
+  "aurora"
+  "hollow"
+  "thunder"
+  "kilauea"
+  "gloom"
+  "canyon"
+  "iron"
+  "mangrove"
+  "mistfall"
+  "lumber"
+  "dustmere"
+  "ridgeway"
+  "saltmarsh"
+  "blackSand"
+  "valor"
+  "quillhaven"
+  "depths"
+CLOUD_LAP: 6
+EVENT_IDS (38)
+  "trader"
+  "caretaker"
+  "tutor"
+  "drums"
+  "cook"
+  "lost"
+  "caravan"
+  "storm"
+  "sparring"
+  "fortune"
+  "windfall"
+  "rival"
+  "hermit"
+  "pickpocket"
+  "pilgrim"
+  "springs"
+  "gambler"
+  "bard"
+  "mentor"
+  "guide"
+  "balloon"
+  "coach"
+  "squabble"
+  "scholar"
+  "satchel"
+  "star"
+  "berries"
+  "apprentice"
+  "shepherd"
+  "moonbow"
+  "skywhale"
+  "cloudbank"
+  "sunlit"
+  "stalker"
+  "roots"
+  "spores"
+  "whispers"
+  "shadethieves"
+EVENT_PLACES (38)
+  trader: "anywhere"
+  caretaker: "anywhere"
+  tutor: "anywhere"
+  drums: "anywhere"
+  cook: "anywhere"
+  lost: "anywhere"
+  caravan: "anywhere"
+  storm: "anywhere"
+  sparring: "anywhere"
+  fortune: "anywhere"
+  windfall: "anywhere"
+  rival: "anywhere"
+  hermit: "anywhere"
+  pickpocket: "anywhere"
+  pilgrim: "anywhere"
+  springs: "anywhere"
+  gambler: "anywhere"
+  bard: "anywhere"
+  mentor: "anywhere"
+  guide: "anywhere"
+  balloon: "anywhere"
+  coach: "anywhere"
+  squabble: "anywhere"
+  scholar: "anywhere"
+  satchel: "anywhere"
+  star: "anywhere"
+  berries: "anywhere"
+  apprentice: "anywhere"
+  shepherd: "cloud"
+  moonbow: "cloud"
+  skywhale: "cloud"
+  cloudbank: "cloud"
+  sunlit: "cloud"
+  stalker: "floor"
+  roots: "floor"
+  spores: "floor"
+  whispers: "floor"
+  shadethieves: "floor"
+EVENT_TIMES (38)
+  trader: "day"
+  caretaker: "night"
+  tutor: "day"
+  drums: "night"
+  cook: "any"
+  lost: "night"
+  caravan: "night"
+  storm: "any"
+  sparring: "day"
+  fortune: "any"
+  windfall: "night"
+  rival: "day"
+  hermit: "any"
+  pickpocket: "any"
+  pilgrim: "day"
+  springs: "any"
+  gambler: "any"
+  bard: "night"
+  mentor: "day"
+  guide: "day"
+  balloon: "day"
+  coach: "night"
+  squabble: "night"
+  scholar: "day"
+  satchel: "day"
+  star: "night"
+  berries: "night"
+  apprentice: "day"
+  shepherd: "night"
+  moonbow: "night"
+  skywhale: "any"
+  cloudbank: "any"
+  sunlit: "day"
+  stalker: "any"
+  roots: "any"
+  spores: "any"
+  whispers: "any"
+  shadethieves: "any"
+neighbors
+  aurora: w1 w31 cloud1(portal)
+  hollow: n3 n4
+  thunder: w15 n16 w19 n54
+  kilauea: n44 w40 blackSand(sea)
+  gloom: w8 n7 w38 forestfloor(rope)
+  canyon: w10 w11 n41 w36
+  iron: n25 n26 ironwake
+  mangrove: n30 w29 n57 blackSand(sea)
+  stadium: n13 n18 n21 n31 n36
+  mistfall: w2 n2 n14 n51
+  lumber: n5 w7 n19
+  dustmere: n11 n12 n56
+  ridgeway: n23 w21 n33 n47
+  saltmarsh: n28 w25 n50
+  blackSand: w32 n40 mangrove(sea) kilauea(sea)
+  quillhaven: n48 n49
+  valor: n52 w44
+  lanternglade: w3 prism1
+  depths: n42
+  firepit: n37 w33
+  sunspire: w31
+  ironwake: iron
+  forestfloor: gloom(rope)
+  willowheart: n55
+  dunecrown: n56
+  boglight: n57
+  calderaheart: n58
+  w1: aurora n1
+  n1: w1 w2
+  w2: n1 mistfall
+  n2: mistfall w3
+  w3: n2 w4 lanternglade
+  w4: w3 n3
+  n3: w4 hollow
+  n4: hollow w5
+  w5: n4 w6
+  w6: w5 n5
+  n5: w6 lumber
+  w7: lumber n6
+  n6: w7 w8
+  w8: n6 gloom
+  n7: gloom w9
+  w9: n7 n8
+  n8: w9 n9
+  n9: n8 w10
+  w10: n9 canyon
+  w11: canyon n10
+  n10: w11 w12
+  w12: n10 n11
+  n11: w12 dustmere
+  n12: dustmere w13
+  w13: n12 n13
+  n13: w13 stadium
+  n14: mistfall w14
+  w14: n14 n15
+  n15: w14 w15
+  w15: n15 thunder
+  n16: thunder w16
+  w16: n16 n17
+  n17: w16 n18
+  n18: n17 stadium
+  n19: lumber w17
+  w17: n19 n20
+  n20: w17 w18
+  w18: n20 n21 n55
+  n21: w18 stadium
+  w19: thunder n22
+  n22: w19 w20
+  w20: n22 n23
+  n23: w20 ridgeway
+  w21: ridgeway n24
+  n24: w21 w22
+  w22: n24 n25
+  n25: w22 iron
+  n26: iron w23
+  w23: n26 n27
+  n27: w23 w24
+  w24: n27 n28
+  n28: w24 saltmarsh
+  w25: saltmarsh n29
+  n29: w25 w26
+  w26: n29 n30
+  n30: w26 mangrove
+  n31: stadium w27
+  w27: n31 w28
+  w28: w27 n32
+  n32: w28 w29
+  w29: n32 mangrove
+  n33: ridgeway n34
+  n34: n33 w30
+  w30: n34 n35
+  n35: w30 n36
+  n36: n35 stadium
+  w31: aurora sunspire
+  n37: firepit n38
+  n38: n37 w32
+  w32: n38 blackSand
+  w33: firepit n39
+  n39: w33 w34 n58
+  w34: n39 n40
+  n40: w34 blackSand
+  n41: canyon w35
+  w35: n41 n42
+  n42: w35 depths
+  w36: canyon n43
+  n43: w36 w37
+  w37: n43 n44
+  n44: w37 kilauea
+  w38: gloom n45
+  n45: w38 w39
+  w39: n45 n46
+  n46: w39 w40
+  w40: n46 kilauea
+  n47: ridgeway w41
+  w41: n47 n48
+  n48: w41 quillhaven
+  n49: quillhaven w42
+  w42: n49 n50
+  n50: w42 saltmarsh
+  n51: mistfall w43
+  w43: n51 n52
+  n52: w43 valor
+  w44: valor n53
+  n53: w44 n54
+  n54: n53 thunder
+  n55: w18 willowheart
+  n56: dustmere dunecrown
+  n57: mangrove boglight
+  n58: n39 calderaheart
+  cloud1: cloud2 cloud6 cloudeye aurora(portal)
+  cloud2: cloud1 cloud3
+  cloud3: cloud2 cloud4 cloudeye
+  cloud4: cloud3 cloud5
+  cloud5: cloud4 cloud6 cloudeye
+  cloud6: cloud5 cloud1
+  cloudeye: cloud1 cloud3 cloud5
+  prism1: lanternglade prism2 prism3
+  prism2: prism1 prism4
+  prism3: prism1 prism4
+  prism4: prism2 prism3
+marketStock
+  aurora: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
+  hollow: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
+  thunder: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
+  kilauea: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix ferry-pass
+  gloom: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix ferry-pass
+  canyon: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
+  iron: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
+  mangrove: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
+  stadium: salve elixir rousing-salts calm-tea totem sunberry trail-mix homing-feather
+  mistfall: salve calm-tea totem sunberry trail-mix
+  lumber: salve totem dewberry pine-resin bike
+  dustmere: star-charm lure-incense hush-smoke moonberry energy-tonic totem homing-feather
+  ridgeway: salve rousing-salts calm-tea glacier-salt trail-mix hush-smoke
+  saltmarsh: salve sea-glass marsh-lotus totem
+  blackSand: elixir volcanic-glass ember-charcoal
+  quillhaven: salve totem sunberry calm-tea homing-feather
+  valor: salve rousing-salts energy-tonic totem dewberry
+  lanternglade: salve totem calm-tea trail-mix moonberry
+  depths: salve rousing-salts totem canyon-ochre ember-charcoal
+prismType
+  rock rock rock grass grass rock rock grass grass astral astral fire fire grass grass astral astral fire fire electric electric fire fire water water astral astral rock rock steel steel electric electric rock rock charm charm grass grass charm charm electric electric rock rock grass grass electric electric water water grass grass rock rock water water steel steel electric electric water water fire fire grass grass fire fire electric electric rock rock astral astral water water electric electric water water grass grass steel steel grass grass water water grass grass rock rock grass grass astral astral grass grass steel steel
+speciesPool
+  forest astral common day: 
+  forest astral common night: 
+  forest astral prime day: 
+  forest astral prime night: 
+  forest astral apex day: 
+  forest astral apex night: 
+  forest charm common day: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  forest charm common night: mossprite fernixie ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  forest charm prime day: ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  forest charm prime night: gloomoth ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  forest charm apex day: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  forest charm apex night: ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  forest electric common day: 
+  forest electric common night: 
+  forest electric prime day: 
+  forest electric prime night: 
+  forest electric apex day: 
+  forest electric apex night: 
+  forest fire common day: 
+  forest fire common night: 
+  forest fire prime day: 
+  forest fire prime night: 
+  forest fire apex day: 
+  forest fire apex night: 
+  forest grass common day: sproutle thornback ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 redwarden ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  forest grass common night: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-grass-dusk-common-1 ph-grass-dusk-common-2 ph-grass-dusk-common-3 redwarden ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  forest grass prime day: ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  forest grass prime night: shadeleaf gloomoth ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  forest grass apex day: canopyre ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  forest grass apex night: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  forest rock common day: 
+  forest rock common night: 
+  forest rock prime day: 
+  forest rock prime night: 
+  forest rock apex day: 
+  forest rock apex night: 
+  forest steel common day: 
+  forest steel common night: 
+  forest steel prime day: 
+  forest steel prime night: 
+  forest steel apex day: 
+  forest steel apex night: 
+  forest water common day: 
+  forest water common night: 
+  forest water prime day: 
+  forest water prime night: 
+  forest water apex day: 
+  forest water apex night: 
+  grove astral common day: 
+  grove astral common night: 
+  grove astral prime day: 
+  grove astral prime night: 
+  grove astral apex day: 
+  grove astral apex night: 
+  grove charm common day: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-sun-common-1 ph-charm-sun-common-2 ph-charm-sun-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  grove charm common night: mossprite fernixie ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 glamorwyn ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  grove charm prime day: ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  grove charm prime night: puffwisp velvetuft ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  grove charm apex day: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 mirageon ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  grove charm apex night: ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 mirageon ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  grove electric common day: 
+  grove electric common night: 
+  grove electric prime day: 
+  grove electric prime night: 
+  grove electric apex day: 
+  grove electric apex night: 
+  grove fire common day: 
+  grove fire common night: 
+  grove fire prime day: 
+  grove fire prime night: 
+  grove fire apex day: 
+  grove fire apex night: 
+  grove grass common day: sproutle thornback ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  grove grass common night: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  grove grass prime day: ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  grove grass prime night: ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  grove grass apex day: ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  grove grass apex night: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  grove rock common day: 
+  grove rock common night: 
+  grove rock prime day: 
+  grove rock prime night: 
+  grove rock apex day: 
+  grove rock apex night: 
+  grove steel common day: 
+  grove steel common night: 
+  grove steel prime day: 
+  grove steel prime night: 
+  grove steel apex day: 
+  grove steel apex night: 
+  grove water common day: 
+  grove water common night: 
+  grove water prime day: 
+  grove water prime night: 
+  grove water apex day: 
+  grove water apex night: 
+  meadow astral common day: 
+  meadow astral common night: 
+  meadow astral prime day: 
+  meadow astral prime night: 
+  meadow astral apex day: 
+  meadow astral apex night: 
+  meadow charm common day: ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-sun-common-1 ph-charm-sun-common-2 ph-charm-sun-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  meadow charm common night: mossprite fernixie ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  meadow charm prime day: ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  meadow charm prime night: puffwisp velvetuft ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  meadow charm apex day: ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  meadow charm apex night: ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  meadow electric common day: ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-electric-grass-common-1 ph-electric-grass-common-2 ph-electric-grass-common-3
+  meadow electric common night: ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3
+  meadow electric prime day: ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-electric-grass-prime-1 ph-electric-grass-prime-2 ph-electric-grass-prime-3
+  meadow electric prime night: ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3
+  meadow electric apex day: ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-electric-grass-apex-1 ph-electric-grass-apex-2 ph-electric-grass-apex-3
+  meadow electric apex night: ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3
+  meadow fire common day: 
+  meadow fire common night: 
+  meadow fire prime day: 
+  meadow fire prime night: 
+  meadow fire apex day: 
+  meadow fire apex night: 
+  meadow grass common day: sproutle thornback ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-electric-grass-common-1 ph-electric-grass-common-2 ph-electric-grass-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  meadow grass common night: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  meadow grass prime day: ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-electric-grass-prime-1 ph-electric-grass-prime-2 ph-electric-grass-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  meadow grass prime night: ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  meadow grass apex day: ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-electric-grass-apex-1 ph-electric-grass-apex-2 ph-electric-grass-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  meadow grass apex night: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  meadow rock common day: 
+  meadow rock common night: 
+  meadow rock prime day: 
+  meadow rock prime night: 
+  meadow rock apex day: 
+  meadow rock apex night: 
+  meadow steel common day: 
+  meadow steel common night: 
+  meadow steel prime day: 
+  meadow steel prime night: 
+  meadow steel apex day: 
+  meadow steel apex night: 
+  meadow water common day: 
+  meadow water common night: 
+  meadow water prime day: 
+  meadow water prime night: 
+  meadow water apex day: 
+  meadow water apex night: 
+  mountain astral common day: ph-rock-astral-common-1 ph-rock-astral-common-2 ph-rock-astral-common-3 ph-steel-astral-common-1 ph-steel-astral-common-2 ph-steel-astral-common-3 ph-astral-sun-common-1 ph-astral-sun-common-2 ph-astral-sun-common-3 polarion ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3
+  mountain astral common night: twinkit lumenox ph-rock-astral-common-1 ph-rock-astral-common-2 ph-rock-astral-common-3 ph-steel-astral-common-1 ph-steel-astral-common-2 ph-steel-astral-common-3 polarion ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3
+  mountain astral prime day: nebulith ph-rock-astral-prime-1 ph-rock-astral-prime-2 ph-rock-astral-prime-3 ph-steel-astral-prime-1 ph-steel-astral-prime-2 ph-steel-astral-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  mountain astral prime night: orbuddle nebulith ph-astral-mono-prime-1 ph-astral-mono-prime-2 ph-astral-mono-prime-3 ph-rock-astral-prime-1 ph-rock-astral-prime-2 ph-rock-astral-prime-3 ph-steel-astral-prime-1 ph-steel-astral-prime-2 ph-steel-astral-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  mountain astral apex day: ph-rock-astral-apex-1 ph-rock-astral-apex-2 ph-rock-astral-apex-3 ph-steel-astral-apex-1 ph-steel-astral-apex-2 ph-steel-astral-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  mountain astral apex night: ph-astral-mono-apex-1 ph-astral-mono-apex-2 ph-astral-mono-apex-3 ph-rock-astral-apex-1 ph-rock-astral-apex-2 ph-rock-astral-apex-3 ph-steel-astral-apex-1 ph-steel-astral-apex-2 ph-steel-astral-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  mountain charm common day: 
+  mountain charm common night: 
+  mountain charm prime day: 
+  mountain charm prime night: 
+  mountain charm apex day: 
+  mountain charm apex night: 
+  mountain electric common day: 
+  mountain electric common night: 
+  mountain electric prime day: 
+  mountain electric prime night: 
+  mountain electric apex day: 
+  mountain electric apex night: 
+  mountain fire common day: 
+  mountain fire common night: 
+  mountain fire prime day: 
+  mountain fire prime night: 
+  mountain fire apex day: 
+  mountain fire apex night: 
+  mountain grass common day: 
+  mountain grass common night: 
+  mountain grass prime day: 
+  mountain grass prime night: 
+  mountain grass apex day: 
+  mountain grass apex night: 
+  mountain rock common day: pebbark cragjaw ph-rock-astral-common-1 ph-rock-astral-common-2 ph-rock-astral-common-3 ph-rock-steel-common-1 ph-rock-steel-common-2 ph-rock-steel-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  mountain rock common night: pebbark cragjaw ph-rock-astral-common-1 ph-rock-astral-common-2 ph-rock-astral-common-3 ph-rock-steel-common-1 ph-rock-steel-common-2 ph-rock-steel-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  mountain rock prime day: nebulith rubblet boulderon ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-rock-astral-prime-1 ph-rock-astral-prime-2 ph-rock-astral-prime-3 ph-rock-steel-prime-1 ph-rock-steel-prime-2 ph-rock-steel-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  mountain rock prime night: nebulith rubblet boulderon ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-rock-astral-prime-1 ph-rock-astral-prime-2 ph-rock-astral-prime-3 ph-rock-steel-prime-1 ph-rock-steel-prime-2 ph-rock-steel-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  mountain rock apex day: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-rock-astral-apex-1 ph-rock-astral-apex-2 ph-rock-astral-apex-3 ph-rock-steel-apex-1 ph-rock-steel-apex-2 ph-rock-steel-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  mountain rock apex night: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-rock-astral-apex-1 ph-rock-astral-apex-2 ph-rock-astral-apex-3 ph-rock-steel-apex-1 ph-rock-steel-apex-2 ph-rock-steel-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  mountain steel common day: rivetail ferrocrab ph-steel-astral-common-1 ph-steel-astral-common-2 ph-steel-astral-common-3 ph-rock-steel-common-1 ph-rock-steel-common-2 ph-rock-steel-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3
+  mountain steel common night: rivetail ferrocrab ph-steel-astral-common-1 ph-steel-astral-common-2 ph-steel-astral-common-3 ph-rock-steel-common-1 ph-rock-steel-common-2 ph-rock-steel-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3
+  mountain steel prime day: ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-steel-astral-prime-1 ph-steel-astral-prime-2 ph-steel-astral-prime-3 ph-rock-steel-prime-1 ph-rock-steel-prime-2 ph-rock-steel-prime-3 anvilisk ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3
+  mountain steel prime night: ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-steel-astral-prime-1 ph-steel-astral-prime-2 ph-steel-astral-prime-3 ph-rock-steel-prime-1 ph-rock-steel-prime-2 ph-rock-steel-prime-3 anvilisk ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3
+  mountain steel apex day: ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-steel-astral-apex-1 ph-steel-astral-apex-2 ph-steel-astral-apex-3 ph-rock-steel-apex-1 ph-rock-steel-apex-2 ph-rock-steel-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3
+  mountain steel apex night: ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-steel-astral-apex-1 ph-steel-astral-apex-2 ph-steel-astral-apex-3 ph-rock-steel-apex-1 ph-rock-steel-apex-2 ph-rock-steel-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3
+  mountain water common day: 
+  mountain water common night: 
+  mountain water prime day: 
+  mountain water prime night: 
+  mountain water apex day: 
+  mountain water apex night: 
+  tundra astral common day: polarion ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-astral-sun-common-1 ph-astral-sun-common-2 ph-astral-sun-common-3 ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3
+  tundra astral common night: twinkit lumenox polarion ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3
+  tundra astral prime day: ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  tundra astral prime night: orbuddle ph-astral-mono-prime-1 ph-astral-mono-prime-2 ph-astral-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  tundra astral apex day: ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  tundra astral apex night: zenithar ph-astral-mono-apex-1 ph-astral-mono-apex-2 ph-astral-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  tundra charm common day: 
+  tundra charm common night: 
+  tundra charm prime day: 
+  tundra charm prime night: 
+  tundra charm apex day: 
+  tundra charm apex night: 
+  tundra electric common day: 
+  tundra electric common night: 
+  tundra electric prime day: 
+  tundra electric prime night: 
+  tundra electric apex day: 
+  tundra electric apex night: 
+  tundra fire common day: 
+  tundra fire common night: 
+  tundra fire prime day: 
+  tundra fire prime night: 
+  tundra fire apex day: 
+  tundra fire apex night: 
+  tundra grass common day: 
+  tundra grass common night: 
+  tundra grass prime day: 
+  tundra grass prime night: 
+  tundra grass apex day: 
+  tundra grass apex night: 
+  tundra rock common day: 
+  tundra rock common night: 
+  tundra rock prime day: 
+  tundra rock prime night: 
+  tundra rock apex day: 
+  tundra rock apex night: 
+  tundra steel common day: 
+  tundra steel common night: 
+  tundra steel prime day: 
+  tundra steel prime night: 
+  tundra steel apex day: 
+  tundra steel apex night: 
+  tundra water common day: polarion puddlit marshfin ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3
+  tundra water common night: polarion puddlit marshfin ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3
+  tundra water prime day: ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3
+  tundra water prime night: ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3
+  tundra water apex day: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3
+  tundra water apex night: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3
+  lake astral common day: 
+  lake astral common night: 
+  lake astral prime day: 
+  lake astral prime night: 
+  lake astral apex day: 
+  lake astral apex night: 
+  lake charm common day: ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-charm-sun-common-1 ph-charm-sun-common-2 ph-charm-sun-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  lake charm common night: ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  lake charm prime day: ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  lake charm prime night: ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  lake charm apex day: mirageon ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  lake charm apex night: mirageon ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  lake electric common day: 
+  lake electric common night: 
+  lake electric prime day: 
+  lake electric prime night: 
+  lake electric apex day: 
+  lake electric apex night: 
+  lake fire common day: 
+  lake fire common night: 
+  lake fire prime day: 
+  lake fire prime night: 
+  lake fire apex day: 
+  lake fire apex night: 
+  lake grass common day: 
+  lake grass common night: 
+  lake grass prime day: 
+  lake grass prime night: 
+  lake grass apex day: 
+  lake grass apex night: 
+  lake rock common day: 
+  lake rock common night: 
+  lake rock prime day: 
+  lake rock prime night: 
+  lake rock apex day: 
+  lake rock apex night: 
+  lake steel common day: 
+  lake steel common night: 
+  lake steel prime day: 
+  lake steel prime night: 
+  lake steel apex day: 
+  lake steel apex night: 
+  lake water common day: puddlit marshfin ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3
+  lake water common night: puddlit marshfin ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3
+  lake water prime day: bubbloon tidecall ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3
+  lake water prime night: bubbloon tidecall ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3
+  lake water apex day: mirageon ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3
+  lake water apex night: mirageon ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3
+  river astral common day: 
+  river astral common night: 
+  river astral prime day: 
+  river astral prime night: 
+  river astral apex day: 
+  river astral apex night: 
+  river charm common day: 
+  river charm common night: 
+  river charm prime day: 
+  river charm prime night: 
+  river charm apex day: 
+  river charm apex night: 
+  river electric common day: 
+  river electric common night: 
+  river electric prime day: 
+  river electric prime night: 
+  river electric apex day: 
+  river electric apex night: 
+  river fire common day: 
+  river fire common night: 
+  river fire prime day: 
+  river fire prime night: 
+  river fire apex day: 
+  river fire apex night: 
+  river grass common day: ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  river grass common night: ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3 ph-grass-dusk-common-1 ph-grass-dusk-common-2 ph-grass-dusk-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  river grass prime day: ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  river grass prime night: ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  river grass apex day: ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  river grass apex night: ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  river rock common day: 
+  river rock common night: 
+  river rock prime day: 
+  river rock prime night: 
+  river rock apex day: 
+  river rock apex night: 
+  river steel common day: 
+  river steel common night: 
+  river steel prime day: 
+  river steel prime night: 
+  river steel apex day: 
+  river steel apex night: 
+  river water common day: puddlit marshfin ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3
+  river water common night: puddlit marshfin ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3
+  river water prime day: bubbloon ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3
+  river water prime night: bubbloon ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3
+  river water apex day: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3
+  river water apex night: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3
+  road astral common day: 
+  road astral common night: 
+  road astral prime day: 
+  road astral prime night: 
+  road astral apex day: 
+  road astral apex night: 
+  road charm common day: 
+  road charm common night: 
+  road charm prime day: 
+  road charm prime night: 
+  road charm apex day: 
+  road charm apex night: 
+  road electric common day: zapup voltusk ph-electric-steel-common-1 ph-electric-steel-common-2 ph-electric-steel-common-3
+  road electric common night: ph-electric-steel-common-1 ph-electric-steel-common-2 ph-electric-steel-common-3 ph-electric-dusk-common-1 ph-electric-dusk-common-2 ph-electric-dusk-common-3
+  road electric prime day: fizzlet ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-electric-steel-prime-1 ph-electric-steel-prime-2 ph-electric-steel-prime-3
+  road electric prime night: ph-electric-steel-prime-1 ph-electric-steel-prime-2 ph-electric-steel-prime-3
+  road electric apex day: ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-electric-steel-apex-1 ph-electric-steel-apex-2 ph-electric-steel-apex-3
+  road electric apex night: ph-electric-steel-apex-1 ph-electric-steel-apex-2 ph-electric-steel-apex-3
+  road fire common day: 
+  road fire common night: 
+  road fire prime day: 
+  road fire prime night: 
+  road fire apex day: 
+  road fire apex night: 
+  road grass common day: 
+  road grass common night: 
+  road grass prime day: 
+  road grass prime night: 
+  road grass apex day: 
+  road grass apex night: 
+  road rock common day: 
+  road rock common night: 
+  road rock prime day: 
+  road rock prime night: 
+  road rock apex day: 
+  road rock apex night: 
+  road steel common day: rivetail ferrocrab ph-electric-steel-common-1 ph-electric-steel-common-2 ph-electric-steel-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3
+  road steel common night: rivetail ferrocrab ph-electric-steel-common-1 ph-electric-steel-common-2 ph-electric-steel-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3
+  road steel prime day: cogling ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-electric-steel-prime-1 ph-electric-steel-prime-2 ph-electric-steel-prime-3 ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3
+  road steel prime night: cogling ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-electric-steel-prime-1 ph-electric-steel-prime-2 ph-electric-steel-prime-3 ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3
+  road steel apex day: ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-electric-steel-apex-1 ph-electric-steel-apex-2 ph-electric-steel-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3
+  road steel apex night: ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-electric-steel-apex-1 ph-electric-steel-apex-2 ph-electric-steel-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3
+  road water common day: 
+  road water common night: 
+  road water prime day: 
+  road water prime night: 
+  road water apex day: 
+  road water apex night: 
+  swamp astral common day: 
+  swamp astral common night: 
+  swamp astral prime day: 
+  swamp astral prime night: 
+  swamp astral apex day: 
+  swamp astral apex night: 
+  swamp charm common day: 
+  swamp charm common night: 
+  swamp charm prime day: 
+  swamp charm prime night: 
+  swamp charm apex day: 
+  swamp charm apex night: 
+  swamp electric common day: 
+  swamp electric common night: 
+  swamp electric prime day: 
+  swamp electric prime night: 
+  swamp electric apex day: 
+  swamp electric apex night: 
+  swamp fire common day: 
+  swamp fire common night: 
+  swamp fire prime day: 
+  swamp fire prime night: 
+  swamp fire apex day: 
+  swamp fire apex night: 
+  swamp grass common day: sproutle thornback mangrovore ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  swamp grass common night: mangrovore ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3 ph-grass-dusk-common-1 ph-grass-dusk-common-2 ph-grass-dusk-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  swamp grass prime day: ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  swamp grass prime night: shadeleaf ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  swamp grass apex day: ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  swamp grass apex night: ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  swamp rock common day: 
+  swamp rock common night: 
+  swamp rock prime day: 
+  swamp rock prime night: 
+  swamp rock apex day: 
+  swamp rock apex night: 
+  swamp steel common day: 
+  swamp steel common night: 
+  swamp steel prime day: 
+  swamp steel prime night: 
+  swamp steel apex day: 
+  swamp steel apex night: 
+  swamp water common day: puddlit marshfin mangrovore ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3
+  swamp water common night: puddlit marshfin mangrovore ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3
+  swamp water prime day: ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3
+  swamp water prime night: ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3
+  swamp water apex day: gatormaw ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3
+  swamp water apex night: gatormaw ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3
+  desert astral common day: 
+  desert astral common night: 
+  desert astral prime day: 
+  desert astral prime night: 
+  desert astral apex day: 
+  desert astral apex night: 
+  desert charm common day: 
+  desert charm common night: 
+  desert charm prime day: 
+  desert charm prime night: 
+  desert charm apex day: 
+  desert charm apex night: 
+  desert electric common day: zapup voltusk ph-electric-fire-common-1 ph-electric-fire-common-2 ph-electric-fire-common-3 ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3
+  desert electric common night: ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-electric-dusk-common-1 ph-electric-dusk-common-2 ph-electric-dusk-common-3
+  desert electric prime day: ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-electric-fire-prime-1 ph-electric-fire-prime-2 ph-electric-fire-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3
+  desert electric prime night: ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3
+  desert electric apex day: ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-electric-fire-apex-1 ph-electric-fire-apex-2 ph-electric-fire-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3
+  desert electric apex night: ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3
+  desert fire common day: cindercub blazmane ph-electric-fire-common-1 ph-electric-fire-common-2 ph-electric-fire-common-3 ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-grass-common-1 ph-fire-grass-common-2 ph-fire-grass-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3
+  desert fire common night: ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-dusk-common-1 ph-fire-dusk-common-2 ph-fire-dusk-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3
+  desert fire prime day: emberwick ph-fire-mono-prime-1 ph-fire-mono-prime-2 ph-fire-mono-prime-3 ph-electric-fire-prime-1 ph-electric-fire-prime-2 ph-electric-fire-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-fire-grass-prime-1 ph-fire-grass-prime-2 ph-fire-grass-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  desert fire prime night: emberwick ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  desert fire apex day: ph-fire-mono-apex-1 ph-fire-mono-apex-2 ph-fire-mono-apex-3 ph-electric-fire-apex-1 ph-electric-fire-apex-2 ph-electric-fire-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-grass-apex-1 ph-fire-grass-apex-2 ph-fire-grass-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  desert fire apex night: ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  desert grass common day: 
+  desert grass common night: 
+  desert grass prime day: 
+  desert grass prime night: 
+  desert grass apex day: 
+  desert grass apex night: 
+  desert rock common day: ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  desert rock common night: ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  desert rock prime day: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  desert rock prime night: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  desert rock apex day: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  desert rock apex night: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  desert steel common day: 
+  desert steel common night: 
+  desert steel prime day: 
+  desert steel prime night: 
+  desert steel apex day: 
+  desert steel apex night: 
+  desert water common day: 
+  desert water common night: 
+  desert water prime day: 
+  desert water prime night: 
+  desert water apex day: 
+  desert water apex night: 
+  badlands astral common day: 
+  badlands astral common night: 
+  badlands astral prime day: 
+  badlands astral prime night: 
+  badlands astral apex day: 
+  badlands astral apex night: 
+  badlands charm common day: 
+  badlands charm common night: 
+  badlands charm prime day: 
+  badlands charm prime night: 
+  badlands charm apex day: 
+  badlands charm apex night: 
+  badlands electric common day: zapup voltusk ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 stormhound
+  badlands electric common night: ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-electric-dusk-common-1 ph-electric-dusk-common-2 ph-electric-dusk-common-3 stormhound
+  badlands electric prime day: fizzlet arcwing ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3
+  badlands electric prime night: ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3
+  badlands electric apex day: ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 tempestrix
+  badlands electric apex night: ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 tempestrix
+  badlands fire common day: 
+  badlands fire common night: 
+  badlands fire prime day: 
+  badlands fire prime night: 
+  badlands fire apex day: 
+  badlands fire apex night: 
+  badlands grass common day: 
+  badlands grass common night: 
+  badlands grass prime day: 
+  badlands grass prime night: 
+  badlands grass apex day: 
+  badlands grass apex night: 
+  badlands rock common day: pebbark cragjaw ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  badlands rock common night: pebbark cragjaw ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  badlands rock prime day: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  badlands rock prime night: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  badlands rock apex day: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  badlands rock apex night: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  badlands steel common day: 
+  badlands steel common night: 
+  badlands steel prime day: 
+  badlands steel prime night: 
+  badlands steel apex day: 
+  badlands steel apex night: 
+  badlands water common day: 
+  badlands water common night: 
+  badlands water prime day: 
+  badlands water prime night: 
+  badlands water apex day: 
+  badlands water apex night: 
+  coast astral common day: 
+  coast astral common night: 
+  coast astral prime day: 
+  coast astral prime night: 
+  coast astral apex day: 
+  coast astral apex night: 
+  coast charm common day: 
+  coast charm common night: 
+  coast charm prime day: 
+  coast charm prime night: 
+  coast charm apex day: 
+  coast charm apex night: 
+  coast electric common day: 
+  coast electric common night: 
+  coast electric prime day: 
+  coast electric prime night: 
+  coast electric apex day: 
+  coast electric apex night: 
+  coast fire common day: 
+  coast fire common night: 
+  coast fire prime day: 
+  coast fire prime night: 
+  coast fire apex day: 
+  coast fire apex night: 
+  coast grass common day: 
+  coast grass common night: 
+  coast grass prime day: 
+  coast grass prime night: 
+  coast grass apex day: 
+  coast grass apex night: 
+  coast rock common day: 
+  coast rock common night: 
+  coast rock prime day: 
+  coast rock prime night: 
+  coast rock apex day: 
+  coast rock apex night: 
+  coast steel common day: rivetail ferrocrab ironclawd ph-steel-water-common-1 ph-steel-water-common-2 ph-steel-water-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3
+  coast steel common night: rivetail ferrocrab ironclawd ph-steel-water-common-1 ph-steel-water-common-2 ph-steel-water-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3
+  coast steel prime day: cogling ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-steel-water-prime-1 ph-steel-water-prime-2 ph-steel-water-prime-3 ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3
+  coast steel prime night: cogling ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-steel-water-prime-1 ph-steel-water-prime-2 ph-steel-water-prime-3 ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3
+  coast steel apex day: leviathorn ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-steel-water-apex-1 ph-steel-water-apex-2 ph-steel-water-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3
+  coast steel apex night: leviathorn ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-steel-water-apex-1 ph-steel-water-apex-2 ph-steel-water-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3
+  coast water common day: ironclawd puddlit marshfin ph-steel-water-common-1 ph-steel-water-common-2 ph-steel-water-common-3
+  coast water common night: ironclawd puddlit marshfin ph-steel-water-common-1 ph-steel-water-common-2 ph-steel-water-common-3
+  coast water prime day: tidecall ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-steel-water-prime-1 ph-steel-water-prime-2 ph-steel-water-prime-3
+  coast water prime night: tidecall ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-steel-water-prime-1 ph-steel-water-prime-2 ph-steel-water-prime-3
+  coast water apex day: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-steel-water-apex-1 ph-steel-water-apex-2 ph-steel-water-apex-3
+  coast water apex night: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-steel-water-apex-1 ph-steel-water-apex-2 ph-steel-water-apex-3
+  volcanic astral common day: 
+  volcanic astral common night: 
+  volcanic astral prime day: 
+  volcanic astral prime night: 
+  volcanic astral apex day: 
+  volcanic astral apex night: 
+  volcanic charm common day: 
+  volcanic charm common night: 
+  volcanic charm prime day: 
+  volcanic charm prime night: 
+  volcanic charm apex day: 
+  volcanic charm apex night: 
+  volcanic electric common day: 
+  volcanic electric common night: 
+  volcanic electric prime day: 
+  volcanic electric prime night: 
+  volcanic electric apex day: 
+  volcanic electric apex night: 
+  volcanic fire common day: cindercub blazmane pyrothane ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 emberfish ph-fire-grass-common-1 ph-fire-grass-common-2 ph-fire-grass-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3
+  volcanic fire common night: pyrothane ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-dusk-common-1 ph-fire-dusk-common-2 ph-fire-dusk-common-3 emberfish ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3
+  volcanic fire prime day: emberwick lavalume ph-fire-mono-prime-1 ph-fire-mono-prime-2 ph-fire-mono-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 cinderkoi ph-fire-grass-prime-1 ph-fire-grass-prime-2 ph-fire-grass-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  volcanic fire prime night: emberwick lavalume ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 cinderkoi ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  volcanic fire apex day: calderex ph-fire-mono-apex-1 ph-fire-mono-apex-2 ph-fire-mono-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-grass-apex-1 ph-fire-grass-apex-2 ph-fire-grass-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  volcanic fire apex night: calderex ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  volcanic grass common day: 
+  volcanic grass common night: 
+  volcanic grass prime day: 
+  volcanic grass prime night: 
+  volcanic grass apex day: 
+  volcanic grass apex night: 
+  volcanic rock common day: pyrothane pebbark cragjaw ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  volcanic rock common night: pyrothane pebbark cragjaw ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  volcanic rock prime day: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  volcanic rock prime night: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  volcanic rock apex day: calderex ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  volcanic rock apex night: calderex ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  volcanic steel common day: 
+  volcanic steel common night: 
+  volcanic steel prime day: 
+  volcanic steel prime night: 
+  volcanic steel apex day: 
+  volcanic steel apex night: 
+  volcanic water common day: 
+  volcanic water common night: 
+  volcanic water prime day: 
+  volcanic water prime night: 
+  volcanic water apex day: 
+  volcanic water apex night: 
+  canyon astral common day: 
+  canyon astral common night: 
+  canyon astral prime day: 
+  canyon astral prime night: 
+  canyon astral apex day: 
+  canyon astral apex night: 
+  canyon charm common day: 
+  canyon charm common night: 
+  canyon charm prime day: 
+  canyon charm prime night: 
+  canyon charm apex day: 
+  canyon charm apex night: 
+  canyon electric common day: 
+  canyon electric common night: 
+  canyon electric prime day: 
+  canyon electric prime night: 
+  canyon electric apex day: 
+  canyon electric apex night: 
+  canyon fire common day: ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-grass-common-1 ph-fire-grass-common-2 ph-fire-grass-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3
+  canyon fire common night: ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-dusk-common-1 ph-fire-dusk-common-2 ph-fire-dusk-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3
+  canyon fire prime day: ph-fire-mono-prime-1 ph-fire-mono-prime-2 ph-fire-mono-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-fire-grass-prime-1 ph-fire-grass-prime-2 ph-fire-grass-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  canyon fire prime night: ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  canyon fire apex day: ph-fire-mono-apex-1 ph-fire-mono-apex-2 ph-fire-mono-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-grass-apex-1 ph-fire-grass-apex-2 ph-fire-grass-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  canyon fire apex night: ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  canyon grass common day: 
+  canyon grass common night: 
+  canyon grass prime day: 
+  canyon grass prime night: 
+  canyon grass apex day: 
+  canyon grass apex night: 
+  canyon rock common day: pebbark cragjaw mesahound ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  canyon rock common night: pebbark cragjaw mesahound ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  canyon rock prime day: rubblet boulderon ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  canyon rock prime night: rubblet boulderon ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  canyon rock apex day: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 stratagon ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  canyon rock apex night: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 stratagon ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  canyon steel common day: 
+  canyon steel common night: 
+  canyon steel prime day: 
+  canyon steel prime night: 
+  canyon steel apex day: 
+  canyon steel apex night: 
+  canyon water common day: 
+  canyon water common night: 
+  canyon water prime day: 
+  canyon water prime night: 
+  canyon water apex day: 
+  canyon water apex night: 
+  cloud astral common day: ph-astral-electric-common-1 ph-astral-electric-common-2 ph-astral-electric-common-3 ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3
+  cloud astral common night: ph-astral-charm-common-1 ph-astral-charm-common-2 ph-astral-charm-common-3 ph-astral-electric-common-1 ph-astral-electric-common-2 ph-astral-electric-common-3 ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3
+  cloud astral prime day: ph-astral-electric-prime-1 ph-astral-electric-prime-2 ph-astral-electric-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  cloud astral prime night: ph-astral-mono-prime-1 ph-astral-mono-prime-2 ph-astral-mono-prime-3 ph-astral-charm-prime-1 ph-astral-charm-prime-2 ph-astral-charm-prime-3 ph-astral-electric-prime-1 ph-astral-electric-prime-2 ph-astral-electric-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  cloud astral apex day: ph-astral-electric-apex-1 ph-astral-electric-apex-2 ph-astral-electric-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  cloud astral apex night: ph-astral-mono-apex-1 ph-astral-mono-apex-2 ph-astral-mono-apex-3 ph-astral-charm-apex-1 ph-astral-charm-apex-2 ph-astral-charm-apex-3 ph-astral-electric-apex-1 ph-astral-electric-apex-2 ph-astral-electric-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  cloud charm common day: ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  cloud charm common night: ph-astral-charm-common-1 ph-astral-charm-common-2 ph-astral-charm-common-3 ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  cloud charm prime day: ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  cloud charm prime night: ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-astral-charm-prime-1 ph-astral-charm-prime-2 ph-astral-charm-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  cloud charm apex day: ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  cloud charm apex night: ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-astral-charm-apex-1 ph-astral-charm-apex-2 ph-astral-charm-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  cloud electric common day: ph-astral-electric-common-1 ph-astral-electric-common-2 ph-astral-electric-common-3 ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-water-electric-common-1 ph-water-electric-common-2 ph-water-electric-common-3
+  cloud electric common night: ph-astral-electric-common-1 ph-astral-electric-common-2 ph-astral-electric-common-3 ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-water-electric-common-1 ph-water-electric-common-2 ph-water-electric-common-3
+  cloud electric prime day: ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-astral-electric-prime-1 ph-astral-electric-prime-2 ph-astral-electric-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-water-electric-prime-1 ph-water-electric-prime-2 ph-water-electric-prime-3
+  cloud electric prime night: ph-astral-electric-prime-1 ph-astral-electric-prime-2 ph-astral-electric-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-water-electric-prime-1 ph-water-electric-prime-2 ph-water-electric-prime-3
+  cloud electric apex day: ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-astral-electric-apex-1 ph-astral-electric-apex-2 ph-astral-electric-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-water-electric-apex-1 ph-water-electric-apex-2 ph-water-electric-apex-3
+  cloud electric apex night: ph-astral-electric-apex-1 ph-astral-electric-apex-2 ph-astral-electric-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-water-electric-apex-1 ph-water-electric-apex-2 ph-water-electric-apex-3
+  cloud fire common day: 
+  cloud fire common night: 
+  cloud fire prime day: 
+  cloud fire prime night: 
+  cloud fire apex day: 
+  cloud fire apex night: 
+  cloud grass common day: 
+  cloud grass common night: 
+  cloud grass prime day: 
+  cloud grass prime night: 
+  cloud grass apex day: 
+  cloud grass apex night: 
+  cloud rock common day: 
+  cloud rock common night: 
+  cloud rock prime day: 
+  cloud rock prime night: 
+  cloud rock apex day: 
+  cloud rock apex night: 
+  cloud steel common day: 
+  cloud steel common night: 
+  cloud steel prime day: 
+  cloud steel prime night: 
+  cloud steel apex day: 
+  cloud steel apex night: 
+  cloud water common day: ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-water-electric-common-1 ph-water-electric-common-2 ph-water-electric-common-3
+  cloud water common night: ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-water-electric-common-1 ph-water-electric-common-2 ph-water-electric-common-3
+  cloud water prime day: ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-water-electric-prime-1 ph-water-electric-prime-2 ph-water-electric-prime-3
+  cloud water prime night: ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-water-electric-prime-1 ph-water-electric-prime-2 ph-water-electric-prime-3
+  cloud water apex day: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-water-electric-apex-1 ph-water-electric-apex-2 ph-water-electric-apex-3
+  cloud water apex night: ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-water-electric-apex-1 ph-water-electric-apex-2 ph-water-electric-apex-3
+  deepwood astral common day: 
+  deepwood astral common night: 
+  deepwood astral prime day: 
+  deepwood astral prime night: 
+  deepwood astral apex day: 
+  deepwood astral apex night: 
+  deepwood charm common day: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-rock-common-1 ph-charm-rock-common-2 ph-charm-rock-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  deepwood charm common night: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-rock-common-1 ph-charm-rock-common-2 ph-charm-rock-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3
+  deepwood charm prime day: ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-rock-prime-1 ph-charm-rock-prime-2 ph-charm-rock-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  deepwood charm prime night: ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-rock-prime-1 ph-charm-rock-prime-2 ph-charm-rock-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3
+  deepwood charm apex day: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-rock-apex-1 ph-charm-rock-apex-2 ph-charm-rock-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  deepwood charm apex night: ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-rock-apex-1 ph-charm-rock-apex-2 ph-charm-rock-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3
+  deepwood electric common day: 
+  deepwood electric common night: 
+  deepwood electric prime day: 
+  deepwood electric prime night: 
+  deepwood electric apex day: 
+  deepwood electric apex night: 
+  deepwood fire common day: 
+  deepwood fire common night: 
+  deepwood fire prime day: 
+  deepwood fire prime night: 
+  deepwood fire apex day: 
+  deepwood fire apex night: 
+  deepwood grass common day: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-grass-rock-common-1 ph-grass-rock-common-2 ph-grass-rock-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  deepwood grass common night: ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-grass-rock-common-1 ph-grass-rock-common-2 ph-grass-rock-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3
+  deepwood grass prime day: ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-rock-prime-1 ph-grass-rock-prime-2 ph-grass-rock-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  deepwood grass prime night: ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-grass-rock-prime-1 ph-grass-rock-prime-2 ph-grass-rock-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3
+  deepwood grass apex day: ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-rock-apex-1 ph-grass-rock-apex-2 ph-grass-rock-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  deepwood grass apex night: ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-grass-rock-apex-1 ph-grass-rock-apex-2 ph-grass-rock-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3
+  deepwood rock common day: ph-charm-rock-common-1 ph-charm-rock-common-2 ph-charm-rock-common-3 ph-grass-rock-common-1 ph-grass-rock-common-2 ph-grass-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  deepwood rock common night: ph-charm-rock-common-1 ph-charm-rock-common-2 ph-charm-rock-common-3 ph-grass-rock-common-1 ph-grass-rock-common-2 ph-grass-rock-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  deepwood rock prime day: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-charm-rock-prime-1 ph-charm-rock-prime-2 ph-charm-rock-prime-3 ph-grass-rock-prime-1 ph-grass-rock-prime-2 ph-grass-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  deepwood rock prime night: ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-charm-rock-prime-1 ph-charm-rock-prime-2 ph-charm-rock-prime-3 ph-grass-rock-prime-1 ph-grass-rock-prime-2 ph-grass-rock-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  deepwood rock apex day: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-charm-rock-apex-1 ph-charm-rock-apex-2 ph-charm-rock-apex-3 ph-grass-rock-apex-1 ph-grass-rock-apex-2 ph-grass-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  deepwood rock apex night: ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-charm-rock-apex-1 ph-charm-rock-apex-2 ph-charm-rock-apex-3 ph-grass-rock-apex-1 ph-grass-rock-apex-2 ph-grass-rock-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  deepwood steel common day: 
+  deepwood steel common night: 
+  deepwood steel prime day: 
+  deepwood steel prime night: 
+  deepwood steel apex day: 
+  deepwood steel apex night: 
+  deepwood water common day: 
+  deepwood water common night: 
+  deepwood water prime day: 
+  deepwood water prime night: 
+  deepwood water apex day: 
+  deepwood water apex night: 
+  prism astral common day: twinkit lumenox polarion ph-astral-charm-common-1 ph-astral-charm-common-2 ph-astral-charm-common-3 ph-astral-electric-common-1 ph-astral-electric-common-2 ph-astral-electric-common-3 ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3 ph-astral-sun-common-1 ph-astral-sun-common-2 ph-astral-sun-common-3
+  prism astral common night: twinkit lumenox polarion ph-astral-charm-common-1 ph-astral-charm-common-2 ph-astral-charm-common-3 ph-astral-electric-common-1 ph-astral-electric-common-2 ph-astral-electric-common-3 ph-astral-fire-common-1 ph-astral-fire-common-2 ph-astral-fire-common-3 ph-astral-grass-common-1 ph-astral-grass-common-2 ph-astral-grass-common-3 ph-astral-sun-common-1 ph-astral-sun-common-2 ph-astral-sun-common-3
+  prism astral prime day: orbuddle nebulith ph-astral-mono-prime-1 ph-astral-mono-prime-2 ph-astral-mono-prime-3 ph-astral-charm-prime-1 ph-astral-charm-prime-2 ph-astral-charm-prime-3 ph-astral-electric-prime-1 ph-astral-electric-prime-2 ph-astral-electric-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  prism astral prime night: orbuddle nebulith ph-astral-mono-prime-1 ph-astral-mono-prime-2 ph-astral-mono-prime-3 ph-astral-charm-prime-1 ph-astral-charm-prime-2 ph-astral-charm-prime-3 ph-astral-electric-prime-1 ph-astral-electric-prime-2 ph-astral-electric-prime-3 ph-astral-fire-prime-1 ph-astral-fire-prime-2 ph-astral-fire-prime-3 ph-astral-grass-prime-1 ph-astral-grass-prime-2 ph-astral-grass-prime-3
+  prism astral apex day: zenithar ph-astral-mono-apex-1 ph-astral-mono-apex-2 ph-astral-mono-apex-3 ph-astral-charm-apex-1 ph-astral-charm-apex-2 ph-astral-charm-apex-3 ph-astral-electric-apex-1 ph-astral-electric-apex-2 ph-astral-electric-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  prism astral apex night: zenithar ph-astral-mono-apex-1 ph-astral-mono-apex-2 ph-astral-mono-apex-3 ph-astral-charm-apex-1 ph-astral-charm-apex-2 ph-astral-charm-apex-3 ph-astral-electric-apex-1 ph-astral-electric-apex-2 ph-astral-electric-apex-3 ph-astral-fire-apex-1 ph-astral-fire-apex-2 ph-astral-fire-apex-3 ph-astral-grass-apex-1 ph-astral-grass-apex-2 ph-astral-grass-apex-3
+  prism charm common day: mossprite fernixie glamorwyn ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3 ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-rock-common-1 ph-charm-rock-common-2 ph-charm-rock-common-3 ph-charm-sun-common-1 ph-charm-sun-common-2 ph-charm-sun-common-3
+  prism charm common night: mossprite fernixie glamorwyn ph-charm-electric-common-1 ph-charm-electric-common-2 ph-charm-electric-common-3 ph-charm-fire-common-1 ph-charm-fire-common-2 ph-charm-fire-common-3 ph-charm-grass-common-1 ph-charm-grass-common-2 ph-charm-grass-common-3 ph-charm-rock-common-1 ph-charm-rock-common-2 ph-charm-rock-common-3 ph-charm-sun-common-1 ph-charm-sun-common-2 ph-charm-sun-common-3
+  prism charm prime day: puffwisp velvetuft ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-rock-prime-1 ph-charm-rock-prime-2 ph-charm-rock-prime-3
+  prism charm prime night: puffwisp velvetuft ph-charm-mono-prime-1 ph-charm-mono-prime-2 ph-charm-mono-prime-3 ph-charm-electric-prime-1 ph-charm-electric-prime-2 ph-charm-electric-prime-3 ph-charm-fire-prime-1 ph-charm-fire-prime-2 ph-charm-fire-prime-3 ph-charm-grass-prime-1 ph-charm-grass-prime-2 ph-charm-grass-prime-3 ph-charm-rock-prime-1 ph-charm-rock-prime-2 ph-charm-rock-prime-3
+  prism charm apex day: mirageon ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-rock-apex-1 ph-charm-rock-apex-2 ph-charm-rock-apex-3
+  prism charm apex night: mirageon ph-charm-mono-apex-1 ph-charm-mono-apex-2 ph-charm-mono-apex-3 ph-charm-electric-apex-1 ph-charm-electric-apex-2 ph-charm-electric-apex-3 ph-charm-fire-apex-1 ph-charm-fire-apex-2 ph-charm-fire-apex-3 ph-charm-grass-apex-1 ph-charm-grass-apex-2 ph-charm-grass-apex-3 ph-charm-rock-apex-1 ph-charm-rock-apex-2 ph-charm-rock-apex-3
+  prism electric common day: zapup voltusk stormhound ph-electric-fire-common-1 ph-electric-fire-common-2 ph-electric-fire-common-3 ph-electric-grass-common-1 ph-electric-grass-common-2 ph-electric-grass-common-3 ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-electric-steel-common-1 ph-electric-steel-common-2 ph-electric-steel-common-3 ph-electric-dusk-common-1 ph-electric-dusk-common-2 ph-electric-dusk-common-3
+  prism electric common night: zapup voltusk stormhound ph-electric-fire-common-1 ph-electric-fire-common-2 ph-electric-fire-common-3 ph-electric-grass-common-1 ph-electric-grass-common-2 ph-electric-grass-common-3 ph-electric-rock-common-1 ph-electric-rock-common-2 ph-electric-rock-common-3 ph-electric-steel-common-1 ph-electric-steel-common-2 ph-electric-steel-common-3 ph-electric-dusk-common-1 ph-electric-dusk-common-2 ph-electric-dusk-common-3
+  prism electric prime day: fizzlet arcwing ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-electric-fire-prime-1 ph-electric-fire-prime-2 ph-electric-fire-prime-3 ph-electric-grass-prime-1 ph-electric-grass-prime-2 ph-electric-grass-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3 ph-electric-steel-prime-1 ph-electric-steel-prime-2 ph-electric-steel-prime-3
+  prism electric prime night: fizzlet arcwing ph-electric-mono-prime-1 ph-electric-mono-prime-2 ph-electric-mono-prime-3 ph-electric-fire-prime-1 ph-electric-fire-prime-2 ph-electric-fire-prime-3 ph-electric-grass-prime-1 ph-electric-grass-prime-2 ph-electric-grass-prime-3 ph-electric-rock-prime-1 ph-electric-rock-prime-2 ph-electric-rock-prime-3 ph-electric-steel-prime-1 ph-electric-steel-prime-2 ph-electric-steel-prime-3
+  prism electric apex day: tempestrix ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-electric-fire-apex-1 ph-electric-fire-apex-2 ph-electric-fire-apex-3 ph-electric-grass-apex-1 ph-electric-grass-apex-2 ph-electric-grass-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 ph-electric-steel-apex-1 ph-electric-steel-apex-2 ph-electric-steel-apex-3
+  prism electric apex night: tempestrix ph-electric-mono-apex-1 ph-electric-mono-apex-2 ph-electric-mono-apex-3 ph-electric-fire-apex-1 ph-electric-fire-apex-2 ph-electric-fire-apex-3 ph-electric-grass-apex-1 ph-electric-grass-apex-2 ph-electric-grass-apex-3 ph-electric-rock-apex-1 ph-electric-rock-apex-2 ph-electric-rock-apex-3 ph-electric-steel-apex-1 ph-electric-steel-apex-2 ph-electric-steel-apex-3
+  prism fire common day: cindercub blazmane pyrothane emberfish ph-fire-grass-common-1 ph-fire-grass-common-2 ph-fire-grass-common-3 ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3 ph-fire-dusk-common-1 ph-fire-dusk-common-2 ph-fire-dusk-common-3
+  prism fire common night: cindercub blazmane pyrothane emberfish ph-fire-grass-common-1 ph-fire-grass-common-2 ph-fire-grass-common-3 ph-fire-rock-common-1 ph-fire-rock-common-2 ph-fire-rock-common-3 ph-fire-steel-common-1 ph-fire-steel-common-2 ph-fire-steel-common-3 ph-fire-water-common-1 ph-fire-water-common-2 ph-fire-water-common-3 ph-fire-dusk-common-1 ph-fire-dusk-common-2 ph-fire-dusk-common-3
+  prism fire prime day: emberwick lavalume cinderkoi ph-fire-mono-prime-1 ph-fire-mono-prime-2 ph-fire-mono-prime-3 ph-fire-grass-prime-1 ph-fire-grass-prime-2 ph-fire-grass-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  prism fire prime night: emberwick lavalume cinderkoi ph-fire-mono-prime-1 ph-fire-mono-prime-2 ph-fire-mono-prime-3 ph-fire-grass-prime-1 ph-fire-grass-prime-2 ph-fire-grass-prime-3 ph-fire-rock-prime-1 ph-fire-rock-prime-2 ph-fire-rock-prime-3 ph-fire-steel-prime-1 ph-fire-steel-prime-2 ph-fire-steel-prime-3 ph-fire-water-prime-1 ph-fire-water-prime-2 ph-fire-water-prime-3
+  prism fire apex day: calderex ph-fire-mono-apex-1 ph-fire-mono-apex-2 ph-fire-mono-apex-3 ph-fire-grass-apex-1 ph-fire-grass-apex-2 ph-fire-grass-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  prism fire apex night: calderex ph-fire-mono-apex-1 ph-fire-mono-apex-2 ph-fire-mono-apex-3 ph-fire-grass-apex-1 ph-fire-grass-apex-2 ph-fire-grass-apex-3 ph-fire-rock-apex-1 ph-fire-rock-apex-2 ph-fire-rock-apex-3 ph-fire-steel-apex-1 ph-fire-steel-apex-2 ph-fire-steel-apex-3 ph-fire-water-apex-1 ph-fire-water-apex-2 ph-fire-water-apex-3
+  prism grass common day: sproutle thornback redwarden ph-grass-rock-common-1 ph-grass-rock-common-2 ph-grass-rock-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3 ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3 ph-grass-dusk-common-1 ph-grass-dusk-common-2 ph-grass-dusk-common-3
+  prism grass common night: sproutle thornback redwarden ph-grass-rock-common-1 ph-grass-rock-common-2 ph-grass-rock-common-3 ph-grass-steel-common-1 ph-grass-steel-common-2 ph-grass-steel-common-3 ph-grass-water-common-1 ph-grass-water-common-2 ph-grass-water-common-3 ph-grass-dusk-common-1 ph-grass-dusk-common-2 ph-grass-dusk-common-3
+  prism grass prime day: shadeleaf gloomoth ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-grass-rock-prime-1 ph-grass-rock-prime-2 ph-grass-rock-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3
+  prism grass prime night: shadeleaf gloomoth ph-grass-mono-prime-1 ph-grass-mono-prime-2 ph-grass-mono-prime-3 ph-grass-rock-prime-1 ph-grass-rock-prime-2 ph-grass-rock-prime-3 ph-grass-steel-prime-1 ph-grass-steel-prime-2 ph-grass-steel-prime-3 ph-grass-water-prime-1 ph-grass-water-prime-2 ph-grass-water-prime-3
+  prism grass apex day: canopyre ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-grass-rock-apex-1 ph-grass-rock-apex-2 ph-grass-rock-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3
+  prism grass apex night: canopyre ph-grass-mono-apex-1 ph-grass-mono-apex-2 ph-grass-mono-apex-3 ph-grass-rock-apex-1 ph-grass-rock-apex-2 ph-grass-rock-apex-3 ph-grass-steel-apex-1 ph-grass-steel-apex-2 ph-grass-steel-apex-3 ph-grass-water-apex-1 ph-grass-water-apex-2 ph-grass-water-apex-3
+  prism rock common day: pebbark cragjaw mesahound ph-rock-astral-common-1 ph-rock-astral-common-2 ph-rock-astral-common-3 ph-rock-steel-common-1 ph-rock-steel-common-2 ph-rock-steel-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  prism rock common night: pebbark cragjaw mesahound ph-rock-astral-common-1 ph-rock-astral-common-2 ph-rock-astral-common-3 ph-rock-steel-common-1 ph-rock-steel-common-2 ph-rock-steel-common-3 ph-rock-water-common-1 ph-rock-water-common-2 ph-rock-water-common-3
+  prism rock prime day: rubblet boulderon ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-rock-astral-prime-1 ph-rock-astral-prime-2 ph-rock-astral-prime-3 ph-rock-steel-prime-1 ph-rock-steel-prime-2 ph-rock-steel-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  prism rock prime night: rubblet boulderon ph-rock-mono-prime-1 ph-rock-mono-prime-2 ph-rock-mono-prime-3 ph-rock-astral-prime-1 ph-rock-astral-prime-2 ph-rock-astral-prime-3 ph-rock-steel-prime-1 ph-rock-steel-prime-2 ph-rock-steel-prime-3 ph-rock-water-prime-1 ph-rock-water-prime-2 ph-rock-water-prime-3
+  prism rock apex day: stratagon ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-rock-astral-apex-1 ph-rock-astral-apex-2 ph-rock-astral-apex-3 ph-rock-steel-apex-1 ph-rock-steel-apex-2 ph-rock-steel-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  prism rock apex night: stratagon ph-rock-mono-apex-1 ph-rock-mono-apex-2 ph-rock-mono-apex-3 ph-rock-astral-apex-1 ph-rock-astral-apex-2 ph-rock-astral-apex-3 ph-rock-steel-apex-1 ph-rock-steel-apex-2 ph-rock-steel-apex-3 ph-rock-water-apex-1 ph-rock-water-apex-2 ph-rock-water-apex-3
+  prism steel common day: rivetail ferrocrab ironclawd ph-steel-astral-common-1 ph-steel-astral-common-2 ph-steel-astral-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3 ph-steel-water-common-1 ph-steel-water-common-2 ph-steel-water-common-3
+  prism steel common night: rivetail ferrocrab ironclawd ph-steel-astral-common-1 ph-steel-astral-common-2 ph-steel-astral-common-3 ph-steel-charm-common-1 ph-steel-charm-common-2 ph-steel-charm-common-3 ph-steel-water-common-1 ph-steel-water-common-2 ph-steel-water-common-3
+  prism steel prime day: cogling anvilisk ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-steel-astral-prime-1 ph-steel-astral-prime-2 ph-steel-astral-prime-3 ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3 ph-steel-water-prime-1 ph-steel-water-prime-2 ph-steel-water-prime-3
+  prism steel prime night: cogling anvilisk ph-steel-mono-prime-1 ph-steel-mono-prime-2 ph-steel-mono-prime-3 ph-steel-astral-prime-1 ph-steel-astral-prime-2 ph-steel-astral-prime-3 ph-steel-charm-prime-1 ph-steel-charm-prime-2 ph-steel-charm-prime-3 ph-steel-water-prime-1 ph-steel-water-prime-2 ph-steel-water-prime-3
+  prism steel apex day: leviathorn ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-steel-astral-apex-1 ph-steel-astral-apex-2 ph-steel-astral-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3 ph-steel-water-apex-1 ph-steel-water-apex-2 ph-steel-water-apex-3
+  prism steel apex night: leviathorn ph-steel-mono-apex-1 ph-steel-mono-apex-2 ph-steel-mono-apex-3 ph-steel-astral-apex-1 ph-steel-astral-apex-2 ph-steel-astral-apex-3 ph-steel-charm-apex-1 ph-steel-charm-apex-2 ph-steel-charm-apex-3 ph-steel-water-apex-1 ph-steel-water-apex-2 ph-steel-water-apex-3
+  prism water common day: puddlit marshfin mangrovore ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-water-electric-common-1 ph-water-electric-common-2 ph-water-electric-common-3
+  prism water common night: puddlit marshfin mangrovore ph-water-astral-common-1 ph-water-astral-common-2 ph-water-astral-common-3 ph-water-charm-common-1 ph-water-charm-common-2 ph-water-charm-common-3 ph-water-electric-common-1 ph-water-electric-common-2 ph-water-electric-common-3
+  prism water prime day: bubbloon tidecall ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-water-electric-prime-1 ph-water-electric-prime-2 ph-water-electric-prime-3
+  prism water prime night: bubbloon tidecall ph-water-mono-prime-1 ph-water-mono-prime-2 ph-water-mono-prime-3 ph-water-astral-prime-1 ph-water-astral-prime-2 ph-water-astral-prime-3 ph-water-charm-prime-1 ph-water-charm-prime-2 ph-water-charm-prime-3 ph-water-electric-prime-1 ph-water-electric-prime-2 ph-water-electric-prime-3
+  prism water apex day: gatormaw ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-water-electric-apex-1 ph-water-electric-apex-2 ph-water-electric-apex-3
+  prism water apex night: gatormaw ph-water-mono-apex-1 ph-water-mono-apex-2 ph-water-mono-apex-3 ph-water-astral-apex-1 ph-water-astral-apex-2 ph-water-astral-apex-3 ph-water-charm-apex-1 ph-water-charm-apex-2 ph-water-charm-apex-3 ph-water-electric-apex-1 ph-water-electric-apex-2 ph-water-electric-apex-3
+encounterSpots
+  twinkit: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52
+  lumenox: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2
+  polarion: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3
+  orbuddle: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  nebulith: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  zenithar: w1 n1 prism1 prism2 prism3 prism4
+  mossprite: w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 n35 w38 n45 n47 w41 n48 n49
+  fernixie: w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2
+  glamorwyn: w3/3 n3/3 n4/3 w6/3
+  puffwisp: w3 n3 n4 w6 w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49 prism1 prism2 prism3 prism4
+  velvetuft: w3/2 n3/2 n4/2 w6/2 w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 prism1/2 prism2/2 prism3/2 prism4/2
+  mirageon: w3 n3 n4 w6 w18 n21 w28 n32 n55 prism1 prism2 prism3 prism4
+  zapup: w12 n11 n12 w13 n13 n16 n18 w17 w19 n22 w20 w21 n31 w27 n34 w30 n36 w36 n43 w39 n46 w44 n53 n54 n56
+  voltusk: w12/2 n11/2 n12/2 w13/2 n13/2 n16/2 n18/2 w17/2 w19/2 n22/2 w20/2 w21/2 n31/2 w27/2 n34/2 w30/2 n36/2 w36/2 n43/2 w39/2 n46/2 w44/2 n53/2 n54/2 n56/2
+  stormhound: n16/3 w19/3 n22/3 w20/3 w44/3 n53/3 n54/3
+  fizzlet: w13 n13 n16 n18 w17 w19 n22 w20 w21 n31 w27 n34 w30 n36 w44 n53 n54 prism1 prism2 prism3 prism4
+  arcwing: n16/2 w19/2 n22/2 w20/2 w44/2 n53/2 n54/2 prism1/2 prism2/2 prism3/2 prism4/2
+  tempestrix: n16 w19 n22 w20 w44 n53 n54 prism1 prism2 prism3 prism4
+  cindercub: w12 n11 n12 n37 n38 w32 w33 n39 w36 n43 w37 n44 w39 n46 w40 n56 n58
+  blazmane: w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2
+  pyrothane: n37/3 n38/3 w32/3 w33/3 n39/3 w37/3 n44/3 w40/3 n58/3
+  emberwick: w12 n11 n12 n37 n38 w32 w33 n39 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  lavalume: n37/2 n38/2 w32/2 w33/2 n39/2 w37/2 n44/2 w40/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  calderex: n37 n38 w32 w33 n39 w37 n44 w40 n58 prism1 prism2 prism3 prism4
+  emberfish: n37 n38 w32 w33 n39 w37 n44 w40 n58
+  cinderkoi: n37/2 n38/2 w32/2 w33/2 n39/2 w37/2 n44/2 w40/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  sproutle: w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 w26 n30 w29 n35 w38 n45 n47 w41 n48 n49 n57
+  thornback: w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 w26/2 n30/2 w29/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n57/2
+  redwarden: w4/3 w5/3 n5/3 w7/3 n6/3 w8/3 n7/3 n19/3
+  shadeleaf: w4 w5 n5 w7 n6 w8 n7 n19 w26 n30 w29 n57 prism1 prism2 prism3 prism4
+  gloomoth: w4/2 w5/2 n5/2 w7/2 n6/2 w8/2 n7/2 n19/2 prism1/2 prism2/2 prism3/2 prism4/2
+  canopyre: w4 w5 n5 w7 n6 w8 n7 n19 prism1 prism2 prism3 prism4
+  pebbark: w2 n2 n9 w10 w11 n10 n14 w15 n16 w19 n22 w20 n23 n24 w22 n33 w31 n37 n38 w32 w33 n39 n41 w35 n42 w37 n44 w40 n51 w43 n52 w44 n53 n54 n58
+  cragjaw: w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 n14/2 w15/2 n16/2 w19/2 n22/2 w20/2 n23/2 n24/2 w22/2 n33/2 w31/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w37/2 n44/2 w40/2 n51/2 w43/2 n52/2 w44/2 n53/2 n54/2 n58/2
+  mesahound: n9/3 w10/3 w11/3 n10/3 n41/3 w35/3 n42/3
+  rubblet: w2 n2 n9 w10 w11 n10 n14 w15 n23 n24 w22 n33 w31 n41 w35 n42 n51 w43 n52 prism1 prism2 prism3 prism4
+  boulderon: w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n41/2 w35/2 n42/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  stratagon: n9 w10 w11 n10 n41 w35 n42 prism1 prism2 prism3 prism4
+  rivetail: w2 n2 w13 n13 n14 w15 n18 w17 n23 w21 n24 w22 n25 n26 w23 n27 w24 n28 n31 w27 n33 n34 w30 n36 w31 w34 n40 n50 n51 w43 n52
+  ferrocrab: w2/2 n2/2 w13/2 n13/2 n14/2 w15/2 n18/2 w17/2 n23/2 w21/2 n24/2 w22/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 n31/2 w27/2 n33/2 n34/2 w30/2 n36/2 w31/2 w34/2 n40/2 n50/2 n51/2 w43/2 n52/2
+  ironclawd: n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 w34/3 n40/3 n50/3
+  cogling: w13 n13 n18 w17 w21 n25 n26 w23 n27 w24 n28 n31 w27 n34 w30 n36 w34 n40 n50 prism1 prism2 prism3 prism4
+  anvilisk: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  leviathorn: n25 n26 w23 n27 w24 n28 w34 n40 n50 prism1 prism2 prism3 prism4
+  puddlit: w1 n1 w14 n15 w18 n21 n25 n26 w23 n27 w24 n28 w25 n29 w26 n30 w28 n32 w29 w34 n40 w42 n50 n55 n57
+  marshfin: w1/2 n1/2 w14/2 n15/2 w18/2 n21/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w25/2 n29/2 w26/2 n30/2 w28/2 n32/2 w29/2 w34/2 n40/2 w42/2 n50/2 n55/2 n57/2
+  mangrovore: w26/3 n30/3 w29/3 n57/3
+  bubbloon: w14 n15 w18 n21 w25 n29 w28 n32 w42 n55 prism1 prism2 prism3 prism4
+  tidecall: w18/2 n21/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w28/2 n32/2 w34/2 n40/2 n50/2 n55/2 prism1/2 prism2/2 prism3/2 prism4/2
+  gatormaw: w26 n30 w29 n57 prism1 prism2 prism3 prism4
+  solstara: sunspire
+  nimbalune: cloudeye
+  thalassor: ironwake
+  ph-astral-mono-prime-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-mono-prime-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-mono-prime-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-mono-apex-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-mono-apex-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-mono-apex-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-mono-legendary: 
+  ph-charm-mono-prime-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 w18 n21 w28 n32 n35 w38 n45 n47 w41 n48 n49 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-charm-mono-prime-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 w18/2 n21/2 w28/2 n32/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-mono-prime-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 w18/3 n21/3 w28/3 n32/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-mono-apex-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 w18 n21 w28 n32 n35 w38 n45 n47 w41 n48 n49 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-charm-mono-apex-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 w18/2 n21/2 w28/2 n32/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-mono-apex-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 w18/3 n21/3 w28/3 n32/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-mono-legendary: 
+  ph-electric-mono-prime-1: w9 n8 w12 n11 n12 w13 n13 n16 w16 n17 n18 w17 n20 w19 n22 w20 w21 n31 w27 n34 w30 n35 n36 w36 n43 w38 n45 w39 n46 n47 w41 n48 n49 w44 n53 n54 n56 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-electric-mono-prime-2: w9/2 n8/2 w12/2 n11/2 n12/2 w13/2 n13/2 n16/2 w16/2 n17/2 n18/2 w17/2 n20/2 w19/2 n22/2 w20/2 w21/2 n31/2 w27/2 n34/2 w30/2 n35/2 n36/2 w36/2 n43/2 w38/2 n45/2 w39/2 n46/2 n47/2 w41/2 n48/2 n49/2 w44/2 n53/2 n54/2 n56/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-mono-prime-3: w9/3 n8/3 w12/3 n11/3 n12/3 w13/3 n13/3 n16/3 w16/3 n17/3 n18/3 w17/3 n20/3 w19/3 n22/3 w20/3 w21/3 n31/3 w27/3 n34/3 w30/3 n35/3 n36/3 w36/3 n43/3 w38/3 n45/3 w39/3 n46/3 n47/3 w41/3 n48/3 n49/3 w44/3 n53/3 n54/3 n56/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-mono-apex-1: w9 n8 w12 n11 n12 w13 n13 n16 w16 n17 n18 w17 n20 w19 n22 w20 w21 n31 w27 n34 w30 n35 n36 w36 n43 w38 n45 w39 n46 n47 w41 n48 n49 w44 n53 n54 n56 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-electric-mono-apex-2: w9/2 n8/2 w12/2 n11/2 n12/2 w13/2 n13/2 n16/2 w16/2 n17/2 n18/2 w17/2 n20/2 w19/2 n22/2 w20/2 w21/2 n31/2 w27/2 n34/2 w30/2 n35/2 n36/2 w36/2 n43/2 w38/2 n45/2 w39/2 n46/2 n47/2 w41/2 n48/2 n49/2 w44/2 n53/2 n54/2 n56/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-mono-apex-3: w9/3 n8/3 w12/3 n11/3 n12/3 w13/3 n13/3 n16/3 w16/3 n17/3 n18/3 w17/3 n20/3 w19/3 n22/3 w20/3 w21/3 n31/3 w27/3 n34/3 w30/3 n35/3 n36/3 w36/3 n43/3 w38/3 n45/3 w39/3 n46/3 n47/3 w41/3 n48/3 n49/3 w44/3 n53/3 n54/3 n56/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-mono-legendary: 
+  ph-fire-mono-prime-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-mono-prime-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-mono-prime-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-mono-apex-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-mono-apex-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-mono-apex-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-mono-legendary: 
+  ph-grass-mono-prime-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w14 n15 w16 n17 n19 n20 w25 n29 w26 n30 w29 n35 w38 n45 n47 w41 n48 n49 w42 n57 prism1 prism2 prism3 prism4
+  ph-grass-mono-prime-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w14/2 n15/2 w16/2 n17/2 n19/2 n20/2 w25/2 n29/2 w26/2 n30/2 w29/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 w42/2 n57/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-mono-prime-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w14/3 n15/3 w16/3 n17/3 n19/3 n20/3 w25/3 n29/3 w26/3 n30/3 w29/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 w42/3 n57/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-mono-apex-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w14 n15 w16 n17 n19 n20 w25 n29 w26 n30 w29 n35 w38 n45 n47 w41 n48 n49 w42 n57 prism1 prism2 prism3 prism4
+  ph-grass-mono-apex-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w14/2 n15/2 w16/2 n17/2 n19/2 n20/2 w25/2 n29/2 w26/2 n30/2 w29/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 w42/2 n57/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-mono-apex-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w14/3 n15/3 w16/3 n17/3 n19/3 n20/3 w25/3 n29/3 w26/3 n30/3 w29/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 w42/3 n57/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-mono-legendary: 
+  ph-rock-mono-prime-1: forestfloor w2 n2 n9 w10 w11 n10 w12 n11 n12 n14 w15 n16 w19 n22 w20 n23 n24 w22 n33 w31 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n51 w43 n52 w44 n53 n54 n56 n58 prism1 prism2 prism3 prism4
+  ph-rock-mono-prime-2: forestfloor/2 w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n14/2 w15/2 n16/2 w19/2 n22/2 w20/2 n23/2 n24/2 w22/2 n33/2 w31/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n51/2 w43/2 n52/2 w44/2 n53/2 n54/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-mono-prime-3: forestfloor/3 w2/3 n2/3 n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n14/3 w15/3 n16/3 w19/3 n22/3 w20/3 n23/3 n24/3 w22/3 n33/3 w31/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n51/3 w43/3 n52/3 w44/3 n53/3 n54/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-mono-apex-1: forestfloor w2 n2 n9 w10 w11 n10 w12 n11 n12 n14 w15 n16 w19 n22 w20 n23 n24 w22 n33 w31 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n51 w43 n52 w44 n53 n54 n56 n58 prism1 prism2 prism3 prism4
+  ph-rock-mono-apex-2: forestfloor/2 w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n14/2 w15/2 n16/2 w19/2 n22/2 w20/2 n23/2 n24/2 w22/2 n33/2 w31/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n51/2 w43/2 n52/2 w44/2 n53/2 n54/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-mono-apex-3: forestfloor/3 w2/3 n2/3 n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n14/3 w15/3 n16/3 w19/3 n22/3 w20/3 n23/3 n24/3 w22/3 n33/3 w31/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n51/3 w43/3 n52/3 w44/3 n53/3 n54/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-mono-legendary: 
+  ph-steel-mono-prime-1: w2 n2 w13 n13 n14 w15 n18 w17 n23 w21 n24 w22 n25 n26 w23 n27 w24 n28 n31 w27 n33 n34 w30 n36 w31 w34 n40 n50 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-steel-mono-prime-2: w2/2 n2/2 w13/2 n13/2 n14/2 w15/2 n18/2 w17/2 n23/2 w21/2 n24/2 w22/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 n31/2 w27/2 n33/2 n34/2 w30/2 n36/2 w31/2 w34/2 n40/2 n50/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-mono-prime-3: w2/3 n2/3 w13/3 n13/3 n14/3 w15/3 n18/3 w17/3 n23/3 w21/3 n24/3 w22/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 n31/3 w27/3 n33/3 n34/3 w30/3 n36/3 w31/3 w34/3 n40/3 n50/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-mono-apex-1: w2 n2 w13 n13 n14 w15 n18 w17 n23 w21 n24 w22 n25 n26 w23 n27 w24 n28 n31 w27 n33 n34 w30 n36 w31 w34 n40 n50 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-steel-mono-apex-2: w2/2 n2/2 w13/2 n13/2 n14/2 w15/2 n18/2 w17/2 n23/2 w21/2 n24/2 w22/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 n31/2 w27/2 n33/2 n34/2 w30/2 n36/2 w31/2 w34/2 n40/2 n50/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-mono-apex-3: w2/3 n2/3 w13/3 n13/3 n14/3 w15/3 n18/3 w17/3 n23/3 w21/3 n24/3 w22/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 n31/3 w27/3 n33/3 n34/3 w30/3 n36/3 w31/3 w34/3 n40/3 n50/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-mono-legendary: 
+  ph-water-mono-prime-1: w1 n1 w14 n15 w18 n21 n25 n26 w23 n27 w24 n28 w25 n29 w26 n30 w28 n32 w29 w34 n40 w42 n50 n55 n57 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-mono-prime-2: w1/2 n1/2 w14/2 n15/2 w18/2 n21/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w25/2 n29/2 w26/2 n30/2 w28/2 n32/2 w29/2 w34/2 n40/2 w42/2 n50/2 n55/2 n57/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-mono-prime-3: w1/3 n1/3 w14/3 n15/3 w18/3 n21/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 w25/3 n29/3 w26/3 n30/3 w28/3 n32/3 w29/3 w34/3 n40/3 w42/3 n50/3 n55/3 n57/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-mono-apex-1: w1 n1 w14 n15 w18 n21 n25 n26 w23 n27 w24 n28 w25 n29 w26 n30 w28 n32 w29 w34 n40 w42 n50 n55 n57 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-mono-apex-2: w1/2 n1/2 w14/2 n15/2 w18/2 n21/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w25/2 n29/2 w26/2 n30/2 w28/2 n32/2 w29/2 w34/2 n40/2 w42/2 n50/2 n55/2 n57/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-mono-apex-3: w1/3 n1/3 w14/3 n15/3 w18/3 n21/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 w25/3 n29/3 w26/3 n30/3 w28/3 n32/3 w29/3 w34/3 n40/3 w42/3 n50/3 n55/3 n57/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-mono-legendary: 
+  ph-astral-charm-common-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-astral-charm-common-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-astral-charm-common-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-astral-charm-prime-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-charm-prime-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-charm-prime-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-charm-apex-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-charm-apex-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-charm-apex-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-charm-legendary: 
+  ph-astral-electric-common-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-astral-electric-common-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-astral-electric-common-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-astral-electric-prime-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-electric-prime-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-electric-prime-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-electric-apex-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-electric-apex-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-electric-apex-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-electric-legendary: 
+  ph-astral-fire-common-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-astral-fire-common-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-astral-fire-common-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-astral-fire-prime-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-fire-prime-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-fire-prime-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-fire-apex-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-fire-apex-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-fire-apex-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-grass-common-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-astral-grass-common-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-astral-grass-common-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-astral-grass-prime-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-grass-prime-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-grass-prime-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-grass-apex-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-astral-grass-apex-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-astral-grass-apex-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-astral-grass-legendary: 
+  ph-rock-astral-common-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52
+  ph-rock-astral-common-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2
+  ph-rock-astral-common-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3
+  ph-rock-astral-prime-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-rock-astral-prime-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-astral-prime-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-astral-apex-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-rock-astral-apex-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-astral-apex-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-astral-legendary: 
+  ph-steel-astral-common-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52
+  ph-steel-astral-common-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2
+  ph-steel-astral-common-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3
+  ph-steel-astral-prime-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-steel-astral-prime-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-astral-prime-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-astral-apex-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-steel-astral-apex-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-astral-apex-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-astral-legendary: 
+  ph-water-astral-common-1: w1 n1 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-water-astral-common-2: w1/2 n1/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-water-astral-common-3: w1/3 n1/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-water-astral-prime-1: w1 n1 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-astral-prime-2: w1/2 n1/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-astral-prime-3: w1/3 n1/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-astral-apex-1: w1 n1 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-astral-apex-2: w1/2 n1/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-astral-apex-3: w1/3 n1/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-electric-common-1: w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-charm-electric-common-2: w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-charm-electric-common-3: w9/3 n8/3 w16/3 n17/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-charm-electric-prime-1: w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-charm-electric-prime-2: w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-electric-prime-3: w9/3 n8/3 w16/3 n17/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-electric-apex-1: w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-charm-electric-apex-2: w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-electric-apex-3: w9/3 n8/3 w16/3 n17/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-electric-legendary: 
+  ph-charm-fire-common-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 w18 n21 w28 n32 n35 w38 n45 n47 w41 n48 n49 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-charm-fire-common-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 w18/2 n21/2 w28/2 n32/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-charm-fire-common-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 w18/3 n21/3 w28/3 n32/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-charm-fire-prime-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 w18 n21 w28 n32 n35 w38 n45 n47 w41 n48 n49 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-charm-fire-prime-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 w18/2 n21/2 w28/2 n32/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-fire-prime-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 w18/3 n21/3 w28/3 n32/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-fire-apex-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 w18 n21 w28 n32 n35 w38 n45 n47 w41 n48 n49 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-charm-fire-apex-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 w18/2 n21/2 w28/2 n32/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-fire-apex-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 w18/3 n21/3 w28/3 n32/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-fire-legendary: 
+  ph-charm-grass-common-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 n35 w38 n45 n47 w41 n48 n49
+  ph-charm-grass-common-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2
+  ph-charm-grass-common-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3
+  ph-charm-grass-prime-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 n35 w38 n45 n47 w41 n48 n49 prism1 prism2 prism3 prism4
+  ph-charm-grass-prime-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-grass-prime-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-grass-apex-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w16 n17 n19 n20 n35 w38 n45 n47 w41 n48 n49 prism1 prism2 prism3 prism4
+  ph-charm-grass-apex-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w16/2 n17/2 n19/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-grass-apex-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w16/3 n17/3 n19/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-grass-legendary: 
+  ph-charm-rock-common-1: forestfloor
+  ph-charm-rock-common-2: forestfloor/2
+  ph-charm-rock-common-3: forestfloor/3
+  ph-charm-rock-prime-1: forestfloor prism1 prism2 prism3 prism4
+  ph-charm-rock-prime-2: forestfloor/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-rock-prime-3: forestfloor/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-rock-apex-1: forestfloor prism1 prism2 prism3 prism4
+  ph-charm-rock-apex-2: forestfloor/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-charm-rock-apex-3: forestfloor/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-charm-rock-legendary: 
+  ph-steel-charm-common-1: w2 n2 w13 n13 n14 w15 n18 w17 n23 w21 n24 w22 n25 n26 w23 n27 w24 n28 n31 w27 n33 n34 w30 n36 w31 w34 n40 n50 n51 w43 n52
+  ph-steel-charm-common-2: w2/2 n2/2 w13/2 n13/2 n14/2 w15/2 n18/2 w17/2 n23/2 w21/2 n24/2 w22/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 n31/2 w27/2 n33/2 n34/2 w30/2 n36/2 w31/2 w34/2 n40/2 n50/2 n51/2 w43/2 n52/2
+  ph-steel-charm-common-3: w2/3 n2/3 w13/3 n13/3 n14/3 w15/3 n18/3 w17/3 n23/3 w21/3 n24/3 w22/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 n31/3 w27/3 n33/3 n34/3 w30/3 n36/3 w31/3 w34/3 n40/3 n50/3 n51/3 w43/3 n52/3
+  ph-steel-charm-prime-1: w2 n2 w13 n13 n14 w15 n18 w17 n23 w21 n24 w22 n25 n26 w23 n27 w24 n28 n31 w27 n33 n34 w30 n36 w31 w34 n40 n50 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-steel-charm-prime-2: w2/2 n2/2 w13/2 n13/2 n14/2 w15/2 n18/2 w17/2 n23/2 w21/2 n24/2 w22/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 n31/2 w27/2 n33/2 n34/2 w30/2 n36/2 w31/2 w34/2 n40/2 n50/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-charm-prime-3: w2/3 n2/3 w13/3 n13/3 n14/3 w15/3 n18/3 w17/3 n23/3 w21/3 n24/3 w22/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 n31/3 w27/3 n33/3 n34/3 w30/3 n36/3 w31/3 w34/3 n40/3 n50/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-charm-apex-1: w2 n2 w13 n13 n14 w15 n18 w17 n23 w21 n24 w22 n25 n26 w23 n27 w24 n28 n31 w27 n33 n34 w30 n36 w31 w34 n40 n50 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-steel-charm-apex-2: w2/2 n2/2 w13/2 n13/2 n14/2 w15/2 n18/2 w17/2 n23/2 w21/2 n24/2 w22/2 n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 n31/2 w27/2 n33/2 n34/2 w30/2 n36/2 w31/2 w34/2 n40/2 n50/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-charm-apex-3: w2/3 n2/3 w13/3 n13/3 n14/3 w15/3 n18/3 w17/3 n23/3 w21/3 n24/3 w22/3 n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 n31/3 w27/3 n33/3 n34/3 w30/3 n36/3 w31/3 w34/3 n40/3 n50/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-charm-legendary: 
+  ph-water-charm-common-1: w18 n21 w28 n32 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-water-charm-common-2: w18/2 n21/2 w28/2 n32/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-water-charm-common-3: w18/3 n21/3 w28/3 n32/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-water-charm-prime-1: w18 n21 w28 n32 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-charm-prime-2: w18/2 n21/2 w28/2 n32/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-charm-prime-3: w18/3 n21/3 w28/3 n32/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-charm-apex-1: w18 n21 w28 n32 n55 cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-charm-apex-2: w18/2 n21/2 w28/2 n32/2 n55/2 cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-charm-apex-3: w18/3 n21/3 w28/3 n32/3 n55/3 cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-charm-legendary: boglight
+  ph-electric-fire-common-1: w12 n11 n12 w36 n43 w39 n46 n56
+  ph-electric-fire-common-2: w12/2 n11/2 n12/2 w36/2 n43/2 w39/2 n46/2 n56/2
+  ph-electric-fire-common-3: w12/3 n11/3 n12/3 w36/3 n43/3 w39/3 n46/3 n56/3
+  ph-electric-fire-prime-1: w12 n11 n12 w36 n43 w39 n46 n56 prism1 prism2 prism3 prism4
+  ph-electric-fire-prime-2: w12/2 n11/2 n12/2 w36/2 n43/2 w39/2 n46/2 n56/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-fire-prime-3: w12/3 n11/3 n12/3 w36/3 n43/3 w39/3 n46/3 n56/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-fire-apex-1: w12 n11 n12 w36 n43 w39 n46 n56 prism1 prism2 prism3 prism4
+  ph-electric-fire-apex-2: w12/2 n11/2 n12/2 w36/2 n43/2 w39/2 n46/2 n56/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-fire-apex-3: w12/3 n11/3 n12/3 w36/3 n43/3 w39/3 n46/3 n56/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-fire-legendary: 
+  ph-electric-grass-common-1: w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49
+  ph-electric-grass-common-2: w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2
+  ph-electric-grass-common-3: w9/3 n8/3 w16/3 n17/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3
+  ph-electric-grass-prime-1: w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49 prism1 prism2 prism3 prism4
+  ph-electric-grass-prime-2: w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-grass-prime-3: w9/3 n8/3 w16/3 n17/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-grass-apex-1: w9 n8 w16 n17 n20 n35 w38 n45 n47 w41 n48 n49 prism1 prism2 prism3 prism4
+  ph-electric-grass-apex-2: w9/2 n8/2 w16/2 n17/2 n20/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-grass-apex-3: w9/3 n8/3 w16/3 n17/3 n20/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-grass-legendary: 
+  ph-electric-rock-common-1: w12 n11 n12 n16 w19 n22 w20 w36 n43 w39 n46 w44 n53 n54 n56
+  ph-electric-rock-common-2: w12/2 n11/2 n12/2 n16/2 w19/2 n22/2 w20/2 w36/2 n43/2 w39/2 n46/2 w44/2 n53/2 n54/2 n56/2
+  ph-electric-rock-common-3: w12/3 n11/3 n12/3 n16/3 w19/3 n22/3 w20/3 w36/3 n43/3 w39/3 n46/3 w44/3 n53/3 n54/3 n56/3
+  ph-electric-rock-prime-1: w12 n11 n12 n16 w19 n22 w20 w36 n43 w39 n46 w44 n53 n54 n56 prism1 prism2 prism3 prism4
+  ph-electric-rock-prime-2: w12/2 n11/2 n12/2 n16/2 w19/2 n22/2 w20/2 w36/2 n43/2 w39/2 n46/2 w44/2 n53/2 n54/2 n56/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-rock-prime-3: w12/3 n11/3 n12/3 n16/3 w19/3 n22/3 w20/3 w36/3 n43/3 w39/3 n46/3 w44/3 n53/3 n54/3 n56/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-rock-apex-1: w12 n11 n12 n16 w19 n22 w20 w36 n43 w39 n46 w44 n53 n54 n56 prism1 prism2 prism3 prism4
+  ph-electric-rock-apex-2: w12/2 n11/2 n12/2 n16/2 w19/2 n22/2 w20/2 w36/2 n43/2 w39/2 n46/2 w44/2 n53/2 n54/2 n56/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-rock-apex-3: w12/3 n11/3 n12/3 n16/3 w19/3 n22/3 w20/3 w36/3 n43/3 w39/3 n46/3 w44/3 n53/3 n54/3 n56/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-rock-legendary: dunecrown
+  ph-electric-steel-common-1: w13 n13 n18 w17 w21 n31 w27 n34 w30 n36
+  ph-electric-steel-common-2: w13/2 n13/2 n18/2 w17/2 w21/2 n31/2 w27/2 n34/2 w30/2 n36/2
+  ph-electric-steel-common-3: w13/3 n13/3 n18/3 w17/3 w21/3 n31/3 w27/3 n34/3 w30/3 n36/3
+  ph-electric-steel-prime-1: w13 n13 n18 w17 w21 n31 w27 n34 w30 n36 prism1 prism2 prism3 prism4
+  ph-electric-steel-prime-2: w13/2 n13/2 n18/2 w17/2 w21/2 n31/2 w27/2 n34/2 w30/2 n36/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-steel-prime-3: w13/3 n13/3 n18/3 w17/3 w21/3 n31/3 w27/3 n34/3 w30/3 n36/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-steel-apex-1: w13 n13 n18 w17 w21 n31 w27 n34 w30 n36 prism1 prism2 prism3 prism4
+  ph-electric-steel-apex-2: w13/2 n13/2 n18/2 w17/2 w21/2 n31/2 w27/2 n34/2 w30/2 n36/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-electric-steel-apex-3: w13/3 n13/3 n18/3 w17/3 w21/3 n31/3 w27/3 n34/3 w30/3 n36/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-steel-legendary: 
+  ph-water-electric-common-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6
+  ph-water-electric-common-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2
+  ph-water-electric-common-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3
+  ph-water-electric-prime-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-electric-prime-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-electric-prime-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-electric-apex-1: cloud1 cloud2 cloud3 cloud4 cloud5 cloud6 prism1 prism2 prism3 prism4
+  ph-water-electric-apex-2: cloud1/2 cloud2/2 cloud3/2 cloud4/2 cloud5/2 cloud6/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-water-electric-apex-3: cloud1/3 cloud2/3 cloud3/3 cloud4/3 cloud5/3 cloud6/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-water-electric-legendary: 
+  ph-fire-grass-common-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58
+  ph-fire-grass-common-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2
+  ph-fire-grass-common-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3
+  ph-fire-grass-prime-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-grass-prime-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-grass-prime-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-grass-apex-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-grass-apex-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-grass-apex-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-grass-legendary: 
+  ph-fire-rock-common-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58
+  ph-fire-rock-common-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2
+  ph-fire-rock-common-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3
+  ph-fire-rock-prime-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-rock-prime-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-rock-prime-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-rock-apex-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-rock-apex-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-rock-apex-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-rock-legendary: 
+  ph-fire-steel-common-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58
+  ph-fire-steel-common-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2
+  ph-fire-steel-common-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3
+  ph-fire-steel-prime-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-steel-prime-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-steel-prime-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-steel-apex-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-steel-apex-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-steel-apex-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-steel-legendary: calderaheart
+  ph-fire-water-common-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58
+  ph-fire-water-common-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2
+  ph-fire-water-common-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3
+  ph-fire-water-prime-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-water-prime-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-water-prime-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-water-apex-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58 prism1 prism2 prism3 prism4
+  ph-fire-water-apex-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-fire-water-apex-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-fire-water-legendary: 
+  ph-grass-rock-common-1: forestfloor
+  ph-grass-rock-common-2: forestfloor/2
+  ph-grass-rock-common-3: forestfloor/3
+  ph-grass-rock-prime-1: forestfloor prism1 prism2 prism3 prism4
+  ph-grass-rock-prime-2: forestfloor/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-rock-prime-3: forestfloor/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-rock-apex-1: forestfloor prism1 prism2 prism3 prism4
+  ph-grass-rock-apex-2: forestfloor/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-rock-apex-3: forestfloor/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-rock-legendary: 
+  ph-grass-steel-common-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w14 n15 w16 n17 n19 n20 w25 n29 w26 n30 w29 n35 w38 n45 n47 w41 n48 n49 w42 n57
+  ph-grass-steel-common-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w14/2 n15/2 w16/2 n17/2 n19/2 n20/2 w25/2 n29/2 w26/2 n30/2 w29/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 w42/2 n57/2
+  ph-grass-steel-common-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w14/3 n15/3 w16/3 n17/3 n19/3 n20/3 w25/3 n29/3 w26/3 n30/3 w29/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 w42/3 n57/3
+  ph-grass-steel-prime-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w14 n15 w16 n17 n19 n20 w25 n29 w26 n30 w29 n35 w38 n45 n47 w41 n48 n49 w42 n57 prism1 prism2 prism3 prism4
+  ph-grass-steel-prime-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w14/2 n15/2 w16/2 n17/2 n19/2 n20/2 w25/2 n29/2 w26/2 n30/2 w29/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 w42/2 n57/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-steel-prime-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w14/3 n15/3 w16/3 n17/3 n19/3 n20/3 w25/3 n29/3 w26/3 n30/3 w29/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 w42/3 n57/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-steel-apex-1: forestfloor w3 w4 n3 n4 w5 w6 n5 w7 n6 w8 n7 w9 n8 w14 n15 w16 n17 n19 n20 w25 n29 w26 n30 w29 n35 w38 n45 n47 w41 n48 n49 w42 n57 prism1 prism2 prism3 prism4
+  ph-grass-steel-apex-2: forestfloor/2 w3/2 w4/2 n3/2 n4/2 w5/2 w6/2 n5/2 w7/2 n6/2 w8/2 n7/2 w9/2 n8/2 w14/2 n15/2 w16/2 n17/2 n19/2 n20/2 w25/2 n29/2 w26/2 n30/2 w29/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 w42/2 n57/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-steel-apex-3: forestfloor/3 w3/3 w4/3 n3/3 n4/3 w5/3 w6/3 n5/3 w7/3 n6/3 w8/3 n7/3 w9/3 n8/3 w14/3 n15/3 w16/3 n17/3 n19/3 n20/3 w25/3 n29/3 w26/3 n30/3 w29/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 w42/3 n57/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-steel-legendary: 
+  ph-grass-water-common-1: w14 n15 w25 n29 w26 n30 w29 w42 n57
+  ph-grass-water-common-2: w14/2 n15/2 w25/2 n29/2 w26/2 n30/2 w29/2 w42/2 n57/2
+  ph-grass-water-common-3: w14/3 n15/3 w25/3 n29/3 w26/3 n30/3 w29/3 w42/3 n57/3
+  ph-grass-water-prime-1: w14 n15 w25 n29 w26 n30 w29 w42 n57 prism1 prism2 prism3 prism4
+  ph-grass-water-prime-2: w14/2 n15/2 w25/2 n29/2 w26/2 n30/2 w29/2 w42/2 n57/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-water-prime-3: w14/3 n15/3 w25/3 n29/3 w26/3 n30/3 w29/3 w42/3 n57/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-water-apex-1: w14 n15 w25 n29 w26 n30 w29 w42 n57 prism1 prism2 prism3 prism4
+  ph-grass-water-apex-2: w14/2 n15/2 w25/2 n29/2 w26/2 n30/2 w29/2 w42/2 n57/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-grass-water-apex-3: w14/3 n15/3 w25/3 n29/3 w26/3 n30/3 w29/3 w42/3 n57/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-grass-water-legendary: willowheart
+  ph-rock-steel-common-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52
+  ph-rock-steel-common-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2
+  ph-rock-steel-common-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3
+  ph-rock-steel-prime-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-rock-steel-prime-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-steel-prime-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-steel-apex-1: w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52 prism1 prism2 prism3 prism4
+  ph-rock-steel-apex-2: w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-steel-apex-3: w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-steel-legendary: 
+  ph-rock-water-common-1: forestfloor w2 n2 n9 w10 w11 n10 w12 n11 n12 n14 w15 n16 w19 n22 w20 n23 n24 w22 n33 w31 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n51 w43 n52 w44 n53 n54 n56 n58
+  ph-rock-water-common-2: forestfloor/2 w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n14/2 w15/2 n16/2 w19/2 n22/2 w20/2 n23/2 n24/2 w22/2 n33/2 w31/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n51/2 w43/2 n52/2 w44/2 n53/2 n54/2 n56/2 n58/2
+  ph-rock-water-common-3: forestfloor/3 w2/3 n2/3 n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n14/3 w15/3 n16/3 w19/3 n22/3 w20/3 n23/3 n24/3 w22/3 n33/3 w31/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n51/3 w43/3 n52/3 w44/3 n53/3 n54/3 n56/3 n58/3
+  ph-rock-water-prime-1: forestfloor w2 n2 n9 w10 w11 n10 w12 n11 n12 n14 w15 n16 w19 n22 w20 n23 n24 w22 n33 w31 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n51 w43 n52 w44 n53 n54 n56 n58 prism1 prism2 prism3 prism4
+  ph-rock-water-prime-2: forestfloor/2 w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n14/2 w15/2 n16/2 w19/2 n22/2 w20/2 n23/2 n24/2 w22/2 n33/2 w31/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n51/2 w43/2 n52/2 w44/2 n53/2 n54/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-water-prime-3: forestfloor/3 w2/3 n2/3 n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n14/3 w15/3 n16/3 w19/3 n22/3 w20/3 n23/3 n24/3 w22/3 n33/3 w31/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n51/3 w43/3 n52/3 w44/3 n53/3 n54/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-water-apex-1: forestfloor w2 n2 n9 w10 w11 n10 w12 n11 n12 n14 w15 n16 w19 n22 w20 n23 n24 w22 n33 w31 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n51 w43 n52 w44 n53 n54 n56 n58 prism1 prism2 prism3 prism4
+  ph-rock-water-apex-2: forestfloor/2 w2/2 n2/2 n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n14/2 w15/2 n16/2 w19/2 n22/2 w20/2 n23/2 n24/2 w22/2 n33/2 w31/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n51/2 w43/2 n52/2 w44/2 n53/2 n54/2 n56/2 n58/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-rock-water-apex-3: forestfloor/3 w2/3 n2/3 n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n14/3 w15/3 n16/3 w19/3 n22/3 w20/3 n23/3 n24/3 w22/3 n33/3 w31/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n51/3 w43/3 n52/3 w44/3 n53/3 n54/3 n56/3 n58/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-rock-water-legendary: 
+  ph-steel-water-common-1: n25 n26 w23 n27 w24 n28 w34 n40 n50
+  ph-steel-water-common-2: n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w34/2 n40/2 n50/2
+  ph-steel-water-common-3: n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 w34/3 n40/3 n50/3
+  ph-steel-water-prime-1: n25 n26 w23 n27 w24 n28 w34 n40 n50 prism1 prism2 prism3 prism4
+  ph-steel-water-prime-2: n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w34/2 n40/2 n50/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-water-prime-3: n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 w34/3 n40/3 n50/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-steel-water-apex-1: n25 n26 w23 n27 w24 n28 w34 n40 n50 prism1 prism2 prism3 prism4
+  ph-steel-water-apex-2: n25/2 n26/2 w23/2 n27/2 w24/2 n28/2 w34/2 n40/2 n50/2 prism1/2 prism2/2 prism3/2 prism4/2
+  ph-steel-water-apex-3: n25/3 n26/3 w23/3 n27/3 w24/3 n28/3 w34/3 n40/3 n50/3 prism1/3 prism2/3 prism3/3 prism4/3
+  ph-electric-dusk-common-1: w12 n11 n12 w13 n13 n16 n18 w17 w19 n22 w20 w21 n31 w27 n34 w30 n36 w36 n43 w39 n46 w44 n53 n54 n56
+  ph-electric-dusk-common-2: w12/2 n11/2 n12/2 w13/2 n13/2 n16/2 n18/2 w17/2 w19/2 n22/2 w20/2 w21/2 n31/2 w27/2 n34/2 w30/2 n36/2 w36/2 n43/2 w39/2 n46/2 w44/2 n53/2 n54/2 n56/2
+  ph-electric-dusk-common-3: w12/3 n11/3 n12/3 w13/3 n13/3 n16/3 n18/3 w17/3 w19/3 n22/3 w20/3 w21/3 n31/3 w27/3 n34/3 w30/3 n36/3 w36/3 n43/3 w39/3 n46/3 w44/3 n53/3 n54/3 n56/3
+  ph-fire-dusk-common-1: n9 w10 w11 n10 w12 n11 n12 n37 n38 w32 w33 n39 n41 w35 n42 w36 n43 w37 n44 w39 n46 w40 n56 n58
+  ph-fire-dusk-common-2: n9/2 w10/2 w11/2 n10/2 w12/2 n11/2 n12/2 n37/2 n38/2 w32/2 w33/2 n39/2 n41/2 w35/2 n42/2 w36/2 n43/2 w37/2 n44/2 w39/2 n46/2 w40/2 n56/2 n58/2
+  ph-fire-dusk-common-3: n9/3 w10/3 w11/3 n10/3 w12/3 n11/3 n12/3 n37/3 n38/3 w32/3 w33/3 n39/3 n41/3 w35/3 n42/3 w36/3 n43/3 w37/3 n44/3 w39/3 n46/3 w40/3 n56/3 n58/3
+  ph-grass-dusk-common-1: w4 w5 n5 w7 n6 w8 n7 w14 n15 n19 w25 n29 w26 n30 w29 w42 n57
+  ph-grass-dusk-common-2: w4/2 w5/2 n5/2 w7/2 n6/2 w8/2 n7/2 w14/2 n15/2 n19/2 w25/2 n29/2 w26/2 n30/2 w29/2 w42/2 n57/2
+  ph-grass-dusk-common-3: w4/3 w5/3 n5/3 w7/3 n6/3 w8/3 n7/3 w14/3 n15/3 n19/3 w25/3 n29/3 w26/3 n30/3 w29/3 w42/3 n57/3
+  ph-astral-sun-common-1: w1 n1 w2 n2 n14 w15 n23 n24 w22 n33 w31 n51 w43 n52
+  ph-astral-sun-common-2: w1/2 n1/2 w2/2 n2/2 n14/2 w15/2 n23/2 n24/2 w22/2 n33/2 w31/2 n51/2 w43/2 n52/2
+  ph-astral-sun-common-3: w1/3 n1/3 w2/3 n2/3 n14/3 w15/3 n23/3 n24/3 w22/3 n33/3 w31/3 n51/3 w43/3 n52/3
+  ph-charm-sun-common-1: w3 n3 n4 w6 w9 n8 w16 n17 n20 w18 n21 w28 n32 n35 w38 n45 n47 w41 n48 n49 n55
+  ph-charm-sun-common-2: w3/2 n3/2 n4/2 w6/2 w9/2 n8/2 w16/2 n17/2 n20/2 w18/2 n21/2 w28/2 n32/2 n35/2 w38/2 n45/2 n47/2 w41/2 n48/2 n49/2 n55/2
+  ph-charm-sun-common-3: w3/3 n3/3 n4/3 w6/3 w9/3 n8/3 w16/3 n17/3 n20/3 w18/3 n21/3 w28/3 n32/3 n35/3 w38/3 n45/3 n47/3 w41/3 n48/3 n49/3 n55/3
+speciesBiomes
+  twinkit: tundra mountain
+  lumenox: tundra mountain
+  polarion: tundra mountain
+  orbuddle: tundra mountain prism
+  nebulith: tundra mountain prism
+  zenithar: tundra prism
+  mossprite: grove forest meadow
+  fernixie: grove forest meadow
+  glamorwyn: grove forest meadow
+  puffwisp: grove meadow prism
+  velvetuft: grove meadow prism
+  mirageon: grove lake prism
+  zapup: desert road badlands
+  voltusk: desert road badlands
+  stormhound: desert road badlands
+  fizzlet: road badlands prism
+  arcwing: road badlands prism
+  tempestrix: badlands prism
+  cindercub: desert volcanic
+  blazmane: desert volcanic
+  pyrothane: desert volcanic
+  emberwick: desert volcanic prism
+  lavalume: desert volcanic prism
+  calderex: volcanic prism
+  emberfish: volcanic
+  cinderkoi: volcanic prism
+  sproutle: grove forest meadow swamp
+  thornback: grove forest meadow swamp
+  redwarden: grove forest meadow swamp
+  shadeleaf: forest swamp prism
+  gloomoth: forest swamp prism
+  canopyre: forest prism
+  pebbark: mountain canyon badlands volcanic
+  cragjaw: mountain canyon badlands volcanic
+  mesahound: mountain canyon badlands volcanic
+  rubblet: mountain canyon prism
+  boulderon: mountain canyon prism
+  stratagon: canyon prism
+  rivetail: mountain road coast
+  ferrocrab: mountain road coast
+  ironclawd: mountain road coast
+  cogling: road coast prism
+  anvilisk: road coast prism mountain
+  leviathorn: coast prism
+  puddlit: tundra river lake coast swamp
+  marshfin: tundra river lake coast swamp
+  mangrovore: tundra river lake coast swamp
+  bubbloon: river lake prism
+  tidecall: river lake prism coast
+  gatormaw: swamp prism
+  solstara: mountain
+  nimbalune: cloud
+  thalassor: coast
+  ph-astral-mono-prime-1: tundra mountain cloud prism
+  ph-astral-mono-prime-2: tundra mountain cloud prism
+  ph-astral-mono-prime-3: tundra mountain cloud prism
+  ph-astral-mono-apex-1: tundra mountain cloud prism
+  ph-astral-mono-apex-2: tundra mountain cloud prism
+  ph-astral-mono-apex-3: tundra mountain cloud prism
+  ph-astral-mono-legendary: 
+  ph-charm-mono-prime-1: deepwood grove forest meadow lake cloud prism
+  ph-charm-mono-prime-2: deepwood grove forest meadow lake cloud prism
+  ph-charm-mono-prime-3: deepwood grove forest meadow lake cloud prism
+  ph-charm-mono-apex-1: deepwood grove forest meadow lake cloud prism
+  ph-charm-mono-apex-2: deepwood grove forest meadow lake cloud prism
+  ph-charm-mono-apex-3: deepwood grove forest meadow lake cloud prism
+  ph-charm-mono-legendary: 
+  ph-electric-mono-prime-1: meadow desert road badlands cloud prism
+  ph-electric-mono-prime-2: meadow desert road badlands cloud prism
+  ph-electric-mono-prime-3: meadow desert road badlands cloud prism
+  ph-electric-mono-apex-1: meadow desert road badlands cloud prism
+  ph-electric-mono-apex-2: meadow desert road badlands cloud prism
+  ph-electric-mono-apex-3: meadow desert road badlands cloud prism
+  ph-electric-mono-legendary: 
+  ph-fire-mono-prime-1: canyon desert volcanic prism
+  ph-fire-mono-prime-2: canyon desert volcanic prism
+  ph-fire-mono-prime-3: canyon desert volcanic prism
+  ph-fire-mono-apex-1: canyon desert volcanic prism
+  ph-fire-mono-apex-2: canyon desert volcanic prism
+  ph-fire-mono-apex-3: canyon desert volcanic prism
+  ph-fire-mono-legendary: 
+  ph-grass-mono-prime-1: deepwood grove forest meadow river swamp prism
+  ph-grass-mono-prime-2: deepwood grove forest meadow river swamp prism
+  ph-grass-mono-prime-3: deepwood grove forest meadow river swamp prism
+  ph-grass-mono-apex-1: deepwood grove forest meadow river swamp prism
+  ph-grass-mono-apex-2: deepwood grove forest meadow river swamp prism
+  ph-grass-mono-apex-3: deepwood grove forest meadow river swamp prism
+  ph-grass-mono-legendary: 
+  ph-rock-mono-prime-1: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-mono-prime-2: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-mono-prime-3: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-mono-apex-1: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-mono-apex-2: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-mono-apex-3: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-mono-legendary: 
+  ph-steel-mono-prime-1: mountain road coast prism
+  ph-steel-mono-prime-2: mountain road coast prism
+  ph-steel-mono-prime-3: mountain road coast prism
+  ph-steel-mono-apex-1: mountain road coast prism
+  ph-steel-mono-apex-2: mountain road coast prism
+  ph-steel-mono-apex-3: mountain road coast prism
+  ph-steel-mono-legendary: 
+  ph-water-mono-prime-1: tundra river lake coast swamp cloud prism
+  ph-water-mono-prime-2: tundra river lake coast swamp cloud prism
+  ph-water-mono-prime-3: tundra river lake coast swamp cloud prism
+  ph-water-mono-apex-1: tundra river lake coast swamp cloud prism
+  ph-water-mono-apex-2: tundra river lake coast swamp cloud prism
+  ph-water-mono-apex-3: tundra river lake coast swamp cloud prism
+  ph-water-mono-legendary: 
+  ph-astral-charm-common-1: cloud
+  ph-astral-charm-common-2: cloud
+  ph-astral-charm-common-3: cloud
+  ph-astral-charm-prime-1: cloud prism
+  ph-astral-charm-prime-2: cloud prism
+  ph-astral-charm-prime-3: cloud prism
+  ph-astral-charm-apex-1: cloud prism
+  ph-astral-charm-apex-2: cloud prism
+  ph-astral-charm-apex-3: cloud prism
+  ph-astral-charm-legendary: 
+  ph-astral-electric-common-1: cloud
+  ph-astral-electric-common-2: cloud
+  ph-astral-electric-common-3: cloud
+  ph-astral-electric-prime-1: cloud prism
+  ph-astral-electric-prime-2: cloud prism
+  ph-astral-electric-prime-3: cloud prism
+  ph-astral-electric-apex-1: cloud prism
+  ph-astral-electric-apex-2: cloud prism
+  ph-astral-electric-apex-3: cloud prism
+  ph-astral-electric-legendary: 
+  ph-astral-fire-common-1: tundra mountain cloud
+  ph-astral-fire-common-2: tundra mountain cloud
+  ph-astral-fire-common-3: tundra mountain cloud
+  ph-astral-fire-prime-1: tundra mountain cloud prism
+  ph-astral-fire-prime-2: tundra mountain cloud prism
+  ph-astral-fire-prime-3: tundra mountain cloud prism
+  ph-astral-fire-apex-1: tundra mountain cloud prism
+  ph-astral-fire-apex-2: tundra mountain cloud prism
+  ph-astral-fire-apex-3: tundra mountain cloud prism
+  ph-astral-grass-common-1: tundra mountain cloud
+  ph-astral-grass-common-2: tundra mountain cloud
+  ph-astral-grass-common-3: tundra mountain cloud
+  ph-astral-grass-prime-1: tundra mountain cloud prism
+  ph-astral-grass-prime-2: tundra mountain cloud prism
+  ph-astral-grass-prime-3: tundra mountain cloud prism
+  ph-astral-grass-apex-1: tundra mountain cloud prism
+  ph-astral-grass-apex-2: tundra mountain cloud prism
+  ph-astral-grass-apex-3: tundra mountain cloud prism
+  ph-astral-grass-legendary: 
+  ph-rock-astral-common-1: mountain
+  ph-rock-astral-common-2: mountain
+  ph-rock-astral-common-3: mountain
+  ph-rock-astral-prime-1: mountain prism
+  ph-rock-astral-prime-2: mountain prism
+  ph-rock-astral-prime-3: mountain prism
+  ph-rock-astral-apex-1: mountain prism
+  ph-rock-astral-apex-2: mountain prism
+  ph-rock-astral-apex-3: mountain prism
+  ph-rock-astral-legendary: 
+  ph-steel-astral-common-1: mountain
+  ph-steel-astral-common-2: mountain
+  ph-steel-astral-common-3: mountain
+  ph-steel-astral-prime-1: mountain prism
+  ph-steel-astral-prime-2: mountain prism
+  ph-steel-astral-prime-3: mountain prism
+  ph-steel-astral-apex-1: mountain prism
+  ph-steel-astral-apex-2: mountain prism
+  ph-steel-astral-apex-3: mountain prism
+  ph-steel-astral-legendary: 
+  ph-water-astral-common-1: tundra cloud
+  ph-water-astral-common-2: tundra cloud
+  ph-water-astral-common-3: tundra cloud
+  ph-water-astral-prime-1: tundra cloud prism
+  ph-water-astral-prime-2: tundra cloud prism
+  ph-water-astral-prime-3: tundra cloud prism
+  ph-water-astral-apex-1: tundra cloud prism
+  ph-water-astral-apex-2: tundra cloud prism
+  ph-water-astral-apex-3: tundra cloud prism
+  ph-charm-electric-common-1: meadow cloud
+  ph-charm-electric-common-2: meadow cloud
+  ph-charm-electric-common-3: meadow cloud
+  ph-charm-electric-prime-1: meadow cloud prism
+  ph-charm-electric-prime-2: meadow cloud prism
+  ph-charm-electric-prime-3: meadow cloud prism
+  ph-charm-electric-apex-1: meadow cloud prism
+  ph-charm-electric-apex-2: meadow cloud prism
+  ph-charm-electric-apex-3: meadow cloud prism
+  ph-charm-electric-legendary: 
+  ph-charm-fire-common-1: deepwood grove forest meadow lake cloud
+  ph-charm-fire-common-2: deepwood grove forest meadow lake cloud
+  ph-charm-fire-common-3: deepwood grove forest meadow lake cloud
+  ph-charm-fire-prime-1: deepwood grove forest meadow lake cloud prism
+  ph-charm-fire-prime-2: deepwood grove forest meadow lake cloud prism
+  ph-charm-fire-prime-3: deepwood grove forest meadow lake cloud prism
+  ph-charm-fire-apex-1: deepwood grove forest meadow lake cloud prism
+  ph-charm-fire-apex-2: deepwood grove forest meadow lake cloud prism
+  ph-charm-fire-apex-3: deepwood grove forest meadow lake cloud prism
+  ph-charm-fire-legendary: 
+  ph-charm-grass-common-1: deepwood grove forest meadow
+  ph-charm-grass-common-2: deepwood grove forest meadow
+  ph-charm-grass-common-3: deepwood grove forest meadow
+  ph-charm-grass-prime-1: deepwood grove forest meadow prism
+  ph-charm-grass-prime-2: deepwood grove forest meadow prism
+  ph-charm-grass-prime-3: deepwood grove forest meadow prism
+  ph-charm-grass-apex-1: deepwood grove forest meadow prism
+  ph-charm-grass-apex-2: deepwood grove forest meadow prism
+  ph-charm-grass-apex-3: deepwood grove forest meadow prism
+  ph-charm-grass-legendary: 
+  ph-charm-rock-common-1: deepwood
+  ph-charm-rock-common-2: deepwood
+  ph-charm-rock-common-3: deepwood
+  ph-charm-rock-prime-1: deepwood prism
+  ph-charm-rock-prime-2: deepwood prism
+  ph-charm-rock-prime-3: deepwood prism
+  ph-charm-rock-apex-1: deepwood prism
+  ph-charm-rock-apex-2: deepwood prism
+  ph-charm-rock-apex-3: deepwood prism
+  ph-charm-rock-legendary: 
+  ph-steel-charm-common-1: mountain road coast
+  ph-steel-charm-common-2: mountain road coast
+  ph-steel-charm-common-3: mountain road coast
+  ph-steel-charm-prime-1: mountain road coast prism
+  ph-steel-charm-prime-2: mountain road coast prism
+  ph-steel-charm-prime-3: mountain road coast prism
+  ph-steel-charm-apex-1: mountain road coast prism
+  ph-steel-charm-apex-2: mountain road coast prism
+  ph-steel-charm-apex-3: mountain road coast prism
+  ph-steel-charm-legendary: 
+  ph-water-charm-common-1: lake cloud
+  ph-water-charm-common-2: lake cloud
+  ph-water-charm-common-3: lake cloud
+  ph-water-charm-prime-1: lake cloud prism
+  ph-water-charm-prime-2: lake cloud prism
+  ph-water-charm-prime-3: lake cloud prism
+  ph-water-charm-apex-1: lake cloud prism
+  ph-water-charm-apex-2: lake cloud prism
+  ph-water-charm-apex-3: lake cloud prism
+  ph-water-charm-legendary: swamp
+  ph-electric-fire-common-1: desert
+  ph-electric-fire-common-2: desert
+  ph-electric-fire-common-3: desert
+  ph-electric-fire-prime-1: desert prism
+  ph-electric-fire-prime-2: desert prism
+  ph-electric-fire-prime-3: desert prism
+  ph-electric-fire-apex-1: desert prism
+  ph-electric-fire-apex-2: desert prism
+  ph-electric-fire-apex-3: desert prism
+  ph-electric-fire-legendary: 
+  ph-electric-grass-common-1: meadow
+  ph-electric-grass-common-2: meadow
+  ph-electric-grass-common-3: meadow
+  ph-electric-grass-prime-1: meadow prism
+  ph-electric-grass-prime-2: meadow prism
+  ph-electric-grass-prime-3: meadow prism
+  ph-electric-grass-apex-1: meadow prism
+  ph-electric-grass-apex-2: meadow prism
+  ph-electric-grass-apex-3: meadow prism
+  ph-electric-grass-legendary: 
+  ph-electric-rock-common-1: desert badlands
+  ph-electric-rock-common-2: desert badlands
+  ph-electric-rock-common-3: desert badlands
+  ph-electric-rock-prime-1: desert badlands prism
+  ph-electric-rock-prime-2: desert badlands prism
+  ph-electric-rock-prime-3: desert badlands prism
+  ph-electric-rock-apex-1: desert badlands prism
+  ph-electric-rock-apex-2: desert badlands prism
+  ph-electric-rock-apex-3: desert badlands prism
+  ph-electric-rock-legendary: desert
+  ph-electric-steel-common-1: road
+  ph-electric-steel-common-2: road
+  ph-electric-steel-common-3: road
+  ph-electric-steel-prime-1: road prism
+  ph-electric-steel-prime-2: road prism
+  ph-electric-steel-prime-3: road prism
+  ph-electric-steel-apex-1: road prism
+  ph-electric-steel-apex-2: road prism
+  ph-electric-steel-apex-3: road prism
+  ph-electric-steel-legendary: 
+  ph-water-electric-common-1: cloud
+  ph-water-electric-common-2: cloud
+  ph-water-electric-common-3: cloud
+  ph-water-electric-prime-1: cloud prism
+  ph-water-electric-prime-2: cloud prism
+  ph-water-electric-prime-3: cloud prism
+  ph-water-electric-apex-1: cloud prism
+  ph-water-electric-apex-2: cloud prism
+  ph-water-electric-apex-3: cloud prism
+  ph-water-electric-legendary: 
+  ph-fire-grass-common-1: canyon desert volcanic
+  ph-fire-grass-common-2: canyon desert volcanic
+  ph-fire-grass-common-3: canyon desert volcanic
+  ph-fire-grass-prime-1: canyon desert volcanic prism
+  ph-fire-grass-prime-2: canyon desert volcanic prism
+  ph-fire-grass-prime-3: canyon desert volcanic prism
+  ph-fire-grass-apex-1: canyon desert volcanic prism
+  ph-fire-grass-apex-2: canyon desert volcanic prism
+  ph-fire-grass-apex-3: canyon desert volcanic prism
+  ph-fire-grass-legendary: 
+  ph-fire-rock-common-1: canyon desert volcanic
+  ph-fire-rock-common-2: canyon desert volcanic
+  ph-fire-rock-common-3: canyon desert volcanic
+  ph-fire-rock-prime-1: canyon desert volcanic prism
+  ph-fire-rock-prime-2: canyon desert volcanic prism
+  ph-fire-rock-prime-3: canyon desert volcanic prism
+  ph-fire-rock-apex-1: canyon desert volcanic prism
+  ph-fire-rock-apex-2: canyon desert volcanic prism
+  ph-fire-rock-apex-3: canyon desert volcanic prism
+  ph-fire-rock-legendary: 
+  ph-fire-steel-common-1: canyon desert volcanic
+  ph-fire-steel-common-2: canyon desert volcanic
+  ph-fire-steel-common-3: canyon desert volcanic
+  ph-fire-steel-prime-1: canyon desert volcanic prism
+  ph-fire-steel-prime-2: canyon desert volcanic prism
+  ph-fire-steel-prime-3: canyon desert volcanic prism
+  ph-fire-steel-apex-1: canyon desert volcanic prism
+  ph-fire-steel-apex-2: canyon desert volcanic prism
+  ph-fire-steel-apex-3: canyon desert volcanic prism
+  ph-fire-steel-legendary: volcanic
+  ph-fire-water-common-1: canyon desert volcanic
+  ph-fire-water-common-2: canyon desert volcanic
+  ph-fire-water-common-3: canyon desert volcanic
+  ph-fire-water-prime-1: canyon desert volcanic prism
+  ph-fire-water-prime-2: canyon desert volcanic prism
+  ph-fire-water-prime-3: canyon desert volcanic prism
+  ph-fire-water-apex-1: canyon desert volcanic prism
+  ph-fire-water-apex-2: canyon desert volcanic prism
+  ph-fire-water-apex-3: canyon desert volcanic prism
+  ph-fire-water-legendary: 
+  ph-grass-rock-common-1: deepwood
+  ph-grass-rock-common-2: deepwood
+  ph-grass-rock-common-3: deepwood
+  ph-grass-rock-prime-1: deepwood prism
+  ph-grass-rock-prime-2: deepwood prism
+  ph-grass-rock-prime-3: deepwood prism
+  ph-grass-rock-apex-1: deepwood prism
+  ph-grass-rock-apex-2: deepwood prism
+  ph-grass-rock-apex-3: deepwood prism
+  ph-grass-rock-legendary: 
+  ph-grass-steel-common-1: deepwood grove forest meadow river swamp
+  ph-grass-steel-common-2: deepwood grove forest meadow river swamp
+  ph-grass-steel-common-3: deepwood grove forest meadow river swamp
+  ph-grass-steel-prime-1: deepwood grove forest meadow river swamp prism
+  ph-grass-steel-prime-2: deepwood grove forest meadow river swamp prism
+  ph-grass-steel-prime-3: deepwood grove forest meadow river swamp prism
+  ph-grass-steel-apex-1: deepwood grove forest meadow river swamp prism
+  ph-grass-steel-apex-2: deepwood grove forest meadow river swamp prism
+  ph-grass-steel-apex-3: deepwood grove forest meadow river swamp prism
+  ph-grass-steel-legendary: 
+  ph-grass-water-common-1: river swamp
+  ph-grass-water-common-2: river swamp
+  ph-grass-water-common-3: river swamp
+  ph-grass-water-prime-1: river swamp prism
+  ph-grass-water-prime-2: river swamp prism
+  ph-grass-water-prime-3: river swamp prism
+  ph-grass-water-apex-1: river swamp prism
+  ph-grass-water-apex-2: river swamp prism
+  ph-grass-water-apex-3: river swamp prism
+  ph-grass-water-legendary: lake
+  ph-rock-steel-common-1: mountain
+  ph-rock-steel-common-2: mountain
+  ph-rock-steel-common-3: mountain
+  ph-rock-steel-prime-1: mountain prism
+  ph-rock-steel-prime-2: mountain prism
+  ph-rock-steel-prime-3: mountain prism
+  ph-rock-steel-apex-1: mountain prism
+  ph-rock-steel-apex-2: mountain prism
+  ph-rock-steel-apex-3: mountain prism
+  ph-rock-steel-legendary: 
+  ph-rock-water-common-1: deepwood mountain canyon desert badlands volcanic
+  ph-rock-water-common-2: deepwood mountain canyon desert badlands volcanic
+  ph-rock-water-common-3: deepwood mountain canyon desert badlands volcanic
+  ph-rock-water-prime-1: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-water-prime-2: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-water-prime-3: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-water-apex-1: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-water-apex-2: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-water-apex-3: deepwood mountain canyon desert badlands volcanic prism
+  ph-rock-water-legendary: 
+  ph-steel-water-common-1: coast
+  ph-steel-water-common-2: coast
+  ph-steel-water-common-3: coast
+  ph-steel-water-prime-1: coast prism
+  ph-steel-water-prime-2: coast prism
+  ph-steel-water-prime-3: coast prism
+  ph-steel-water-apex-1: coast prism
+  ph-steel-water-apex-2: coast prism
+  ph-steel-water-apex-3: coast prism
+  ph-electric-dusk-common-1: desert road badlands
+  ph-electric-dusk-common-2: desert road badlands
+  ph-electric-dusk-common-3: desert road badlands
+  ph-fire-dusk-common-1: canyon desert volcanic
+  ph-fire-dusk-common-2: canyon desert volcanic
+  ph-fire-dusk-common-3: canyon desert volcanic
+  ph-grass-dusk-common-1: forest river swamp
+  ph-grass-dusk-common-2: forest river swamp
+  ph-grass-dusk-common-3: forest river swamp
+  ph-astral-sun-common-1: tundra mountain
+  ph-astral-sun-common-2: tundra mountain
+  ph-astral-sun-common-3: tundra mountain
+  ph-charm-sun-common-1: grove meadow lake
+  ph-charm-sun-common-2: grove meadow lake
+  ph-charm-sun-common-3: grove meadow lake
+championAt
+  ivo: lumber blackSand quillhaven hollow dustmere valor ridgeway hollow canyon saltmarsh lumber aurora valor canyon iron ridgeway dustmere thunder dustmere blackSand
+  selene: gloom hollow lumber blackSand thunder mistfall gloom lumber kilauea quillhaven ridgeway ridgeway thunder valor saltmarsh aurora depths iron canyon saltmarsh
+  marisol: dustmere quillhaven saltmarsh lumber iron dustmere canyon aurora dustmere valor dustmere valor kilauea lumber valor quillhaven saltmarsh blackSand valor dustmere
+  dez: thunder lumber valor mangrove saltmarsh ridgeway quillhaven canyon thunder ridgeway mistfall mistfall ridgeway kilauea ridgeway dustmere kilauea aurora hollow aurora
+  okon: mistfall mangrove thunder gloom quillhaven blackSand iron quillhaven aurora mistfall iron kilauea depths mangrove lumber thunder canyon gloom gloom mistfall
+  hale: aurora iron mistfall aurora valor canyon thunder ridgeway blackSand kilauea aurora blackSand quillhaven dustmere dustmere blackSand blackSand valor mistfall depths
+  bram: valor thunder ridgeway kilauea blackSand depths aurora iron valor mangrove canyon saltmarsh aurora blackSand thunder saltmarsh iron mangrove ridgeway valor
+  noor: kilauea saltmarsh canyon saltmarsh aurora lumber kilauea thunder mistfall iron blackSand gloom mangrove thunder kilauea iron ridgeway depths mangrove lumber
+npcMerits
+  juniper: gloom iron kilauea canyon thunder aurora
+  ozzie: thunder aurora kilauea mangrove gloom hollow
+  dex: kilauea hollow thunder aurora mangrove canyon gloom
+  calla: mangrove kilauea thunder aurora hollow iron
+  tavi: aurora thunder gloom iron kilauea hollow
+  bex: iron aurora canyon thunder hollow kilauea mangrove
+  lune: hollow aurora canyon iron kilauea gloom
+  corrin: canyon gloom mangrove iron thunder hollow
+  pim: hollow canyon aurora mangrove kilauea thunder
+  wes: iron kilauea canyon gloom hollow aurora
+  nadia: kilauea thunder canyon iron gloom hollow mangrove
+  sol: canyon aurora gloom thunder mangrove kilauea
+npcTeam at turn 99
+  juniper: ph-steel-charm-common-2 resonant atk-charm3-steel2+atk-charm1-steel3+rampage+brace | ph-grass-dusk-common-2 adamant rampage+atk-charm1-grass4+pounce+brace | ph-charm-grass-prime-2 volatile atk-charm4-grass1+atk-charm1-grass3+rampage+brace
+  ozzie: ph-electric-fire-prime-2 fortified rampage+wild-swing+pounce+atk-fire3-steel2 | ph-grass-steel-prime-2 volatile atk-grass3-steel2+atk-grass2-steel2-steel+rampage+brace | ph-electric-steel-prime-2 resonant atk-electric2-steel3+atk-electric3-steel1+spark+rampage
+  dex: blazmane enduring rampage+claw+quick-jab+atk-fire4-rock1 | ph-charm-rock-prime-2 volatile atk-charm1-rock4+atk-charm4-fire1+atk-charm1-fire1-fire+rampage | ph-fire-rock-prime-2 resonant rampage+atk-fire3-rock2+atk-fire2-rock2-fire+quick-jab
+  calla: ph-grass-steel-common-2 resonant atk-grass1-steel4+quick-jab+atk-grass3-water2+brace | tidecall enduring maelstrom+atk-water5+undertow+brace | ph-grass-water-prime-2 volatile atk-grass4-water1+atk-grass1-water3+rampage+brace
+  tavi: arcwing adamant atk-electric5+crackle-web+rampage+spark | ph-electric-fire-common-2 adamant rampage+wild-swing+pounce+atk-astral1-fire4 | ph-astral-electric-prime-2 enduring meteor+atk-astral2-electric3+atk-astral1-electric1-electric+brace
+  bex: ph-steel-astral-prime-2 adamant meteor+atk-fire1-steel4+wild-swing+brace | ph-fire-dusk-common-2 volatile rampage+wild-swing+claw+pounce | ph-fire-steel-prime-2 timid rampage+atk-fire3-steel2+avalanche-slam+quick-jab
+  lune: velvetuft volatile atk-astral1-charm4+atk-astral1-charm3+rampage+brace | ph-astral-grass-common-2 adamant rampage+meteor+pounce+brace | ph-astral-charm-prime-2 enduring meteor+atk-astral1-charm4+atk-astral3-charm2+brace
+  corrin: ph-fire-steel-common-2 volatile rampage+avalanche-slam+claw+pounce | ph-grass-steel-prime-2 volatile atk-grass3-steel2+atk-grass4-steel1+atk-grass2-steel2-steel+atk-grass1-steel1-steel | ph-rock-steel-prime-2 resonant atk-rock2-steel3+atk-rock3-steel2+atk-rock4-steel1+brace
+  pim: ph-astral-electric-prime-2 fortified meteor+atk-astral3-electric2+spark+atk-astral1-electric1-electric | ph-electric-grass-common-2 adamant rampage+atk-electric3-grass2+pounce+brace | ph-charm-electric-prime-2 enduring atk-charm4-electric1+atk-charm2-electric2-electric+spark+rampage
+  wes: ph-fire-water-common-2 adamant rampage+claw+quick-jab+atk-electric1-fire4 | ph-electric-steel-common-2 timid atk-electric1-steel4+atk-electric3-water2+quick-jab+brace | ph-water-electric-prime-2 volatile maelstrom+atk-electric2-water2-electric+rampage+brace
+  nadia: ph-astral-grass-prime-2 timid meteor+atk-astral2-grass3+atk-astral1-grass1-astral+brace | ph-astral-grass-common-2 timid sig-borealis+atk-astral1-grass4+rampage+brace | ph-astral-fire-prime-2 volatile rampage+meteor+quick-jab+avalanche-slam
+  sol: ph-charm-rock-prime-2 adamant rampage+atk-grass1-rock4+pounce+brace | ph-charm-grass-prime-2 resonant atk-charm1-grass4+atk-charm4-rock1+atk-charm1-rock1-rock+brace | ph-grass-rock-prime-2 fortified atk-grass3-rock2+atk-grass2-rock2-rock+rampage+brace
+  ivo: ph-rock-astral-apex-2 enduring meteor+atk-astral1-rock4+atk-astral2-rock3+rampage | ph-electric-steel-apex-2 volatile rampage+atk-electric1-steel4+atk-electric3-rock2+shatterpoint | ph-rock-steel-apex-2 fortified atk-rock1-steel4+atk-rock2-steel3+atk-rock3-steel2+rampage
+  selene: ph-astral-charm-prime-2 enduring meteor+atk-astral2-charm3+starstruck+brace | ph-astral-grass-prime-2 timid meteor+atk-astral1-grass4+atk-astral1-charm1-astral+brace | ph-astral-charm-apex-2 fortified meteor+rampage+atk-astral1-charm4+avalanche-slam
+  marisol: ph-grass-rock-prime-2 volatile atk-grass1-rock4+atk-grass3-rock2+atk-grass2-water3+brace | ph-grass-mono-apex-2 resonant maelstrom+atk-grass4-water1+rampage+avalanche-slam | ph-grass-water-apex-2 timid maelstrom+atk-grass3-water2+atk-grass1-water1-grass+rampage
+  dez: ph-astral-electric-prime-2 adamant meteor+rampage+atk-astral2-fire3+brace | ph-fire-rock-prime-2 resonant atk-fire3-rock2+atk-electric1-rock4+spark+rampage | ph-electric-fire-apex-2 volatile rampage+atk-electric1-fire4+atk-electric3-fire2+avalanche-slam
+  okon: ph-rock-astral-apex-2 adamant rampage+meteor+atk-astral1-rock4+pounce | ph-fire-grass-apex-2 resonant rampage+atk-fire3-grass2+atk-fire1-rock4+atk-fire1-grass4 | ph-fire-rock-apex-2 timid rampage+atk-fire3-rock2+atk-fire4-rock1+atk-fire1-rock4
+  hale: ph-fire-grass-prime-2 volatile rampage+quick-jab+atk-astral2-grass3+kindling-flare | ph-astral-fire-prime-2 enduring rampage+meteor+quick-jab+kindling-flare | ph-astral-grass-apex-2 adamant rampage+avalanche-slam+pounce+meteor
+  bram: anvilisk adamant rampage+wild-swing+pounce+atk-charm1-fire4 | ph-charm-rock-prime-2 resonant atk-charm2-steel3+atk-charm1-rock1-rock+atk-charm3-rock2+brace | ph-steel-charm-apex-2 enduring rampage+atk-charm1-steel4+atk-charm3-steel2+atk-charm1-steel3
+  noor: ph-water-electric-prime-2 fortified maelstrom+atk-electric3-water2+atk-electric2-water2-electric+atk-electric1-water1-water | ph-water-mono-apex-2 fortified maelstrom+atk-fire3-water2+atk-fire1-water4+splash-jet | ph-fire-water-apex-2 adamant rampage+pounce+atk-fire3-water2+maelstrom
+landField
+  0000007999999984000000000000000000000000000000000000000000000
+  0000019999999998200000000000000000000000000000000000000000000
+  0000018999999999400000000000000000000000000000000000000000000
+  0000019999999999500000000000000000000000000000000000000000000
+  0000019999999998200000000000000000000000000000000000000000000
+  0000004999999998200000000000000000000000000000000000000000000
+  0000000799999996000000000000000000000000000000000000000000000
+  0000000189999971000010000000000000000000000000000000000000000
+  0000000027883310000253244200000000000000000000000000000000000
+  0000000001110000014898899962000000000000000000048720000000000
+  0000000000000000179999999999720000000000000000599994000000000
+  0000000000000002599999999999950000000000000001999998000000000
+  0000000000013579999999999999992000000000000002999996000000000
+  0000000000158999999999999999994000000000001256899995000000000
+  0000000000169999999999999999999300000000006999978650000000000
+  0000000000189999999999999999999700000000018999981000000000000
+  0000000000069999999999999999999985101000039999992000000000000
+  0000000000039999999999999999999999977500289999995000000000000
+  0000000000006999999999999999999999999988999999999300000000000
+  0000000000004999999999999999999999999999999999999600000000000
+  0000000000005999999999999999999999999999999999999600000000000
+  0000000000003999999999779999999999999999999999999700000000000
+  0000000000001799999963317999999999999999999799999810000000000
+  0000000000000289999999864134999999999999999999999810000000000
+  0000000000000049999999999743899999999999999999999710000000000
+  0000000000000017999999999999799999999999999999999700000000000
+  0000000000000002599999999999999999998999999999999500000000000
+  0000000000001169999999999999999999999999999999999400000000000
+  0000000000159999999999999999999999999999999999998100000000000
+  0000000000699999999999999999999999999999999999982000000000000
+  0000000001899999999999999999999999999999999999930000000000000
+  0000000001899999999977999999999986899999999999600000000000000
+  0000000000699999999997999999999982369999999999521000000000000
+  0000000000499999999999999999999997102899999999987300000000000
+  0000000000189999999999999999999999200169999999999930000000000
+  0000000000199999999999999999999999610016999999999930000000000
+  0000000000079999999999999998799999950000599999999920000000000
+  0000000000049999999999999999999999950000028999999700000000000
+  0000000000059999998999999999999999930000013568998200000000000
+  0000000000029999999999999999999999500000100002430000000000000
+  0000000000008999999999999999994675100158851000000000000000000
+  0000000000018999999999999999950000236899996000000000000000000
+  0000000000028999999999984544200035899999999200000000000000000
+  0000000000016999999999940000000379999999999300000000000000000
+  0000000000005999999999920000005999999999997200000000000000000
+  0000000000002689999999400000049999999999983000000000000000000
+  0000000000000169999999100000069999999999961000000000000000000
+  0000000000000169999997000000379999999999930000000000000000000
+  0000000000000027999995000279999999999999500000000000000000000
+  0000000000000000358761000699999999999987100000000000000000000
+  0000000000000000001100000899999999986520000000000000000000000
+  0000000000000000000000000899999999851000000000000000000000000
+  0000000000000000000000000699999987410000000000000000000000000
+  0000000000000000000000000279986432000000000000000000000000000
+  0000000000000000000000000025640000000000000000000000000000000
+  0000000000000000000000000000000000000000000000000000000000000
+  0000000000000000000000000000000000000000000000000000000000000
+  0000000000000000000000000000000000000000000000000000000000000
+  0000000000000000000000000000000000000000000000000000000000000
+  0000000000000000000000000000000000000000000000000000000000000
+  0000000000000000000000000000000000000000000000000000000000000

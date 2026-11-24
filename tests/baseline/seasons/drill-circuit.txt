@@ -1,0 +1,8 @@
+# Six trainers in one bracket, so some must meet, and one is away.
+T100 Al @stadium coins500 merits8 [pyrothane12,mangrovore12,mesahound12]+0 dice392 rules:0bd9d363 words:02629360 | bracket; round 0 lose; round 0 lose; round 0 lose; round 1 lose; round 1 lose; champion selene
+T100 Bea @stadium coins500 merits8 [redwarden13,stormhound12,polarion13]+0 dice392 rules:69bcb95b words:d38f4800 | 
+T100 Cam @stadium coins500 merits8 [pyrothane12,mangrovore12,mesahound12]+0 dice392 rules:c551c715 words:7a78c3fa | 
+T100 Di @stadium coins500 merits8 [redwarden12,stormhound12,polarion12]+0 dice392 rules:9b09ec4b words:c7fc7e19 | 
+T100 Ed @stadium coins500 merits8 [pyrothane13,mangrovore13,mesahound13]+0 dice392 rules:49f26373 words:67b55761 | 
+T100 Fay @stadium coins500 merits8 [redwarden13,stormhound13,polarion13]+0 dice392 rules:84b8c49e words:85adfdf3 | 
+# bracket 1, champion 1, circuitDuel 2, round 5

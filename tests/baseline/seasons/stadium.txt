@@ -1,0 +1,31 @@
+# Stadium Mode: a battle against every AI opponent.
+T99 T @stadium coins15 merits8 [redwarden12†,stormhound12†,polarion13†]+0 dice7014 rules:eade325e words:25311a4f | stadium A challenger:lose
+T99 T @stadium coins15 merits8 [redwarden13†,stormhound13†,polarion13†]+0 dice87 rules:827a90ab words:b7e1498f | stadium Champion Ivo:lose
+T99 T @stadium coins15 merits8 [redwarden13†,stormhound14†,polarion14]+0 dice89 rules:80f7ae26 words:762f62d7 | stadium Champion Selene:win
+T99 T @stadium coins15 merits8 [redwarden14†,stormhound14†,polarion15†]+0 dice78 rules:563539af words:28671478 | stadium Champion Marisol:lose
+T99 T @stadium coins15 merits8 [redwarden14†,stormhound15†,polarion15]+0 dice49 rules:c6e3d53b words:6d322b31 | stadium Champion Dez:win
+T99 T @stadium coins15 merits8 [redwarden15†,stormhound15†,polarion17†]+0 dice40 rules:1fb0841d words:cb676439 | stadium Champion Okon:lose
+T99 T @stadium coins15 merits8 [redwarden15†,stormhound15†,polarion17†]+0 dice32 rules:e99510ec words:9395ff6f | stadium Champion Hale:lose
+T99 T @stadium coins15 merits8 [redwarden16†,stormhound16†,polarion17†]+0 dice59 rules:522ed7b0 words:30912f1b | stadium Champion Bram:lose
+T99 T @stadium coins15 merits8 [redwarden16†,stormhound16†,polarion18†]+0 dice74 rules:c1507c25 words:6b2c39d6 | stadium Champion Noor:lose
+T99 T @stadium coins15 merits8 [redwarden16†,stormhound17†,polarion18†]+0 dice114 rules:728a8ce3 words:60b6356c | stadium Juniper Vale:lose
+T99 T @stadium coins15 merits8 [redwarden17†,stormhound18,polarion18]+0 dice67 rules:68db8e82 words:d8259181 | stadium Ozzie Crank:win
+T99 T @stadium coins15 merits8 [redwarden18†,stormhound18†,polarion20]+0 dice45 rules:c8b2e16d words:48602006 | stadium Dex Marlowe:win
+T99 T @stadium coins15 merits8 [redwarden18†,stormhound19†,polarion20†]+0 dice83 rules:48f4f9a8 words:263929d4 | stadium Calla Reed:lose
+T99 T @stadium coins15 merits8 [redwarden19†,stormhound19,polarion20]+0 dice60 rules:c77e322f words:d145dceb | stadium Tavi Stormer:win
+T99 T @stadium coins15 merits8 [redwarden19†,stormhound20†,polarion22]+0 dice68 rules:fbd79c79 words:59d41fc8 | stadium Bex Ferro:win
+T99 T @stadium coins15 merits8 [redwarden19†,stormhound20†,polarion23†]+0 dice112 rules:b992227b words:a2989f23 | stadium Lune Okafor:lose
+T99 T @stadium coins15 merits8 [redwarden20†,stormhound21†,polarion24]+0 dice92 rules:a2790d38 words:94d4f03d | stadium Corrin Slate:win
+T99 T @stadium coins15 merits8 [redwarden20†,stormhound21†,polarion25†]+0 dice107 rules:7ffb8346 words:1a9415b5 | stadium Pim Quillby:lose
+T99 T @stadium coins15 merits8 [redwarden21†,stormhound22†,polarion26†]+0 dice62 rules:4f0c998f words:3d456aac | stadium Wes Harbor:lose
+T99 T @stadium coins15 merits8 [redwarden21†,stormhound22†,polarion27]+0 dice57 rules:89e2c4ad words:c2dc5dd0 | stadium Nadia Ember:win
+T99 T @stadium coins15 merits8 [redwarden22†,stormhound22†,polarion28†]+0 dice60 rules:38b24c28 words:6a97963a | stadium Sol Fairweather:lose
+T99 T @stadium coins15 merits8 [redwarden22†,stormhound23,polarion28]+0 dice6168 rules:3e1f070a words:d277cf8c | stadium Arbiter Salem:win
+T99 T @stadium coins15 merits8 [redwarden23†,stormhound24†,polarion28†]+0 dice7062 rules:c61ae853 words:55a5714e | stadium Arbiter Fabian:lose
+T99 T @stadium coins15 merits8 [redwarden23†,stormhound24†,polarion29]+0 dice5314 rules:2d26dc91 words:02d59e58 | stadium Arbiter Watson:win
+T99 T @stadium coins15 merits8 [redwarden24†,stormhound25†,polarion30†]+0 dice7631 rules:757513b7 words:472d2337 | stadium Arbiter Amber:lose
+T99 T @stadium coins15 merits8 [redwarden24†,stormhound25†,polarion30†]+0 dice5837 rules:704b34cf words:1fb50b55 | stadium Arbiter Dahlia:lose
+T99 T @stadium coins15 merits8 [redwarden25†,stormhound25†,polarion31]+0 dice7581 rules:48a1d264 words:67c3a0b8 | stadium Arbiter Cliff:lose
+T99 T @stadium coins15 merits8 [redwarden25†,stormhound26†,polarion31†]+0 dice8057 rules:f2ca1dc8 words:8c65804c | stadium Arbiter Stella:lose
+T99 T @stadium coins15 merits8 [redwarden26†,stormhound26†,polarion32†]+0 dice5548 rules:e4926251 words:0cd819b3 | stadium Arbiter Katy:lose
+# arena:crumble 1, arena:darkness 1, arena:flames 1, arena:fortress 1, arena:iceFloes 1, arena:illusion 1, arena:roots 1, arena:volts 1, stadium 29
