@@ -284,7 +284,7 @@ export const GUIDE: GuideCategory[] = [
         'Your main colour always goes on the top and the hat, and on hair ties and streaks unless you pick another colour. That mini is your token on the map and stands behind you in trainer battles.',
       ] },
       { id: 'saving', title: 'Saving', body: [
-        'Games autosave as you play.',
+        'Games autosave as you play. If your browser can’t store the game (its storage is full, say), a red ⚠️ Not saving warning stays up until it can: tap it to export your game or make room.',
         '☰ Menu → 📌 Save a copy keeps a named snapshot (solo, hotseat or online) that you can load again from 💾 Saves on the title screen, export or rename.',
       ] },
     ],

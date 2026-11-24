@@ -25,7 +25,8 @@ self.addEventListener('fetch', (e) => {
   }
   // Art keeps its file name when it's replaced: show the cached copy at once, and fetch a fresh one for next time.
   if (sameOrigin && /\/assets\/(icons|types)\//.test(url.pathname)) {
-    const fresh = fetch(req).then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; });
+    // (no-cache: ask the server even if the browser thinks its copy is good; older versions were kept for a year)
+    const fresh = fetch(req, { cache: 'no-cache' }).then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; });
     e.waitUntil(fresh.catch(() => undefined));
     e.respondWith(caches.match(req).then((hit) => hit || fresh));
     return;

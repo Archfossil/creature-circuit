@@ -12,7 +12,7 @@ import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
-import { newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
@@ -86,6 +86,12 @@ function trainerLookEditor(get: () => { name: string; color: string; look: Train
 }
 
 /** A small async queue (online: battle rounds arrive over the network while a battle is being watched). */
+/** Save something to the player's device as a .json file. */
+function download(name: string, data: unknown) {
+  const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })), download: name.replace(/[^\w.-]+/g, '-') });
+  document.body.append(a); a.click(); a.remove();
+}
+
 type WatchCtx = { kind: 'wild'; intro: string; city?: string; rivalLook?: TrainerLook; rivalSeat?: number };
 
 class AsyncQueue<T> {
@@ -116,6 +122,7 @@ export class App {
     this.battleView = new BattleView();
     this.engine.setView(this.world);
     root.append(this.ui);
+    onSaveStatus((ok) => this.saveStatus(ok));
     this.world.onNodeTap = (id) => this.onNodeTap(id);
     this.world.onNodeDoubleTap = (id) => this.onNodeDoubleTap(id);
     this.title();
@@ -299,10 +306,6 @@ export class App {
    */
   savesSheet() {
     const body = h('div', { class: 'saves' });
-    const download = (name: string, data: unknown) => {
-      const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })), download: name.replace(/[^\w.-]+/g, '-') });
-      document.body.append(a); a.click(); a.remove();
-    };
     const importFile = () => {
       const input = h('input', { type: 'file', accept: '.json,application/json' }) as HTMLInputElement;
       input.onchange = async () => {
@@ -389,6 +392,39 @@ export class App {
     };
     render();
     openSheet('💾 Saves', body, { wide: true });
+  }
+
+  /** Autosaving started failing, or works again: a warning stays on screen until it does. */
+  saveStatus(ok: boolean) {
+    document.getElementById('save-warning')?.remove();
+    if (ok) { toast('Your game is saving again.', 'good', 4000, true); return; }
+    document.body.append(h('button', { id: 'save-warning', class: 'save-warning', onclick: () => this.saveFailedSheet() }, '⚠️ Not saving! Tap for help'));
+    toast('Your game couldn’t be saved on this device. Tap the warning to fix it before you close the game.', 'bad', 9000, true);
+  }
+
+  /** Autosaving fails: export the game as it stands, or make room by deleting saved copies, then try again. */
+  saveFailedSheet() {
+    const body = h('div', { class: 'saves' });
+    const render = () => {
+      const copies = listCopies();
+      const game = activeMatchOf() ?? (this.s as GameState | undefined) ?? null;
+      body.replaceChildren(
+        h('p', null, 'This browser wouldn’t store your latest progress. Its storage is probably full, or it’s private browsing. Your game carries on, but closing it now could lose what’s happened since the last save.'),
+        h('div', { class: 'row gap-s wrap' },
+          game ? h('button', { class: 'btn primary', onclick: () => download(`creature-circuit-${'players' in game ? `${game.players.length}p` : `${game.trainer.name}-turn${game.turn}`}.json`, game) }, '⬇ Export this game') : null,
+          h('button', { class: 'btn ghost', onclick: () => { if (retrySave()) close(); else toast('Still no room to save.', 'bad', 4000, true); } }, '↻ Try saving again')),
+        h('p', { class: 'small muted' }, 'An exported file can be brought back from 💾 Saves on the title screen (Import a save file).'),
+        h('h4', null, `🗂 Saved copies (${copies.length}/${LIBRARY_MAX})`),
+        copies.length ? h('div', { class: 'list' }, copies.map((c) => h('div', { class: 'save-card' }, h('b', null, c.name), h('small', null, c.summary), h('div', { class: 'row gap-s wrap' },
+          h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-${c.name}.json`, c.data) }, '⬇ Export'),
+          h('button', { class: 'btn ghost sm bad-text', onclick: async () => {
+            if (!(await confirmSheet(`Delete “${c.name}”?`, 'This saved copy will be deleted permanently, to make room for your game.', 'Delete'))) return;
+            deleteCopy(c.id);
+            if (retrySave()) close(); else render();
+          } }, '🗑 Delete'))))) : h('p', { class: 'small muted' }, 'No saved copies to delete. Export your game, then import it in a browser that isn’t in private mode.'));
+    };
+    const close = openSheet('⚠️ Your game isn’t saving', body, { wide: true });
+    render();
   }
 
   /** Ask for a short name (saved copies). Resolves null if cancelled. */

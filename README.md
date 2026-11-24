@@ -118,6 +118,7 @@ The docs leave a few points open. The prototype makes these calls:
   - **Autosaves:** the solo journey, the hotseat game and the online game (the last state this browser saw) each autosave to their own slot. Each one can be continued, exported (a .json download) or deleted separately.
   - **Saved copies:** 📌 Save a copy (on the Saves screen, or ☰ Menu while playing) keeps a named snapshot of any solo, hotseat or online game. Up to 30 are kept in this browser. Each can be loaded back into its slot (after a confirm, since it replaces the game in progress there), exported, renamed or deleted. Loading an online copy brings it back as your saved online game; reopen it as host from 🌐 Online.
   - **Import:** an imported .json file goes into the saved copies, sorted by kind (online files keep their seat owners).
+  - **Failed autosaves** (`state.ts` → `onSaveStatus`, `retrySave`; `app.ts` → `saveStatus`, `saveFailedSheet`): a warning stays on screen while the browser won't store the game, with a way to export it as it stands, delete saved copies and try again.
   - **Safety:** starting a new solo or hotseat game warns before replacing the one in progress, and Abandon Journey only deletes the game you're playing.
 - **Trainer styles** (chosen at the start; eight, each with a perk and a drawback):
 

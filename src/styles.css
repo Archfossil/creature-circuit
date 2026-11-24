@@ -1033,6 +1033,7 @@ div.perk { cursor: default; }
 .host-box { margin-top: 10px; padding: 10px 12px; border-radius: 14px; border: 2px solid #e0b400; background: #fff8dc; display: grid; gap: 8px; }
 .watch-label { display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--tc); background: color-mix(in srgb, var(--tc) 14%, white); font-size: 14px; }
 .turn-timer { position: fixed; top: calc(var(--sat) + 62px); left: 50%; transform: translateX(-50%); z-index: 40; font-family: var(--font-head); font-size: 18px; padding: 4px 14px; border-radius: 999px; background: var(--paper); border: 2px solid var(--ink); box-shadow: var(--shadow); }
+.save-warning { position: fixed; bottom: calc(var(--sab, 0px) + 190px); left: 50%; transform: translateX(-50%); z-index: 41; font: inherit; font-weight: 800; cursor: pointer; padding: 8px 16px; border-radius: 999px; color: #fff; background: #b3261e; border: 2px solid var(--ink); box-shadow: var(--shadow); white-space: nowrap; }
 .turn-timer.low { background: #ffe1e1; color: #b3261e; }
 
 /* Two-player duel picker */

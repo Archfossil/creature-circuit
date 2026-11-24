@@ -5,6 +5,7 @@
 //
 // Rooms live in memory: a restart (or a sleeping free Render instance) forgets them, so every
 // browser also keeps the match locally and the host can re-open the room from that copy.
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
@@ -28,11 +29,20 @@ const server = createServer(async (req, res) => {
   let path = normalize(decodeURIComponent(url.pathname)).replace(/^([/\\])+/, '');
   if (path.includes('..')) { res.writeHead(400); res.end(); return; }
   let file = join(DIST, path || 'index.html');
-  try { if ((await stat(file)).isDirectory()) file = join(file, 'index.html'); } catch { file = join(DIST, 'index.html'); }
+  try { if ((await stat(file)).isDirectory()) file = join(file, 'index.html'); } catch {
+    if (/^assets[/\\]/.test(path)) { res.writeHead(404, { 'cache-control': 'no-store' }); res.end('Not found'); return; } // never the page in place of art
+    file = join(DIST, 'index.html');
+  }
   try {
     const body = await readFile(file);
     const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
-    res.writeHead(200, { 'content-type': type, 'cache-control': file.includes('assets') ? 'public, max-age=31536000, immutable' : 'no-cache' });
+    // Built files have a hash in their name, so a name never changes contents: keep them for good. Everything else
+    // (pages, icons and type art) keeps its name when it changes: browsers check its ETag each time.
+    const hashed = /^assets[/\\][^/\\]+-[\w-]{8}\.(js|css)$/.test(path);
+    const etag = `"${createHash('sha1').update(body).digest('base64url')}"`;
+    const headers = { 'content-type': type, etag, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' };
+    if ((req.headers['if-none-match'] ?? '').split(',').some((t) => t.trim().replace(/^W\//, '') === etag)) { res.writeHead(304, headers); res.end(); return; }
+    res.writeHead(200, headers);
     res.end(body);
   } catch { res.writeHead(404); res.end('Not found'); }
 });

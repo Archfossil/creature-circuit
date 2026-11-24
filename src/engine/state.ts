@@ -287,12 +287,36 @@ export function rollWisp(s: GameState, from = s.location) {
 /** A Fog Lantern with a wisp in it: the way into Lantern Glade is lit. */
 export const wispLit = (s: GameState) => (s.inventory['fog-lantern'] ?? 0) > 0 && !!s.flags.wisp;
 
+// An autosave that doesn't fit (or storage that's turned off) is kept here and reported, so it's never lost quietly.
+let unsaved: { key: string; json: string } | null = null;
+let saveStatus: ((ok: boolean) => void) | null = null;
+/** Told whenever autosaving starts failing (false) or works again (true). */
+export function onSaveStatus(fn: ((ok: boolean) => void) | null) { saveStatus = fn; }
+export const savingFailed = () => unsaved !== null;
+function put(key: string, json: string) {
+  const was = unsaved;
+  try { localStorage.setItem(key, json); if (unsaved?.key === key) unsaved = null; } catch { unsaved = { key, json }; }
+  if (!was !== !unsaved) saveStatus?.(!unsaved);
+}
+const store = (key: string, data: unknown) => put(key, JSON.stringify(data));
+/** Try the autosave that failed again (after making room). Returns whether everything is saved now. */
+export function retrySave(): boolean {
+  if (unsaved) put(unsaved.key, unsaved.json);
+  return !unsaved;
+}
+/** A game was deleted on purpose: don't bring it back with a retry. */
+function forgetUnsaved(key: string) {
+  if (unsaved?.key !== key) return;
+  unsaved = null;
+  saveStatus?.(true);
+}
+
 export function save(s: GameState) {
   // a trainer in a hotseat match is saved as part of the whole match
   if (activeMatch && activeMatch.players.includes(s)) { saveMatch(activeMatch); return; }
   // online, a trainer from an outdated copy of the match (a newer one arrived): never let it land in the solo save
   if (activeMatch && matchKey !== MATCH_KEY) return;
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage unavailable */ }
+  store(KEY, s);
 }
 
 // ── Hotseat multiplayer ─────────────────────────────────────────
@@ -343,7 +367,7 @@ export function nextSeat(m: Match): number {
 export const takenColors = (m: Match | null, except?: GameState) => (m ? m.players.filter((p) => p !== except).map((p) => p.trainer.color) : []);
 
 export function saveMatch(m: Match) {
-  try { localStorage.setItem(matchKey, JSON.stringify(m)); } catch { /* storage unavailable */ }
+  store(matchKey, m);
   matchSaved?.(m);
 }
 /** The online match saved on this device (the last state it saw), if any. */
@@ -357,7 +381,7 @@ export function loadOnlineMatch(): (Match & { owners?: string[]; code?: string; 
     return { ...parsed.match, owners: extra.owners, code: extra.code, turnSeconds: extra.turnSeconds };
   } catch { return null; }
 }
-export function clearOnlineMatch() { try { localStorage.removeItem('creature-circuit-online-v1'); } catch { /* ignore */ } }
+export function clearOnlineMatch() { forgetUnsaved('creature-circuit-online-v1'); try { localStorage.removeItem('creature-circuit-online-v1'); } catch { /* ignore */ } }
 export function loadMatch(): Match | null {
   try {
     const raw = localStorage.getItem(MATCH_KEY);
@@ -390,7 +414,7 @@ export function parseSaveFile(text: string): { kind: 'solo'; save: GameState } |
   return null;
 }
 
-export function clearMatch() { try { localStorage.removeItem(MATCH_KEY); } catch { /* ignore */ } activeMatch = null; }
+export function clearMatch() { forgetUnsaved(MATCH_KEY); try { localStorage.removeItem(MATCH_KEY); } catch { /* ignore */ } activeMatch = null; }
 
 // ── Saved copies (the save library) ─────────────────────────────
 // Besides the three live autosave slots (solo, hotseat, online), any number of named snapshots can be
@@ -456,6 +480,7 @@ export function restoreCopy(id: string) {
   const c = listCopies().find((x) => x.id === id);
   const g = c ? readCopy(c) : null;
   if (!g) return null;
+  forgetUnsaved(g.kind === 'solo' ? KEY : g.kind === 'online' ? 'creature-circuit-online-v1' : MATCH_KEY); // the copy replaces it
   try {
     if (g.kind === 'solo') localStorage.setItem(KEY, JSON.stringify(g.save));
     else localStorage.setItem(g.kind === 'online' ? 'creature-circuit-online-v1' : MATCH_KEY, JSON.stringify(g.match));
@@ -558,7 +583,7 @@ export function migrate(s: GameState): GameState | null {
   if (s.stats && !s.stats.record) { s.stats.record = {}; if (s.turn > 1) s.stats.trackedFrom = s.turn; }
   return s.version === SAVE_VERSION ? s : null;
 }
-export function clearSave() { try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
+export function clearSave() { forgetUnsaved(KEY); try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
 
 export const tierOf = (s: GameState) => Math.min(5, 1 + Math.floor(s.merits.length / 2));
 export const season = (s: GameState) => seasonForTurn(s.turn);

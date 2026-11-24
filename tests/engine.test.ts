@@ -14,7 +14,7 @@ import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
-import { newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
+import { onSaveStatus, retrySave, newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
@@ -3048,6 +3048,31 @@ describe('battle XP', () => {
     expect(bt.over).toBe('escaped');
     expect(ev.some((e) => e.t === 'xp')).toBe(false);
     expect(totalXp(me)).toBe(before);
+  });
+});
+
+describe('failed autosaves', () => {
+  it('are reported once, can be retried, and a deleted game stays deleted', () => {
+    const g = globalThis as unknown as { localStorage?: unknown };
+    const prev = g.localStorage, kept = new Map<string, string>(), heard: boolean[] = [];
+    let full = true;
+    g.localStorage = { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => { if (full) throw new Error('full'); kept.set(k, v); }, removeItem: (k: string) => void kept.delete(k) };
+    onSaveStatus((ok) => heard.push(ok));
+    try {
+      setActiveMatch(null);
+      const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff');
+      save(s); s.coins = 77; save(s);
+      expect(heard).toEqual([false]);
+      expect(retrySave()).toBe(false);
+      full = false;
+      expect(retrySave()).toBe(true);
+      expect(heard).toEqual([false, true]);
+      expect(load()!.coins).toBe(77); // the latest of the failed saves
+      full = true; save(s); clearSave(); full = false;
+      expect(retrySave()).toBe(true);
+      expect(load()).toBe(null);
+      expect(heard).toEqual([false, true, false, true]);
+    } finally { onSaveStatus(null); g.localStorage = prev; }
   });
 });
 

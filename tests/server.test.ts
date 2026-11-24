@@ -2,6 +2,7 @@
 // match, pass turns, and exercise the host's skip / play-for controls, the turn timer and prompts.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
 import WebSocket from 'ws';
 import { createServer } from 'node:http';
 import { createDecipheriv, createECDH, createHmac, createPublicKey, randomBytes, verify } from 'node:crypto';
@@ -51,6 +52,32 @@ class Client {
 
 const trainer = (name: string) => ({ trainer: { name, color: '#fff' }, turn: 1, roster: [], reserve: [] });
 const match = (current = 0, turn = 1) => ({ version: 1, players: [{ ...trainer('Ann'), turn }, { ...trainer('Bo'), turn }], current, rolls: {} });
+
+describe('static files', () => {
+  const get = (path: string, headers: Record<string, string> = {}) => fetch(`http://localhost:${PORT}/${path}`, { headers });
+  // (dist/ may not be built where the tests run)
+  const built = existsSync(new URL('../dist/assets/icons/coin.png', import.meta.url));
+  it.runIf(built)('icons and type art are rechecked, and cost nothing when unchanged', async () => {
+    for (const path of ['assets/icons/coin.png', 'assets/types/fire.png']) {
+      const r = await get(path);
+      expect([r.status, r.headers.get('cache-control'), r.headers.get('content-type')]).toEqual([200, 'no-cache', 'image/png']);
+      const tag = r.headers.get('etag')!;
+      expect((await get(path, { 'if-none-match': tag })).status).toBe(304);
+      expect((await get(path, { 'if-none-match': `W/${tag}` })).status).toBe(304);
+      expect((await get(path, { 'if-none-match': '"old"' })).status).toBe(200);
+    }
+  });
+  it.runIf(built)('built code, which has a new name whenever it changes, is kept', async () => {
+    for (const ext of ['js', 'css']) {
+      const name = readdirSync(new URL('../dist/assets', import.meta.url)).find((f) => f.endsWith(`.${ext}`))!;
+      expect((await get(`assets/${name}`)).headers.get('cache-control')).toContain('immutable');
+    }
+  });
+  it('a missing icon is a 404, never the page', async () => {
+    const r = await get('assets/icons/nope.png');
+    expect([r.status, r.headers.get('cache-control')]).toEqual([404, 'no-store']);
+  });
+});
 
 describe('online server', () => {
   it('serves a health check', async () => {
