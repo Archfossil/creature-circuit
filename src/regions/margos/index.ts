@@ -16,6 +16,8 @@ export const MARGOS: Region = {
   map: {
     scale: MAP_SCALE, nodes, edges, cities: CITIES, towns: TOWNS,
     places: { wispSpots: WISP_SPOTS, roamingKeyItems: ROAMING_KEY_ITEMS, keyItemTowns: KEY_ITEM_TOWNS, classicKeyTowns: CLASSIC_KEY_TOWNS, depthsStair: DEPTHS_STAIR, coasts: ['iron', 'blackSand'] },
+    // the south reaches past Kilauea island's Caldera Heart, and panning north reaches Cloud Island
+    bounds: { land: { x: [-90, 90], z: [-76, 100] }, pan: { x: [-70, 70], z: [-72, 82] }, sea: [0, 5], sun: [0, 0], title: [-4, 6] },
     offshore: ['ironwake'],
     walls: { iron: ['#e85d5d', '#f2c14e', '#5da9e9', '#7bc47f'] },
   },

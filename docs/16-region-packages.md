@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 to 6 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas) and [gimmicks](#gimmicks-in-packages)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 7 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas), [gimmicks](#gimmicks-in-packages) and [the 3D map](#the-3d-map)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -206,7 +206,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 4 | **Codex** separated from the species library ✅ built | M | Nothing |
 | 5 | **Arenas** as a per-region table ✅ built | S–M | Nothing |
 | 6 | **Gimmicks** as plug-ins, one at a time ✅ | **L** | Nothing |
-| 7 | **3D map** built for the active region, and rebuilt on a change | M | A short load when changing region |
+| 7 | **3D map** built for the active region, and rebuilt on a change ✅ built | M | A short load when changing region |
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 | M | Region name on saves |
 | 9 | **Season flow:** region choice at the start, farewell, hall of records | M | Farewell and records; the region page once there are two |
 | 10 | **Balanced starters:** the rules above | S–M | Nothing until the Juudlands |
@@ -294,6 +294,15 @@ A region's `arenas` say what each arena does, and a city names one as its `arena
 - **No place of Margos's is named in `src/engine`, `src/ui` or `src/render`,** and `tests/regions.test.ts` keeps it that way. `data/map.ts` still passes some on, for the baseline and the tests.
 - **The guide:** a topic or line named in `src/ui/guide.ts` comes from the region's `guide`, and any other topic of its own goes under Places.
 - **Still shared:** the biomes, with their looks and names (`prism` is the Rainbow Plains' ground), and items made for one gimmick (the Fog Lantern).
+
+### The 3D map
+
+`App.changeRegion(r)` puts the old map away, changes region and builds the new one behind the loading screen. Nothing in the game calls it yet (step 9 will), and it only works from the title screen.
+
+- **`WorldView.rebuild()`** frees everything in the region's own group (land, sea, decor, paths, nodes, clouds, aurora) and clears the trainers, follower, markers and lights. The sky, lights, weather particles and controls stay. **Anything new that's built for a region goes in `this.land`,** and anything taken off the map is passed to `free`.
+- **In the region's data:** `map.bounds` (what's drawn, how far the camera pans, the middle of the shallows, the shadows and the title view) and `map.offshore` (Ironwake).
+- **Checked** by a fingerprint of every mesh, light and colour, desktop and phone-sized: Margos is as it was before, and a rebuilt map is the same as a fresh one. Over 40 switches, shapes and textures level off. With the freeing taken out, they climb at every switch.
+- **Not checked on a real phone,** only Chrome's phone emulation.
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

@@ -44,6 +44,7 @@ export const TEST_REGION: Region = {
     scale: 1, nodes, edges,
     cities: { 'tc-ash': city('tc-ash', 'Testash', 'fire', 'Arb Ash', 'flames'), 'tc-brook': city('tc-brook', 'Testbrook', 'water', 'Arb Brook', 'tide'), 'tc-fen': city('tc-fen', 'Testfen', 'grass', 'Arb Fen', 'lanterns') },
     towns: { 'tt-mill': { blurb: '', sells: ['salve', 'totem'] }, 'tt-quay': { blurb: '', sells: ['calm-tea', 'sunberry'] }, 'tc-bowl': { blurb: '', sells: ['salve'], special: 'stadium' } },
+    bounds: { land: { x: [-25, 85], z: [-40, 70] }, pan: { x: [-10, 65], z: [-25, 50] }, sea: [25, 15], sun: [30, 15], title: [25, 15] },
     places: { wispSpots: nodes.filter((n) => n.kind !== 'legendary' && n.kind !== 'stadium').map((n) => n.id), roamingKeyItems: [], keyItemTowns: [], classicKeyTowns: {}, coasts: [] },
   },
   // too few for every encounter on purpose: the engine must cope without fetching somebody from outside

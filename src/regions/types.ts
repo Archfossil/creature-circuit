@@ -79,6 +79,20 @@ export interface ArenaEffect {
   countdown?: ArenaCountdown;
 }
 
+/** How far things reach, before the map's scale. x runs west to east, and z north to south. */
+export interface Bounds {
+  /** The land that's drawn: every node, with room for its coast. */
+  land: { x: [number, number]; z: [number, number] };
+  /** How far the camera can be moved. */
+  pan: { x: [number, number]; z: [number, number] };
+  /** The middle of the shallows: the sea deepens away from here. */
+  sea: [number, number];
+  /** Where the sun's shadows are centred. */
+  sun: [number, number];
+  /** What the title screen looks at. */
+  title: [number, number];
+}
+
 /** A Notice Board's tips. A key item's is always up until the trainer has it. */
 export type Notices = (s: GameState, t: Tools) => { keys: { item: string; text: string }[]; tips: string[] };
 
@@ -86,7 +100,7 @@ export interface Region {
   /** Never changes: it will be in saves. */
   id: string;
   name: string;
-  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places; /** Nodes across open water: no land joins them to the rest. */ offshore?: string[]; /** Colours for a city's houses, if not the usual. */ walls?: Record<string, string[]> };
+  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places; bounds: Bounds; /** Nodes across open water: no land joins them to the rest. */ offshore?: string[]; /** Colours for a city's houses, if not the usual. */ walls?: Record<string, string[]> };
   codex: Codex;
   /** Rivals and Champions, and by their ids, what they say and wear. */
   people: { npcs: Npc[]; voices: Record<string, Voice>; looks: Record<string, Outfit> };

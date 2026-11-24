@@ -486,6 +486,23 @@ describe('changing region', () => {
     for (const name of ['tour-arbiters', 'wander-nature']) expect(saved(`seasons/${name}`).startsWith(margosSeason(c.g, name)), name).toBe(true);
   }, 120000);
 
+  it('has bounds that take in every place, with no trainer or coast cut off', async () => {
+    const { landField } = await import('../src/render/land');
+    for (const r of [c.MARGOS, TEST_REGION]) {
+      c.active.setRegion(r);
+      const { bounds: { land, pan, title }, nodes, scale: k } = r.map;
+      for (const n of nodes) {
+        expect(n.x, n.id).toBeGreaterThan((land.x[0] + 3) * k); expect(n.x, n.id).toBeLessThan((land.x[1] - 3) * k);
+        expect(n.z, n.id).toBeGreaterThan((land.z[0] + 3) * k); expect(n.z, n.id).toBeLessThan((land.z[1] - 3) * k);
+        // within reach of the camera, which sees a good way past where it's pointed
+        expect(Math.max(pan.x[0] * k - n.x, n.x - pan.x[1] * k, pan.z[0] * k - n.z, n.z - pan.z[1] * k), n.id).toBeLessThan(12 * k);
+      }
+      expect(title[0] > pan.x[0] && title[0] < pan.x[1] && title[1] > pan.z[0] && title[1] < pan.z[1]).toBe(true);
+    }
+    c.active.setRegion(c.MARGOS);
+    expect(landField(0, 0)).toBeGreaterThan(0);
+  });
+
   it('keeps the test region out of the game, and Margos out of the engine', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => f.endsWith('.ts'));

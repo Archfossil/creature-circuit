@@ -1,6 +1,6 @@
 // Pure terrain math for the world map: noise and where the land is. No three.js here, so the
 // map tests can check the coastline (e.g. that Kilauea stays an island).
-import { onRegion } from '../regions/active';
+import { activeRegion, onRegion } from '../regions/active';
 import { MAP_NODES, MAP_EDGES, NODE_BY_ID, MAP_SCALE } from '../data/map';
 import type { MapNode } from '../data/schema';
 
@@ -37,13 +37,13 @@ export function landField(x: number, z: number) {
 
 /** Map nodes on the same landmass as `nodeId` (flood fill over land on a 1-unit grid). */
 export function landmassOf(nodeId: string): string[] {
-  const start = NODE_BY_ID[nodeId];
+  const start = NODE_BY_ID[nodeId], { land } = activeRegion().map.bounds;
   const seen = new Set<string>();
   const q: [number, number][] = [[Math.round(start.x), Math.round(start.z)]];
   while (q.length) {
     const [x, z] = q.pop()!;
     const k = `${x},${z}`;
-    if (seen.has(k) || x < -90 * MAP_SCALE || x > 90 * MAP_SCALE || z < -75 * MAP_SCALE || z > 105 * MAP_SCALE || landField(x, z) <= 0.05) continue;
+    if (seen.has(k) || x < land.x[0] * MAP_SCALE || x > land.x[1] * MAP_SCALE || z < land.z[0] * MAP_SCALE || z > land.z[1] * MAP_SCALE || landField(x, z) <= 0.05) continue;
     seen.add(k);
     q.push([x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]);
   }

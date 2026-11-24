@@ -1,4 +1,4 @@
-import { activeRegion } from '../regions/active';
+import { activeRegion, onRegion } from '../regions/active';
 import { iconFor, iconUrl } from '../data/icons';
 import * as THREE from 'three';
 import { buildTrainer, playerLook, type TrainerLook, type TrainerRig } from './trainerModel';
@@ -69,6 +69,23 @@ function rawHeight(x: number, z: number) {
 }
 
 const nodeBase = new Map<string, number>();
+onRegion(() => nodeBase.clear());
+/** The region's bounds, in map units (Region.map.bounds is before the map's scale). */
+const bounds = () => {
+  const { land, pan, sea, sun, title } = activeRegion().map.bounds, up = (a: [number, number]) => a.map((v) => v * S) as [number, number];
+  return { x: up(land.x), z: up(land.z), panX: up(pan.x), panZ: up(pan.z), sea: up(sea), sun: up(sun), title: up(title), wide: land.x[1] - land.x[0], deep: land.z[1] - land.z[0] };
+};
+
+/** Free a thing's graphics memory (it must be off the scene). `materials`: false keeps them, for a trainer mini's, which are shared. */
+function free(o: THREE.Object3D, materials = true) {
+  o.traverse((x) => {
+    const m = x as THREE.Mesh;
+    m.geometry?.dispose();
+    if ((x as THREE.InstancedMesh).isInstancedMesh) (x as THREE.InstancedMesh).dispose();
+    if (!materials) return;
+    for (const mat of [m.material ?? []].flat()) { (mat as THREE.MeshStandardMaterial).map?.dispose(); mat.dispose(); }
+  });
+}
 function nodeHeight(n: MapNode) {
   let v = nodeBase.get(n.id);
   if (v === undefined) { v = Math.max(0.5, rawHeight(n.x, n.z).h); nodeBase.set(n.id, v); }
@@ -91,13 +108,15 @@ function labelSprite(text: string, opts: { bg?: string; fg?: string; size?: numb
   const ctx = c.getContext('2d')!;
   const fs = 44;
   ctx.font = `700 ${fs}px Fredoka, Nunito, system-ui, sans-serif`;
-  const w = Math.ceil(ctx.measureText(text).width) + 56;
+  const name = Math.ceil(ctx.measureText(text).width) + 56;
+  ctx.font = `600 26px Nunito, system-ui, sans-serif`;
+  const w = Math.max(name, opts.sub ? Math.ceil(ctx.measureText(opts.sub).width) + 6 : 0); // (the name's pill, or a longer line under it)
   const h = opts.sub ? 104 : 72;
   c.width = w; c.height = h;
   ctx.font = `700 ${fs}px Fredoka, Nunito, system-ui, sans-serif`;
   const r = 30;
   ctx.fillStyle = opts.bg ?? 'rgba(255,250,238,0.95)';
-  ctx.beginPath(); ctx.roundRect(2, 2, w - 4, 68, r); ctx.fill();
+  ctx.beginPath(); ctx.roundRect((w - name) / 2 + 2, 2, name - 4, 68, r); ctx.fill();
   ctx.lineWidth = 4; ctx.strokeStyle = opts.accent ?? '#2b2a33'; ctx.stroke();
   ctx.fillStyle = opts.fg ?? '#2b2a33';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -183,6 +202,8 @@ export class WorldView implements SceneView {
   interactive = true;
   title = false;
 
+  /** Everything built for the region: the land and sea, paths, nodes, clouds and aurora. */
+  private land = new THREE.Group();
   private target = new THREE.Vector3(0, 0, 0);
   private goal = new THREE.Vector3(0, 0, 0);
   private dist = 48;
@@ -236,17 +257,52 @@ export class WorldView implements SceneView {
   constructor(canvas: HTMLCanvasElement) {
     this.buildLights();
     this.buildSky();
+    this.buildRegion();
+    this.buildPawn();
+    this.buildParticles();
+    this.bindInput(canvas);
+    this.scene.fog = new THREE.Fog('#bfe3f0', 90, 230);
+  }
+
+  private buildRegion() {
+    this.scene.add(this.land);
     this.buildTerrain();
     this.buildWater();
     this.buildDecor();
     this.buildPaths();
     this.buildNodes();
-    this.buildPawn();
-    this.buildParticles();
     this.buildAurora();
     this.buildClouds();
-    this.bindInput(canvas);
-    this.scene.fog = new THREE.Fog('#bfe3f0', 90, 230);
+    const b = bounds(), sc = this.sun.shadow.camera, half = (Math.max(b.wide, b.deep) / 2 + 5) * S;
+    sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.near = 1; sc.far = 220 * S;
+    sc.updateProjectionMatrix();
+    this.sun.position.set(45 + b.sun[0], 70, 35 + b.sun[1]);
+    this.sun.target.position.set(b.sun[0], 0, b.sun[1]);
+  }
+
+  /** The region has changed: put the old map away and build the new one. Nobody is on it until they're placed again. */
+  rebuild() {
+    this.endHop();
+    this.pawn.visible = false;
+    this.setRivals([]);
+    this.setFollower(null);
+    this.setWisp(null);
+    this.setWaypoint(null);
+    this.clearSpot();
+    this.panKeys.clear();
+    this.lastTap = { id: '', t: 0 };
+    const painted = !!this.terrain.userData.init, glow: number = this.auroraMat.uniforms.uStrength.value;
+    this.scene.remove(this.land);
+    free(this.land);
+    this.land = new THREE.Group();
+    this.trees = []; this.prismTiles = []; this.prismColor = null; this.hitMeshes = []; this.legendGlows = []; this.clouds = [];
+    this.nodeGroups.clear(); this.rings.clear();
+    this.buildRegion();
+    this.auroraMat.uniforms.uStrength.value = glow;
+    if (painted) this.setSeason(this.season);
+    if (this.title) this.setTitleMode(true);
+    this.clampGoal();
+    this.target.copy(this.goal);
   }
 
   // ── Build ──────────────────────────────────────────────────────
@@ -254,12 +310,9 @@ export class WorldView implements SceneView {
     this.hemi = new THREE.HemisphereLight('#dff4ff', '#5a6b3a', 1.25);
     this.scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight('#fff1d6', 2.6);
-    this.sun.position.set(45, 70, 35);
     this.sun.castShadow = true;
     const sz = isMobile ? 1024 : 2048;
     this.sun.shadow.mapSize.set(sz, sz);
-    const sc = this.sun.shadow.camera;
-    sc.left = -95 * S; sc.right = 95 * S; sc.top = 95 * S; sc.bottom = -95 * S; sc.near = 1; sc.far = 220 * S;
     this.sun.shadow.bias = -0.0008;
     this.sun.shadow.normalBias = 0.4;
     this.scene.add(this.sun, this.sun.target);
@@ -279,11 +332,11 @@ export class WorldView implements SceneView {
 
   private buildTerrain() {
     // the terrain covers the whole (scaled) map; detail grows a little less than the map so it stays fast
-    // covers x −90…90 and z −76…100 (× S): the south reaches past Kilauea island's Caldera Heart
-    const W = 180 * S, D = 176 * S, segX = Math.round((isMobile ? 110 : 150) * S * 0.85), segZ = Math.round((isMobile ? 98 : 134) * S * 0.85);
+    const b = bounds(), W = b.wide * S, D = b.deep * S;
+    const segX = Math.round((isMobile ? 110 : 150) * (b.wide / 180) * S * 0.85), segZ = Math.round((isMobile ? 98 : 134) * (b.deep / 176) * S * 0.85);
     let geo: THREE.BufferGeometry = new THREE.PlaneGeometry(W, D, segX, segZ);
     geo.rotateX(-Math.PI / 2);
-    geo.translate(0, 0, 12 * S);
+    geo.translate((b.x[0] + b.x[1]) / 2, 0, (b.z[0] + b.z[1]) / 2);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(pos.getX(i), pos.getZ(i)));
     geo = geo.toNonIndexed();
@@ -336,10 +389,11 @@ export class WorldView implements SceneView {
     geo.computeVertexNormals();
     this.terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92 }));
     this.terrain.receiveShadow = true;
-    this.scene.add(this.terrain);
+    this.land.add(this.terrain);
   }
 
   private buildWater() {
+    const [sx, sz] = activeRegion().map.bounds.sea;
     const geo = new THREE.PlaneGeometry(700, 700, 90, 90);
     geo.rotateX(-Math.PI / 2);
     this.waterMat = new THREE.ShaderMaterial({
@@ -363,7 +417,7 @@ export class WorldView implements SceneView {
         uniform float uTime; uniform vec3 uDeep; uniform vec3 uShallow; varying vec3 vW; varying float vWave;
         #include <fog_pars_fragment>
         void main(){
-          float r = length(vW.xz - vec2(0.0, 5.0 * ${S.toFixed(3)}));
+          float r = length(vW.xz - vec2(${sx.toFixed(1)} * ${S.toFixed(3)}, ${sz.toFixed(1)} * ${S.toFixed(3)}));
           float k = smoothstep(40.0 * ${S.toFixed(3)}, 110.0 * ${S.toFixed(3)}, r);
           vec3 c = mix(uShallow, uDeep, 0.55 + k*0.45);
           float n1 = sin(vW.x*0.9+uTime*1.1+sin(vW.z*0.7)*2.0)*sin(vW.z*1.1-uTime*0.8+sin(vW.x*0.5)*2.0);
@@ -376,7 +430,7 @@ export class WorldView implements SceneView {
     this.water = new THREE.Mesh(geo, this.waterMat);
     this.water.position.y = 0.0;
     this.water.renderOrder = 1;
-    this.scene.add(this.water);
+    this.land.add(this.water);
   }
 
   private buildDecor() {
@@ -396,8 +450,9 @@ export class WorldView implements SceneView {
       volcanic: [[0.16, 'rock'], [0.05, 'round']], lake: [[0.2, 'round']], river: [[0.25, 'round']], road: [[0.08, 'round']],
     };
     const step = isMobile ? 1.9 : 1.55;
-    for (let x = -88 * S; x < 88 * S; x += step) {
-      for (let z = -74 * S; z < 98 * S; z += step) {
+    const { land: { x: lx, z: lz } } = activeRegion().map.bounds;
+    for (let x = (lx[0] + 2) * S; x < (lx[1] - 2) * S; x += step) {
+      for (let z = (lz[0] + 2) * S; z < (lz[1] - 2) * S; z += step) {
         const jx = x + (hash(x, z) - 0.5) * step, jz = z + (hash(z, x) - 0.5) * step;
         const { h, land } = rawHeight(jx, jz);
         if (land < 0.85 || h < 0.5) continue;
@@ -436,7 +491,7 @@ export class WorldView implements SceneView {
         m.setColorAt(i, sp.c);
       });
       m.castShadow = true; m.receiveShadow = true;
-      this.scene.add(m);
+      this.land.add(m);
       if (seasonal) this.trees.push({ mesh: m, base: spots.map((s) => s.c.clone()) });
     };
     make(pineGeo, pines, true); make(roundGeo, rounds, true); make(trunkGeo, trunks, false); make(rockGeo, rocks, false); make(cactusGeo, cacti, false);
@@ -470,15 +525,15 @@ export class WorldView implements SceneView {
     const mtx = new THREE.Matrix4();
     stones.forEach((p, i) => { mtx.makeRotationY(hash(p.x, p.z) * 3); mtx.setPosition(p); m.setMatrixAt(i, mtx); });
     m.receiveShadow = true;
-    this.scene.add(m);
+    this.land.add(m);
     // Cloud Island paths: midnight plum stones, a little larger, so they read against the pastel ground
     const cm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.34, 0.38, 0.14, 7), new THREE.MeshStandardMaterial({ color: CLOUD_PATH, roughness: 0.6, flatShading: true }), cloudStones.length);
     cloudStones.forEach((p, i) => { mtx.makeRotationY(hash(p.x, p.z) * 3); mtx.setPosition(p); cm.setMatrixAt(i, mtx); });
     cm.receiveShadow = true;
-    this.scene.add(cm);
+    this.land.add(cm);
     const sm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 10), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.85 }), sea.length);
     sea.forEach((p, i) => { mtx.identity(); mtx.setPosition(p); sm.setMatrixAt(i, mtx); });
-    this.scene.add(sm);
+    this.land.add(sm);
   }
 
   private buildNodes() {
@@ -546,7 +601,7 @@ export class WorldView implements SceneView {
             pole.position.set(Math.cos(a) * 1.9, 1.0, Math.sin(a) * 1.9);
             g.add(flag, pole);
           }
-          const lab = labelSprite('Circuit Stadium', { bg: '#ffd84a', sub: 'Turn 100 · Grand Tournament', size: 0.026 });
+          const lab = labelSprite(n.name, { bg: '#ffd84a', sub: 'Turn 100 · Grand Tournament', size: 0.026 });
           lab.position.y = 2.8; g.add(lab);
         } else {
           this.addHouses(g, n, '#c75b39', 3);
@@ -599,7 +654,7 @@ export class WorldView implements SceneView {
       hit.userData.nodeId = n.id;
       g.add(hit);
       this.hitMeshes.push(hit);
-      this.scene.add(g);
+      this.land.add(g);
       this.nodeGroups.set(n.id, g);
     }
   }
@@ -635,7 +690,7 @@ export class WorldView implements SceneView {
 
   /** Swap the token's mini for a new look (new game, or the player changed their appearance). */
   setTrainerLook(look: TrainerLook) {
-    if (this.pawnRig) this.pawn.remove(this.pawnRig.root);
+    if (this.pawnRig) { this.pawn.remove(this.pawnRig.root); free(this.pawnRig.root, false); }
     this.pawnRig = buildTrainer(look);
     this.pawnRig.root.scale.setScalar(1.35);
     this.pawn.add(this.pawnRig.root);
@@ -656,7 +711,8 @@ export class WorldView implements SceneView {
   }
 
   private buildAurora() {
-    const geo = new THREE.PlaneGeometry(160 * S, 40, 80, 1);
+    const { land: { x: lx, z: lz } } = activeRegion().map.bounds;
+    const geo = new THREE.PlaneGeometry((lx[1] - lx[0] - 20) * S, 40, 80, 1);
     this.auroraMat = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
       uniforms: { uTime: { value: 0 }, uStrength: { value: 0.25 } },
@@ -664,8 +720,8 @@ export class WorldView implements SceneView {
       fragmentShader: 'uniform float uTime; uniform float uStrength; varying vec2 vUv; void main(){ float band = sin(vUv.x*24.0+uTime*0.8)*0.5+0.5; float a = smoothstep(0.0,0.5,vUv.y)*smoothstep(1.0,0.4,vUv.y); vec3 c = mix(vec3(0.15,1.0,0.55), vec3(0.6,0.25,1.0), vUv.y); gl_FragColor = vec4(c, a*(0.4+band*0.6)*uStrength); }',
     });
     this.aurora = new THREE.Mesh(geo, this.auroraMat);
-    this.aurora.position.set(-10 * S, 32, -95 * S);
-    this.scene.add(this.aurora);
+    this.aurora.position.set(((lx[0] + lx[1]) / 2 - 10) * S, 32, (lz[0] - 19) * S);
+    this.land.add(this.aurora);
   }
 
   /**
@@ -676,6 +732,7 @@ export class WorldView implements SceneView {
   private buildClouds() {
     this.cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: 1, transparent: true, opacity: CLOUD_LOOKS.none.opacity });
     const geo = new THREE.IcosahedronGeometry(1, 1); // one subdivision: rounder puffs, still faceted
+    const { land: { x: lx, z: lz } } = activeRegion().map.bounds;
     for (let i = 0; i < 9; i++) {
       const c = new THREE.Group();
       const n = 8 + Math.floor(hash(i, 3) * 5); // 8–12 puffs
@@ -699,9 +756,9 @@ export class WorldView implements SceneView {
         m.scale.set(r * 1.1, r * 0.85, r);
         c.add(m);
       }
-      c.position.set((-90 + i * 22) * S, 20 + hash(i, 9) * 6, (-60 + hash(i, 5) * 120) * S);
+      c.position.set((lx[0] + i * 22 * ((lx[1] - lx[0]) / 180)) * S, 20 + hash(i, 9) * 6, (lz[0] + 16 + hash(i, 5) * Math.max(0, lz[1] - lz[0] - 56)) * S);
       this.clouds.push(c);
-      this.scene.add(c);
+      this.land.add(c);
     }
   }
 
@@ -714,18 +771,20 @@ export class WorldView implements SceneView {
     a.stretch += (g.stretch - a.stretch) * k;
     a.squash += (g.squash - a.squash) * k;
     a.speed += (g.speed - a.speed) * k;
+    const { land: { x: lx } } = activeRegion().map.bounds, left = (lx[0] - 20) * S, right = (lx[1] + 20) * S;
     this.cloudMat.color.copy(a.color);
     this.cloudMat.opacity = a.opacity;
     for (const c of this.clouds) {
       c.scale.set(a.stretch, a.squash, 1 / Math.sqrt(a.stretch));
       c.position.x += dt * a.speed;
-      if (c.position.x > 110 * S) c.position.x = -110 * S;
+      if (c.position.x > right) c.position.x = left;
     }
   }
 
   // ── State sync ─────────────────────────────────────────────────
   setPawnAt(id: string) {
     this.endHop(); // a hop still under way (the tab was hidden) must not carry the pawn off afterwards
+    this.pawn.visible = true;
     this.pawnBase.copy(this.pawnPos(id));
     this.pawn.position.copy(this.pawnBase);
     // the follower jumps along too (e.g. when the hotseat switches trainers), instead of gliding across the map
@@ -737,7 +796,7 @@ export class WorldView implements SceneView {
    * several trainers on one spot stay visible). Pass [] to clear.
    */
   setRivals(rivals: { look: TrainerLook; nodeId: string; id?: string }[]) {
-    for (const r of this.rivalRigs) this.scene.remove(r.root);
+    for (const r of this.rivalRigs) { this.scene.remove(r.root); free(r.root, false); }
     this.rivalRigs = [];
     this.rivalIds = rivals.map((r) => r.id);
     const perNode = new Map<string, number>();
@@ -776,7 +835,7 @@ export class WorldView implements SceneView {
 
   setFollower(speciesId: string | null) {
     if (speciesId === this.followerSpecies) return;
-    if (this.follower) this.scene.remove(this.follower.root);
+    if (this.follower) { this.scene.remove(this.follower.root); free(this.follower.root); }
     this.follower = null;
     this.followerSpecies = speciesId ?? '';
     if (!speciesId) return;
@@ -813,7 +872,8 @@ export class WorldView implements SceneView {
    * bobbing in a soft light over that node.
    */
   setWisp(id: string | null) {
-    if (this.wispMark) { this.scene.remove(this.wispMark); this.wispMark = null; }
+    if ((this.wispMark?.userData.at ?? null) === id) return;
+    if (this.wispMark) { this.scene.remove(this.wispMark); free(this.wispMark); this.wispMark = null; }
     const n = id ? NODE_BY_ID[id] : null;
     if (!n) return;
     const g = new THREE.Group();
@@ -828,7 +888,7 @@ export class WorldView implements SceneView {
     beam.position.y = -2.2;
     g.add(orb, halo, beam);
     g.position.set(n.x, nodeHeight(n) + 4, n.z);
-    g.userData.baseY = g.position.y;
+    g.userData = { baseY: g.position.y, at: id };
     this.scene.add(g);
     this.wispMark = g;
   }
@@ -841,7 +901,7 @@ export class WorldView implements SceneView {
     const key = id ? `${id}|${color}` : '';
     if (key === this.waypointKey) return;
     this.waypointKey = key;
-    if (this.waypointMark) { this.scene.remove(this.waypointMark); this.waypointMark = null; }
+    if (this.waypointMark) { this.scene.remove(this.waypointMark); free(this.waypointMark); this.waypointMark = null; }
     const n = id ? NODE_BY_ID[id] : null;
     if (!n) return;
     const g = new THREE.Group();
@@ -970,7 +1030,7 @@ export class WorldView implements SceneView {
 
   /** A pulsing ring and a beam of light in a trainer's colour, fading out after a few seconds. */
   spotlight(p: THREE.Vector3, color: string, life = 3.5) {
-    if (this.spot) this.scene.remove(this.spot.group);
+    this.clearSpot();
     const group = new THREE.Group();
     const mat = (o: number) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: o, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.35, 48), mat(0.9));
@@ -984,6 +1044,13 @@ export class WorldView implements SceneView {
     this.spot = { group, ring, beam, age: 0, life };
   }
 
+  private clearSpot() {
+    if (!this.spot) return;
+    this.scene.remove(this.spot.group);
+    free(this.spot.group);
+    this.spot = null;
+  }
+
   focus(id: string, instant = false) {
     const n = NODE_BY_ID[id];
     this.goal.set(n.x, nodeHeight(n), n.z + 3);
@@ -992,7 +1059,7 @@ export class WorldView implements SceneView {
 
   setTitleMode(on: boolean) {
     this.title = on;
-    if (on) { this.goal.set(-4 * S, 0, 6 * S); this.goalDist = 92 * 1.4; }
+    if (on) { const b = bounds(); this.goal.set(b.title[0], 0, b.title[1]); this.goalDist = 92 * 1.4 * (Math.max(b.wide, b.deep) * S) / 315; } // (further out for a bigger map: Margos is 315 across)
     else this.goalDist = this.defaultDist();
   }
 
@@ -1093,8 +1160,9 @@ export class WorldView implements SceneView {
   }
 
   private clampGoal() {
-    this.goal.x = THREE.MathUtils.clamp(this.goal.x, -70 * S, 70 * S);
-    this.goal.z = THREE.MathUtils.clamp(this.goal.z, -72 * S, 82 * S); // north edge reaches Cloud Island
+    const { panX, panZ } = bounds();
+    this.goal.x = THREE.MathUtils.clamp(this.goal.x, ...panX);
+    this.goal.z = THREE.MathUtils.clamp(this.goal.z, ...panZ);
   }
 
   private tap(x: number, y: number, ray: THREE.Raycaster, ndc: (x: number, y: number) => THREE.Vector2) {
@@ -1158,7 +1226,7 @@ export class WorldView implements SceneView {
       sp.ring.scale.setScalar(0.8 + k * 1.2);
       (sp.ring.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.9 * fade;
       (sp.beam.material as THREE.MeshBasicMaterial).opacity = (0.22 + Math.sin(t * 6) * 0.06) * fade;
-      if (sp.age >= sp.life) { this.scene.remove(sp.group); this.spot = null; }
+      if (sp.age >= sp.life) this.clearSpot();
     }
     if (this.follower) {
       const fp = this.follower.root.position;

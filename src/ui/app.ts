@@ -1,5 +1,6 @@
 import { STAR_FACE } from '../data/icons';
-import { activeRegion } from '../regions/active';
+import { activeRegion, setRegion } from '../regions/active';
+import type { Region } from '../regions/types';
 import { tools } from '../engine/tools';
 import { screens } from '../regions/screens';
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf, tile } from './dom';
@@ -141,6 +142,26 @@ export class App {
     addEventListener('online', () => void this.checkOnline());
     // the browser dropped or reloaded the tab mid-game: go straight back to the room
     if (resumeRoom) void this.connectOnline().then((ok) => { if (ok) { closeAllSheets(); this.online!.join(resumeRoom); } });
+  }
+
+  /**
+   * Change region: the old map is put away and the new one built, behind the loading screen. Only from the title
+   * screen, as a trainer on the map would be left standing on the old one.
+   */
+  async changeRegion(r: Region) {
+    if (r === activeRegion()) return;
+    if (!this.world.title) throw new Error('The region can only be changed from the title screen.');
+    const veil = h('div', { id: 'boot' }, h('div', { class: 'boot-spinner' }), h('p', null, `Shaping the land of ${r.name}…`));
+    document.body.append(veil);
+    await new Promise<void>((done) => { requestAnimationFrame(() => setTimeout(done, 30)); }); // let it be drawn first
+    try {
+      this.selected = null;
+      setRegion(r);
+      this.world.rebuild();
+    } finally {
+      veil.classList.add('done');
+      setTimeout(() => veil.remove(), 600);
+    }
   }
 
   // ════════════════════════════════════════════════════════════
