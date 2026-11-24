@@ -1,3 +1,4 @@
+import { activeRegion } from '../regions/active';
 import { iconFor, iconUrl } from '../data/icons';
 import * as THREE from 'three';
 import { buildTrainer, playerLook, type TrainerLook, type TrainerRig } from './trainerModel';
@@ -452,7 +453,7 @@ export class WorldView implements SceneView {
     for (const e of MAP_EDGES) {
       const a = NODE_BY_ID[e.a], b = NODE_BY_ID[e.b];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
-      const isSea = e.via === 'sea' || e.via === 'portal' || e.b === 'ironwake';
+      const isSea = e.via === 'sea' || e.via === 'portal' || activeRegion().map.offshore?.includes(e.b);
       const step = isSea ? 1.6 : 0.95;
       for (let d = 0; d <= len; d += step) {
         const t = d / len;
@@ -604,7 +605,7 @@ export class WorldView implements SceneView {
   }
 
   private addHouses(g: THREE.Group, n: MapNode, roof: string, count = 6) {
-    const wallCols = n.id === 'iron' ? ['#e85d5d', '#f2c14e', '#5da9e9', '#7bc47f'] : ['#f6ecd6', '#efe1c0', '#e8d8b8'];
+    const wallCols = activeRegion().map.walls?.[n.id] ?? ['#f6ecd6', '#efe1c0', '#e8d8b8'];
     for (let i = 0; i < count; i++) {
       const a = (i / count) * Math.PI * 2 + 0.3;
       const r = count > 3 ? 2.3 : 1.2;

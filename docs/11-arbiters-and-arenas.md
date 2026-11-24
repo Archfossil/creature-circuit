@@ -6,8 +6,8 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/regions/margos/map.ts`.
 - **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
 - **Arena effects:** `src/regions/margos/arenas.ts` (`ARENAS`: what each one does), played out by `src/engine/battle.ts`.
-- **Katy, Fabian, Stella and Dahlia's conditions:** `src/regions/margos/gimmicks`, with their screens in `src/regions/margos/screens.ts`.
-- **Challenge screen and Cloud Island:** `src/ui/app.ts` (`arbiter`, `cloudSheet`).
+- **Katy, Fabian, Stella, Dahlia and Salem's conditions:** `src/regions/margos/gimmicks`, with their screens in `src/regions/margos/screens.ts`.
+- **Challenge screen:** `src/ui/app.ts` (`arbiter`).
 
 ## How Arbiters work
 
@@ -128,7 +128,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 - **Once a lap is done,** Salem accepts the challenge any time, for the rest of the game.
 - **On the island:** its wilds turn up Astral, Electric, Water and Charm creatures (by the time of day), plus **universal offerings**: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3) work on any creature. Only the [Cloud Island events](./10-events.md#cloud-island-events) happen there.
 - **After beating Salem,** bridges open from the ring to the **Eye of the Sky**, where the Legendary **Nimbalune** (Water/Astral, Lv 10 + 1 per 25 turns) waits.
-- **Code:** `portalOpen`, `stepCloudLap`, `cloudLapProgress` and `cloudStepExtra` (with `moveCost`) in `world.ts`; the Cloud satchel in `addItem` and `moveTrainer` (`state.ts`); the island in `src/data/map.ts` (`CLOUD_RING`, `CLOUD_EYE`).
+- **Code:** `src/regions/margos/gimmicks/salem.ts` (its events in `salemEvents.ts`), with its rules sheet, prompt, chip and toasts in `src/regions/margos/screens.ts`.
 - **Rules on screen:** before stepping through the portal, a prompt shows every rule and the trainer's status (portal, step cost, lap, satchel), with Step through / Not now. On the island, a ☁️ Cloud Island chip on the HUD shows the lap, the satchel and the portal at a glance, and opens the same rules. It disappears once the trainer leaves (`cloudRules`, `cloudPrompt`, `cloudSheet` in `app.ts`).
 - **Look:** cotton candy pinks and purples veined with a sinister dark purple, candy-floss puffs and dark spires, under a dusky violet sky (deep purple at night). Paths and node tiles are midnight plum (`#2a0f3a`, tiles with a white rim) so they stand out from the pastel ground.
 

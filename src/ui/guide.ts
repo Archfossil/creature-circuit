@@ -2,10 +2,14 @@
 // screen and ☰ Menu), plus the short welcome tour shown when a journey starts. Content only; the
 // App renders it. In topic text, a line starting with "- " is a bullet.
 
+import { onRegion } from '../regions/active';
+
 export interface GuideTopic { id: string; title: string; body: string[] }
+/** A topic or line by name is the region's own (Region.guide), left out if it has none. */
+type SharedTopic = string | { id: string; title: string; body: (string | { more: string })[] };
 export interface GuideCategory { id: string; icon: string; label: string; topics: GuideTopic[] }
 
-export const GUIDE: GuideCategory[] = [
+const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
   {
     id: 'basics', icon: '🧭', label: 'Basics',
     topics: [
@@ -34,12 +38,12 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'travel', title: 'Getting around faster', body: [
         'The map is big. Besides walking one step per Initiative:',
-        '- 🚲 Bike (Lumber Hollow): once a turn, roll a d6 and ride up to that many steps for free. No exploring on the way or where you stop.',
+        { more: 'bike' },
         '- 🚕 Taxi Ticket (city markets): from a city to any other city, but it uses up the rest of your Initiative.',
         '- 🕊️ Homing Feather: fly back to your home city from anywhere (a Wanderer picks any city they’ve rested at). Also uses up your Initiative.',
         '- 🥜 Trail Mix: +1 Initiative, once a turn.',
         '- Events: a 🎈 Hot Air Balloon by day and a 🚌 Night Coach by night offer rides to faraway cities.',
-        'None of these work on Cloud Island or the Forest Floor, and Bike rides keep to land and the usual gates.',
+        { more: 'noRides' },
       ] },
       { id: 'events', title: 'Events', body: [
         'From the second turn on, each turn starts with something happening on the road: a trader, a caretaker, a storm, a rival…',
@@ -166,11 +170,11 @@ export const GUIDE: GuideCategory[] = [
         'Side challenges: race someone to a place, be first to beat an Arbiter or fill your Codex, or something sillier. Set one from a conversation or take up theirs; follow both sides under 🎯 Challenges in Rival Trainers. The first to finish wins coins, a treat and any wager.',
         'Revenge: beat a Rival or Champion who beat you last time for extra coins, XP and an item. The more losses you’re avenging, the bigger the bonus (up to three).',
         'Every Rival and Champion has an outfit of their own: a Rival’s base shows their favourite type’s colour, and Champions wear capes on a gold base. Champions tour the cities and towns. Become firm friends with one (chat, battle, text and trade) and they’ll offer to sponsor you: their home city becomes your home too. If you’re at home there already, or a Wanderer, its Nabe costs you no Initiative. You can have one sponsor at a time. Chat with them or challenge them there. The Circuit Standings (in Rival Trainers) show who’s on course for the Finals; a Rival who keeps beating you, or whom you battle most, can earn a place.',
-        'Each city’s Arbiter guards a Merit. Their arenas have tricks that favour the Arbiter (ice floes, fog, lightning…), described before you challenge. A prepared trainer can use some of them: Watson’s lightning heals Electric creatures, yours included.',
+        { more: 'arenas' },
         'Rematches: an Arbiter you’ve beaten will battle again at your Tier now, for 💰 5 per Tier and an Imprint of their type. Their team rests 5 turns after each loss to you. An Imprint swaps 1 energy a creature generates for 1 of the Arbiter’s type, for good, so it can learn moves it couldn’t before. Use it at once or keep it in your Bag.',
         'A creature can have 3 imprinted energy, keeps at least 1 of each of its own types, and can have an imprinted energy changed again (or back). Its types and Prisma don’t change. Moves that no longer fit leave its playbook. Rivals and Champions imprint their favourite types on some of their creatures too, so expect a surprise move or two.',
-        'Cliff’s Crumbling Plateau is a timer: it shrinks every round (watch the ⏳ counter), and if it’s gone before you beat him, you’re rung out and lose.',
-        'Some Arbiters have conditions. Salem (Aurora Peak) only battles trainers who have walked a full lap of Cloud Island (see Places → Cloud Island). Stella (Iron Coast) only battles trainers who clear the Iron Coast Gauntlet: beat 2 local trainers per Tier without leaving the city. You can rest at the Stable between matches, but leaving resets it. Once cleared, she’ll battle you any time.',
+        { more: 'arenaTimer' },
+        { more: 'conditions' },
         'Trainer, Arbiter and Champion battles give every creature that fights +3 XP, win or lose, on top of the usual XP.',
       ] },
     ],
@@ -190,51 +194,18 @@ export const GUIDE: GuideCategory[] = [
       ] },
       { id: 'towns', title: 'Towns', body: [
         'Town Stables also fully recover your team, but serve no Chanko Nabe buff. Town markets and Workbenches cost no Initiative, and markets often sell key items (lanterns, ropes, passes…).',
-        'The Canopy Rope (for Dahlia) and the Root Whistle (for Katy) are sold in different towns every game. Check the Notice Boards: they always say where.',
-        '- Valor Ridge: the Battle School.',
-        '- Quillhaven: the Research Facility.',
-        '- Shifting Depths: Explore the Depths.',
+        { more: 'towns' },
       ] },
-      { id: 'cloud', title: 'Cloud Island', body: [
-        'A portal in Aurora Peak opens at night (even turns), and any time in Winter, to Cloud Island: a ring of six cloud wilds off the north-west coast. Its rules are shown before you step through, and while you’re there the ☁️ Cloud Island chip (top left) shows your lap, your satchel and the portal, and opens the rules again.',
-        '- Salem only battles trainers who have walked a full lap of it: 6 steps in a row around the ring, always the same way round. Turning back starts the count again.',
-        '- Every step onto the island costs +1 Initiative per Tier (Salem makes stronger trainers slog), so a lap takes several turns. You can walk the ring by day, but the portal only opens at night. Leaving the island ends the lap.',
-        '- Items you find there go into a Cloud satchel, and only reach your bag when you escape through the portal. Get wiped out and sent home, and the satchel is lost.',
-        '- Its wilds turn up universal offerings that work on any creature: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3). The island has its own events too.',
-        '- Beat Salem, then come back: the bridges to the Eye of the Sky, in the middle of the ring, open, and a Legendary waits there.',
-      ] },
-      { id: 'floor', title: 'The Forest Floor', body: [
-        'Below Gloomshade lies the Forest Floor, one lightless place reached with a Canopy Rope. Dahlia’s arena hides somewhere down there. Its rules show before you climb down, and while you’re there the 🌲 Forest Floor chip (top left) shows your progress and opens them again.',
-        '- Explore it again and again with a d8: 1–2 nothing (your team loses Morale: they fear the dark), 3–4 a wild creature (hard to run from unless Quick Step), 5–6 an exotic find, 7–8 a sign of Dahlia’s Trail.',
-        '- Find 3 signs, +1 per Tier, and her arena appears. Leave the Forest Floor, by choice or by defeat, and the trail is lost.',
-        '- Once Dahlia is beaten, exploring down there rolls a d6 instead: the same table without the trail, so you can hunt its creatures and exotic finds without wasting explores.',
-        '- Its events are all hostile: stalkers, grasping roots, spore clouds, whispers and thieves.',
-      ] },
+      'cloud',
+      'floor',
       { id: 'camping', title: 'Camping', body: [
         'On a wild node, camp to end your turn. Each Initiative you have left lets you tend one creature you choose, restoring its Health and clearing Fatigue.',
         'Camp early to tend more of your team. Knocked-out creatures need a Stable.',
       ] },
-      { id: 'school', title: 'Battle School', body: [
-        'At Valor Ridge, pay coins and leave a creature to train: 1 XP per coin, earned at 2 XP a turn.',
-        'You’re told when it’s done. Pick it up (early if you like) to spend its new level-up points. A d6 decides whether it enjoyed the stay (Morale and Loyalty up or down).',
-        '🌅 Retraining: the drill masters can also give a creature any new Nature (💰 6), Ability (💰 8) or Instinct (💰 10). It stays overnight and is ready the next morning. The drills are harsh: it loses 1 Loyalty for each change when you pick it up.',
-        'A new Nature keeps the number of perks it has unlocked. The Creature Caretaker, Trail Tutor and Drum Circle events can change a Nature, Ability or Instinct for free, but only to one of three random options.',
-      ] },
-      { id: 'rainbow', title: 'Lantern Glade & the Rainbow Plains', body: [
-        'Lantern Glade is a town up a misty branch off Fogbank Path (between Mistfall and Hollow Crest). Only a Fog Lantern with a wisp caught in it lights the way.',
-        '- Buy a Fog Lantern in Mistfall, then open your Bag and Check it: the flame shows where a wisp waits (any town, city or wild spot on the mainland), and the map marks it with a little light.',
-        '- Walk there to catch the wisp. Every visit takes a new one: when you leave the Glade and the Plains, it drifts home.',
-        'Behind the Glade, the Rainbow Plains take on a new type every day (odd turns), and turn its color. Only that type turns up there, every creature is at least one rarity higher, and finds are exotic (like the Forest Floor and Cloud Island).',
-      ] },
-      { id: 'research', title: 'Research Facility', body: [
-        'In Quillhaven, release a recruited creature for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).',
-        'Each Legendary exists once per game, and a released one returns to its grounds on the map.',
-        'Your starter (🤝 special bond) stays with you and can’t be released.',
-      ] },
-      { id: 'depths', title: 'Explore the Depths', body: [
-        'At Shifting Depths (down the Sinkhole Stair from Houndmouth Canyon), leave an offering material: a wild creature of a type that craves it climbs up to battle you (1 Initiative plus the material).',
-        'It has already accepted the offering, so the material counts toward recruiting it if you win.',
-      ] },
+      'school',
+      'rainbow',
+      'research',
+      'depths',
     ],
   },
   {
@@ -294,6 +265,17 @@ export const GUIDE: GuideCategory[] = [
     ],
   },
 ];
+
+export let GUIDE: GuideCategory[];
+onRegion(({ guide }) => {
+  const named = SHARED.flatMap((c) => c.topics);
+  const own = (x: SharedTopic): GuideTopic[] => (typeof x !== 'string' ? [{ ...x, body: x.body.flatMap((l) => (typeof l === 'string' ? l : guide.lines[l.more] ?? [])) }] : guide.topics.filter((g) => g.id === x));
+  GUIDE = SHARED.map((c) => ({
+    ...c,
+    // a region's other topics are about its places
+    topics: [...c.topics.flatMap(own), ...(c.id === 'places' ? guide.topics.filter((g) => !named.includes(g.id)) : [])],
+  }));
+});
 
 /** The short welcome tour shown when a journey starts. */
 export interface TourStep { icon: string; title: string; lines: string[] }

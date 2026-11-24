@@ -1600,6 +1600,14 @@ describe('the Forest Floor (Dahlia)', () => {
       if (resolveRound(b, { kind: 'run' }).some((e) => e.t === 'end' && e.result === 'escaped')) escaped++;
     }
     expect(escaped / 300).toBeLessThan(0.45);
+    for (const [hardRun, want] of [[true, /Forest Floor hems you in/], [false, /^Couldn't escape!$/]] as const) {
+      for (let i = 0, said = false; !said; i++) {
+        expect(i).toBeLessThan(200);
+        const ev = resolveRound(createBattle(side('player', [createCreature('puddlit', 5)]), side('wild', [createCreature('zapup', 5)]), WEATHER.clear, { hardRun }), { kind: 'run' });
+        const line = ev.find((e) => e.t === 'say' && /escape/.test(e.text));
+        if (line?.t === 'say') { said = true; expect(line.text).toMatch(want); }
+      }
+    }
     const qs = createBattle(side('player', [createCreature('puddlit', 5)]), side('wild', [createCreature('zapup', 5)]), WEATHER.clear, { hardRun: true, quickStep: true });
     expect(resolveRound(qs, { kind: 'run' }).some((e) => e.t === 'end' && e.result === 'escaped')).toBe(true);
   });

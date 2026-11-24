@@ -11,7 +11,7 @@ const nodes = [
   node('tc-ash', 'Testash', 'city', 'volcanic', 0, 0, { cityType: 'fire' }),
   node('tc-brook', 'Testbrook', 'city', 'lake', 40, 0, { cityType: 'water' }),
   node('tc-fen', 'Testfen', 'city', 'forest', 20, 40, { cityType: 'grass' }),
-  node('stadium', 'Test Stadium', 'stadium', 'road', 20, 14),
+  node('tc-bowl', 'Test Stadium', 'stadium', 'road', 20, 14),
   node('tt-mill', 'Testmill', 'town', 'meadow', 10, 25),
   node('tt-quay', 'Testquay', 'town', 'coast', 55, 12),
   node('w1', 'Test Cinders', 'wild', 'desert', 13, 1),
@@ -23,7 +23,7 @@ const nodes = [
 ];
 const edges: MapEdge[] = ([
   ['tc-ash', 'w1'], ['w1', 'w2'], ['w2', 'tc-brook'], ['tc-ash', 'tt-mill'], ['tt-mill', 'n1'], ['n1', 'tc-fen'], ['tc-fen', 'n2'], ['n2', 'tc-brook'],
-  ['tc-brook', 'tt-quay'], ['w2', 'w3'], ['w3', 'stadium'], ['tt-mill', 'stadium'], ['tc-ash', 'tl-crown'],
+  ['tc-brook', 'tt-quay'], ['w2', 'w3'], ['w3', 'tc-bowl'], ['tt-mill', 'tc-bowl'], ['tc-ash', 'tl-crown'],
 ] as const).map(([a, b]) => ({ a, b }));
 const city = (nodeId: string, name: string, type: ElementType, arbiter: string, trick: string): City => ({
   nodeId, name, type, park: 'Nowhere', arbiter, accolade: `${name} Merit`, arena: { name: `${name} Arena`, trick, text: '' }, hotpot: { name: `${name} Nabe`, buff: { power: 1 }, text: '' }, blurb: '',
@@ -43,7 +43,7 @@ export const TEST_REGION: Region = {
   map: {
     scale: 1, nodes, edges,
     cities: { 'tc-ash': city('tc-ash', 'Testash', 'fire', 'Arb Ash', 'flames'), 'tc-brook': city('tc-brook', 'Testbrook', 'water', 'Arb Brook', 'tide'), 'tc-fen': city('tc-fen', 'Testfen', 'grass', 'Arb Fen', 'lanterns') },
-    towns: { 'tt-mill': { blurb: '', sells: ['salve', 'totem'] }, 'tt-quay': { blurb: '', sells: ['calm-tea', 'sunberry'] }, stadium: { blurb: '', sells: ['salve'], special: 'stadium' } },
+    towns: { 'tt-mill': { blurb: '', sells: ['salve', 'totem'] }, 'tt-quay': { blurb: '', sells: ['calm-tea', 'sunberry'] }, 'tc-bowl': { blurb: '', sells: ['salve'], special: 'stadium' } },
     places: { wispSpots: nodes.filter((n) => n.kind !== 'legendary' && n.kind !== 'stadium').map((n) => n.id), roamingKeyItems: [], keyItemTowns: [], classicKeyTowns: {}, coasts: [] },
   },
   // too few for every encounter on purpose: the engine must cope without fetching somebody from outside
@@ -101,5 +101,8 @@ export const TEST_REGION: Region = {
     },
     { id: 'late', gate: (_s, city) => (city === 'tc-fen' ? { ok: false, reason: 'Never heard.' } : null) },
   ],
+  home: 'tc-brook',
+  notices: (_s, t) => ({ keys: [{ item: 'totem', text: `Test key ${t.keyTownName(_s, 'totem')}` }], tips: ['Test tip.'] }),
+  guide: { topics: [{ id: 'test-topic', title: 'Test topic', body: ['Test body.'] }], lines: { bike: ['Test bike.'] } },
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },
 };

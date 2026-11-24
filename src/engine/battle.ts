@@ -645,7 +645,7 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
       ev.push({ t: 'end', result: 'escaped' });
       return ev;
     }
-    ev.push({ t: 'say', text: b.hardRun ? 'Couldn\'t escape! The dark Forest Floor hems you in.' : `Couldn't escape!`, tone: 'bad' });
+    ev.push({ t: 'say', text: (b.hardRun && activeRegion().gimmicks.find((g) => g.apart?.noEscape)?.apart!.noEscape) || `Couldn't escape!`, tone: 'bad' });
   }
 
   const speedOf = (si: 0 | 1, a: Action | { kind: 'flee' }) => {

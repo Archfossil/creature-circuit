@@ -17,7 +17,7 @@ export const smooth = (e0: number, e1: number, x: number) => { const t = Math.ma
 
 // Land segments (sea routes excluded so islands stay islands)
 export let SEGS: [MapNode, MapNode][];
-onRegion(() => { SEGS = MAP_EDGES.filter((e) => e.via !== 'sea' && e.via !== 'portal' && e.b !== 'ironwake' && e.a !== 'ironwake').map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]); });
+onRegion(({ map }) => { SEGS = MAP_EDGES.filter((e) => e.via !== 'sea' && e.via !== 'portal' && !map.offshore?.includes(e.b) && !map.offshore?.includes(e.a)).map((e) => [NODE_BY_ID[e.a], NODE_BY_ID[e.b]]); });
 
 export function segDist(px: number, pz: number, a: MapNode, b: MapNode) {
   const dx = b.x - a.x, dz = b.z - a.z;

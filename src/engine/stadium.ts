@@ -13,7 +13,8 @@ import { pick } from './dice';
 import { SPECIES_BY_ID } from '../data/species';
 import { NATURES, NATURE_BY_ID, WEATHER } from '../data/content';
 import { INSTINCT_BY_ID, INSTINCT_POOL } from '../data/instincts';
-import { CITIES } from '../data/map';
+import { CITIES, MAP_NODES } from '../data/map';
+import { activeRegion } from '../regions/active';
 import { NPCS, NPC_BY_ID } from '../data/npcs';
 import type { Instinct } from '../data/instincts';
 import type { Species } from '../data/schema';
@@ -111,10 +112,10 @@ export function readTeamCode(text: string): StadiumTeam | null {
 
 /** A trainer who only exists for a Stadium battle: never saved. Their first creature leads. */
 export function stadiumTrainer(name: string, color: string, look: GameState['trainer']['look'], team: CreatureInst[]): GameState {
-  const s = newGame(name, 'balanced', 'thunder', 'puddlit', color, look);
+  const s = newGame(name, 'balanced', activeRegion().home, 'puddlit', color, look);
   s.stadium = true;
   s.turn = 99; // the season is all but over, and it is day
-  s.location = 'stadium';
+  s.location = MAP_NODES.find((n) => n.kind === 'stadium')!.id;
   s.weather = 'clear';
   s.merits = Object.keys(CITIES);
   s.prismSeed = Math.floor(Math.random() * 1e9);

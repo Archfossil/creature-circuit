@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 to 5 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex) and [arenas](#arenas)). Step 6 is under way ([gimmicks](#gimmicks-so-far)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 6 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas) and [gimmicks](#gimmicks-in-packages)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -205,7 +205,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 3 | **Active region**, plus a tiny test-only second region ✅ built | M | Nothing |
 | 4 | **Codex** separated from the species library ✅ built | M | Nothing |
 | 5 | **Arenas** as a per-region table ✅ built | S–M | Nothing |
-| 6 | **Gimmicks** as plug-ins, one at a time (9 of 9 moved; the stray ids are left) | **L** | Nothing |
+| 6 | **Gimmicks** as plug-ins, one at a time ✅ | **L** | Nothing |
 | 7 | **3D map** built for the active region, and rebuilt on a change | M | A short load when changing region |
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 | M | Region name on saves |
 | 9 | **Season flow:** region choice at the start, farewell, hall of records | M | Farewell and records; the region page once there are two |
@@ -258,7 +258,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 - **A new list or cache made from a region's data goes in `onRegion`.** `tests/regions.test.ts` fails if a switch to the test region (`tests/regions/testRegion.ts`) isn't the same as having started there: its data, teams, coastline and three whole seasons. It also checks that its saves mention nothing of Margos, and that Margos is the saved baseline again afterwards.
 - **It was tested by breaking it:** 26 rebuilds were stopped one at a time, and 25 are caught (two of them since step 4). The other, `built`, is a cache keyed by Rival and Champion, who have different ids in each region, so it can't be wrong yet. It would matter if one visits another region.
 - **Places the rules ask for** (wisp spots, key item towns, the Depths' stair, the two coasts of a challenge) are now in the package, as `map.places`.
-- **Still Margos's:** the default home in the new-journey wizard and in Stadium Mode (`thunder`), and the stadium's id, which the test region shares. They go with the other city ids in step 6, or step 9 for the wizard.
+- **The default home** (wizard and Stadium Mode) is the region's `home`, and the stadium is found by its kind (step 6).
 
 ### The Codex
 
@@ -280,17 +280,20 @@ A region's `arenas` say what each arena does, and a city names one as its `arena
 - **Same name, different effect:** two regions can both have a `flames`. The active region's is used.
 - **It was tested by breaking it:** 14 changes to Margos's numbers and 6 to the engine. All but two were caught at first; those two now have tests.
 
-### Gimmicks so far
+### Gimmicks in packages
 
 | Gimmick | State |
 |---|---|
 | Katy’s whistle, Fabian’s disguise, Stella’s Gauntlet, Dahlia’s Forest Floor, the Depths, wisps, the Rainbow Plains, Salem’s lap and Cloud Island | ✅ moved |
-| Stray city ids (the world map's walls, the default home, Stadium Mode), Notice Board tips, the guide | Still in the engine and screens |
+| The default home, Stadium Mode, the map's walls and offshore roads, Notice Board tips, the guide | ✅ in the package |
 
-- **Rules** are in `src/regions/margos/gimmicks`, as answers to the engine's questions (`Gimmick` in `src/regions/gimmick.ts`). So far: `gate`, `onMove`, `explore`, `apart` (somewhere no ride goes) with its own `events`, `battle`, `won` and `surrenderNote`. The first gimmick with an answer to `gate` gives it.
+- **Rules** are in `src/regions/margos/gimmicks`, as answers to the engine's questions (`Gimmick` in `src/regions/gimmick.ts`). They can gate an Arbiter, close or cost a step, hear of moves and purchases, keep what's found, set the weather, work exploring their own way, rule a biome (`lands`), keep somewhere apart with its own `events`, and have battles. The first gimmick with an answer to `gate` gives it.
 - **They can't import the engine,** which loads the packages first. The functions they use are handed to them (`Tools`, filled in by `src/engine/tools.ts`).
 - **Screens** are in `src/regions/margos/screens.ts`, which only the app loads, so they can import anything. A gate names the one to open (`show`), and a city's extra tiles come from `tiles`.
 - **Margos's gimmicks keep their old save fields.** A new region's keep theirs in `s.gimmicks`.
+- **No place of Margos's is named in `src/engine`, `src/ui` or `src/render`,** and `tests/regions.test.ts` keeps it that way. `data/map.ts` still passes some on, for the baseline and the tests.
+- **The guide:** a topic or line named in `src/ui/guide.ts` comes from the region's `guide`, and any other topic of its own goes under Places.
+- **Still shared:** the biomes, with their looks and names (`prism` is the Rainbow Plains' ground), and items made for one gimmick (the Fog Lantern).
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

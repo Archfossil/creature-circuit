@@ -1490,7 +1490,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
     for (const t of rises) log(s, `Teamwork grew. ${t}.`);
   }
   if (s.turn === 100) {
-    if (s.location === 'stadium' && s.merits.length >= 8) { enterCircuit(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
+    if (here(s).kind === 'stadium' && s.merits.length >= 8) { enterCircuit(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
     else { s.phase = 'over'; report.ended = 'over'; record(s, 'place', 'finished the season'); }
     return report;
   }

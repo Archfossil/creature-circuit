@@ -36,6 +36,8 @@ export interface Apart {
   /** What's said when exploring turns up a find, or a creature. */
   found?: string;
   met?: string;
+  /** Said when running fails, where that's hard (`hardRun`). */
+  noEscape?: string;
   /** Added to what was found. */
   foundNote?: string;
 }

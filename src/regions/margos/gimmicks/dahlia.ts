@@ -26,7 +26,7 @@ export const floorDie = (s: GameState) => (dahliaBeaten(s) ? 6 : 8);
 
 export const dahlia: Gimmick = {
   id: 'dahlia',
-  apart: { id: 'floor', has: onFloor, noRides: 'Not on the Forest Floor: climb back up first.', found: 'Something exotic glints in the dark!', met: 'Something moves in the dark…' },
+  apart: { id: 'floor', has: onFloor, noRides: 'Not on the Forest Floor: climb back up first.', found: 'Something exotic glints in the dark!', met: 'Something moves in the dark…', noEscape: 'Couldn\'t escape! The dark Forest Floor hems you in.' },
   events: floorEvents,
   gate: (s, city, t) => {
     if (city !== CITY) return null;

@@ -1,5 +1,6 @@
 import { STAR_FACE } from '../data/icons';
 import { activeRegion } from '../regions/active';
+import { tools } from '../engine/tools';
 import { screens } from '../regions/screens';
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf, tile } from './dom';
 import { sfx, applyVolume } from './sound';
@@ -189,7 +190,7 @@ export class App {
   newGameWizard(opts: { seat?: number; total?: number; taken?: string[]; onDone?: (s: GameState) => void; onCancel?: () => void } = {}) {
     let finished = false;
     const taken = opts.taken ?? [];
-    let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = 'thunder', starter = STARTERS[3];
+    let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = activeRegion().home, starter = STARTERS[3];
     const who = opts.seat !== undefined ? `Trainer ${opts.seat + 1} of ${opts.total} · ` : '';
     let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket-pack', hairStyle: 'short', topPattern: 'plain' };
     // the starter's traits: a random Nature to begin with, and its species' usual Ability and Instinct
@@ -3071,32 +3072,18 @@ export class App {
   }
 
   /**
-   * Notice Board tips. Some always point to where this season's roaming key items are sold (the
-   * Canopy Rope and the Root Whistle change towns every game), so trainers can find them.
+   * Notice Board tips. Some always point to where this season's roaming key items are sold, so trainers
+   * can find them.
    */
   rumors() {
     const s = this.s;
-    const rope = W.keyTownName(s, 'canopy-rope'), whistle = W.keyTownName(s, 'root-whistle');
-    const keyTips = [
-      `Dahlia waits on the Gloomshade forest floor. This season, ${rope} sells the Canopy Rope to get down.`,
-      `The mangrove roots hide Katy. A Root Whistle opens the way, and ${whistle} has them this season.`,
-    ];
-    const tips = [
-      'Amber\u2019s Fire Pit is on Kilauea island. Ferries run from Mangrove Port and Kilauea Forge; buy a Ferry Pass at Saltmarsh Landing or the Forge.',
-      'Stella only surfaces her fortress for trainers who clear the Iron Coast Gauntlet: a run of local trainers, without leaving the city.',
-      'They say Fabian always hides as a villager. Look closely.',
-      'Salem only battles trainers who have walked a full lap of Cloud Island. Its portal in Aurora Peak opens at night, and all Winter.',
-      'Sunspire Summit holds a legend. Tier 3 climbers with a Summit Pick only.',
-      'Down the Sinkhole Stair below Houndmouth Canyon lies Shifting Depths. Leave an offering at the edge of the dark and something that craves it climbs up.',
-      'The Research Facility at Quillhaven pays well for released creatures, and best of all for rare ones.',
-      'The Battle School at Valor Ridge trains creatures while you travel: a coin per XP.',
-      'Be at Circuit Stadium when Turn 100 ends — with all 8 Merits — or the season is over.',
-    ];
-    // one key-item hint is always posted (the rope or the whistle, whichever you still lack), plus three others
-    const need = keyTips.filter((_, i) => !hasItem(s, ['canopy-rope', 'root-whistle'][i]));
+    const { keys, tips } = activeRegion().notices(s, tools);
+    const keyTips = keys.map((k) => k.text);
+    // one key-item hint is always posted (one whose item you still lack, if there is any), plus three others
+    const need = keys.filter((k) => !hasItem(s, k.item)).map((k) => k.text);
     const pinned = (need.length ? need : keyTips)[Math.floor(Math.random() * (need.length || keyTips.length))];
     const rest = [...tips, ...keyTips.filter((t) => t !== pinned)].sort(() => Math.random() - 0.5).slice(0, 3);
-    openSheet('Notice Board', h('ul', { class: 'tips' }, [pinned, ...rest].map((t) => h('li', null, '📌 ', t))));
+    openSheet('Notice Board', h('ul', { class: 'tips' }, [pinned, ...rest].filter(Boolean).map((t) => h('li', null, '📌 ', t))));
   }
 
   // ── Getting around: Bike, Taxi Ticket, Homing Feather, Trail Mix ──

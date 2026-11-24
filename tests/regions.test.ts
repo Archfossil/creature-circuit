@@ -18,7 +18,8 @@ async function copy(first?: typeof TEST_REGION) {
   const { INSTINCTS } = await import('../src/data/instincts');
   const { opponentLook } = await import('../src/render/npcLooks');
   const { MARGOS } = await import('../src/regions');
-  return { g, active, dataSnapshot, opponentLook, MARGOS, log, INSTINCTS };
+  const guide = await import('../src/ui/guide');
+  return { g, active, dataSnapshot, opponentLook, MARGOS, log, INSTINCTS, guide };
 }
 /** A season in the test region, and the save it ends with. */
 function testSeason(g: Game, home: string) {
@@ -175,7 +176,7 @@ describe('the Codex', () => {
     const { E, S } = t.g, b = new Bot(t.g, 'events');
     b.start();
     try {
-      for (const place of ['tc-ash', 'w2', 'n1', 'tt-quay', 'stadium']) for (const id of E.EVENT_IDS) for (const turn of [11, 60]) {
+      for (const place of ['tc-ash', 'w2', 'n1', 'tt-quay', 'tc-bowl']) for (const id of E.EVENT_IDS) for (const turn of [11, 60]) {
         const s = S.newGame('T', 'balanced', 'tc-ash', 'cindercub', '#fff');
         Object.assign(s, { location: place, turn, coins: 200 });
         for (const id of ['puddlit', 'sproutle', 'blazmane']) (s.roster.length < 3 ? s.roster : s.reserve).push(t.g.Cr.createCreature(id, 6));
@@ -397,15 +398,39 @@ describe('gimmicks', () => {
     expect(named.length).toBeGreaterThan(0);
     expect(named.filter((x) => !new RegExp(`\\b${x}:`).test(there))).toEqual([]);
   });
-  it('that have moved leave nothing behind in the engine or screens', () => {
-    const root = new URL('../src/', import.meta.url);
+  it('leave nothing of Margos’s places behind in the engine or screens', () => {
+    const { MARGOS } = m, root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
-    const gone = ['mangrove', 'hollow', 'lanternglade', 'gloom', 'forestfloor'];
-    expect(files.filter((f) => f.startsWith('engine/') && /=== 'prism'/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
-    expect(files.filter((f) => /DEPTHS|exploreDepths|rollWisp|wispLit|WISP_REGION|inWispRegion|fog-lantern|prismType|isCloudNode|CLOUD_(RING|EYE|LAP)|cloudLap[^?]|portalOpen/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
-    expect(files.filter((f) => /FOREST_FLOOR|Dahlia/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/state.ts', 'engine/events.ts', 'ui/guide.ts', 'ui/app.ts'].includes(f))).toEqual([]);
-    expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
-    for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);
+    expect(files.length).toBeGreaterThan(30);
+    const code = files.map((f) => ({ f, text: readFileSync(new URL(f, root), 'utf-8').replace(/^\s*(\/\/|\*|\/\*).*$/gm, '').replace(/\/\*.*?\*\/|\s\/\/ .*$/gm, '').replace(/^ *'\w+',\r?$/gm, '') })); // (the last: the guide's topics, by name)
+    // ids that are also the name of something every region has: a biome, weather, a kind of place
+    const words = new Set([...Object.keys(m.g.map.BIOME_TYPES), ...Object.keys(m.g.content.WEATHER), 'stadium']);
+    const ids = [...new Set([...MARGOS.map.nodes.map((n) => n.id), ...Object.keys(MARGOS.map.cities)])];
+    const left: string[] = [];
+    for (const { f, text } of code) {
+      for (const id of ids) if (!words.has(id) && new RegExp(`['"\`]${id}['"\`]`).test(text)) left.push(`${f}: ${id}`);
+      for (const id of ids) if (words.has(id) && new RegExp(`(location|city|cityId|\\bn\\.id|[^.]\\bid|from|to|at|home)\\)? *[!=]?==? *'${id}'|includes\\('${id}'\\)`).test(text)) left.push(`${f}: ${id}?`);
+      const names = [...Object.values(MARGOS.map.cities).flatMap((c) => [c.name, c.arbiter]), 'Cloud Island', 'Forest Floor', 'Lantern Glade', 'Rainbow Plains', 'Gauntlet'];
+      for (const n of names) if (new RegExp(`\\b${n}\\b`).test(text)) left.push(`${f}: ${n}`);
+    }
+    expect(left).toEqual([]);
+  });
+  it('and a region’s own home, stadium, notices and guide are used', async () => {
+    const { W, Stadium, map } = t.g, s = start(t.g, 'tc-ash');
+    const st = Stadium.stadiumTrainer('T', '#fff', s.trainer.look, s.roster);
+    expect([st.trainer.home, st.location]).toEqual(['tc-brook', 'tc-bowl']);
+    s.turn = 100; s.location = 'tc-bowl'; s.merits = Array.from({ length: 8 }, (_, i) => `m${i}`);
+    expect(W.endTurn(s).ended).toBe('endgame');
+    expect(map.NODE_BY_ID.stadium).toBe(undefined);
+    const all = t.guide.GUIDE.flatMap((c) => c.topics);
+    expect(all.map((x) => x.id)).toContain('test-topic');
+    expect(all.map((x) => x.id)).not.toContain('cloud');
+    expect(all.flatMap((x) => x.body)).toContain('Test bike.');
+    expect(all.flatMap((x) => x.body).filter((l) => typeof l !== 'string')).toEqual([]);
+    const margos = m.guide.GUIDE.find((c) => c.id === 'places')!.topics.map((x) => x.id);
+    expect(margos).toEqual(expect.arrayContaining(['towns', 'cloud', 'floor', 'school', 'rainbow', 'research', 'depths']));
+    expect(margos.indexOf('cloud')).toBe(margos.indexOf('towns') + 1);
+    expect(m.MARGOS.notices(start(m.g, 'thunder'), m.g.tools).keys[0].text).toMatch(/^Dahlia waits.* sells the Canopy Rope/);
   });
 });
 

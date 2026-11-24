@@ -5,7 +5,9 @@ import type { Npc } from '../data/npcs';
 import type { Activity, Biome, City, ElementType, MapEdge, MapNode, Rarity, StatKey } from '../data/schema';
 import type { Voice } from '../data/texts';
 import type { TrainerLook } from '../render/trainerModel';
-import type { Gimmick } from './gimmick';
+import type { GameState } from '../engine/state';
+import type { GuideTopic } from '../ui/guide';
+import type { Gimmick, Tools } from './gimmick';
 
 export interface Town { blurb: string; sells: string[]; key?: string; special?: string }
 
@@ -77,11 +79,14 @@ export interface ArenaEffect {
   countdown?: ArenaCountdown;
 }
 
+/** A Notice Board's tips. A key item's is always up until the trainer has it. */
+export type Notices = (s: GameState, t: Tools) => { keys: { item: string; text: string }[]; tips: string[] };
+
 export interface Region {
   /** Never changes: it will be in saves. */
   id: string;
   name: string;
-  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places };
+  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places; /** Nodes across open water: no land joins them to the rest. */ offshore?: string[]; /** Colours for a city's houses, if not the usual. */ walls?: Record<string, string[]> };
   codex: Codex;
   /** Rivals and Champions, and by their ids, what they say and wear. */
   people: { npcs: Npc[]; voices: Record<string, Voice>; looks: Record<string, Outfit> };
@@ -89,6 +94,11 @@ export interface Region {
   arenas: Record<string, ArenaEffect>;
   /** Rules of its own (gimmick.ts). */
   gimmicks: Gimmick[];
+  /** The home city that's chosen already in the new-journey wizard, and Stadium Mode's. */
+  home: string;
+  notices: Notices;
+  /** How to Play: its own topics, and lines of the shared ones (named in ui/guide.ts). */
+  guide: { topics: GuideTopic[]; lines: Record<string, string[]> };
   /** Each season's weather die. */
   weather: Record<Season, string[]>;
 }
