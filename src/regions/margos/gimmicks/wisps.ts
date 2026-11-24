@@ -21,6 +21,7 @@ export const wispLit = (s: GameState) => (s.inventory[LANTERN] ?? 0) > 0 && !!s.
 
 export const wisps: Gimmick = {
   id: 'wisps',
+  hidden: inWispRegion,
   // the misty way into Lantern Glade (leaving is always open)
   enter: (s, { node, edge }, t) => (!edge.requires?.wisp || !inWispRegion(node.id) || inWispRegion(s.location) || wispLit(s) ? null
     : t.hasItem(s, LANTERN)

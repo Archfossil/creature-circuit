@@ -10,6 +10,7 @@ import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
 import { gauntletBlock, gauntletLevel, gauntletProgress, gauntletSize } from '../src/regions/margos/gimmicks/gauntlet';
 import { tools } from '../src/engine/tools';
+import { cloudLapProgress } from '../src/regions/margos/gimmicks/salem';
 import { prismType } from '../src/regions/margos/gimmicks/plains';
 import { rollWisp, wispLit } from '../src/regions/margos/gimmicks/wisps';
 import { DEPTHS_COST, depthsBlock, exploreDepths } from '../src/regions/margos/gimmicks/depths';
@@ -1665,12 +1666,12 @@ describe('Cloud Island (Salem)', () => {
   });
   it('a full lap (6 steps the same way round) makes Salem accept; turning back restarts the count', () => {
     const s = trainer();
-    expect(W.arbiterGate(s, 'aurora')).toMatchObject({ ok: false, cloud: true });
+    expect(W.arbiterGate(s, 'aurora')).toMatchObject({ ok: false, show: 'cloud' });
     go(s, CLOUD_RING[0]);
     for (const i of [1, 2]) go(s, CLOUD_RING[i]);
-    expect(W.cloudLapProgress(s).steps).toBe(2);
+    expect(cloudLapProgress(s).steps).toBe(2);
     go(s, CLOUD_RING[1]); // turned back
-    expect(W.cloudLapProgress(s).steps).toBe(1);
+    expect(cloudLapProgress(s).steps).toBe(1);
     for (const i of [0, 5, 4, 3, 2]) go(s, CLOUD_RING[i]); // six steps the other way round
     expect(s.flags.salemWorthy).toBe(true);
     expect(W.arbiterGate(s, 'aurora').ok).toBe(true);
@@ -1682,7 +1683,7 @@ describe('Cloud Island (Salem)', () => {
     W.endTurn(s); // dawn: still on the island, and you can keep walking
     expect(timeOfDay(s.turn)).toBe('day');
     go(s, CLOUD_RING[4]);
-    expect(W.cloudLapProgress(s).steps).toBe(4);
+    expect(cloudLapProgress(s).steps).toBe(4);
     expect(W.canMoveTo(s, 'aurora').ok).toBe(false); // the portal is shut by day
     const s2 = trainer();
     go(s2, CLOUD_RING[0]); go(s2, CLOUD_RING[1]); go(s2, CLOUD_RING[0]);

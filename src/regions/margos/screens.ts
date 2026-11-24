@@ -3,18 +3,20 @@ import type { App } from '../../ui/app';
 import { typeChip } from '../../ui/cards';
 import { closeAllSheets, h, openSheet, rollDice, tile, toast } from '../../ui/dom';
 import { sfx } from '../../ui/sound';
-import { itemInfo } from '../../data/content';
+import { itemInfo, seasonForTurn } from '../../data/content';
 import { STAR_FACE } from '../../data/icons';
 import { TYPE_COLOR, TYPE_LABEL } from '../../data/types';
 import { CITIES, NODE_BY_ID, neighbors } from '../../data/map';
 import { nameOf } from '../../engine/creature';
-import { hasItem, save, tierOf } from '../../engine/state';
+import { hasItem, save, tierOf, type GameState } from '../../engine/state';
 import { tools } from '../../engine/tools';
 import * as W from '../../engine/world';
 import { aboveFloor, dahliaBeaten, floorDie, onFloor, trailProgress } from './gimmicks/dahlia';
 import { DEPTHS_COST, depthsBlock, depthsCalls, exploreDepths, inDepths } from './gimmicks/depths';
 import { gauntletBlock, gauntletOpen, gauntletProgress } from './gimmicks/gauntlet';
 import { prismType } from './gimmicks/plains';
+import { CLOUD_LAP, cloudLapProgress, cloudStepExtra, isSalem, portalOpen, salemBeaten, satchel } from './gimmicks/salem';
+import { CLOUD_EYE, CLOUD_RING, isCloudNode } from './map';
 import { LANTERN, rollWisp, wispLit } from './gimmicks/wisps';
 import type { Screens } from '../screens';
 
@@ -198,13 +200,99 @@ function wispNews(app: App) {
   }
 }
 
+/**
+ * The Cloud Island rules, with the trainer's current status (portal, lap, step cost, satchel).
+ * Shown before stepping through the portal, and from the island's HUD chip while there.
+ */
+function cloudRules(app: App): HTMLElement {
+  const s = app.s;
+  const lap = cloudLapProgress(s);
+  const open = portalOpen(s, tools);
+  const eye = NODE_BY_ID[CLOUD_EYE];
+  const step = Math.min(5, 1 + cloudStepExtra(s, tools));
+  const loot = satchel(s);
+  const winter = seasonForTurn(s.turn) === 'winter';
+  const rule = (icon: string, title: string, ...body: (string | Node)[]) => h('div', { class: 'cloud-rule' }, h('span', { class: 'cloud-rule-ico' }, icon), h('div', null, h('b', null, title), h('p', null, ...body)));
+  return h('div', { class: 'cloud-rules' },
+    h('p', null, 'Cloud Island works unlike anywhere else in Margos. Here’s how.'),
+    // where you stand right now
+    h('div', { class: 'cloud-status' },
+      h('div', null, h('small', null, 'Portal'), h('b', null, open ? (winter ? '🌀 Open all Winter' : '🌙 Open tonight') : '☀️ Shut until night')),
+      h('div', null, h('small', null, 'Each island step'), h('b', null, `${step}⚡ (Tier ${tierOf(s)})`)),
+      h('div', null, h('small', null, 'Lap for Salem'), h('b', null, s.flags.salemWorthy ? '✓ Done' : `${lap.steps} / ${lap.need} steps`)),
+      h('div', null, h('small', null, 'Cloud satchel'), h('b', null, loot.length ? `${loot.reduce((a, [, n]) => a + n, 0)} item${loot.reduce((a, [, n]) => a + n, 0) === 1 ? '' : 's'} unsecured` : 'Empty'))),
+    s.flags.salemWorthy ? '' : h('div', { class: 'gauntlet-pips', 'aria-label': `${lap.steps} of ${lap.need} steps` }, Array.from({ length: lap.need }, (_, k) => h('span', { class: k < lap.steps ? 'on' : k === lap.steps ? 'next' : '' }))),
+    rule('🌀', 'The portal', 'Cloud Island is reached through the portal in Aurora Peak. It opens at ', h('b', null, 'night'), ' (even turns), and stays open ', h('b', null, 'all Winter'), '. By day it’s shut: if dawn finds you on the island, you’re there until nightfall. You can still walk the ring by day.'),
+    rule('🔁', 'A lap for Salem', 'Salem only battles trainers who walk a full lap: ', h('b', null, '6 steps in a row around the ring, always the same way round'), '. Turning back starts the count again. A lap can take as many turns as you need.', s.flags.salemWorthy ? ' You’ve done it: Salem will see you any time.' : ''),
+    rule('🐌', 'The slog', `Every step onto an island node costs +1 Initiative per Tier (+${cloudStepExtra(s, tools)} for you now), up to a whole turn’s 5. Stepping back off the island costs the normal 1. Salem makes stronger trainers work for it.`),
+    rule('👜', 'The Cloud satchel', 'Items you find on the island go into a Cloud satchel, ', h('b', null, 'not your bag'), '. They’re only yours once you ', h('b', null, 'escape'), ': back through the portal. ', h('b', null, 'Get wiped out and sent home, and the satchel is lost.'), loot.length ? ` In it now: ${loot.map(([id, n]) => `${itemInfo(id).icon} ${W.itemDisplayName(id)} ×${n}`).join(', ')}.` : ''),
+    rule('🚪', 'Leaving', 'Leaving the island ends a lap in progress. Leaving through the portal secures your satchel; being sent home after a wipe doesn’t.'),
+    rule('✨', 'What’s here', 'The ring’s six wilds are a rare area: Astral, Electric, Water and Charm creatures (who’s out depends on day or night), and universal offerings that work on any creature: Cloud Silk (+1), Stardust (+2) and the rare Moonbow Prism (+3). While you’re here, only Cloud Island events happen.'),
+    rule('👁️', eye.name, salemBeaten(s)
+      ? (W.legendaryHere(s, eye) ? 'You’ve beaten Salem, so the bridges from the ring to the middle are open. A Legendary waits there.' : 'The middle of the ring is quiet now.')
+      : 'In the middle of the ring. Its bridges only open for trainers who have beaten Salem.'));
+}
+
+/** The Cloud Island rules, any time (from Aurora Peak's portal tile, Salem's arena, or the island's HUD chip). */
+function cloudSheet(app: App) {
+  openSheet(isCloudNode(app.s.location) ? '☁️ Cloud Island rules' : '🌀 Cloud Island', cloudRules(app), { wide: true });
+}
+
+/** Before stepping through the portal: the rules, and a last chance to turn back. */
+function cloudPrompt(app: App, cost: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (go: boolean) => { if (done) return; done = true; close(); resolve(go); };
+    const close = openSheet('🌀 Step through to Cloud Island?', h('div', null,
+      cloudRules(app),
+      h('p', { class: 'small muted' }, 'You can read these rules again any time on the island: tap the ☁️ Cloud Island chip at the top left.'),
+      h('div', { class: 'row end gap sticky-foot' },
+        h('button', { class: 'btn ghost', onclick: () => finish(false) }, 'Not now'),
+        h('button', { class: 'btn primary', onclick: () => finish(true) }, `Step through · ${cost}⚡`))), { wide: true, onClose: () => { if (!done) { done = true; resolve(false); } } });
+  });
+}
+
+/** On Cloud Island only: lap, satchel and portal at a glance, and the rules on tap. */
+function cloudChip(app: App): HTMLElement[] {
+  const s = app.s, lap = cloudLapProgress(s);
+  const lootN = Object.values(s.cloudLoot ?? {}).reduce((a, n) => a + n, 0);
+  return isCloudNode(s.location) ? [h('button', { class: 'cloud-chip', title: 'Cloud Island rules', onclick: () => cloudSheet(app) },
+    h('b', null, '☁️ Cloud Island'),
+    h('small', null, s.flags.salemWorthy ? 'Lap done' : `Lap ${lap.steps}/${lap.need}`, ' · ', lootN ? `👜 ${lootN} unsecured` : '👜 empty', ' · ', portalOpen(s, tools) ? 'portal open' : 'portal shut'),
+    h('small', { class: 'cloud-chip-link' }, 'Tap for the rules'))] : [];
+}
+
+const portalTile = (app: App, city: string): HTMLElement[] => (!isSalem(city) ? [] : [tile('🌀', 'Cloud Island Portal', portalOpen(app.s, tools)
+  ? `Open ${seasonForTurn(app.s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${app.s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${cloudLapProgress(app.s).steps}/${CLOUD_LAP}).`}`
+  : 'Closed by day. The portal opens at night (even turns), and stays open all Winter.', '', () => cloudSheet(app))]);
+
+/** Steps on, around and off the island. */
+function cloudStep(app: App, from: string, to: string): () => void {
+  const s = app.s, worthy = !!s.flags.salemWorthy, held = satchel(s);
+  return () => {
+    if (held.length && !s.cloudLoot) toast(`☁️ Escaped Cloud Island! Secured: ${held.map(([i, n]) => `${itemInfo(i).icon} ${W.itemDisplayName(i)} ×${n}`).join(', ')}.`, 'good', 5000);
+    const lap = cloudLapProgress(s);
+    if (!worthy && s.flags.salemWorthy) toast('☁️ A full lap of Cloud Island! Salem will accept your challenge at Aurora Peak.', 'good', 5000);
+    else if (!s.flags.salemWorthy && lap.steps > 0) toast(`☁️ Cloud Island lap: ${lap.steps}/${CLOUD_LAP}${s.flags.cloudLap === 1 && lap.onIsland ? ' (keep going the same way round)' : ''}`, 'info', 2200);
+    else if (isSalem(from) && to === CLOUD_RING[0]) toast('☁️ Through the portal: walk a full lap of the ring, the same way round, without leaving the island.', 'info', 4500);
+  };
+}
+
+const satchelSection = (s: GameState): HTMLElement | null => (Object.keys(s.cloudLoot ?? {}).length ? h('section', { class: 'cloud-satchel' }, h('h4', null, '☁️ Cloud satchel (not yet secured)'),
+      h('p', { class: 'small' }, 'Items found on Cloud Island stay in this satchel until you escape the island through the portal. If your team is wiped out and you’re sent home, they’re lost.'),
+      h('div', { class: 'bag-grid' }, Object.entries(s.cloudLoot!).map(([id, n]) => h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, itemInfo(id).icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', n), h('small', null, itemInfo(id).text)))))) : null);
+
 export const margosScreens: Screens = {
-  show: { fabian: findFabian, gauntlet: gauntletSheet, floor: floorSheet },
-  tiles: (app, at, cost) => [...gauntletTile(app, at, cost), ...depthsTile(app, at)],
+  show: { fabian: findFabian, gauntlet: gauntletSheet, floor: floorSheet, cloud: cloudSheet },
+  tiles: (app, at, cost) => [...portalTile(app, at), ...gauntletTile(app, at, cost), ...depthsTile(app, at)],
   arbiterTile: awayTile,
-  chips: floorChip,
+  chips: (app) => [...cloudChip(app), ...floorChip(app)],
   actions: (app) => (onFloor(app.s.location) && (trailProgress(app.s, tools).found || dahliaBeaten(app.s)) ? [{ icon: '🏟️', label: 'Dahlia', go: () => { void app.arbiter(); } }] : []),
-  beforeMove: (app, to, cost) => (!onFloor(app.s.location) && onFloor(to) ? floorPrompt(app, cost) : null),
+  beforeMove: (app, to, cost) => (!onFloor(app.s.location) && onFloor(to) ? floorPrompt(app, cost) : !isCloudNode(app.s.location) && isCloudNode(to) ? cloudPrompt(app, cost) : null),
+  moving: cloudStep,
+  keeps: (s) => (Object.keys(s.cloudLoot ?? {}).length ? ['Your Cloud satchel is kept.'] : []),
+  bag: satchelSection,
+  darkArena: isSalem,
   trail: trailSign,
   news: wispNews,
   light: (s) => (hasItem(s, LANTERN) && s.flags.wispSeen && s.flags.wispAt ? s.flags.wispAt : null),

@@ -1,5 +1,5 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, ROAMING_KEY_ITEMS } from '../data/map';
 import { activeRegion, onRegion } from '../regions/active';
 import type { Gate, GimmickBattle } from '../regions/gimmick';
 import { provide, tools } from './tools';
@@ -20,8 +20,11 @@ import { roll, pick, starDie, weightedPick, type Star } from './dice';
 import { travelTogether, settleTeamwork, riseText } from './teamwork';
 
 export const ability = (s: GameState) => { const f = follower(s); return f ? abilityOf(f) : null; };
-/** Today's weather where the trainer stands. In Winter, Aurora Peak is always under Aurora Night. */
-export const weather = (s: GameState) => (s.location === 'aurora' && seasonForTurn(s.turn) === 'winter' ? WEATHER.aurora : WEATHER[s.weather] ?? WEATHER.clear);
+/** Today's weather where the trainer stands. */
+export function weather(s: GameState) {
+  for (const g of activeRegion().gimmicks) { const w = g.weather?.(s, tools); if (w) return WEATHER[w]; }
+  return WEATHER[s.weather] ?? WEATHER.clear;
+}
 export const here = (s: GameState): MapNode => NODE_BY_ID[s.location];
 
 // ── Costs ───────────────────────────────────────────────────────
@@ -32,17 +35,16 @@ export function reexploreCost(s: GameState) {
   return s.trainer.style === 'urban' ? 2 : 1;
 }
 /**
- * Initiative to move. Pass the destination: stepping onto a Cloud Island node costs +1 per Tier
- * (Salem makes stronger trainers slog), never more than a whole turn's 5.
+ * Initiative to move. Pass the destination: a gimmick can make it cost more, but never more than a whole
+ * turn's 5.
  */
 export function moveCost(s: GameState, to?: string) {
   const base = (ability(s) === 'trailblazer' || s.trainer.style === 'pathfinder') && !s.flags.firstMoveUsed ? 0 : 1;
-  return to && isCloudNode(to) ? Math.min(MAX_STEP_COST, base + cloudStepExtra(s)) : base;
+  const extra = to ? activeRegion().gimmicks.reduce((n, g) => n + (g.stepExtra?.(s, to, tools) ?? 0), 0) : 0;
+  return extra ? Math.min(MAX_STEP_COST, base + extra) : base;
 }
 /** No single step can cost more than a full turn's Initiative. */
 const MAX_STEP_COST = 5;
-/** Extra Initiative for each step onto a Cloud Island node: +1 per Tier. */
-export const cloudStepExtra = (s: GameState) => tierOf(s);
 /** Initiative for a stable rest: a city action, +1 for Pathfinders. */
 export function stableCost(s: GameState) {
   if (sponsorFree(s, s.location)) return 0; // the house's guest
@@ -64,9 +66,8 @@ export function canMoveTo(s: GameState, id: string): MoveCheck {
   return { ok: true, cost };
 }
 
-/** Why a step along this route is closed to the trainer (a gate: item, Tier, Merit, the portal), or null if open. Initiative isn't checked. */
+/** Why a step along this route is closed to the trainer (a gate: item, Tier, Merit, a gimmick), or null if open. Initiative isn't checked. */
 function routeBlock(s: GameState, nb: { node: MapNode; edge: MapEdge }): string | null {
-  if (nb.edge.via === 'portal' && !portalOpen(s)) return 'The Cloud Island portal only opens at night (even turns), or any time in Winter.';
   const req = nb.edge.requires;
   if (req?.item && !hasItem(s, req.item)) return `Requires ${itemInfo(req.item).name}.`;
   for (const g of activeRegion().gimmicks) { const why = g.enter?.(s, nb, tools); if (why) return why; }
@@ -116,7 +117,6 @@ export const apartAt = (id: string) => activeRegion().gimmicks.find((g) => g.apa
 
 /** Why travel items can't be used here (they only work on the mainland), or null. */
 export function travelBlock(s: GameState): string | null {
-  if (isCloudNode(s.location)) return 'Not on Cloud Island: leave through the portal first.';
   return apartAt(s.location)?.noRides ?? null;
 }
 
@@ -142,7 +142,7 @@ export function bikeReach(s: GameState, steps: number): Record<string, string[]>
       for (const nb of neighbors(at)) {
         const id = nb.node.id;
         if (seen.has(id) || nb.edge.via === 'sea' || nb.edge.via === 'portal' || nb.edge.via === 'rope') continue;
-        if (isCloudNode(id) || apartAt(id) || nb.node.kind === 'legendary' || routeBlock(s, nb)) continue;
+        if (apartAt(id) || nb.node.kind === 'legendary' || routeBlock(s, nb)) continue;
         seen.add(id);
         paths[id] = [...(paths[at] ?? []), id];
         next.push(id);
@@ -244,7 +244,7 @@ export function moveTo(s: GameState, id: string): Outcome | null {
   s.stats.steps = (s.stats.steps ?? 0) + 1;
   const from = s.location;
   moveTrainer(s, id);
-  stepCloudLap(s, from, id);
+  for (const g of activeRegion().gimmicks) g.onStep?.(s, from, id, tools);
   if (!s.visited.includes(id)) s.visited.push(id);
   const node = NODE_BY_ID[id];
   if (node.kind === 'legendary') {
@@ -611,34 +611,6 @@ export function hallBattle(s: GameState): { name: string; battle: Battle; line?:
   const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });
   log(s, `Accepted a challenge from ${name} at the ${node.name} Trainer Hall.`);
   return { name, battle };
-}
-
-// ── Cloud Island (Salem) ────────────────────────────────────────
-// The portal from Aurora Peak opens at night (even turns), or any time in Winter. On the island a
-// trainer can walk the ring at any time, but can only leave through the portal.
-// Six steps in a row around the ring, the same way round, is a full lap: Salem will battle that
-// trainer from then on. Turning back starts the count again; leaving the island ends the lap.
-
-/** Is the Cloud Island portal open this turn? */
-export const portalOpen = (s: GameState) => timeOfDay(s.turn) === 'night' || seasonForTurn(s.turn) === 'winter';
-
-export const CLOUD_LAP = CLOUD_RING.length;
-
-export function cloudLapProgress(s: GameState) {
-  return { steps: Math.min(CLOUD_LAP, s.flags.cloudLap ?? 0), need: CLOUD_LAP, worthy: !!s.flags.salemWorthy, onIsland: isCloudNode(s.location) };
-}
-
-/** Count a move around the ring toward a lap (called after every move). */
-export function stepCloudLap(s: GameState, from: string, to: string) {
-  const a = CLOUD_RING.indexOf(from), b = CLOUD_RING.indexOf(to);
-  if (a < 0 || b < 0) { if (isCloudNode(to)) { s.flags.cloudLap = 0; s.flags.cloudDir = undefined; } return; }
-  const dir: 1 | -1 = (b - a + CLOUD_LAP) % CLOUD_LAP === 1 ? 1 : -1;
-  s.flags.cloudLap = s.flags.cloudDir === dir ? (s.flags.cloudLap ?? 0) + 1 : 1;
-  s.flags.cloudDir = dir;
-  if (s.flags.cloudLap >= CLOUD_LAP && !s.flags.salemWorthy) {
-    s.flags.salemWorthy = true;
-    log(s, 'Walked a full lap of Cloud Island. Salem will accept your challenge.');
-  }
 }
 
 // ── Hotseat weather ─────────────────────────────────────────────
@@ -1199,7 +1171,7 @@ export function marketStock(nodeId: string): string[] {
 export const WORK_DIE = 4;
 /** Why odd jobs aren't available here and now, or null if they are. */
 export function workBlock(s: GameState): string | null {
-  if ((here(s).kind !== 'city' && !isTown(s.location)) || isCloudNode(s.location)) return 'Odd jobs are only found in cities and towns.';
+  if ((here(s).kind !== 'city' && !isTown(s.location)) || apartAt(s.location)) return 'Odd jobs are only found in cities and towns.';
   if (s.initiative < 1) return 'Odd jobs need Initiative: each point left rolls a d4 for coins.';
   return null;
 }
@@ -1221,8 +1193,8 @@ export function doWork(s: GameState): { rolls: number[]; coins: number } | null 
 // ── Workbench crafting (every city and town) ────────────────────
 /** Can this material fill a recipe slot of this type? Any allure for the type counts. */
 export const fitsSlot = (material: string, type: ElementType) => (itemInfo(material).allure?.[type] ?? 0) > 0;
-/** Workbenches stand in every city and town (not on Cloud Island). */
-export const canCraftHere = (s: GameState) => (here(s).kind === 'city' || isTown(s.location)) && !isCloudNode(s.location);
+/** Workbenches stand in every city and town (not in a place apart). */
+export const canCraftHere = (s: GameState) => (here(s).kind === 'city' || isTown(s.location)) && !apartAt(s.location);
 /** Owned materials that could fill this slot. */
 export const slotOptions = (s: GameState, type: ElementType) =>
   Object.keys(s.inventory).filter((id) => s.inventory[id] > 0 && itemInfo(id).kind === 'material' && fitsSlot(id, type));
@@ -1376,14 +1348,7 @@ export function arbiterGate(s: GameState, cityId: string): Gate {
   if (rest) return { ok: false, reason: `${CITIES[cityId].arbiter}’s team is resting. Come back in ${rest} turn${rest === 1 ? '' : 's'} for a rematch.` };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
   for (const g of activeRegion().gimmicks) { const gate = g.gate?.(s, cityId, tools); if (gate) return gate; }
-  switch (cityId) {
-    case 'aurora': {
-      if (s.flags.salemWorthy) return { ok: true };
-      const lap = cloudLapProgress(s);
-      return { ok: false, cloud: true, reason: `Salem only faces trainers who have walked a full lap of Cloud Island (${lap.steps}/${lap.need} steps). Its portal opens at night, or any time in Winter.` };
-    }
-    default: return { ok: true };
-  }
+  return { ok: true };
 }
 
 /** Qualified: waiting for the Circuit, which begins once everyone's season has ended (engine/circuit.ts). */
@@ -1563,6 +1528,6 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
 provide({
   ITEMS, TYPES, itemInfo, pick, roll, weightedPick,
   species: () => SPECIES, node: (id) => NODE_BY_ID[id],
-  autoSpend, createBattle, createCreature, nameOf, stats,
+  addLoyalty, autoSpend, createBattle, createCreature, gainXp, maxHealth, maxVitality, nameOf, seasonForTurn, stats, timeOfDay,
   ability, baseWildLevel, cityActionCost, discoverItem, exoticFind, here, keyTownName, nearest, pickSpecies, playerSide, rollRarity, stageCapFor, tierBandLevel, trainerRarity, weather, wildLevel,
 });

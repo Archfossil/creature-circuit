@@ -8,7 +8,7 @@ import type { NpcRecord } from './npcs';
 import { noteArrival } from './dares';
 import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
-import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID } from '../data/map';
+import { ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID } from '../data/map';
 import { pick } from './dice';
 import { provide, tools } from './tools';
 import { activeRegion } from '../regions/active';
@@ -241,22 +241,11 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
 
 /**
  * Put a trainer on a node. Every location change goes through here, so that gimmicks
- * hear of it (Gimmick.onMove) and leaving Cloud Island ends a lap in progress.
+ * hear of it (Gimmick.onMove).
  */
 export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /** The World Log's words for a ride: "took a taxi to …". */ how?: string } = {}) {
   const place = NODE_BY_ID[id]?.name ?? id;
-  if (isCloudNode(s.location) && !isCloudNode(id)) {
-    // leaving Cloud Island ends any lap in progress
-    if (s.flags.cloudLap) { s.flags.cloudLap = 0; s.flags.cloudDir = undefined; }
-    // escaping secures the Cloud satchel; being sent home after a wipe loses it
-    const loot = Object.entries(s.cloudLoot ?? {}).filter(([, n]) => n > 0);
-    if (loot.length) {
-      if (opts.wiped) log(s, `Lost the Cloud satchel (${loot.map(([i, n]) => `${n} × ${i}`).join(', ')}) when your team was sent home.`);
-      else { for (const [i, n] of loot) s.inventory[i] = (s.inventory[i] ?? 0) + n; log(s, `Escaped Cloud Island and secured the Cloud satchel.`); }
-    }
-    s.cloudLoot = undefined;
-  }
-  for (const g of activeRegion().gimmicks) g.onMove?.(s, s.location, id, tools);
+  for (const g of activeRegion().gimmicks) g.onMove?.(s, s.location, id, tools, !!opts.wiped);
   // reaching your marked next stop clears the marker
   if (s.waypoint === id) s.waypoint = undefined;
   if (!opts.wiped) noteArrival(s, id);
@@ -582,9 +571,9 @@ export function earnCoins(s: GameState, n: number): number {
   return got;
 }
 
-/** Add (or with n < 0, remove) items. Items gained on Cloud Island go to the Cloud satchel instead, until the trainer escapes. */
+/** Add (or with n < 0, remove) items. A gimmick can keep what's gained somewhere else (the Cloud satchel). */
 export function addItem(s: GameState, id: string, n = 1) {
-  if (n > 0 && isCloudNode(s.location)) { (s.cloudLoot ??= {})[id] = (s.cloudLoot[id] ?? 0) + n; return; }
+  if (n > 0 && activeRegion().gimmicks.some((g) => g.keep?.(s, id, n))) return;
   s.inventory[id] = (s.inventory[id] ?? 0) + n;
   if (s.inventory[id] <= 0) delete s.inventory[id];
 }

@@ -19,6 +19,14 @@ export interface Screens {
   actions?(app: App): { icon: string; label: string; go: () => void }[];
   /** Before a step that can be taken: ask whether to. Null: nothing to ask. */
   beforeMove?(app: App, to: string, cost: number): Promise<boolean> | null;
+  /** A step is about to be taken. What's returned is called once it has been. */
+  moving?(app: App, from: string, to: string): () => void;
+  /** What surrendering doesn't cost, besides the usual. */
+  keeps?(s: GameState): string[];
+  /** Something to show in the Bag. */
+  bag?(s: GameState): HTMLElement | null;
+  /** Is it always night in this Arbiter's arena? */
+  darkArena?(city: string): boolean;
   /** The map is being shown: anything new to say. */
   news?(app: App): void;
   /** Where a little light hangs over the map for this trainer. */

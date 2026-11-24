@@ -9,14 +9,14 @@ import type { Outcome } from '../../src/engine/world';
 
 /** The engine. A new copy for every season: its caches could let one season's dice depend on another's. */
 export async function loadGame() {
-  const [W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, { tools }, depths, wisps, plains] = await Promise.all([
+  const [W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, { tools }, depths, wisps, plains, salem] = await Promise.all([
     import('../../src/engine/world'), import('../../src/engine/state'), import('../../src/engine/battle'), import('../../src/engine/events'),
     import('../../src/engine/npcs'), import('../../src/engine/npcTrade'), import('../../src/engine/messenger'), import('../../src/engine/dares'), import('../../src/engine/interactions'),
     import('../../src/engine/creature'), import('../../src/engine/circuit'), import('../../src/engine/stadium'), import('../../src/engine/imprints'), import('../../src/engine/swaps'),
     import('../../src/data/map'), import('../../src/data/species'), import('../../src/data/content'), import('../../src/data/npcs'),
-    import('../../src/engine/tools'), import('../../src/regions/margos/gimmicks/depths'), import('../../src/regions/margos/gimmicks/wisps'), import('../../src/regions/margos/gimmicks/plains'),
+    import('../../src/engine/tools'), import('../../src/regions/margos/gimmicks/depths'), import('../../src/regions/margos/gimmicks/wisps'), import('../../src/regions/margos/gimmicks/plains'), import('../../src/regions/margos/gimmicks/salem'),
   ]);
-  return { W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, tools, depths, wisps, plains };
+  return { W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, tools, depths, wisps, plains, salem };
 }
 export type Game = Awaited<ReturnType<typeof loadGame>>;
 
@@ -256,7 +256,7 @@ export class Bot {
     const city = W.arbiterHere(s);
     if (!city || (s.merits.includes(city) && this.odds(0.6))) return false;
     let gate = W.arbiterGate(s, city);
-    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.show === 'floor' || undefined, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined]);
+    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.show === 'cloud' || undefined, gate.show === 'floor' || undefined, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined]);
     if (gate.show === 'fabian') { s.flags.fabianFound = true; this.note('fabian'); gate = W.arbiterGate(s, city); } // (finding him is a guessing game in app.ts)
     while (gate.show === 'gauntlet' && s.location === city) {
       const r = W.gimmickBattle(s, 'gauntlet');

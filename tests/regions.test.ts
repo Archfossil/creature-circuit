@@ -325,7 +325,7 @@ describe('gimmicks', () => {
     expect(W.travelBlock(s)).toBe(null);
     expect(Array.from({ length: 60 }, () => { s.event = undefined; return E.rollEvent(s)?.id; })).not.toContain('test-bat');
     expect(m.g.E.EVENT_IDS).not.toContain('test-bat');
-    expect(E.EVENT_IDS.filter((id) => ['floor'].includes(E.EVENT_PLACES[id]))).toEqual([]);
+    expect(E.EVENT_IDS.filter((id) => ['cloud', 'floor'].includes(E.EVENT_PLACES[id]))).toEqual([]);
   });
   it('can close a step, notice what’s bought, add effects and mend old saves', () => {
     const { W, S } = t.g, s = start(t.g, 'tc-ash');
@@ -366,6 +366,30 @@ describe('gimmicks', () => {
       expect(W.encounterSpots('cindercub').map((x) => x.node.id)).not.toContain(at.id);
     } finally { b.stop(); delete g.lands; }
   });
+  it('can change a step’s cost, the weather, where finds go and where people go', () => {
+    const { W, S, N } = t.g, s = start(t.g, 'tc-ash');
+    expect(W.moveCost(s, 'w1')).toBe(1);
+    expect(W.moveCost(s, 'tc-fen')).toBe(3);
+    const at = s.location, beside = t.g.map.neighbors(at).find((x) => W.canMoveTo(s, x.node.id).ok)!.node.id;
+    expect(W.moveTo(s, beside)).not.toBe(null);
+    expect(s.gimmicks).toMatchObject({ slog: `${at}>${beside}` });
+    s.location = 'w1'; s.weather = 'clear';
+    expect(W.weather(s).id).toBe('clear');
+    s.location = 'tc-fen';
+    expect(W.weather(s).id).toBe('fog');
+    const had = s.inventory.salve ?? 0;
+    S.addItem(s, 'salve', 2);
+    expect(s.inventory.salve ?? 0).toBe(had);
+    expect(s.gimmicks!.held).toBe('salve2');
+    S.addItem(s, 'totem', -1); // (only what's gained)
+    expect(s.gimmicks!.held).toBe('salve2');
+    S.moveTrainer(s, 'tc-ash', { wiped: true });
+    expect(s.gimmicks!.lost).toBe(true);
+    S.addItem(s, 'salve', 2);
+    expect(s.inventory.salve).toBe(had + 2);
+    expect(N.inviteStops()).not.toContain('tt-quay');
+    expect(N.inviteStops()).toContain('tt-mill');
+  });
   it('only name screens that there are', () => {
     const src = (f: string) => readFileSync(new URL(`../src/regions/margos/${f}`, import.meta.url), 'utf-8');
     const named = readdirSync(new URL('../src/regions/margos/gimmicks/', import.meta.url)).flatMap((f) => [...src(`gimmicks/${f}`).matchAll(/show: '(\w+)'/g)].map((x) => x[1]));
@@ -376,9 +400,9 @@ describe('gimmicks', () => {
   it('that have moved leave nothing behind in the engine or screens', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
-    const gone = ['mangrove', 'hollow', 'gloom', 'forestfloor'];
+    const gone = ['mangrove', 'hollow', 'lanternglade', 'gloom', 'forestfloor'];
     expect(files.filter((f) => f.startsWith('engine/') && /=== 'prism'/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
-    expect(files.filter((f) => /DEPTHS|exploreDepths|rollWisp|wispLit|WISP_REGION|inWispRegion|fog-lantern|prismType/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
+    expect(files.filter((f) => /DEPTHS|exploreDepths|rollWisp|wispLit|WISP_REGION|inWispRegion|fog-lantern|prismType|isCloudNode|CLOUD_(RING|EYE|LAP)|cloudLap[^?]|portalOpen/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
     expect(files.filter((f) => /FOREST_FLOOR|Dahlia/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/state.ts', 'engine/events.ts', 'ui/guide.ts', 'ui/app.ts'].includes(f))).toEqual([]);
     expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);

@@ -93,10 +93,10 @@ export function drills(g: Game): Season[] {
             const at = W.arbiterHere(s), gate = at ? W.arbiterGate(s, at) : null;
             b.mark([n.id, at, W.weather(s).name, W.travelBlock(s) === null, W.legendaryHere(s, n), W.townKeyItems(s, n.id)]);
             b.mark(map.neighbors(n.id).map((x) => { const c = W.canMoveTo(s, x.node.id); return [x.node.id, c.ok, c.cost, { text: c.reason }]; }));
-            b.mark(gate && [gate.ok, gate.cloud, gate.show === 'floor' || undefined, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined, { text: gate.reason }]);
+            b.mark(gate && [gate.ok, gate.show === 'cloud' || undefined, gate.show === 'floor' || undefined, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined, { text: gate.reason }]);
             b.mark([W.bikeReach(s, 2), W.bikeReach(s, 6)]);
           }
-          b.note(`gates keys${Object.keys(keys).length} wisp${wisp}`, [s.keyTowns, W.portalOpen(s)]);
+          b.note(`gates keys${Object.keys(keys).length} wisp${wisp}`, [s.keyTowns, b.g.salem.portalOpen(s, b.g.tools)]);
           b.write(s);
         }
       },
@@ -138,7 +138,7 @@ export function drills(g: Game): Season[] {
         const ring = map.CLOUD_RING;
         for (const [k, walk] of [[0, 1, 2, 1, 2, 3], [0, 1, 2, 3, 4, 5, 0]].entries()) {
           at(ring[0], 42);
-          for (let i = 1; i < walk.length; i++) { const from = ring[walk[i - 1]], to = ring[walk[i]]; S.moveTrainer(s, to); W.stepCloudLap(s, from, to); b.note(`lap ${W.cloudLapProgress(s).steps} ${!!s.flags.salemWorthy}`); }
+          for (let i = 1; i < walk.length; i++) { const from = ring[walk[i - 1]], to = ring[walk[i]]; S.moveTrainer(s, to); b.g.salem.stepCloudLap(s, from, to, b.g.tools); b.note(`lap ${b.g.salem.cloudLapProgress(s).steps} ${!!s.flags.salemWorthy}`); }
           s.cloudLoot = { 'star-charm': 2 };
           S.moveTrainer(s, 'aurora', { wiped: k === 0 });
           b.note(`satchel ${s.cloudLoot === undefined} ${s.inventory['star-charm']}`);

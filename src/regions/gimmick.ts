@@ -9,11 +9,11 @@ import type { ActiveEffect, Outcome } from '../engine/world';
 
 /** The engine's functions that gimmicks use. Add to this list as they need more (engine/tools.ts). */
 export type Tools =
-  & Pick<typeof import('../data/content'), 'ITEMS' | 'itemInfo'>
+  & Pick<typeof import('../data/content'), 'ITEMS' | 'itemInfo' | 'seasonForTurn' | 'timeOfDay'>
   & Pick<typeof import('../data/types'), 'TYPES'>
   & Pick<typeof import('../engine/dice'), 'pick' | 'roll' | 'weightedPick'>
   & Pick<typeof import('../engine/state'), 'addItem' | 'follower' | 'hasItem' | 'log' | 'tierOf'>
-  & Pick<typeof import('../engine/creature'), 'autoSpend' | 'createCreature' | 'nameOf' | 'stats'>
+  & Pick<typeof import('../engine/creature'), 'addLoyalty' | 'autoSpend' | 'createCreature' | 'gainXp' | 'maxHealth' | 'maxVitality' | 'nameOf' | 'stats'>
   & Pick<typeof import('../engine/battle'), 'createBattle'>
   & Pick<typeof import('../engine/world'), 'ability' | 'baseWildLevel' | 'cityActionCost' | 'discoverItem' | 'exoticFind' | 'here' | 'keyTownName' | 'nearest' | 'pickSpecies' | 'playerSide' | 'rollRarity' | 'stageCapFor' | 'tierBandLevel' | 'trainerRarity' | 'weather' | 'wildLevel'>
   & {
@@ -23,7 +23,7 @@ export type Tools =
   };
 
 /** Whether an Arbiter will battle. `show`: the gimmick's screen to open instead of only saying why. */
-export interface Gate { ok: boolean; reason?: string; show?: string; cloud?: boolean }
+export interface Gate { ok: boolean; reason?: string; show?: string; }
 
 export interface GimmickBattle { name: string; battle: Battle; match: number; of: number }
 
@@ -36,6 +36,8 @@ export interface Apart {
   /** What's said when exploring turns up a find, or a creature. */
   found?: string;
   met?: string;
+  /** Added to what was found. */
+  foundNote?: string;
 }
 
 /** A biome with rules of its own for what turns up: anyone led by one of its types, whatever their usual biome. */
@@ -60,7 +62,17 @@ export interface Gimmick {
   /** May this city's Arbiter be challenged? Null: that's not this gimmick's business. */
   gate?(s: GameState, city: string, t: Tools): Gate | null;
   /** The trainer is going from one place to another, by any means (or being sent home). */
-  onMove?(s: GameState, from: string, to: string, t: Tools): void;
+  onMove?(s: GameState, from: string, to: string, t: Tools, wiped: boolean): void;
+  /** The trainer took a step (after they've arrived). */
+  onStep?(s: GameState, from: string, to: string, t: Tools): void;
+  /** More Initiative for a step onto this node. */
+  stepExtra?(s: GameState, to: string, t: Tools): number;
+  /** The weather where the trainer stands (an id), whatever the day's is. */
+  weather?(s: GameState, t: Tools): string | null;
+  /** Something was gained: keep it somewhere other than the Bag? */
+  keep?(s: GameState, item: string, n: number): boolean;
+  /** Where Rivals and Champions don't go. */
+  hidden?(node: string): boolean;
   /** Why this step can't be taken, besides what its route and node require. Null: it's not this gimmick's business. */
   enter?(s: GameState, step: { node: MapNode; edge: MapEdge }, t: Tools): string | null;
   /** Something was bought. */

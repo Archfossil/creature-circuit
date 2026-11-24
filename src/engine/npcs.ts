@@ -7,7 +7,7 @@
 import type { ElementType, Species } from '../data/schema';
 import { onRegion } from '../regions/active';
 import { NPCS, NPC_BY_ID, type Npc } from '../data/npcs';
-import { CITIES, NODE_BY_ID, TOWNS, isCloudNode } from '../data/map';
+import { CITIES, NODE_BY_ID, TOWNS } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { NATURES, itemInfo } from '../data/content';
 import type { GameState } from './state';
@@ -280,7 +280,7 @@ export function rivalChance(s: GameState): number {
 export const STAY = 5;
 export const npcStay = (turn: number) => Math.floor((turn - 1) / STAY);
 let STOPS: string[];
-onRegion(() => { STOPS = [...Object.keys(CITIES), ...Object.keys(TOWNS)].filter((id) => NODE_BY_ID[id] && !isCloudNode(id) && !['lanternglade', 'stadium'].includes(id)); });
+onRegion(({ gimmicks }) => { STOPS = [...Object.keys(CITIES), ...Object.keys(TOWNS)].filter((id) => NODE_BY_ID[id] && NODE_BY_ID[id].kind !== 'stadium' && !gimmicks.some((g) => g.apart?.has(id) || g.hidden?.(id))); });
 export function championAt(s: GameState, npc: Npc, turn = s.turn): string {
   const i = CHAMPIONS.indexOf(npc);
   // a fresh shuffle of the stops each stay, dealt out so no two Champions share one

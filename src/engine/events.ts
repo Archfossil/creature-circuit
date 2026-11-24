@@ -17,7 +17,7 @@ import { createBattle } from './battle';
 import { baseWildLevel, here, pickSpecies, playerSide, speciesPool, tierBandLevel, weather, travelTo, travelBlock, apartAt } from './world';
 import { onRegion } from '../regions/active';
 import { tools } from './tools';
-import { BIOME_TYPES, isCloudNode, CITIES } from '../data/map';
+import { BIOME_TYPES, CITIES } from '../data/map';
 import { pick, roll, weightedPick, uid } from './dice';
 
 /** Chance that a turn ends with an event. 1 = every turn (good for playtesting); lower it to taste. */
@@ -690,117 +690,6 @@ const SHARED: EventDef[] = [
     },
   },
 
-  // ── Cloud Island (only while on the island) ────────────────────
-  {
-    id: 'shepherd', weight: 3, time: 'night', place: 'cloud',
-    create: () => ({}),
-    view: (s) => ({
-      title: 'Star Shepherd', icon: '🌟',
-      text: 'A glowing figure with a crook herds drifting stardust across the clouds. "Lend a hand, and keep what falls."',
-      choices: [
-        { id: 'help', label: 'Help gather · 1 Initiative', detail: 'Get 2 Stardust (+2 to recruit any creature).', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
-        { id: 'bless', label: 'Ask for a blessing', detail: 'Your follower gets +1 Loyalty and +1 Morale.' },
-        DECLINE,
-      ],
-    }),
-    resolve: (s, _d, choice) => {
-      if (choice === 'help') { s.initiative -= 1; addItem(s, 'stardust', 2); return { text: 'You herd the stardust into a glittering pile. (+2 Stardust)', tone: 'good' }; }
-      if (choice === 'bless') {
-        const f = follower(s);
-        if (!f) return { text: 'The shepherd blesses the empty air beside you, smiling.', tone: 'info' };
-        addLoyalty(f, 1); cheer(f, 1);
-        return { text: `The shepherd touches ${nameOf(f)}’s brow. It glows faintly all night. (+1 Loyalty, +1 Morale)`, tone: 'good' };
-      }
-      return { text: 'The shepherd drifts on into the dark.', tone: 'info' };
-    },
-  },
-  {
-    id: 'moonbow', weight: 2, time: 'night', place: 'cloud',
-    create: () => ({}),
-    view: () => ({
-      title: 'Moonbow', icon: '🌈',
-      text: 'A rainbow arcs across the clouds in silver moonlight. Its end touches the ground right beside you.',
-      choices: [
-        { id: 'reach', label: 'Reach for its end', detail: 'Roll d6: 5–6 a Moonbow Prism (+3 to recruit any creature), otherwise a Cloud Silk.' },
-        { id: 'watch', label: 'Watch it with your team', detail: 'All your partner creatures (in totems too) gain +1 Morale.' },
-      ],
-    }),
-    resolve: (s, _d, choice) => {
-      if (choice === 'watch') { for (const c of team(s)) cheer(c, 1); return { text: 'Your team watches until the moonbow fades. (+1 Morale)', tone: 'good' }; }
-      const r = roll(6);
-      if (r >= 5) { addItem(s, 'moonbow-prism'); return { text: 'Your fingers close on a shard of colour: a Moonbow Prism!', tone: 'good', rolls: [r] }; }
-      addItem(s, 'cloud-silk');
-      return { text: 'The moonbow slips away, leaving a wisp of Cloud Silk in your hand.', tone: 'info', rolls: [r] };
-    },
-  },
-  {
-    id: 'skywhale', weight: 2, place: 'cloud',
-    when: (s) => !!follower(s),
-    create: () => ({ xp: 6 }),
-    view: (s, d) => ({
-      title: 'Sky Whale', icon: '🐋',
-      text: 'An enormous whale of cloud glides past, close enough to touch. Your follower stares at it, wide-eyed.',
-      choices: [
-        { id: 'ride', label: 'Let your follower ride along · 1 Initiative', detail: `Your follower gains +${d.xp} XP and +1 Morale.`, disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
-        { id: 'wave', label: 'Wave hello', detail: 'It shakes loose 2 Cloud Silk as it passes.' },
-      ],
-    }),
-    resolve: (s, d, choice) => {
-      const f = follower(s);
-      if (choice === 'ride' && f) {
-        s.initiative -= 1;
-        const lv = gainXp(f, d.xp as number); cheer(f, 1);
-        return { text: `${nameOf(f)} rides the whale around the island and back: +${d.xp} XP${lv ? `, now Lv ${f.level}` : ''}!`, tone: 'good' };
-      }
-      addItem(s, 'cloud-silk', 2);
-      return { text: 'The whale rumbles a greeting and sheds 2 Cloud Silk.', tone: 'good' };
-    },
-  },
-  {
-    id: 'cloudbank', weight: 2, place: 'cloud',
-    create: () => ({}),
-    view: (s) => {
-      const f = follower(s);
-      const spd = f ? stats(f).speed : 0;
-      return {
-        title: 'Cloud Bank', icon: '🌫️', forced: true,
-        text: 'A thick bank of cloud swallows the path. You can barely see your own feet.',
-        choices: [
-          { id: 'wait', label: 'Wait for it to lift · 1 Initiative', disabled: s.initiative < 1 ? 'No Initiative left.' : undefined },
-          { id: 'feel', label: f ? `Let ${nameOf(f)} lead the way` : 'Feel your way forward', detail: `Roll d6 + Speed ${spd} ≥ 7: you find a Stardust in the fog. Miss: your active team gets −1 Morale.` },
-        ],
-      };
-    },
-    resolve: (s, _d, choice) => {
-      if (choice === 'wait') { s.initiative = Math.max(0, s.initiative - 1); return { text: 'The cloud lifts after a while. (−1 Initiative)', tone: 'info' }; }
-      const f = follower(s);
-      const r = roll(6);
-      if (r + (f ? stats(f).speed : 0) >= 7) { addItem(s, 'stardust'); return { text: 'Sure-footed through the fog, you stumble onto a Stardust!', tone: 'good', rolls: [r] }; }
-      for (const c of s.roster) cheer(c, -1);
-      return { text: 'Lost in the fog for hours, your team comes out grumpy. (−1 Morale)', tone: 'bad', rolls: [r] };
-    },
-  },
-  {
-    id: 'sunlit', weight: 3, time: 'day', place: 'cloud',
-    create: () => ({}),
-    view: () => ({
-      title: 'Sunlit Clouds', icon: '☀️',
-      text: 'Daylight burns the portal shut until night. The clouds glow warm and soft under the sun.',
-      choices: [
-        { id: 'bask', label: 'Bask in the sun', detail: 'Your active team (not KO’d) gets full Health, and Fatigue cleared.' },
-        { id: 'comb', label: 'Comb the clouds', detail: 'Find 1 Cloud Silk and 1 Stardust.' },
-      ],
-    }),
-    resolve: (s, _d, choice) => {
-      if (choice === 'bask') {
-        for (const c of s.roster) if (!c.ko) { c.vitality = maxVitality(c); c.health = maxHealth(c); c.fatigue = 0; }
-        return { text: 'Your team naps on a sunbeam and wakes restored.', tone: 'good' };
-      }
-      addItem(s, 'cloud-silk'); addItem(s, 'stardust');
-      return { text: 'You comb the clouds and find a Cloud Silk and a Stardust.', tone: 'good' };
-    },
-  },
-
 ];
 
 let EVENTS: EventDef[];
@@ -824,7 +713,7 @@ export function rollEvent(s: GameState, force?: string): PendingEvent | null {
   if (!force && Math.random() >= EVENT_CHANCE) return null;
   const now = timeOfDay(s.turn);
   // a place apart has its own events, and only those happen there
-  const place = isCloudNode(s.location) ? 'cloud' : apartAt(s.location)?.id;
+  const place = apartAt(s.location)?.id;
   const pool = force ? [BY_ID[force]] : EVENTS.filter((e) => e.id !== s.lastEvent && e.place === place && (!e.time || e.time === now) && (!e.when || e.when(s)));
   if (!pool.length) return null;
   const def = weightedPick(pool.map((e) => ({ v: e, w: e.weight })));
