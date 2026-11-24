@@ -1522,7 +1522,8 @@ export class App {
     this.world.setFollower(f ? f.species : null);
     this.world.setReach(this.reach());
     // the Rainbow Plains wear the color of the day's type; a wisp the trainer has looked for glows on the map
-    this.world.setPrism(TYPE_COLOR[W.prismType(s)]);
+    const ground = screens().ground?.(s);
+    if (ground) this.world.setPrism(ground);
     this.world.setWisp(screens().light?.(s) ?? null);
     const marker = this.markerOwner();
     this.world.setWaypoint(marker?.waypoint ?? null, marker?.trainer.color);
@@ -1593,7 +1594,8 @@ export class App {
     if (n.kind === 'stadium') return 'Town · Be here at the end of Turn 100';
     if (n.kind === 'legendary') return 'Legendary grounds';
     if (n.kind === 'arena') { const c = CITIES[n.arenaOf!]; return `${TYPE_LABEL[c.type]} Arena · Arbiter ${c.arbiter}${this.s.merits.includes(c.nodeId) ? ' ✓' : ''}`; }
-    if (n.biome === 'prism') return `Rainbow Plains · ${TYPE_LABEL[W.prismType(this.s)]} creatures today · Wild Lv ~${W.baseWildLevel(this.s, n)} · ★ +1 rarity`;
+    const special = screens().nodeSubtitle?.(this.s, n);
+    if (special) return special;
     return `${BIOME_INFO[n.biome].label} · Wild Lv ~${W.baseWildLevel(this.s, n)}${n.rarity ? ' · ★ rare' : ''}`;
   }
 
@@ -1815,7 +1817,7 @@ export class App {
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
         await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], apart?.met ?? 'Something rustles nearby…', 700, { read: true });
-        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].biome === 'prism' ? '(+1 rarity: the Rainbow Plains)' : NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
+        await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${W.landsOf(NODE_BY_ID[s.location].biome)?.rarityNote ? W.landsOf(NODE_BY_ID[s.location].biome)!.rarityNote : NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
         this.busy = false;
         await this.runBattle(out.battle, { kind: 'wild', intro: `A wild ${nameOf(out.battle.sides[1].team[0])} appeared!` });
         return;

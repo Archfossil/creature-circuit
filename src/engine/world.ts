@@ -109,6 +109,8 @@ export function activeEffects(s: GameState): ActiveEffect[] {
 // ride of up to d6 steps once a turn), Taxi Tickets (city to city), the Homing Feather (back home)
 // and Trail Mix (+1 Initiative). Events add the Hot Air Balloon and the Night Coach (events.ts).
 
+/** A gimmick's own rules for what lives in a biome, if any has them. */
+export const landsOf = (biome: Biome) => activeRegion().gimmicks.find((g) => g.lands?.biome === biome)?.lands;
 /** The place apart (Gimmick.apart) this node is in, if it is. */
 export const apartAt = (id: string) => activeRegion().gimmicks.find((g) => g.apart?.has(id))?.apart;
 
@@ -308,7 +310,7 @@ function exploreRoll(s: GameState): Outcome {
   if (s.flags.repel) {
     s.flags.repel = false;
     if (r <= 3) return { t: 'nothing', roll: r, hushed: r === 3 || undefined };
-    return { ...discoverItem(s, node, r, node.biome === 'prism' ? exoticFind : rollFind), hushed: r === 4 || undefined } as Outcome;
+    return { ...discoverItem(s, node, r, landsOf(node.biome)?.exotic ? exoticFind : rollFind), hushed: r === 4 || undefined } as Outcome;
   }
   const encounterRange = ab === 'sweetScent' ? [3, 5] : [3, 4];
   if (r < encounterRange[0]) return { t: 'nothing', roll: r };
@@ -316,7 +318,7 @@ function exploreRoll(s: GameState): Outcome {
     if ((node.biome === 'road' || node.biome === 'meadow') && Math.random() < 0.4) return trainerEncounter(s, node, r);
     return wildEncounter(s, node, r);
   }
-  return discoverItem(s, node, r, node.biome === 'prism' ? exoticFind : rollFind);
+  return discoverItem(s, node, r, landsOf(node.biome)?.exotic ? exoticFind : rollFind);
 }
 
 /** One possible find from an explore: its find roll, the items, and any coins. Nothing is applied yet. */
@@ -357,7 +359,7 @@ export function discoverItem(s: GameState, node: MapNode, r: number, finder: (s:
   return { t: 'item', roll: r, itemRoll: f.itemRoll, items: f.items, coins: f.coins, die };
 }
 
-/** Forest Floor and Rainbow Plains finds: exotic, a little better than the usual ones (Duskberries, the biome's exotic materials, Root Salve). */
+/** Finds in a gimmick's lands: exotic, a little better than the usual ones (Duskberries, the biome's exotic materials, Root Salve). */
 export function exoticFind(s: GameState, node: MapNode): Find {
   const ir = roll(6);
   const mult = ability(s) === 'forager' ? 2 : 1;
@@ -419,31 +421,16 @@ export function rollRarity(s: GameState, node: MapNode): { stars: { face: number
   const rolled: Rarity = score >= 3 ? 'apex' : score >= 2 ? 'prime' : 'common';
   const cap = tierRarityCap(tier);
   const capped = RARITY_RANK[rolled] > RARITY_RANK[cap] ? cap : rolled;
-  // the Rainbow Plains: always at least one rarity higher (Common → Prime, Prime → Apex), even past the Tier cap
-  return { stars, rarity: node.biome === 'prism' ? PRISM_BUMP[capped] : capped };
-}
-const PRISM_BUMP: Record<Rarity, Rarity> = { common: 'prime', prime: 'apex', apex: 'apex', legendary: 'legendary' };
-
-// ── The Rainbow Plains ──────────────────────────────────────────
-// Behind Lantern Glade. Every new day (odd turns) the Plains take on one type at random (never the
-// same two days running): only that type turns up, the ground turns its color, finds are exotic
-// (the Forest Floor's and Cloud Island's), and every creature is at least one rarity higher.
-const mix = (a: number, b: number) => { let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x632be5ab, 0xc2b2ae35); h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); return (h ^ (h >>> 12)) >>> 0; };
-/** The Rainbow Plains' type on this turn's day (turns 1–2 are day 1, 3–4 day 2 …). */
-export function prismType(s: GameState, turn = s.turn): ElementType {
-  const seed = s.prismSeed ?? 0;
-  const day = Math.ceil(Math.max(1, turn) / 2);
-  let i = mix(seed, 0) % TYPES.length;
-  for (let d = 2; d <= day; d++) i = (i + 1 + (mix(seed, d) % (TYPES.length - 1))) % TYPES.length;
-  return TYPES[i];
+  // a gimmick's lands can raise it, even past the Tier cap
+  return { stars, rarity: landsOf(node.biome)?.rarity?.(capped) ?? capped };
 }
 
 function wildEncounter(s: GameState, node: MapNode, r: number): Outcome {
   const { stars, rarity } = rollRarity(s, node);
   const level = wildLevel(s, node);
-  const prism = node.biome === 'prism';
-  // the Rainbow Plains: only today's type (the weather doesn't bring others)
-  const sp = pickSpecies(node, rarity, level, prism ? [] : weather(s).encounter, timeOfDay(s.turn), prism ? [prismType(s)] : undefined);
+  // a gimmick's lands: only its types (the weather doesn't bring others)
+  const types = landsOf(node.biome)?.types(s, tools);
+  const sp = pickSpecies(node, rarity, level, types ? [] : weather(s).encounter, timeOfDay(s.turn), types);
   const wild = createCreature(sp.id, level);
   if (!s.dex.seen.includes(sp.id)) s.dex.seen.push(sp.id);
   const battle = createBattle(playerSide(s), { kind: 'wild', name: `Wild ${sp.name}`, team: [wild], active: 0, mods: {} }, weather(s), { biome: node.biome, quickStep: ability(s) === 'quickStep' });
@@ -470,8 +457,8 @@ export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost:
     const options = types.map((t) => ({ t, list: poolFor(t) })).filter((o) => o.list.length);
     return options.length ? choose(weightedPick(options.map((o) => ({ v: o.list, w: boost.includes(o.t) ? 2 : 1 })))) : null;
   };
-  if (node.biome === 'prism') {
-    const all = (t: ElementType) => speciesPool('prism', t, rarity, stageCap);
+  if (landsOf(node.biome)) {
+    const all = (t: ElementType) => speciesPool(node.biome, t, rarity, stageCap);
     return byType((t) => all(t).filter((x) => !time || isActive(x, time))) ?? byType(all) ?? nearest(types, rarity, stageCap);
   }
   const area = areaPool(node.biome, rarity, stageCap, time, types);
@@ -521,8 +508,8 @@ function areaPool(biome: Biome, rarity: Rarity, stageCap: number, time?: TimeOfD
 
 /** The species of a given type (locals of it, and strays led by it) a biome can produce at a rarity and stage cap (shared by encounters and the Codex). */
 export function speciesPool(biome: Biome, type: ElementType, rarity: Rarity, stageCap: number, time?: TimeOfDay): Species[] {
-  // the Rainbow Plains: anyone led by the day's type
-  if (biome === 'prism') return SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity && x.stage <= stageCap);
+  // a gimmick's lands: anyone led by the type
+  if (landsOf(biome)) return SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity && x.stage <= stageCap);
   const area = areaPool(biome, rarity, stageCap, time);
   return [...(area.locals.get(type) ?? []), ...area.strays.filter((x) => x.types[0] === type)];
 }
@@ -542,7 +529,7 @@ export function encounterSpots(speciesId: string): Spot[] {
     if (node.kind === 'legendary') { if (node.legendary === speciesId) out.push({ node, minStage: 1 }); continue; }
     if (node.kind !== 'wild' || sp.rarity === 'legendary') continue;
     if (!BIOME_TYPES[node.biome].includes(sp.types[0])) continue;
-    if (node.biome === 'prism' && sp.rarity === 'common') continue; // the Rainbow Plains bump every Common up to Prime
+    if (sp.rarity === 'common' && (landsOf(node.biome)?.rarity?.('common') ?? 'common') !== 'common') continue; // every Common is raised
     const cap = [1, 2, 3].find((c) => (['day', 'night'] as const).some((t) => speciesPool(node.biome, sp.types[0], sp.rarity, c, t).includes(sp)));
     if (cap) out.push({ node, minStage: cap });
   }
@@ -1574,7 +1561,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
 }
 
 provide({
-  ITEMS, itemInfo, pick, roll, weightedPick,
+  ITEMS, TYPES, itemInfo, pick, roll, weightedPick,
   species: () => SPECIES, node: (id) => NODE_BY_ID[id],
   autoSpend, createBattle, createCreature, nameOf, stats,
   ability, baseWildLevel, cityActionCost, discoverItem, exoticFind, here, keyTownName, nearest, pickSpecies, playerSide, rollRarity, stageCapFor, tierBandLevel, trainerRarity, weather, wildLevel,

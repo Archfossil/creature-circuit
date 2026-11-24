@@ -3,6 +3,7 @@ import { dahlia } from './dahlia';
 import { fabian } from './fabian';
 import { gauntlet } from './gauntlet';
 import { katy } from './katy';
+import { plains } from './plains';
 import { wisps } from './wisps';
 
-export const GIMMICKS: Gimmick[] = [katy, fabian, dahlia, wisps, gauntlet];
+export const GIMMICKS: Gimmick[] = [katy, fabian, dahlia, wisps, plains, gauntlet];

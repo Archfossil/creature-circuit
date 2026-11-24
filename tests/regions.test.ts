@@ -342,6 +342,30 @@ describe('gimmicks', () => {
     expect(W.activeEffects(s).map((e) => e.id)).toEqual(['test-effect']);
     expect(S.migrate(JSON.parse(JSON.stringify({ ...s, gimmicks: { bar: 'old' } })))!.gimmicks).toEqual({ bar: 'new' });
   });
+  it('can say what lives in a biome, how rare it is and what’s found there', () => {
+    const { W } = t.g, s = start(t.g, 'tc-ash'), b = new Bot(t.g, 'lands');
+    const at = t.g.map.MAP_NODES.find((n) => n.biome === t.g.map.NODE_BY_ID.w1.biome && n.kind === 'wild' && n.id !== 'w2')!;
+    expect(W.landsOf(at.biome)).toBe(undefined);
+    const g = t.active.activeRegion().gimmicks.find((x) => x.id === 'bar')!;
+    g.lands = { biome: at.biome, types: () => ['water'], rarity: (r) => (r === 'common' ? 'apex' : r), exotic: true };
+    b.start();
+    try {
+      s.location = at.id;
+      s.trainer.style = 'urban';
+      const met = new Set<string>(), rare = new Set<string>(), found = new Set<string>(), hushed = new Set<string>();
+      for (let i = 0; i < 150; i++) {
+        s.initiative = 5; s.flags.lure = i % 3 === 0; s.flags.repel = i % 3 === 1;
+        const o = W.reexplore(s)!;
+        if (o.t === 'encounter') { met.add(t.g.species.SPECIES_BY_ID[o.battle.sides[1].team[0].species].types[0]); rare.add(o.rarity); }
+        if (o.t === 'item') for (const it of o.items) (i % 3 === 1 ? hushed : found).add(it.id);
+      }
+      expect([...met]).toEqual(['water']);
+      expect(rare.has('common')).toBe(false);
+      expect(found.has('duskberry')).toBe(true);
+      expect(hushed.has('duskberry')).toBe(true);
+      expect(W.encounterSpots('cindercub').map((x) => x.node.id)).not.toContain(at.id);
+    } finally { b.stop(); delete g.lands; }
+  });
   it('only name screens that there are', () => {
     const src = (f: string) => readFileSync(new URL(`../src/regions/margos/${f}`, import.meta.url), 'utf-8');
     const named = readdirSync(new URL('../src/regions/margos/gimmicks/', import.meta.url)).flatMap((f) => [...src(`gimmicks/${f}`).matchAll(/show: '(\w+)'/g)].map((x) => x[1]));
@@ -353,7 +377,8 @@ describe('gimmicks', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
     const gone = ['mangrove', 'hollow', 'gloom', 'forestfloor'];
-    expect(files.filter((f) => /DEPTHS|exploreDepths|rollWisp|wispLit|WISP_REGION|inWispRegion|fog-lantern/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
+    expect(files.filter((f) => f.startsWith('engine/') && /=== 'prism'/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
+    expect(files.filter((f) => /DEPTHS|exploreDepths|rollWisp|wispLit|WISP_REGION|inWispRegion|fog-lantern|prismType/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
     expect(files.filter((f) => /FOREST_FLOOR|Dahlia/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/state.ts', 'engine/events.ts', 'ui/guide.ts', 'ui/app.ts'].includes(f))).toEqual([]);
     expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);
@@ -392,7 +417,7 @@ describe('changing region', () => {
     const biomes = new Set(Object.keys(c.g.map.BIOME_TYPES)); // a biome can share its name with a place (canyon)
     const ids = new Set([...MARGOS.map.nodes.map((n) => n.id), ...MARGOS.people.npcs.map((n) => n.id)].filter((id) => !mine.has(id) && !biomes.has(id)));
     const names = [...MARGOS.map.nodes.map((n) => n.name), ...Object.values(MARGOS.map.cities).flatMap((x) => [x.arbiter, x.accolade, x.arena.name, x.hotpot.name]), ...MARGOS.people.npcs.map((n) => n.name)];
-    const found = new Set<string>();
+    const found = new Set<string>(), hushed = new Set<string>();
     const look = (v: unknown, at: string) => {
       if (typeof v === 'string') {
         if (ids.has(v)) found.add(`${at} = ${v}`);

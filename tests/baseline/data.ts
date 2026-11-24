@@ -1,5 +1,7 @@
 // A readable copy of everything the game's data says: tests/baseline.test.ts compares it with the saved one, so
 // moving data between files can't change it unnoticed. One line per item, so a difference shows which item.
+import { tools } from '../../src/engine/tools';
+import { prismType } from '../../src/regions/margos/gimmicks/plains';
 import { neighbors, MAP_NODES, TOWNS } from '../../src/data/map';
 import * as content from '../../src/data/content';
 import * as icons from '../../src/data/icons';
@@ -41,7 +43,7 @@ function derived(): string[] {
     ...lines('CLOUD_LAP', W.CLOUD_LAP), ...lines('EVENT_IDS', E.EVENT_IDS), ...lines('EVENT_PLACES', E.EVENT_PLACES), ...lines('EVENT_TIMES', E.EVENT_TIMES),
     'neighbors', ...MAP_NODES.map((n) => `  ${n.id}: ${neighbors(n.id).map((x) => `${x.node.id}${x.edge.via ? `(${x.edge.via})` : ''}`).join(' ')}`),
     'marketStock', ...MAP_NODES.filter((n) => n.kind === 'city' || TOWNS[n.id]).map((n) => `  ${n.id}: ${W.marketStock(n.id).join(' ')}`),
-    'prismType', `  ${Array.from({ length: 101 }, (_, t) => W.prismType(s, t)).join(' ')}`,
+    'prismType', `  ${Array.from({ length: 101 }, (_, t) => prismType(s, tools, t)).join(' ')}`,
     'speciesPool',
   ];
   for (const biome of Object.keys(map.BIOME_TYPES) as (keyof typeof map.BIOME_TYPES)[]) for (const type of TYPES) for (const rarity of ['common', 'prime', 'apex'] as const) for (const time of ['day', 'night'] as const) out.push(`  ${biome} ${type} ${rarity} ${time}: ${ids(W.speciesPool(biome, type, rarity, 3, time))}`);

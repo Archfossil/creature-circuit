@@ -5,6 +5,7 @@ import { closeAllSheets, h, openSheet, rollDice, tile, toast } from '../../ui/do
 import { sfx } from '../../ui/sound';
 import { itemInfo } from '../../data/content';
 import { STAR_FACE } from '../../data/icons';
+import { TYPE_COLOR, TYPE_LABEL } from '../../data/types';
 import { CITIES, NODE_BY_ID, neighbors } from '../../data/map';
 import { nameOf } from '../../engine/creature';
 import { hasItem, save, tierOf } from '../../engine/state';
@@ -13,6 +14,7 @@ import * as W from '../../engine/world';
 import { aboveFloor, dahliaBeaten, floorDie, onFloor, trailProgress } from './gimmicks/dahlia';
 import { DEPTHS_COST, depthsBlock, depthsCalls, exploreDepths, inDepths } from './gimmicks/depths';
 import { gauntletBlock, gauntletOpen, gauntletProgress } from './gimmicks/gauntlet';
+import { prismType } from './gimmicks/plains';
 import { LANTERN, rollWisp, wispLit } from './gimmicks/wisps';
 import type { Screens } from '../screens';
 
@@ -206,5 +208,7 @@ export const margosScreens: Screens = {
   trail: trailSign,
   news: wispNews,
   light: (s) => (hasItem(s, LANTERN) && s.flags.wispSeen && s.flags.wispAt ? s.flags.wispAt : null),
+  ground: (s) => TYPE_COLOR[prismType(s, tools)],
+  nodeSubtitle: (s, n) => (n.biome === 'prism' ? `Rainbow Plains · ${TYPE_LABEL[prismType(s, tools)]} creatures today · Wild Lv ~${W.baseWildLevel(s, n)} · ★ +1 rarity` : null),
   itemAction: (app, item) => (item === LANTERN ? { label: 'Check', go: () => lanternSheet(app) } : null),
 };

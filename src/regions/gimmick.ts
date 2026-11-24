@@ -1,7 +1,7 @@
 // A region's gimmicks: rules of its own, as answers to the engine's questions (docs/16-region-packages.md). The first
 // to have an answer gives it. Like the rest of a package, a gimmick's rules only import types, so the engine's
 // functions are handed to it (`t`). Its screens are apart from them (screens.ts).
-import type { MapEdge, MapNode, Species } from '../data/schema';
+import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species } from '../data/schema';
 import type { Battle } from '../engine/battle';
 import type { EventDef } from '../engine/events';
 import type { GameState } from '../engine/state';
@@ -10,6 +10,7 @@ import type { ActiveEffect, Outcome } from '../engine/world';
 /** The engine's functions that gimmicks use. Add to this list as they need more (engine/tools.ts). */
 export type Tools =
   & Pick<typeof import('../data/content'), 'ITEMS' | 'itemInfo'>
+  & Pick<typeof import('../data/types'), 'TYPES'>
   & Pick<typeof import('../engine/dice'), 'pick' | 'roll' | 'weightedPick'>
   & Pick<typeof import('../engine/state'), 'addItem' | 'follower' | 'hasItem' | 'log' | 'tierOf'>
   & Pick<typeof import('../engine/creature'), 'autoSpend' | 'createCreature' | 'nameOf' | 'stats'>
@@ -37,9 +38,23 @@ export interface Apart {
   met?: string;
 }
 
+/** A biome with rules of its own for what turns up: anyone led by one of its types, whatever their usual biome. */
+export interface Lands {
+  biome: Biome;
+  /** Who turns up now. */
+  types(s: GameState, t: Tools): ElementType[];
+  /** What a rolled rarity becomes (even past the Tier's cap). */
+  rarity?(r: Rarity): Rarity;
+  /** Said when the rarity is rolled. */
+  rarityNote?: string;
+  /** Finds are exotic. */
+  exotic?: boolean;
+}
+
 export interface Gimmick {
   id: string;
   apart?: Apart;
+  lands?: Lands;
   /** What can happen between turns in its place apart. */
   events?(t: Tools): EventDef[];
   /** May this city's Arbiter be challenged? Null: that's not this gimmick's business. */

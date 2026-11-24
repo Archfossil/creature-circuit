@@ -129,7 +129,7 @@ export function drills(g: Game): Season[] {
           b.note(`wisp ${s.flags.wisp}`, W.activeEffects(s));
           at(map.LANTERN_GLADE);
           for (const id of map.RAINBOW_PLAINS) for (let k = 0; k < 4; k++) { at(id); b.count('biome:prism'); b.outcome(s, W.reexplore(s)); }
-          b.note(`plains ${W.prismType(s)}`);
+          b.note(`plains ${b.g.plains.prismType(s, b.g.tools)}`);
           at('mistfall');
           b.note(`wispGone ${s.flags.wisp} ${s.flags.wispAt}`);
           b.write(s);

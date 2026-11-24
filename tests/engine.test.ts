@@ -10,6 +10,7 @@ import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
 import { gauntletBlock, gauntletLevel, gauntletProgress, gauntletSize } from '../src/regions/margos/gimmicks/gauntlet';
 import { tools } from '../src/engine/tools';
+import { prismType } from '../src/regions/margos/gimmicks/plains';
 import { rollWisp, wispLit } from '../src/regions/margos/gimmicks/wisps';
 import { DEPTHS_COST, depthsBlock, exploreDepths } from '../src/regions/margos/gimmicks/depths';
 import { trailNeeded } from '../src/regions/margos/gimmicks/dahlia';
@@ -1317,10 +1318,12 @@ describe('Lantern Glade and the Rainbow Plains', () => {
   it('the Plains change type every new day, never the same two days running, the same for everyone in a match', () => {
     const s = fresh();
     for (let t = 1; t < 100; t += 2) {
-      expect(W.prismType(s, t)).toBe(W.prismType(s, t + 1));
-      expect(W.prismType(s, t + 2)).not.toBe(W.prismType(s, t));
+      expect(prismType(s, tools, t)).toBe(prismType(s, tools, t + 1));
+      expect(prismType(s, tools, t + 2)).not.toBe(prismType(s, tools, t));
     }
-    const seen = new Set(Array.from({ length: 50 }, (_, d) => W.prismType(s, d * 2 + 1)));
+    s.turn = 2;
+    expect(prismType(s, tools)).toBe(prismType(s, tools, 1));
+    const seen = new Set(Array.from({ length: 50 }, (_, d) => prismType(s, tools, d * 2 + 1)));
     expect(seen.size).toBeGreaterThanOrEqual(6);
     const b = fresh();
     setActiveMatch(newMatch([s, b]));
@@ -1342,7 +1345,7 @@ describe('Lantern Glade and the Rainbow Plains', () => {
       if (out.t === 'encounter') {
         encounters++;
         expect(out.rarity).not.toBe('common');
-        expect(speciesOf(out.battle.sides[1].team[0]).types[0]).toBe(W.prismType(s));
+        expect(speciesOf(out.battle.sides[1].team[0]).types[0]).toBe(prismType(s, tools));
       }
       if (out.t === 'item') { finds++; for (const it of out.items) expect(exotic.has(it.id), it.id).toBe(true); }
       if (out.t === 'itemChoice') { finds++; for (const o of out.options) for (const it of o.items) expect(exotic.has(it.id), it.id).toBe(true); }

@@ -1,5 +1,6 @@
 // The screens of each region's gimmicks. Only the app loads this: unlike a gimmick's rules, a screen can use anything.
 import type { App } from '../ui/app';
+import type { MapNode } from '../data/schema';
 import type { GameState } from '../engine/state';
 import type { Outcome } from '../engine/world';
 import { activeRegion } from './active';
@@ -22,6 +23,10 @@ export interface Screens {
   news?(app: App): void;
   /** Where a little light hangs over the map for this trainer. */
   light?(s: GameState): string | null;
+  /** The colour a 'prism' biome's ground wears now. */
+  ground?(s: GameState): string;
+  /** What a place is, in a line, where that isn't the usual. */
+  nodeSubtitle?(s: GameState, n: MapNode): string | null;
   /** A button on a key item in the Bag. */
   itemAction?(app: App, item: string): { label: string; go: () => void } | null;
   /** A sign of a trail was found. */

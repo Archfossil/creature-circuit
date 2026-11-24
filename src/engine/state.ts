@@ -140,7 +140,7 @@ export interface GameState {
    * (through the portal). Being sent home after a team wipe loses them.
    */
   cloudLoot?: Record<string, number>;
-  /** Seed for the Rainbow Plains' daily type (world.ts → prismType). Shared by everyone in a match. */
+  /** Seed for the Rainbow Plains' daily type (plains.ts). Shared by everyone in a match. */
   prismSeed?: number;
   /** This game's towns for the roaming key items (Canopy Rope, Root Whistle). Shared by everyone in a match. */
   keyTowns?: Record<string, string>;
