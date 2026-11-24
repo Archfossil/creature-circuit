@@ -3640,10 +3640,15 @@ describe('Swap Moves', () => {
       const end = rest.findIndex((e) => e.t === 'use' || (e.t === 'send' && e.side === 1));
       return { hits: (end < 0 ? rest : rest.slice(0, end)).filter((e) => e.t === 'damage' && e.side === 1).length, bench };
     };
-    expect(run(999).hits).toBe(2);
-    const ko = run(1);
-    expect(ko.hits).toBe(1);
-    expect(ko.bench.health).toBe(999);
+    const real = Math.random;
+    let seed = 1;
+    Math.random = () => (seed = (seed * 16807) % 2147483647) / 2147483647; // (a miss or a lucky dodge would spoil it)
+    try {
+      expect(run(999).hits).toBe(2);
+      const ko = run(1);
+      expect(ko.hits).toBe(1);
+      expect(ko.bench.health).toBe(999);
+    } finally { Math.random = real; }
   });
   it('a slot whose move is no longer allowed falls back to the pair’s random default', () => {
     const [a, b] = trio();
