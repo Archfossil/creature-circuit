@@ -203,3 +203,8 @@ export function floatText(x: number, y: number, text: string, cls = '') {
   document.body.append(el);
   setTimeout(() => el.remove(), 1300);
 }
+
+/** Something to do in a city or town. */
+export function tile(icon: string, title: string, text: string, cost: string, fn: () => void, disabled = false) {
+  return h('button', { class: 'tile', disabled, onclick: fn }, h('span', { class: 'tile-ico' }, icon), h('div', null, h('b', null, title), h('small', null, text)), cost ? h('span', { class: 'cost' }, cost) : null);
+}

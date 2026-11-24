@@ -10,7 +10,8 @@ import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progres
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
-import { provide } from './tools';
+import { provide, tools } from './tools';
+import { activeRegion } from '../regions/active';
 import { SPECIES_BY_ID } from '../data/species';
 import { currentMoveId } from '../data/moves';
 
@@ -165,6 +166,8 @@ export interface GameState {
   waypoint?: string;
   /** The 📜 log of this trainer's latest battle, to look back on (replaced by the next one; left out of saved copies). */
   lastBattle?: BattleLog;
+  /** What a region's gimmicks keep, by gimmick id. (Margos's are older, and keep theirs in `flags`.) */
+  gimmicks?: Record<string, unknown>;
   /** History with the Rivals and Champions this trainer has met, by id (engine/npcs.ts). */
   npcs?: Record<string, NpcRecord>;
   /** Circuit news, latest first. */
@@ -236,12 +239,9 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
   return s;
 }
 
-/** The city that holds the Iron Coast Gauntlet (Stella's). */
-export const GAUNTLET_CITY = 'iron';
-
 /**
- * Put a trainer on a node. Every location change goes through here, so that leaving Iron Coast
- * resets an unfinished Gauntlet and leaving Cloud Island ends a lap in progress.
+ * Put a trainer on a node. Every location change goes through here, so that gimmicks
+ * hear of it (Gimmick.onMove) and leaving Cloud Island ends a lap in progress.
  */
 export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /** The World Log's words for a ride: "took a taxi to …". */ how?: string } = {}) {
   const place = NODE_BY_ID[id]?.name ?? id;
@@ -275,10 +275,7 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /
     s.flags.wispNews = true;
     log(s, `Caught a wisp in your Fog Lantern at ${NODE_BY_ID[id]?.name ?? id}. It will light the way to Lantern Glade.`);
   }
-  if (s.location === GAUNTLET_CITY && id !== GAUNTLET_CITY && !s.flags.stellaOpen && s.flags.gauntletWins) {
-    log(s, `Left Iron Coast: the Gauntlet resets (${s.flags.gauntletWins} trainer${s.flags.gauntletWins === 1 ? '' : 's'} beaten).`);
-    s.flags.gauntletWins = 0;
-  }
+  for (const g of activeRegion().gimmicks) g.onMove?.(s, s.location, id, tools);
   // reaching your marked next stop clears the marker
   if (s.waypoint === id) s.waypoint = undefined;
   if (!opts.wiped) noteArrival(s, id);
@@ -653,4 +650,4 @@ export function log(s: GameState, text: string) {
   if (s.log.length > 60) s.log.length = 60;
 }
 
-provide({ hasItem });
+provide({ hasItem, log, tierOf });

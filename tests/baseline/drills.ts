@@ -93,7 +93,7 @@ export function drills(g: Game): Season[] {
             const at = W.arbiterHere(s), gate = at ? W.arbiterGate(s, at) : null;
             b.mark([n.id, at, W.weather(s).name, W.travelBlock(s) === null, W.legendaryHere(s, n), W.townKeyItems(s, n.id)]);
             b.mark(map.neighbors(n.id).map((x) => { const c = W.canMoveTo(s, x.node.id); return [x.node.id, c.ok, c.cost, { text: c.reason }]; }));
-            b.mark(gate && [gate.ok, gate.cloud, gate.trail, gate.gauntlet, gate.show === 'fabian' || undefined, { text: gate.reason }]);
+            b.mark(gate && [gate.ok, gate.cloud, gate.trail, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined, { text: gate.reason }]);
             b.mark([W.bikeReach(s, 2), W.bikeReach(s, 6)]);
           }
           b.note(`gates keys${Object.keys(keys).length} wisp${wisp}`, [s.keyTowns, W.portalOpen(s)]);
@@ -155,7 +155,7 @@ export function drills(g: Game): Season[] {
           b.write(s);
         }
         // the Gauntlet: started and left, then finished
-        const match = () => { ready(b, s); const r = W.gauntletBattle(s); if (r) { b.count('gauntlet'); b.battle(s, r.battle, { kind: 'trainer', gauntlet: true }, `gauntlet ${r.match}/${r.of}`); } };
+        const match = () => { ready(b, s); const r = W.gimmickBattle(s, 'gauntlet'); if (r) { b.count('gauntlet'); b.battle(s, r.battle, { kind: 'trainer', gimmick: 'gauntlet' }, `gauntlet ${r.match}/${r.of}`); } };
         at('iron', 45);
         match();
         b.note(`gauntlet ${s.flags.gauntletWins}`);

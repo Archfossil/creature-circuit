@@ -1,6 +1,7 @@
 import { STAR_FACE } from '../data/icons';
+import { activeRegion } from '../regions/active';
 import { screens } from '../regions/screens';
-import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf } from './dom';
+import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf, tile } from './dom';
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
@@ -13,7 +14,7 @@ import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
-import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, GAUNTLET_CITY, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
@@ -1370,7 +1371,7 @@ export class App {
       h('ul', { class: 'small' }, h('li', null, h('b', null, `${c.name} isn’t knocked out`), ', and neither is anyone else still standing.'), keeps.map((t) => h('li', null, t))));
   }
   /** Warn about surrendering this battle, and ask. */
-  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gauntlet?: boolean; stadium?: boolean }): Promise<boolean> {
+  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gimmick?: string; stadium?: boolean }): Promise<boolean> {
     const s = this.s, me = activeOf(b.sides[0]);
     const at = NODE_BY_ID[s.location].name;
     const costs: string[] = [], keeps: string[] = [];
@@ -1385,7 +1386,8 @@ export class App {
       else costs.push(`You lose the battle, and half your coins (you have 💰 ${s.coins}).`);
       costs.push(`You lose the rest of your Initiative (${s.initiative} left).`);
       keeps.push(`You aren’t sent back to a city: you stay at ${at}.`);
-      if (ctx.gauntlet) keeps.push('Your Gauntlet progress is kept.');
+      const note = activeRegion().gimmicks.find((g) => g.id === ctx.gimmick)?.surrenderNote;
+      if (note) keeps.push(note);
       if (Object.keys(s.cloudLoot ?? {}).length) keeps.push('Your Cloud satchel is kept.');
     }
     return new Promise((resolve) => {
@@ -1861,7 +1863,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { /** Stadium Mode. */ stadium?: boolean; kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Duels: the coins at stake. */ wager?: number; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { /** Stadium Mode. */ stadium?: boolean; kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gimmick?: string; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Duels: the coins at stake. */ wager?: number; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -2263,7 +2265,7 @@ export class App {
     const mercy = helper ? await this.mercySheet(helper) : undefined;
     if (!mercy && ctx.kind !== 'rival' && ctx.kind !== 'endgame' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
     const rematch = ctx.kind === 'arbiter' && s.merits.includes(ctx.city!);
-    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo, mercy });
+    const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gimmick: ctx.gimmick, wipeTo, mercy });
     for (const t of summary.text) toast(t, summary.wiped || b.surrendered === 0 ? 'bad' : 'good', 3500);
     this.busy = false;
     if (ctx.kind !== 'endgame') {
@@ -2383,10 +2385,7 @@ export class App {
         id === 'aurora' ? tile('🌀', 'Cloud Island Portal', W.portalOpen(s)
           ? `Open ${seasonForTurn(s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}).`}`
           : 'Closed by day. The portal opens at night (even turns), and stays open all Winter.', '', () => this.cloudSheet()) : null,
-        id === GAUNTLET_CITY && !s.flags.stellaOpen && !s.merits.includes(id) ? (() => {
-          const g = W.gauntletProgress(s);
-          return tile('⚓', 'Iron Coast Gauntlet', `Beat ${g.need} local trainers in a row to earn a match with Stella: ${g.wins}/${g.need} so far. Rest at the Stable between matches as often as you like, but leaving the city resets it.`, costTag, () => this.gauntletSheet());
-        })() : null,
+        ...(screens().tiles?.(this, id, costTag) ?? []),
         c.arenaNode === FOREST_FLOOR
           ? tile('🌲', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won} Climb down to the Forest Floor to face Dahlia again.` : `${c.arbiter}’s arena hides on the Forest Floor below. Climb down with a Canopy Rope and follow her trail in the dark.`, '', () => this.floorSheet())
           : c.arenaNode
@@ -2930,7 +2929,6 @@ export class App {
       if (gate.trail) { this.floorSheet(); return; }
       const screen = gate.show ? screens().show[gate.show] : undefined;
       if (screen) { screen(this); return; }
-      if (gate.gauntlet) { this.gauntletSheet(); return; }
       toast(gate.reason ?? 'Not yet.', 'bad', 3500);
       return;
     }
@@ -3038,33 +3036,6 @@ export class App {
           h('button', { class: 'btn ghost', onclick: () => finish(false) }, 'Not now'),
           h('button', { class: 'btn primary', onclick: () => finish(true) }, `Climb down · ${cost}⚡`))), { wide: true, onClose: () => { if (!done) { done = true; resolve(false); } } });
     });
-  }
-
-  /** Iron Coast Gauntlet: progress, the next opponent, and the button to face them. */
-  gauntletSheet() {
-    const s = this.s;
-    const g = W.gauntletProgress(s);
-    const why = W.gauntletBlock(s);
-    const close = openSheet('⚓ Iron Coast Gauntlet', h('div', { class: 'gauntlet' },
-      h('p', null, `Stella only faces trainers who prove themselves against the coast’s best. Beat ${g.need} local trainers (2 per Tier) and her fortress rises from the waves, for good.`),
-      h('div', { class: 'gauntlet-pips', 'aria-label': `${g.wins} of ${g.need} beaten` }, Array.from({ length: g.need }, (_, i) => h('span', { class: i < g.wins ? 'on' : i === g.wins ? 'next' : '' }))),
-      h('p', null, h('b', null, `${g.wins} of ${g.need} beaten.`), ` Next: a Steel-leaning trainer, Lv ${g.nextLevel}${g.wins + 1 >= g.need ? ' (the last and toughest)' : ''}.`),
-      h('ul', { class: 'small' },
-        h('li', null, 'Take the matches over as many turns as you like, and rest at the Stable in between.'),
-        h('li', null, h('b', null, 'Leaving Iron Coast resets your progress'), ' (travelling, or being sent home after a team wipe).'),
-        h('li', null, 'A loss doesn’t reset it: rest up and try that trainer again. Trainer stakes apply (coins won or lost).'),
-        h('li', null, 'Once cleared, Stella will accept your challenge any time you come back.')),
-      h('div', { class: 'row end gap' },
-        h('button', { class: 'btn ghost', onclick: () => close() }, 'Not now'),
-        h('button', { class: 'btn primary', disabled: !!why, title: why ?? '', onclick: async () => {
-          const r = W.gauntletBattle(s);
-          if (!r) { toast(W.gauntletBlock(s) ?? 'Not now.', 'info'); return; }
-          closeAllSheets();
-          this.renderHud();
-          await this.runBattle(r.battle, { kind: 'trainer', gauntlet: true, intro: `Gauntlet match ${r.match} of ${r.of}: ${r.name} steps up!` });
-          if (s.flags.stellaOpen && !s.merits.includes(GAUNTLET_CITY)) toast('⚓ The Gauntlet is cleared. Stella’s fortress rises from the waves!', 'good', 4500);
-        } }, `Battle the next trainer · ${W.cityActionCost(s)}⚡`)),
-      why ? h('p', { class: 'small muted' }, why) : null));
   }
 
   townSheet() {
@@ -4443,9 +4414,6 @@ function materialDetail(it: Item) {
   return h('div', { class: 'mat-detail' },
     h('span', { class: 'row gap-s' }, allure.map(([t, v]) => h('span', { class: 'chip sm' }, typeIconImg(t, 14), ` ${TYPE_LABEL[t]} +${v}`))),
     h('small', { class: 'muted' }, `Recruiting bonus for creatures of those types (the best match counts). Found in: ${materialBiomes(it.id).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ')}. Also used to carve totems and to craft at a Workbench (it fits ${allure.map(([t]) => TYPE_LABEL[t]).join(' or ')} slots).`));
-}
-function tile(icon: string, title: string, text: string, cost: string, fn: () => void, disabled = false) {
-  return h('button', { class: 'tile', disabled, onclick: fn }, h('span', { class: 'tile-ico' }, icon), h('div', null, h('b', null, title), h('small', null, text)), cost ? h('span', { class: 'cost' }, cost) : null);
 }
 const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 function probAtLeast(target: number) {

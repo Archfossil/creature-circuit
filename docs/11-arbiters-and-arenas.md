@@ -6,7 +6,8 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/regions/margos/map.ts`.
 - **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
 - **Arena effects:** `src/regions/margos/arenas.ts` (`ARENAS`: what each one does), played out by `src/engine/battle.ts`.
-- **Challenge screen and special flows** (Cloud Island, finding Fabian, the Gauntlet): `src/ui/app.ts` (`arbiter`, `cloudSheet`, `findFabian`, `gauntletSheet`).
+- **Katy, Fabian and Stella's conditions:** `src/regions/margos/gimmicks`, with their screens in `src/regions/margos/screens.ts`.
+- **Challenge screen and Cloud Island:** `src/ui/app.ts` (`arbiter`, `cloudSheet`).
 
 ## How Arbiters work
 
@@ -254,7 +255,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 - **Cost and pacing:** each match is a city action (1 Initiative; Ranger 2, Urbanite 0). There's no limit per turn. Matches can be spread across turns, and the challenger can rest at the Stable between them.
 - **Resets:** **leaving Iron Coast resets the count**: travelling, or being sent home after a team wipe. Losing a match doesn't reset it; that trainer can be fought again.
 - **Once cleared,** Stella can be challenged at any time, now or on a later visit. The Gauntlet never needs repeating.
-- **Code:** `gauntletBattle`, `gauntletWin` and `gauntletProgress` in `world.ts`; the reset is in `moveTrainer` (`state.ts`).
+- **Code:** `src/regions/margos/gimmicks/gauntlet.ts`, where leaving (`onMove`) is the reset.
 
 **Arena effect: Fortress.** Stella's fortress plating gives her creatures +1 Armor and +1 Ward (+2 each at Tier 4+), reducing all damage they take.
 
@@ -363,7 +364,7 @@ Copy this block into [The Arbiters](#the-arbiters) and add a row to the [Overvie
    - `roundEnd`: something at the end of each round, using the `hurt()` and `mend()` it's given, like `iceFloes` and `volts`;
    - `countdown`: a number of rounds to win in, like `crumble`.
 2. **An Arbiter or city:** edit `CITIES` in `src/regions/margos/map.ts` (name, type, park, Arbiter, Merit, arena name, trick and text, hot pot, blurb). A new city also needs a map node and routes.
-3. **An access condition:** add a case to `arbiterGate()` in `src/engine/world.ts`. Special flows like Cloud Island, finding Fabian or the Gauntlet are in `src/ui/app.ts` (`arbiter`).
+3. **An access condition:** add a gimmick with a `gate` to `src/regions/margos/gimmicks`, and its screen, if it has one, to `src/regions/margos/screens.ts`.
 4. **Then:**
    - Add a test in `tests/engine.test.ts`.
    - Update this doc. **A test fails if an Arbiter or arena effect in the game is missing from this file.**

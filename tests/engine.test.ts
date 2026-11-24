@@ -8,6 +8,8 @@ import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, status
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
+import { gauntletBlock, gauntletLevel, gauntletProgress, gauntletSize } from '../src/regions/margos/gimmicks/gauntlet';
+import { tools } from '../src/engine/tools';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
@@ -1878,30 +1880,30 @@ describe('Iron Coast Gauntlet (Stella)', () => {
     return s;
   };
   const winOne = (s: ReturnType<typeof newGame>) => {
-    const r = W.gauntletBattle(s)!;
+    const r = W.gimmickBattle(s, 'gauntlet')!;
     expect(r).not.toBeNull();
     r.battle.over = 'win';
-    W.finishBattle(s, r.battle, { kind: 'trainer', gauntlet: true });
+    W.finishBattle(s, r.battle, { kind: 'trainer', gimmick: 'gauntlet' });
     return r;
   };
   it('takes 2 trainers per Tier, each above the Trainer Hall level, the last one higher still', () => {
-    expect([1, 2, 3, 4, 5].map(W.gauntletSize)).toEqual([2, 4, 6, 8, 10]);
+    expect([1, 2, 3, 4, 5].map(gauntletSize)).toEqual([2, 4, 6, 8, 10]);
     for (const t of [1, 2, 3, 4, 5]) {
-      expect(W.gauntletLevel(t, false)).toBe(W.tierBandLevel(t) + 2);
-      expect(W.gauntletLevel(t, true)).toBe(W.gauntletLevel(t, false) + 1);
-      if (t > 1) expect(W.gauntletLevel(t, false)).toBeGreaterThan(W.gauntletLevel(t - 1, false));
+      expect(gauntletLevel(t, false, tools)).toBe(W.tierBandLevel(t) + 2);
+      expect(gauntletLevel(t, true, tools)).toBe(gauntletLevel(t, false, tools) + 1);
+      if (t > 1) expect(gauntletLevel(t, false, tools)).toBeGreaterThan(gauntletLevel(t - 1, false, tools));
     }
     const s = atIron(['aurora', 'hollow']); // Tier 2: 4 trainers
-    expect(W.gauntletProgress(s).need).toBe(4);
-    const r = W.gauntletBattle(s)!;
-    expect(r.battle.sides[1].team.every((c) => c.level === W.gauntletLevel(2, false))).toBe(true);
+    expect(gauntletProgress(s, tools).need).toBe(4);
+    const r = W.gimmickBattle(s, 'gauntlet')!;
+    expect(r.battle.sides[1].team.every((c) => c.level === gauntletLevel(2, false, tools))).toBe(true);
     expect(r.of).toBe(4);
   });
   it('Stella waits for the Gauntlet; once cleared she can be challenged any time, even after leaving', () => {
     const s = atIron();
-    expect(W.arbiterGate(s, 'iron')).toMatchObject({ ok: false, gauntlet: true });
+    expect(W.arbiterGate(s, 'iron')).toMatchObject({ ok: false, show: 'gauntlet' });
     winOne(s);
-    expect(W.gauntletProgress(s).wins).toBe(1);
+    expect(gauntletProgress(s, tools).wins).toBe(1);
     s.initiative = 5;
     const last = winOne(s);
     expect(last.match).toBe(2);
@@ -1910,7 +1912,7 @@ describe('Iron Coast Gauntlet (Stella)', () => {
     W.moveTo(s, neighbors('iron')[0].node.id);
     s.location = 'iron';
     expect(W.arbiterGate(s, 'iron').ok).toBe(true);
-    expect(W.gauntletBlock(s)).toMatch(/cleared/);
+    expect(gauntletBlock(s, tools)).toMatch(/cleared/);
   });
   it('progress survives new turns and Stable rests, but resets when the trainer leaves Iron Coast', () => {
     const s = atIron(['aurora', 'hollow']);
@@ -1918,24 +1920,24 @@ describe('Iron Coast Gauntlet (Stella)', () => {
     W.rest(s, 'iron');
     W.endTurn(s);
     expect(s.location).toBe('iron');
-    expect(W.gauntletProgress(s).wins).toBe(1);
+    expect(gauntletProgress(s, tools).wins).toBe(1);
     s.initiative = 5;
     W.moveTo(s, neighbors('iron')[0].node.id);
     expect(s.flags.gauntletWins).toBe(0);
-    expect(W.gauntletBlock(s)).toMatch(/Iron Coast/);
+    expect(gauntletBlock(s, tools)).toMatch(/Iron Coast/);
   });
   it('a loss keeps progress; a full wipe sends you home and resets it', () => {
     const s = atIron(['aurora', 'hollow']);
     winOne(s);
-    const r = W.gauntletBattle(s)!;
+    const r = W.gimmickBattle(s, 'gauntlet')!;
     r.battle.over = 'lose';
-    W.finishBattle(s, r.battle, { kind: 'trainer', gauntlet: true });
-    expect(W.gauntletProgress(s).wins).toBe(1);
+    W.finishBattle(s, r.battle, { kind: 'trainer', gimmick: 'gauntlet' });
+    expect(gauntletProgress(s, tools).wins).toBe(1);
     s.initiative = 5;
-    const r2 = W.gauntletBattle(s)!;
+    const r2 = W.gimmickBattle(s, 'gauntlet')!;
     r2.battle.over = 'lose';
     for (const c of s.roster) c.ko = true;
-    W.finishBattle(s, r2.battle, { kind: 'trainer', gauntlet: true });
+    W.finishBattle(s, r2.battle, { kind: 'trainer', gimmick: 'gauntlet' });
     expect(s.location).toBe('thunder');
     expect(s.flags.gauntletWins).toBe(0);
   });

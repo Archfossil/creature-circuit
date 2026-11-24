@@ -251,17 +251,17 @@ export class Bot {
   }
   /** Challenge the Arbiter here, doing whatever they ask for first. Returns whether it's worth staying for another try. */
   arbiter(s: GameState): boolean {
-    const { W, S, Imp } = this.g;
+    const { W, Imp } = this.g;
     const city = W.arbiterHere(s);
     if (!city || (s.merits.includes(city) && this.odds(0.6))) return false;
     let gate = W.arbiterGate(s, city);
-    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.trail, gate.gauntlet, gate.show === 'fabian' || undefined]);
+    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.trail, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined]);
     if (gate.show === 'fabian') { s.flags.fabianFound = true; this.note('fabian'); gate = W.arbiterGate(s, city); } // (finding him is a guessing game in app.ts)
-    while (gate.gauntlet && s.location === S.GAUNTLET_CITY) {
-      const r = W.gauntletBattle(s);
+    while (gate.show === 'gauntlet' && s.location === city) {
+      const r = W.gimmickBattle(s, 'gauntlet');
       if (!r) return true;
       this.count('gauntlet');
-      this.battle(s, r.battle, { kind: 'trainer', gauntlet: true }, `gauntlet ${r.match}/${r.of}`);
+      this.battle(s, r.battle, { kind: 'trainer', gimmick: 'gauntlet' }, `gauntlet ${r.match}/${r.of}`);
       gate = W.arbiterGate(s, city);
     }
     while (gate.trail && W.arbiterHere(s) === city) {

@@ -296,6 +296,19 @@ describe('gimmicks', () => {
     expect(W.arbiterGate(s, 'tc-fen').reason).toMatch(/rest first/);
     expect(m.g.W.arbiterGate(start(m.g, 'thunder'), 'mangrove').reason).toMatch(/Root Whistle/);
   });
+  it('can have battles of their own, and hear of every move', () => {
+    const { W, S } = t.g, s = start(t.g, 'tc-ash');
+    expect(W.gimmickBattle(s, 'gauntlet')).toBe(null); // Margos's
+    const r = W.gimmickBattle(s, 'duel')!;
+    r.battle.over = 'win';
+    expect(W.finishBattle(s, r.battle, { kind: 'trainer', gimmick: 'duel' }).text).toContain('Test duel won.');
+    const lost = W.gimmickBattle(s, 'duel')!;
+    lost.battle.over = 'lose';
+    expect(W.finishBattle(s, lost.battle, { kind: 'trainer', gimmick: 'duel' }).text).not.toContain('Test duel won.');
+    S.moveTrainer(s, 'w1');
+    expect(s.gimmicks).toEqual({ duel: 'tc-ash>w1' });
+    expect(W.gimmickBattle(s, 'duel')).toBe(null);
+  });
   it('only name screens that there are', () => {
     const src = (f: string) => readFileSync(new URL(`../src/regions/margos/${f}`, import.meta.url), 'utf-8');
     const named = readdirSync(new URL('../src/regions/margos/gimmicks/', import.meta.url)).flatMap((f) => [...src(`gimmicks/${f}`).matchAll(/show: '(\w+)'/g)].map((x) => x[1]));
@@ -307,6 +320,7 @@ describe('gimmicks', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
     const gone = ['mangrove', 'hollow'];
+    expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);
   });
 });

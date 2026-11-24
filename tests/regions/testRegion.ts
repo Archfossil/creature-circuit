@@ -67,6 +67,14 @@ export const TEST_REGION: Region = {
     { id: 'shy', gate: (s, city) => (city === 'tc-brook' && s.turn < 5 ? { ok: false, reason: 'Arb Brook is shy.' } : null) },
     // two answers to the same question: the first wins
     { id: 'twice', gate: (_s, city, t) => (city === 'tc-fen' ? { ok: t.hasItem(_s, 'totem'), reason: 'No totem.' } : null) },
+    // a battle of its own, and something to remember between places
+    {
+      id: 'duel',
+      onMove: (s, from, to) => { s.gimmicks = { ...s.gimmicks, duel: `${from}>${to}` }; },
+      battle: (s, t) => (s.location !== 'tc-ash' ? null : { name: 'Duelist', battle: t.createBattle(t.playerSide(s), { kind: 'trainer', name: 'Duelist', team: [t.createCreature('puddlit', 1)], active: 0, mods: {} }, t.weather(s), {}), match: 1, of: 1 }),
+      won: (s, t) => { t.log(s, 'Duel won.'); return 'Test duel won.'; },
+      surrenderNote: 'Test keeps.',
+    },
     { id: 'late', gate: (_s, city) => (city === 'tc-fen' ? { ok: false, reason: 'Never heard.' } : null) },
   ],
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },

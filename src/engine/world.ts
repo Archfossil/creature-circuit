@@ -1,7 +1,7 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
 import { activeRegion, onRegion } from '../regions/active';
-import type { Gate } from '../regions/gimmick';
+import type { Gate, GimmickBattle } from '../regions/gimmick';
 import { provide, tools } from './tools';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, NATURE_BY_ID, ABILITIES, type Recipe } from '../data/content';
@@ -11,7 +11,7 @@ import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { passerBy } from '../data/npcs';
 import { noteBattle, noteNabe, tally } from './dares';
 import { mercyOffer, npcBattle, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
-import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, GAUNTLET_CITY, keyTownOf, rollWisp, wispLit } from './state';
+import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, keyTownOf, rollWisp, wispLit } from './state';
 import type { CreatureInst } from './creature';
 import { STAT_LABEL, HEART, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -454,7 +454,7 @@ export const tierRarityCap = (tier: number): Rarity => (tier <= 1 ? 'prime' : 'a
 const RARITY_RANK: Record<Rarity, number> = { common: 0, prime: 1, apex: 2, legendary: 3 };
 
 /** Rarity for a roaming trainer's creature: mostly common early, prime/apex later. */
-function trainerRarity(tier: number): Rarity {
+export function trainerRarity(tier: number): Rarity {
   const r = Math.random();
   const apex = tier >= 4 ? 0.05 * (tier - 3) : 0;     // T4 5%, T5 10%
   const prime = 0.1 + 0.1 * tier;                      // T1 20% … T5 60%
@@ -764,66 +764,6 @@ export function stepCloudLap(s: GameState, from: string, to: string) {
   }
 }
 
-// ── Iron Coast Gauntlet ─────────────────────────────────────────
-// Before Stella will battle, a trainer must beat a run of local trainers in a row without leaving
-// Iron Coast: 2 per Tier (2, 4, 6, 8, 10), each a level above that Tier's Trainer Hall opponents, with
-// the last one a level higher still. Matches can be spread over turns, with Stable rests between
-// them, as long as the trainer stays in the city. Leaving resets the count (see moveTrainer).
-// Once cleared, Stella can be challenged at any time, and the Gauntlet never needs repeating.
-const GAUNTLET_TRAINERS = ['Deckhand Ines', 'Dockworker Bram', 'Smith Oriel', 'Lighthouse Keeper Tove', 'Diver Kaito', 'Riveter Juno', 'Harbor Guard Pell', 'Foundry Hand Mags', 'Net-Mender Sol', 'Sea Captain Ardo'];
-
-/** How many trainers the Gauntlet takes at a Tier: 2, 4, 6, 8, 10. */
-export const gauntletSize = (tier: number) => 2 * tier;
-
-/** Gauntlet level at a Tier: one above Trainer Hall opponents (the final trainer one more). */
-export const gauntletLevel = (tier: number, final: boolean) => Math.max(1, tierBandLevel(tier) + 2 + (final ? 1 : 0));
-
-export function gauntletProgress(s: GameState) {
-  const need = gauntletSize(tierOf(s));
-  const wins = Math.min(need, s.flags.gauntletWins ?? 0);
-  return { wins, need, open: !!s.flags.stellaOpen, nextLevel: gauntletLevel(tierOf(s), wins + 1 >= need) };
-}
-
-/** Why the trainer can't take the next Gauntlet match right now (null = they can). */
-export function gauntletBlock(s: GameState): string | null {
-  if (s.location !== GAUNTLET_CITY) return 'The Gauntlet is at Iron Coast.';
-  if (s.flags.stellaOpen) return 'You’ve cleared the Gauntlet. Stella will see you any time.';
-  if (s.merits.includes(GAUNTLET_CITY)) return 'You already hold Stella’s accolade.';
-  if (!s.roster.some((c) => !c.ko)) return 'Your team needs rest first. The Stable is right here.';
-  if (s.initiative < cityActionCost(s)) return 'Not enough Initiative.';
-  return null;
-}
-
-/** The next Gauntlet match: a Steel-leaning local trainer, for a city action's Initiative. */
-export function gauntletBattle(s: GameState): { name: string; battle: Battle; match: number; of: number } | null {
-  if (gauntletBlock(s)) return null;
-  s.initiative -= cityActionCost(s);
-  const node = here(s);
-  const tier = tierOf(s);
-  const { wins, need } = gauntletProgress(s);
-  const lvl = gauntletLevel(tier, wins + 1 >= need);
-  const size = Math.max(1, Math.min(s.roster.filter((c) => !c.ko).length, tier >= 3 ? 3 : 2));
-  const team = Array.from({ length: size }, () => createCreature(pickSpecies(node, trainerRarity(tier), lvl, ['steel']).id, lvl));
-  for (const c of team) autoSpend(c, false);
-  const name = GAUNTLET_TRAINERS[wins % GAUNTLET_TRAINERS.length];
-  const battle = createBattle(playerSide(s), { kind: 'trainer', name, team, active: 0, mods: {} }, weather(s), { biome: node.biome });
-  return { name, battle, match: wins + 1, of: need };
-}
-
-/** A Gauntlet match was won: count it, and open Stella's arena once enough are beaten. */
-export function gauntletWin(s: GameState): { wins: number; need: number; cleared: boolean } {
-  const need = gauntletSize(tierOf(s));
-  const wins = (s.flags.gauntletWins ?? 0) + 1;
-  if (wins >= need) {
-    s.flags.stellaOpen = true;
-    s.flags.gauntletWins = 0;
-    log(s, `Cleared the Iron Coast Gauntlet (${need} trainers). Stella will accept your challenge.`);
-    return { wins: need, need, cleared: true };
-  }
-  s.flags.gauntletWins = wins;
-  return { wins, need, cleared: false };
-}
-
 // ── Hotseat weather ─────────────────────────────────────────────
 /**
  * Roll a turn's weather once for the whole hotseat table (when the first trainer starts that turn),
@@ -1113,7 +1053,11 @@ export function recordResult(s: GameState, b: Battle, kind: BattleKind, city?: s
   record(s, 'battle', how + where + merit, { more, other: duel ? b.sides[1].name : undefined });
 }
 
-export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; gauntlet?: boolean; wipeTo?: string; /** The creature (uid) a Rival or Champion who won helps up, instead of a wipe. */ mercy?: string }): BattleSummary {
+const gimmickOf = (id?: string) => (id ? activeRegion().gimmicks.find((g) => g.id === id) : undefined);
+/** A gimmick's next battle (null: not now). */
+export const gimmickBattle = (s: GameState, id: string): GimmickBattle | null => gimmickOf(id)?.battle?.(s, tools) ?? null;
+
+export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; city?: string; nodeId?: string; /** The gimmick whose battle this is. */ gimmick?: string; wipeTo?: string; /** The creature (uid) a Rival or Champion who won helps up, instead of a wipe. */ mercy?: string }): BattleSummary {
   const out: BattleSummary = { coins: 0, wiped: false, text: [] };
   recordResult(s, b, ctx.kind, ctx.city);
   s.hotpot = undefined;
@@ -1128,10 +1072,8 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
       out.text.push(`${b.sides[1].name} hands over ${out.coins} coins.`);
     }
     if (ctx.kind === 'wild') { out.coins = 1 + Math.floor(b.sides[1].team[0].level / 3); out.text.push(`You found ${out.coins} coins in the grass.`); }
-    if (ctx.gauntlet) {
-      const g = gauntletWin(s);
-      out.text.push(g.cleared ? `Gauntlet cleared! Stella will accept your challenge, now or any time you return.` : `Gauntlet: ${g.wins}/${g.need} trainers beaten. Stay in Iron Coast to keep your progress.`);
-    }
+    const won = gimmickOf(ctx.gimmick)?.won?.(s, tools);
+    if (won) out.text.push(won);
     if (ctx.kind === 'arbiter' && ctx.city) {
       const city = CITIES[ctx.city];
       (s.arbiterBeat ??= {})[ctx.city] = s.turn;
@@ -1551,7 +1493,7 @@ export const REMATCH_COINS = 5;
 export const ARBITER_REST = 5;
 /** Turns until an Arbiter this trainer has beaten will battle again (0: now). */
 export const arbiterResting = (s: GameState, cityId: string) => Math.max(0, (s.arbiterBeat?.[cityId] ?? -ARBITER_REST) + ARBITER_REST - s.turn);
-export function arbiterGate(s: GameState, cityId: string): Gate & { gauntlet?: boolean } {
+export function arbiterGate(s: GameState, cityId: string): Gate {
   const rest = arbiterResting(s, cityId);
   if (rest) return { ok: false, reason: `${CITIES[cityId].arbiter}’s team is resting. Come back in ${rest} turn${rest === 1 ? '' : 's'} for a rematch.` };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
@@ -1567,11 +1509,6 @@ export function arbiterGate(s: GameState, cityId: string): Gate & { gauntlet?: b
       if (s.merits.includes('gloom')) return { ok: true }; // you know the way to her arena now
       const t = trailProgress(s);
       return t.found ? { ok: true } : { ok: false, trail: true, reason: `Follow Dahlia's Trail to find her arena: ${t.steps}/${t.need} signs found. Keep exploring the Forest Floor.` };
-    }
-    case 'iron': {
-      if (s.flags.stellaOpen) return { ok: true };
-      const g = gauntletProgress(s);
-      return { ok: false, gauntlet: true, reason: `Stella only faces trainers who clear the Iron Coast Gauntlet: ${g.wins}/${g.need} trainers beaten. Leaving the city resets it.` };
     }
     default: return { ok: true };
   }
@@ -1751,4 +1688,4 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   return report;
 }
 
-provide({ keyTownName });
+provide({ autoSpend, cityActionCost, createBattle, createCreature, here, keyTownName, pickSpecies, playerSide, tierBandLevel, trainerRarity, weather });

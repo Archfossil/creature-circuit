@@ -6,6 +6,8 @@ import { margosScreens } from './margos/screens';
 export interface Screens {
   /** Opened when a gate says to (`Gate.show`). */
   show: Record<string, (app: App) => void>;
+  /** Tiles of its own in a city. `cost` is what a city action costs, to show. */
+  tiles?(app: App, city: string, cost: string): HTMLElement[];
 }
 
 const SCREENS: Record<string, Screens> = { margos: margosScreens };
