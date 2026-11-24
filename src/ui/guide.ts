@@ -91,7 +91,7 @@ export const GUIDE: GuideCategory[] = [
         '🤝 Your starter shares a special bond with you. You choose its Nature, Ability and Instinct when you set out, and it’s tougher than others of its kind (+1 Vigor, and no attribute starts below 1 before its Nature). It never leaves over low Morale, and it can’t be released or traded away, so you always have a partner.',
         'In battle, pills under a creature’s Health show attributes that are up (▲) or down (▼) right now, whether from moves, statuses, weather, the arena or a Nabe. Tap them for the sources.',
         '🏳️ Losing a trainer battle badly? You can surrender. It costs what a full knockout would (the usual coins, half the rest, and your remaining Initiative), and the creature that’s out loses 3 Morale. But it isn’t knocked out, and you aren’t sent home. Surrendering a duel costs just the wager and the Morale.',
-        'Treats, wins, rest and Following all lift Morale. Tap Morale or Loyalty on a card for details.',
+        'Treats, wins, rest and Following all lift Morale. In a city or town, 🔄 Swap Team shows everyone’s Morale, and Check on Creature gives one +1 Morale for 1 Initiative, even in its totem. Tap Morale or Loyalty on a card for details.',
         'Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0.',
       ] },
       { id: 'codex', title: 'Creature Codex', body: [
@@ -165,7 +165,7 @@ export const GUIDE: GuideCategory[] = [
         'Trades: face to face, swap creatures (one for one), items and coins; by courier (from a conversation), items and coins. They judge creatures by level, attributes and how they’ll grow, like their own types best, and won’t take one that would weaken their team. A creature you trade away joins their team, and you may battle it. Their Ace and your starter are never for trade.',
         'Side challenges: race someone to a place, be first to beat an Arbiter or fill your Codex, or something sillier. Set one from a conversation or take up theirs; follow both sides under 🎯 Challenges in Rival Trainers. The first to finish wins coins, a treat and any wager.',
         'Revenge: beat a Rival or Champion who beat you last time for extra coins, XP and an item. The more losses you’re avenging, the bigger the bonus (up to three).',
-        'Champions tour the cities and towns. Chat with them or challenge them there. The Circuit Standings (in Rival Trainers) show who’s on course for the Finals; a Rival who keeps beating you, or whom you battle most, can earn a place.',
+        'Every Rival and Champion has an outfit of their own: a Rival’s base shows their favourite type’s colour, and Champions wear capes on a gold base. Champions tour the cities and towns. Chat with them or challenge them there. The Circuit Standings (in Rival Trainers) show who’s on course for the Finals; a Rival who keeps beating you, or whom you battle most, can earn a place.',
         'Each city’s Arbiter guards a Merit. Their arenas have tricks that favour the Arbiter (ice floes, fog, lightning…), described before you challenge. A prepared trainer can use some of them: Watson’s lightning heals Electric creatures, yours included.',
         'Rematches: an Arbiter you’ve beaten will battle again at your Tier now, for 💰 5 per Tier and an Imprint of their type. Their team rests 5 turns after each loss to you. An Imprint swaps 1 energy a creature generates for 1 of the Arbiter’s type, for good, so it can learn moves it couldn’t before. Use it at once or keep it in your Bag.',
         'A creature can have 3 imprinted energy, keeps at least 1 of each of its own types, and can have an imprinted energy changed again (or back). Its types and Prisma don’t change. Moves that no longer fit leave its playbook. Rivals and Champions imprint their favourite types on some of their creatures too, so expect a surprise move or two.',
@@ -186,7 +186,7 @@ export const GUIDE: GuideCategory[] = [
         '- 🧰 Odd Jobs (cities and towns): short on coins? Spend all the Initiative you have left on work, and roll a d4 of coins for each point. Like camping, it uses up the rest of your turn.',
         '- 🛠️ Workbench (cities and towns): craft consumables from offering materials. Each recipe slot wants a material with allure for one type: Grass + Water makes two Vigor Salves, Grass + Charm a Calm Tea, Grass + Rock Trail Mix, Charm + Fire Lure Incense, Fire + Steel Hush Smoke, Astral + Electric a Star Charm, and Water + Fire + Astral a Hot Spring Elixir. Cloud Silk and the other universal materials fit any slot.',
         '- Trainer Hall and the Arbiter’s arena.',
-        '- 🔄 Swap Team (free): trade creatures between your active team and your totems.',
+        '- 🔄 Swap Team (free): trade creatures between your active team and your totems. See their Morale, and check on any of them (1 Initiative, +1 Morale).',
       ] },
       { id: 'towns', title: 'Towns', body: [
         'Town Stables also fully recover your team, but serve no Chanko Nabe buff. Town markets and Workbenches cost no Initiative, and markets often sell key items (lanterns, ropes, passes…).',
@@ -280,8 +280,8 @@ export const GUIDE: GuideCategory[] = [
         'It also keeps your journey stats: creatures encountered, foes knocked out, items found, steps and coins, your won / lost record against wild creatures, trainers and Arbiters, and your favoured move types.',
       ] },
       { id: 'look', title: 'Your look', body: [
-        'Pick a top, hat, hair style, skin tone, hair colour and pants when you start, or later in ☰ Menu → Trainer Look.',
-        'Your main colour always goes on the top, the hat and any hair tie or streak. That mini is your token on the map and stands behind you in trainer battles.',
+        'Pick a top (some come with a backpack), hat, hair style, skin tone, hair colour and pants when you start, or later in ☰ Menu → Trainer Look. Tops, hats and hair each take a detail pattern and a secondary colour.',
+        'Your main colour always goes on the top and the hat, and on hair ties and streaks unless you pick another colour. That mini is your token on the map and stands behind you in trainer battles.',
       ] },
       { id: 'saving', title: 'Saving', body: [
         'Games autosave as you play.',

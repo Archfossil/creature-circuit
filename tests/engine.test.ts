@@ -22,7 +22,9 @@ import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts';
 import { Box3 } from 'three';
-import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS } from '../src/render/trainerModel';
+import { npcLook, opponentLook, NPC_OUTFITS } from '../src/render/npcLooks';
+import { NPCS as NPC_LIST } from '../src/data/npcs';
+import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, TOP_PATTERN_OPTIONS, HAT_PATTERN_OPTIONS, HAIR_PATTERN_OPTIONS, hasPattern, topOf } from '../src/render/trainerModel';
 
 const energyTotalOf = (c: ReturnType<typeof createCreature>) => Object.values(energy(c)).reduce((a, v) => a + (v ?? 0), 0);
 const side = (kind: Side['kind'], team: ReturnType<typeof createCreature>[]): Side => ({ kind, name: kind, team, active: 0, mods: {} });
@@ -464,6 +466,26 @@ describe('morale and loyalty', () => {
     for (let i = 0; i < 10 && s.roster.includes(c); i++) W.moraleAndLoyalty(s, report());
     if (s.roster.includes(c)) expect(c.loyalty).toBeLessThan(3); // (or it left on a high roll)
     expect(c.perks).toBe(1); // losing Loyalty (or leaving) never re-locks perks
+  });
+  it('checking on a creature in a city or town costs 1 Initiative for +1 Morale, in a totem too', () => {
+    for (const style of ['balanced', 'nature', 'urban'] as const) {
+      const s = newGame('T', style, 'mangrove', 'puddlit', '#fff');
+      const rest = createCreature('zapup', 3);
+      s.reserve.push(rest);
+      rest.morale = 2; s.initiative = 2; s.location = 'stadium';
+      expect(W.checkOn(s, rest.uid)).toBe(true);
+      expect([rest.morale, s.initiative]).toEqual([3, 1]);
+      s.location = 'iron';
+      s.roster[0].morale = 9;
+      expect(W.checkOn(s, s.roster[0].uid)).toBe(true);
+      expect([s.roster[0].morale, s.initiative]).toEqual([10, 0]);
+      expect(W.checkOn(s, rest.uid)).toBe(false); // out of Initiative
+      s.initiative = 3;
+      expect(W.checkOn(s, s.roster[0].uid)).toBe(false); // already at 10
+      s.location = MAP_NODES.find((n) => n.kind === 'wild')!.id;
+      expect(W.checkOn(s, rest.uid)).toBe(false); // not in the wilds
+      expect([rest.morale, s.initiative]).toEqual([3, 3]);
+    }
   });
   it('low morale warns first, with no roll that turn', () => {
     const s = game();
@@ -3050,13 +3072,49 @@ describe('trainer minis', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff', { hat: 'brim' });
     expect(s.trainer.look).toEqual({ hat: 'brim' });
   });
+  it('has ten or more tops, hats and hair styles, each with five patterns that can be drawn', () => {
+    expect(JACKET_OPTIONS.length).toBeGreaterThanOrEqual(10);
+    expect(HAT_OPTIONS.filter((o) => o.id !== 'none').length).toBe(10);
+    expect(HAIR_STYLE_OPTIONS.filter((o) => o.id !== 'bald').length).toBe(10);
+    for (const [kind, list] of [['top', TOP_PATTERN_OPTIONS], ['hat', HAT_PATTERN_OPTIONS], ['hair', HAIR_PATTERN_OPTIONS]] as const) {
+      const drawn = list.filter((o) => o.id !== 'plain');
+      expect(drawn.length).toBe(5);
+      for (const o of drawn) expect(hasPattern(`${kind}:${o.id}`), `${kind}:${o.id}`).toBe(true);
+    }
+  });
+  it('patterns and secondary colours apply, and unknown patterns are plain', () => {
+    expect(playerLook('R', '#3d8bff', { topPattern: 'dots', topColor2: '#111111', hatPattern: 'badge', hatColor2: '#222222', hairPattern: 'split', hairColor2: '#333333' }))
+      .toMatchObject({ outfit: '#3d8bff', hatColor: '#3d8bff', topPattern: 'dots', accent: '#111111', hatPattern: 'badge', hatAccent: '#222222', hairPattern: 'split', hairAccent: '#333333' });
+    expect(playerLook('R', '#3d8bff', { topPattern: 'x', hatPattern: 'x', hairPattern: 'x' })).toMatchObject({ topPattern: 'plain', hatPattern: 'plain', hairPattern: 'plain' });
+  });
+  it('backpacks come with the top, and looks saved before patterns keep theirs', () => {
+    expect(playerLook('R', '#fff', { jacket: 'tee', topPattern: 'plain' })).toMatchObject({ jacket: 'tee', pack: false });
+    expect(playerLook('R', '#fff', { jacket: 'tee-pack', topPattern: 'plain' })).toMatchObject({ jacket: 'tee', pack: true });
+    expect(playerLook('R', '#fff', { jacket: 'coat' })).toMatchObject({ jacket: 'coat', pack: true });
+    expect(topOf({ jacket: 'hoodie' })).toBe('pouch-pack');
+    expect(topOf({})).toBe('jacket-pack');
+  });
   it('every jacket and hat builds a mini of a sensible size', () => {
     for (const j of JACKET_OPTIONS) for (const hat of HAT_OPTIONS) for (const hs of HAIR_STYLE_OPTIONS) {
-      const rig = buildTrainer(playerLook('Rowan', '#ff6b3d', { jacket: j.id, hat: hat.id, hairStyle: hs.id }));
+      const rig = buildTrainer(playerLook('Rowan', '#ff6b3d', { jacket: j.id, hat: hat.id, hairStyle: hs.id, topPattern: 'dots', hatPattern: 'band', hairPattern: 'tips' }));
       const box = new Box3().setFromObject(rig.root);
       expect(box.max.y, `${j.id}/${hat.id}`).toBeGreaterThan(1.6);
       expect(box.max.y, `${j.id}/${hat.id}`).toBeLessThan(2.4);
     }
+  });
+  it('every Rival and Champion has an outfit of their own', () => {
+    expect(Object.keys(NPC_OUTFITS).sort()).toEqual(NPC_LIST.map((x) => x.id).sort());
+    const worn = NPC_LIST.map((x) => { const l = npcLook(x); return [l.jacket, l.hat, l.hairStyle, l.topPattern].join('/'); });
+    expect(new Set(worn).size).toBe(worn.length);
+    for (const x of NPC_LIST) {
+      const look = npcLook(x);
+      expect(!!look.cape, x.id).toBe(x.kind === 'champion');
+      expect(opponentLook(x.name, x.kind === 'champion')).toEqual(look); // the same in battle as in their portrait
+      const top = new Box3().setFromObject(buildTrainer(look).root).max.y;
+      expect(top, x.id).toBeGreaterThan(1.6);
+      expect(top, x.id).toBeLessThan(2.4);
+    }
+    expect(opponentLook('Hiker Rosa')).toEqual(roamingLook('Hiker Rosa'));
   });
   it('builds a mini that stands on its base, about two units tall', () => {
     const rig = buildTrainer(roamingLook('Scout Ola'));

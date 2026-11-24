@@ -2,11 +2,12 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { energyPips, healthBar, creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
+import { energyPips, healthBar, creatureCard, miniCard, moraleChip, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
-import { playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, type TrainerLook } from '../render/trainerModel';
+import { npcLook, opponentLook } from '../render/npcLooks';
+import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, TOP_PATTERN_OPTIONS, HAT_PATTERN_OPTIONS, HAIR_PATTERN_OPTIONS, SECONDARY, topOf, type TrainerLook } from '../render/trainerModel';
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
@@ -45,13 +46,18 @@ const STAR_FACE = { full: '★', half: '☆', blank: '🚫' } as const;
 const DEFAULT_NAMES = ['Rowan', 'Juno', 'Kai', 'Mira', 'Ash', 'Tess'];
 
 /**
- * Trainer customisation: a live preview of the mini plus swatches. Your colour always goes on the
- * top and the hat (and the token's base); everything else is free to pick.
+ * Trainer customisation: a live preview of the mini (front and back) plus swatches. Your colour always goes
+ * on the top and the hat (and the token's base); everything else is free to pick. Tops, hats and hair each
+ * take a detail pattern and a secondary colour.
  */
 function trainerLookEditor(get: () => { name: string; color: string; look: TrainerLookChoice }, set: (color: string, look: TrainerLookChoice) => void, taken: string[] = []) {
   const { name, color, look } = get();
   const full = playerLook(name, color, look);
-  const cur = { skin: full.skin, hair: full.hair, pants: full.pants, hat: full.hat, jacket: full.jacket ?? 'jacket', hairStyle: full.hairStyle ?? 'short' };
+  const cur = {
+    skin: full.skin, hair: full.hair, pants: full.pants, hat: full.hat, jacket: topOf(look), hairStyle: full.hairStyle ?? 'short',
+    topPattern: full.topPattern ?? 'plain', hatPattern: full.hatPattern ?? 'plain', hairPattern: full.hairPattern ?? 'plain',
+    topColor2: look.topColor2, hatColor2: look.hatColor2, hairColor2: look.hairColor2, // unset: cream, or the main colour for hair
+  };
   const upd = (patch: Partial<TrainerLookChoice>, c = color) => set(c, { ...cur, ...patch });
   const swatches = (label: string, list: string[], value: string, on: (v: string) => void, locked: string[] = []) =>
     h('div', { class: 'field' }, h('span', null, label), h('div', { class: 'swatches sm' }, list.map((c) =>
@@ -63,14 +69,20 @@ function trainerLookEditor(get: () => { name: string; color: string; look: Train
     h('div', { class: 'field' }, h('span', null, label), h('div', { class: 'look-opts' }, list.map((o) =>
       h('button', { class: `pb-filter ${o.id === value ? 'on' : ''}`, 'aria-pressed': String(o.id === value), onclick: () => on(o.id) }, o.label))));
   return h('div', { class: 'look-editor' },
-    h('div', { class: 'look-preview', style: `--tc:${color}` }, h('img', { src: trainerPortrait(full), alt: 'Your trainer' }), h('small', null, 'Your trainer, on the map and in battle')),
+    h('div', { class: 'look-preview', style: `--tc:${color}` }, h('div', { class: 'look-views' }, h('img', { src: trainerPortrait(full), alt: 'Your trainer' }), h('img', { src: trainerPortrait(full, true), alt: 'Your trainer from behind' })), h('small', null, 'Your trainer, on the map and in battle')),
     h('div', { class: 'look-fields' },
       swatches(taken.length ? 'Main colour (top, hat and token; each trainer’s is unique)' : 'Main colour (top, hat and token)', TRAINER_COLORS, color, (c) => upd({}, c), taken),
-      options('Jacket', JACKET_OPTIONS, cur.jacket, (v) => upd({ jacket: v })),
+      options('Top', JACKET_OPTIONS, cur.jacket, (v) => upd({ jacket: v })),
+      options('Top pattern', TOP_PATTERN_OPTIONS, cur.topPattern, (v) => upd({ topPattern: v })),
+      swatches('Top secondary colour (pattern, trim and backpack)', SECONDARY, full.accent, (v) => upd({ topColor2: v })),
       options('Hat', HAT_OPTIONS, cur.hat, (v) => upd({ hat: v })),
+      cur.hat === 'none' ? null : options('Hat pattern', HAT_PATTERN_OPTIONS, cur.hatPattern, (v) => upd({ hatPattern: v })),
+      cur.hat === 'none' ? null : swatches('Hat secondary colour (pattern and trim)', SECONDARY, full.hatAccent ?? SECONDARY[0], (v) => upd({ hatColor2: v })),
       swatches('Skin tone', SKIN, cur.skin, (v) => upd({ skin: v })),
-      options('Hair style (ties and streaks use your main colour)', HAIR_STYLE_OPTIONS, cur.hairStyle, (v) => upd({ hairStyle: v })),
-      swatches('Hair colour', HAIR, cur.hair, (v) => upd({ hair: v })),
+      options('Hair style', HAIR_STYLE_OPTIONS, cur.hairStyle, (v) => upd({ hairStyle: v })),
+      cur.hairStyle === 'bald' ? null : swatches('Hair colour', HAIR, cur.hair, (v) => upd({ hair: v })),
+      cur.hairStyle === 'bald' ? null : options('Hair pattern', HAIR_PATTERN_OPTIONS, cur.hairPattern, (v) => upd({ hairPattern: v })),
+      cur.hairStyle === 'bald' ? null : swatches('Hair secondary colour (pattern, ties and streak; your main colour until you pick one)', SECONDARY, full.hairAccent ?? color, (v) => upd({ hairColor2: v })),
       swatches('Pants', PANTS, cur.pants, (v) => upd({ pants: v }))));
 }
 
@@ -167,7 +179,7 @@ export class App {
     const taken = opts.taken ?? [];
     let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = 'thunder', starter = STARTERS[3];
     const who = opts.seat !== undefined ? `Trainer ${opts.seat + 1} of ${opts.total} · ` : '';
-    let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket', hairStyle: 'short' };
+    let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket-pack', hairStyle: 'short', topPattern: 'plain' };
     // the starter's traits: a random Nature to begin with, and its species' usual Ability and Instinct
     const defaults = (id: string): StarterTraits => ({ nature: NATURES[Math.floor(Math.random() * NATURES.length)].id, ability: SPECIES_BY_ID[id].ability, instinct: SPECIES_BY_ID[id].instinct });
     let traits = defaults(starter);
@@ -1807,8 +1819,8 @@ export class App {
     const foeSide = b.sides[1];
     const foeLook: TrainerLook | null =
       foeSide.kind === 'arbiter' ? arbiterLook(foeSide.name, arenaType ?? CITIES[b.arena?.city ?? '']?.type ?? 'fire')
-        : foeSide.kind === 'champion' ? championLook(foeSide.name)
-          : ctx.rivalLook ? ctx.rivalLook : foeSide.kind === 'trainer' ? roamingLook(foeSide.name) : null;
+        : foeSide.kind === 'champion' ? opponentLook(foeSide.name, true)
+          : ctx.rivalLook ? ctx.rivalLook : foeSide.kind === 'trainer' ? opponentLook(foeSide.name) : null;
     bv.setTrainers(foeLook ? playerLook(s.trainer.name, s.trainer.color, s.trainer.look) : null, foeLook);
     this.engine.setView(bv);
     // Nobody (healthy) is Following: the trainer picks who leads before the fight starts
@@ -2351,7 +2363,7 @@ export class App {
   // ════════════════════════════════════════════════════════════
   // Rivals and Champions
   // ════════════════════════════════════════════════════════════
-  private npcPortrait(npc: Npc) { return trainerPortrait(npc.kind === 'champion' ? championLook(npc.name) : roamingLook(npc.name)); }
+  private npcPortrait(npc: Npc) { return trainerPortrait(npcLook(npc)); }
 
   /** City and town tiles for the Rivals and Champions who are here. */
   private npcTiles() {
@@ -2624,29 +2636,43 @@ export class App {
   /** City / town menu tile: swap creatures in and out of totems. Free, any time you're in a city or town. */
   swapTile(): HTMLElement {
     const s = this.s;
-    const none = !s.reserve.length && s.roster.length <= 1;
-    return tile('🔄', 'Swap Team', s.reserve.length
+    return tile('🔄', 'Swap Team', (s.reserve.length
       ? `Swap creatures between your active team and your totems (${s.reserve.length} resting). Free, any time you’re in a city or town.`
-      : 'No creatures resting in totems yet. You can still send active ones to rest here.', '0⚡', () => this.rosterManager(), none);
+      : 'No creatures resting in totems yet. You can still send active ones to rest here.') + ` See everyone’s Morale, or check on a creature to raise it (${W.CHECK_COST}⚡).`, '0⚡', () => this.rosterManager());
   }
 
-  /** Swap creatures between the active team and totems. Free in any city or town (no Stable visit needed). */
+  /**
+   * Swap creatures between the active team and totems. Free in any city or town (no Stable visit needed).
+   * Each creature's Morale is shown, with a button to check on it (Initiative for Morale).
+   */
   rosterManager() {
     const s = this.s;
     let pick: string | null = null;
     const body = h('div');
+    const entry = (c: CreatureInst, card: HTMLElement) => {
+      const why = W.checkOnBlock(s, c.uid);
+      return h('div', { class: 'swap-entry' }, card, h('div', { class: 'row gap-s' },
+        moraleChip(c),
+        h('button', { class: 'btn ghost sm', disabled: !!why, title: why ?? `+${W.CHECK_MORALE} Morale for ${nameOf(c)}`, onclick: () => {
+          if (!W.checkOn(s, c.uid)) { toast(W.checkOnBlock(s, c.uid) ?? 'You can’t do that now.', 'info'); return; }
+          sfx.good();
+          toast(`You spend some time with ${nameOf(c)}. (+${W.CHECK_MORALE} Morale)`, 'good');
+          save(s); this.renderHud(); render();
+        } }, `Check on Creature · ${W.CHECK_COST}⚡`)));
+    };
     const render = () => {
       body.replaceChildren(
         h('p', { class: 'small' }, 'Tap an active creature, then a resting one to swap them. Resting creatures lose Morale if neglected too long.'),
+        h('p', { class: 'small' }, `Check on any creature for ${W.CHECK_COST} Initiative: +${W.CHECK_MORALE} Morale. You have `, h('b', null, `${s.initiative}⚡`), '.'),
         h('h4', null, 'Active team (max 3)'),
-        h('div', { class: 'list' }, s.roster.map((c) => miniCard(c, { selected: pick === c.uid, onClick: () => { pick = pick === c.uid ? null : c.uid; render(); } }))),
+        h('div', { class: 'list' }, s.roster.map((c) => entry(c, miniCard(c, { selected: pick === c.uid, onClick: () => { pick = pick === c.uid ? null : c.uid; render(); } })))),
         h('h4', null, `Resting in totems (${s.reserve.length})`),
-        h('div', { class: 'list' }, s.reserve.map((c) => miniCard(c, { onClick: () => {
+        h('div', { class: 'list' }, s.reserve.map((c) => entry(c, miniCard(c, { onClick: () => {
           if (s.roster.length < 3) { s.reserve = s.reserve.filter((x) => x !== c); s.roster.push(c); }
           else if (pick) { const i = s.roster.findIndex((x) => x.uid === pick); const out = s.roster[i]; s.roster[i] = c; s.reserve = s.reserve.filter((x) => x !== c); s.reserve.push(out); if (s.following === out.uid) s.following = c.uid; pick = null; }
           else { toast('Select an active creature first.', 'info'); return; }
           save(s); this.renderHud(); render();
-        } }))),
+        } })))),
         s.roster.length > 1 ? h('div', { class: 'row end' }, h('button', { class: 'btn ghost sm', disabled: !pick, onclick: () => { const c = s.roster.find((x) => x.uid === pick); if (c) { s.roster = s.roster.filter((x) => x !== c); s.reserve.push(c); if (s.following === c.uid) s.following = s.roster[0].uid; pick = null; save(s); this.renderHud(); render(); } } }, 'Send selected to rest')) : '');
     };
     openSheet('🔄 Swap Team', body, { wide: true });
@@ -3916,7 +3942,7 @@ export class App {
       tile('📜', 'Journal', 'Your own notes.', '', () => { close(); this.journal(); }),
       mine?.lastBattle ? tile('⚔️', 'Last Battle Log', `Turn ${mine.lastBattle.turn}: every move, roll and hit from ${mine.trainer.name}’s last battle.`, '', () => { close(); this.battleLogSheet(mine.lastBattle!); }) : null,
       this.watchedLog ? tile('👀', 'Last Watched Battle', 'The log of the last battle you watched (until you reload the page).', '', () => { close(); this.battleLogSheet(this.watchedLog!); }) : null,
-      this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, jacket and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
+      this.watching ? null : tile('🧢', 'Trainer Look', 'Skin, hair, hat, top, patterns and colours for your mini.', '', () => { close(); this.trainerLookSheet(); }),
       tile('❓', 'How to Play', 'The full guide, by topic: basics, creatures, battles, places, multiplayer.', '', () => { close(); this.howToPlay(); }),
       tile('⚙️', 'Settings', 'Sound and volume, dice speed, motion, double-tap travel.', '', () => { close(); this.settingsSheet(); }),
       tile('📌', 'Save a copy', 'Keep a named snapshot of this game to load later (💾 Saves on the title screen).', '', () => { close(); void this.saveCopyNow(); }),

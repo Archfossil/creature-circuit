@@ -1302,6 +1302,27 @@ export function rest(s: GameState, nodeId: string) {
   return { advanced, buff };
 }
 
+/** Checking on a creature: the Initiative it costs (whatever the trainer's style) and the Morale it gives. */
+export const CHECK_COST = 1;
+export const CHECK_MORALE = 1;
+/** Why this creature (active or in a totem) can't be checked on here and now, or null if it can. */
+export function checkOnBlock(s: GameState, uid: string): string | null {
+  const c = [...s.roster, ...s.reserve].find((x) => x.uid === uid);
+  if (!c) return 'That creature isn’t with you.';
+  if (here(s).kind !== 'city' && !isTown(s.location)) return 'You can only check on creatures in cities and towns.';
+  if (c.morale >= 10) return `${nameOf(c)} is as happy as can be.`;
+  if (s.initiative < CHECK_COST) return 'Not enough Initiative.';
+  return null;
+}
+/** Spend Initiative to check on a creature, raising its Morale. Returns whether it happened. */
+export function checkOn(s: GameState, uid: string): boolean {
+  if (checkOnBlock(s, uid)) return false;
+  const c = [...s.roster, ...s.reserve].find((x) => x.uid === uid)!;
+  s.initiative -= CHECK_COST;
+  c.morale = Math.min(10, c.morale + CHECK_MORALE);
+  return true;
+}
+
 export function priceOf(s: GameState, id: string) {
   const p = itemInfo(id).price;
   // Baby Eyes and the Merchant style each take 25% off, and stack

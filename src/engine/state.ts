@@ -184,7 +184,11 @@ export interface Training { creature: CreatureInst; school: string; xp: number; 
 /** What a retraining course changes (ids; unset = kept). */
 export interface Retrain { nature?: string; ability?: string; instinct?: string }
 
-export interface TrainerLookChoice { skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string }
+export interface TrainerLookChoice {
+  skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string;
+  /** Detail patterns (ids) and the secondary colours they're drawn in. No `topPattern` means a look saved before patterns: it keeps its backpack. */
+  topPattern?: string; hatPattern?: string; hairPattern?: string; topColor2?: string; hatColor2?: string; hairColor2?: string;
+}
 
 /** What a trainer picks for their starter; anything left out is random (Nature) or its species' own. */
 export interface StarterTraits { nature?: string; ability?: string; instinct?: string }

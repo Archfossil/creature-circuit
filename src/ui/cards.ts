@@ -192,7 +192,7 @@ function staminaMeter(c: CreatureInst) {
 }
 
 const MORALE_HELP = `Morale (0–10): how happy this creature is with you.
-Gain: winning battles it fights in (+1), Following you (+1 every other turn), treats and berries, stables, some events.
+Gain: winning battles it fights in (+1), Following you (+1 every other turn), treats and berries, stables, being checked on in a city or town (Swap Team, 1 Initiative: +1), some events.
 Lose: being knocked out (−1), a team wipe (−1 each), being out when you surrender a battle (−3), waiting in a totem (−1 every 10 turns).
 High (${MORALE_HIGH}+): +1 Loyalty at the end of every turn, and +1 XP per battle.
 Low (${MORALE_LOW} or less): you get a warning. After that, every turn that ends without its Morale rising rolls a d10. Above its Loyalty, it leaves your team; otherwise it loses 1 Loyalty. Your starter (🤝 special bond) never leaves.`;
@@ -201,6 +201,10 @@ Gain: +1 at the end of each turn while Morale is ${MORALE_HIGH}+; treats add Loy
 Use: reaching each Nature perk's threshold unlocks it for good. Perks never re-lock. At the Capstone, attacks deal +1 damage per 5 Loyalty.
 Teamwork: a pair's Teamwork can't go above half the lower Loyalty of the two, and falls if that Loyalty does.
 Lose: −1 each time it survives a low-Morale check. At 0 Loyalty, a low-Morale check always means it leaves.`;
+
+/** A creature's Morale; tap it for how Morale works. */
+export const moraleChip = (c: CreatureInst) => h('button', { type: 'button', class: `chip social ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}`, title: MORALE_HELP, onclick: () => socialHelp(c) },
+  c.morale <= MORALE_LOW ? '⚠️ ' : '💖 ', 'Morale ', h('b', null, c.morale), '/10');
 
 /** A sheet explaining Morale and Loyalty, with this creature's current standing. */
 export function socialHelp(c: CreatureInst) {
@@ -381,8 +385,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
       staminaMeter(c),
       meter('XP', c.xp, 10, 'xp'),
       h('div', { class: 'row gap-s small' },
-        h('button', { class: `chip social ${c.morale <= MORALE_LOW ? 'bad' : c.morale >= MORALE_HIGH ? 'good' : ''}`, title: MORALE_HELP, onclick: () => socialHelp(c) },
-          c.morale <= MORALE_LOW ? '⚠️ ' : '💖 ', 'Morale ', h('b', null, c.morale), '/10'),
+        moraleChip(c),
         h('button', { class: `chip social ${sp.rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: sp.rarity === 'legendary' ? `${LOYALTY_HELP}
 Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to its grounds at 0.` : LOYALTY_HELP, onclick: () => socialHelp(c) },
           sp.rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), `/${LOYALTY_MAX}`),)),

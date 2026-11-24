@@ -359,6 +359,8 @@ button.status-tag { font-family: inherit; color: inherit; cursor: pointer; }
 /* Mini cards / lists */
 .list { display: grid; gap: 8px; }
 .mini-card { font: inherit; position: relative; display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; text-align: left; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; padding: 6px 10px 6px 6px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; color: var(--ink); width: 100%; }
+.swap-entry { display: grid; gap: 5px; margin-bottom: 4px; }
+.swap-entry > .row { justify-content: space-between; flex-wrap: wrap; }
 .mini-card.sel { outline: 3px solid var(--accent-2); background: #fff8dc; }
 .mini-card.ko { filter: grayscale(0.8); opacity: 0.7; }
 .mini-portrait { width: 64px; height: 64px; border-radius: 10px; background: radial-gradient(circle at 50% 70%, color-mix(in srgb, var(--tc) 35%, white), color-mix(in srgb, var(--tc) 10%, var(--paper))); border: 2px solid var(--ink); overflow: hidden; }
@@ -920,6 +922,7 @@ body.gl-lost::after { content: 'Graphics were paused by your device. Tap to relo
 /* Trainer customisation */
 .look-editor { display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: start; margin: 8px 0; }
 .look-preview { display: grid; justify-items: center; gap: 4px; padding: 8px; border-radius: 16px; border: 2px solid var(--tc); background: color-mix(in srgb, var(--tc) 12%, white); position: sticky; top: 0; }
+.look-views { display: flex; flex-direction: column; }
 .look-preview img { width: 160px; height: 160px; }
 .look-preview small { font-size: 11px; color: var(--muted); text-align: center; }
 .look-fields { display: grid; gap: 8px; }
@@ -929,6 +932,7 @@ body.gl-lost::after { content: 'Graphics were paused by your device. Tap to relo
 @media (max-width: 560px) {
   .look-editor { grid-template-columns: 1fr; }
   .look-preview { position: static; }
+  .look-views { flex-direction: row; }
   .look-preview img { width: 120px; height: 120px; }
 }
 

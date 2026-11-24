@@ -134,9 +134,9 @@ export function portrait(speciesId: string): string {
   return url;
 }
 
-/** A still image of a trainer mini (the customisation preview). Cached per look. */
-export function trainerPortrait(look: TrainerLook): string {
-  const key = 'trainer:' + JSON.stringify(look);
+/** A still image of a trainer mini (the customisation preview), from the front or behind. Cached per look. */
+export function trainerPortrait(look: TrainerLook, back = false): string {
+  const key = `trainer${back ? '-back' : ''}:` + JSON.stringify(look);
   const hit = cache.get(key);
   if (hit) return hit;
   const pr = portraitRenderer();
@@ -146,7 +146,7 @@ export function trainerPortrait(look: TrainerLook): string {
   d.position.set(2, 4, 4);
   scene.add(d);
   const rig = buildTrainer(look);
-  rig.root.rotation.y = -0.55; // three-quarter view, so ponytails and long hair show
+  rig.root.rotation.y = back ? Math.PI - 0.55 : -0.55; // three-quarter view, so ponytails and long hair show
   scene.add(rig.root);
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
   cam.position.set(0.9, 1.9, 4.6);

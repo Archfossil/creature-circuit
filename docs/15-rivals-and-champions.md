@@ -36,6 +36,10 @@ The named trainers of Margos. **Rivals** turn up through the season and grow wit
 | Champion Bram | `bram` | Charm / Steel | hollow | 78 | A jeweller whose team shines as brightly as the display case. |
 | Champion Noor | `noor` | Water / Electric | mangrove | 75 | The newest Champion, with the most to prove and no time to rest. |
 
+## Outfits
+
+Each Rival and Champion has an outfit of their own (`NPC_OUTFITS` in `src/render/npcLooks.ts`), picked from the player's tops, hats, hair and patterns and worn in battle and portraits. A Rival's base is their favourite type's colour; Champions keep a cape and a gold base. A new Rival or Champion needs an outfit (a test checks).
+
 ## Teams
 
 - **Tiers** unlock on turns 1, 20, 40, 60 and 80. They own 2, 3, 4, 4 and 5 creatures, and bring up to 2, 2, 3, 3 and 3 (never more than the challenger has healthy).
