@@ -30,7 +30,7 @@ export const NPC_OUTFITS: Record<string, Outfit> = {
   okon: { jacket: 'pouch', outfit: '#9a4a2a', accent: '#e8c890', topPattern: 'checks', hat: 'headband', hatColor: '#e8e2d4', hatAccent: '#d8482d', hatPattern: 'badge', hairStyle: 'bun', hair: '#2b2a33', hairAccent: '#d8482d', pants: '#5a4a3a' },
   hale: { jacket: 'coat', outfit: '#2f5a3a', accent: '#b8a0e0', topPattern: 'pinstripes', hat: 'ushanka', hatColor: '#4a3a2a', hatAccent: '#c9b48a', hatPattern: 'badge', hairStyle: 'ponytail', hair: '#e9e6ef', hairAccent: '#8fd36b', pants: '#5a4a3a' },
   bram: { jacket: 'vest', outfit: '#c04a8a', accent: '#d5dbe8', topPattern: 'checks', hat: 'tophat', hatColor: '#4a4a5a', hatAccent: '#ff8fc8', hatPattern: 'badge', hairStyle: 'streak', hair: '#2b2a33', hairAccent: '#d5dbe8', pants: '#3a3f55' },
-  noor: { jacket: 'jacket', outfit: '#2470d8', accent: '#ffd84a', topPattern: 'stripes', hat: 'backcap', hatColor: '#1f3a93', hatAccent: '#ffd84a', hatPattern: 'panels', hairStyle: 'pigtails', hair: '#4a3226', hairAccent: '#5fd3e8', hairPattern: 'split', pants: '#2b2a33' },
+  noor: { jacket: 'jacket', outfit: '#e0562f', accent: '#5fd3e8', topPattern: 'stripes', hat: 'backcap', hatColor: '#a51d2d', hatAccent: '#5fd3e8', hatPattern: 'panels', hairStyle: 'pigtails', hair: '#4a3226', hairAccent: '#5fd3e8', hairPattern: 'split', pants: '#2b2a33' },
 };
 
 /** A Rival's or Champion's mini. */

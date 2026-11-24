@@ -42,6 +42,7 @@ const MAX_STEP_COST = 5;
 export const cloudStepExtra = (s: GameState) => tierOf(s);
 /** Initiative for a stable rest: a city action, +1 for Pathfinders. */
 export function stableCost(s: GameState) {
+  if (sponsorFree(s, s.location)) return 0; // the house's guest
   return cityActionCost(s) + (s.trainer.style === 'pathfinder' ? 1 : 0);
 }
 /** Recruitment roll modifier from the trainer's style. */
@@ -190,7 +191,7 @@ export function rideTaxi(s: GameState, id: string): boolean {
   return true;
 }
 
-/** Homing Feather: back to the home city, or for a Wanderer any city they've rested at. */
+/** Homing Feather: back to the home city, a sponsor's city, or for a Wanderer any city they've rested at. */
 export function featherTargets(s: GameState): string[] {
   if (!hasItem(s, 'homing-feather') || travelBlock(s)) return [];
   return wipeOptions(s).filter((id) => id !== s.location);
@@ -1181,8 +1182,15 @@ export function restedCities(s: GameState): string[] {
   for (const id of s.rested ?? []) if (CITIES[id] && !out.includes(id)) out.push(id);
   return out;
 }
-/** Where a wiped-out team can be sent: home, or for a Wanderer (who makes their home anywhere) any city they've rested at. */
-export const wipeOptions = (s: GameState) => (s.trainer.style === 'balanced' ? restedCities(s) : [s.trainer.home]);
+/** Where a wiped-out team can be sent: home, their sponsor's city, or for a Wanderer (who makes their home anywhere) any city they've rested at. */
+export const wipeOptions = (s: GameState) => {
+  const out = s.trainer.style === 'balanced' ? restedCities(s) : [s.trainer.home];
+  return s.sponsor && CITIES[s.sponsor.city] && !out.includes(s.sponsor.city) ? [...out, s.sponsor.city] : out;
+};
+/** At home in this city: it's theirs, their sponsor's, or they're a Wanderer. Its Nabe is doubled. */
+export const atHome = (s: GameState, city: string) => s.trainer.home === city || s.trainer.style === 'balanced' || s.sponsor?.city === city;
+/** Sponsored in a city they were at home in anyway: its stable costs them no Initiative. */
+export const sponsorFree = (s: GameState, city: string) => s.sponsor?.city === city && (s.trainer.home === city || s.trainer.style === 'balanced');
 /** Where a trainer goes when there's no one to ask (a hotseat duel): home, or for a Wanderer the city they rested at last. */
 export function wipeDefault(s: GameState): string {
   if (s.trainer.style !== 'balanced') return s.trainer.home;
@@ -1295,7 +1303,7 @@ export function rest(s: GameState, nodeId: string) {
   if (!ci) return { advanced: false, buff: {} as Record<string, number> };
   // remember where we've rested (most recent last): a Wanderer can be sent back to any of these after a wipe
   s.rested = [...(s.rested ?? [s.trainer.home]).filter((id) => id !== nodeId), nodeId];
-  const advanced = s.trainer.home === nodeId || s.trainer.style === 'balanced'; // Wanderers are at home anywhere
+  const advanced = atHome(s, nodeId);
   const buff = Object.fromEntries(Object.entries(ci.hotpot.buff).map(([k, v]) => [k, v! * (advanced ? 2 : 1)]));
   s.hotpot = { city: nodeId, buff };
   noteNabe(s, nodeId);

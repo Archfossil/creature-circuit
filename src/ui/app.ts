@@ -20,10 +20,12 @@ import * as X from '../engine/npcTrade';
 import * as D from '../engine/dares';
 import { IMPRINT_MAX, imprintBlock, imprintChoices, imprinted, useImprint } from '../engine/imprints';
 import type { Npc } from '../data/npcs';
+import { NPC_BY_ID } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import { alertState, askForAlerts, calm, callFor, canPush, pushSubscription, steadyInterval, testCall } from './attention';
 import * as W from '../engine/world';
 import * as C from '../engine/circuit';
+import { bringTeam, stadiumMatch, stadiumSheet, stadiumStep } from './stadium';
 import * as E from '../engine/events';
 import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
@@ -171,6 +173,7 @@ export class App {
           } }, `👥 Hotseat (2–${MAX_PLAYERS} trainers)`),
           h('div', { class: 'row gap-s center' },
             h('button', { class: 'btn ghost', onclick: () => this.onlineSheet() }, '🌐 Online'),
+            h('button', { class: 'btn ghost', onclick: () => stadiumSheet(this) }, '🏟️ Stadium'),
             h('button', { class: 'btn ghost', onclick: () => this.savesSheet() }, '💾 Saves'),
             h('button', { class: 'btn ghost', onclick: () => this.howToPlay() }, 'How to Play'))),
         h('small', { class: 'muted' }, 'v0.1 · Prototype content — creatures, moves and map are examples'))));
@@ -494,6 +497,8 @@ export class App {
   skipping = false;
   private hopping = false;
   private watchQueue: AsyncQueue<FeedItem> | null = null;
+  /** Hosting a Stadium room: the trainer to seat once it's open. */
+  stadiumSeat: GameState | null = null;
   private lobbyBody: HTMLElement | null = null;
   private inWizard = false;
   private closeLobby: (() => void) | null = null;
@@ -595,7 +600,7 @@ export class App {
     const net = this.online;
     if (!net) return;
     switch (m.type) {
-      case 'created': toast(`Room ${m.code} is open. Share the code (or link) with your friends.`, 'good', 5000); this.lobby(); break;
+      case 'created': toast(`Room ${m.code} is open. Share the code (or link) with your friends.`, 'good', 5000); if (this.stadiumSeat) { net.send({ type: 'seat', trainer: this.stadiumSeat }); this.stadiumSeat = null; } this.lobby(); break;
       case 'room':
         if (this.lastController !== m.controller) this.closeAsk(); // whoever asked no longer runs the turn
         if (this.watchFight && this.lastController !== m.controller) { this.watchFight = null; this.leaveWatch?.(); }
@@ -665,8 +670,9 @@ export class App {
     const link = `${location.origin}${location.pathname}?room=${room.code}`;
     const taken = room.seats.filter((s) => s.clientId !== net.id && s.trainer).map((s) => s.trainer!.trainer.color);
     const ready = room.seats.filter((s) => s.trainer).length;
+    const stadium = room.seats.some((s) => s.trainer?.stadium); // two trainers, one battle: anyone else watches
     this.lobbyBody.replaceChildren(
-      h('p', null, 'Share this code or link. Everyone creates a trainer here, then the host starts the game.'),
+      h('p', null, stadium ? '🏟️ A Stadium battle: share this code or link. Your opponent brings a team here, then the host starts.' : 'Share this code or link. Everyone creates a trainer here, then the host starts the game.'),
       this.alertRow(() => this.lobby()),
       h('div', { class: 'row gap-s wrap' }, h('b', { class: 'room-code' }, room.code),
         h('button', { class: 'btn ghost sm', onclick: () => { void navigator.clipboard?.writeText(link); toast('Invite link copied.', 'good'); } }, '🔗 Copy invite link')),
@@ -675,11 +681,12 @@ export class App {
         h('b', null, `${i + 1}. ${s.trainer?.trainer.name ?? s.name}`),
         h('small', null, `${s.online ? '🟢 online' : '⚪ away'}${s.clientId === room.host ? ' · host' : ''}${s.clientId === net.id ? ' · you' : ''}${s.trainer ? '' : ' · creating…'}`)))),
       h('div', { class: 'row gap-s wrap' },
-        room.seats.length < MAX_PLAYERS || mine ? h('button', { class: 'btn primary', onclick: () => {
+        room.seats.length < (stadium ? 2 : MAX_PLAYERS) || mine ? h('button', { class: 'btn primary', onclick: () => {
+          if (stadium) { bringTeam((s) => { s.trainer.color = taken.includes(s.trainer.color) ? TRAINER_COLORS.find((c) => !taken.includes(c)) ?? s.trainer.color : s.trainer.color; net.send({ type: 'seat', trainer: s }); this.lobby(); }); return; }
           this.closeLobby?.();
           this.inWizard = true;
           this.newGameWizard({ taken, onDone: (s) => { this.inWizard = false; net.send({ type: 'seat', trainer: s }); this.lobby(); }, onCancel: () => { this.inWizard = false; this.lobby(); } });
-        } }, mine?.trainer ? '✏️ Remake my trainer' : '➕ Create my trainer') : h('p', { class: 'small muted' }, 'The room is full.'),
+        } }, stadium ? (mine ? '✏️ Change my team' : '➕ Bring a team') : mine?.trainer ? '✏️ Remake my trainer' : '➕ Create my trainer') : h('p', { class: 'small muted' }, 'The room is full.'),
         mine ? h('button', { class: 'btn ghost', onclick: () => net.send({ type: 'leave-seat' }) }, 'Give up my seat') : ''),
       net.isHost ? h('div', { class: 'host-box' },
         h('h4', null, '👑 Host settings'),
@@ -689,7 +696,7 @@ export class App {
         h('p', { class: 'small muted' }, 'When a turn’s time runs out, the turn ends automatically. During the game you can also skip a turn, or play one for a trainer who has stepped away.'),
         h('button', { class: 'btn primary big', disabled: ready < 2 || ready !== room.seats.length, onclick: () => {
           const players = room.seats.map((s) => s.trainer!);
-          const m = newMatch(players);
+          const m = stadium ? stadiumMatch(players) : newMatch(players);
           m.owners = room.seats.map((s) => s.clientId);
           m.code = room.code;
           m.turnSeconds = room.turnSeconds;
@@ -703,7 +710,7 @@ export class App {
   applyState(sent: Match) {
     const match = migrateMatch(sent); // the room may have been started by an older build
     if (!match) { toast('This room’s game is from a different version. Reload the page, or start a new room.', 'bad', 6000); return; }
-    try { localStorage.setItem('creature-circuit-online-v1', JSON.stringify(match)); } catch { /* ignore */ }
+    if (!match.stadium) try { localStorage.setItem('creature-circuit-online-v1', JSON.stringify(match)); } catch { /* ignore */ }
     // we're the one playing: our copy is the newest (unless we just reconnected and someone else played on)
     const theirs = this.resync && !!sent.by && sent.by !== this.online?.id;
     const back = this.resync;
@@ -913,7 +920,7 @@ export class App {
       this.closeAsk();
       net.send({ type: 'answer', id: m.id, ...msg });
     };
-    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number; circuit?: boolean } & FoeOptions) | undefined;
+    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number; circuit?: boolean | 'stadium' } & FoeOptions) | undefined;
     const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
     if (send?.kind === 'duel-send') {
       callFor('Choose your next creature!', `${m.from} is waiting for you.`);
@@ -1239,7 +1246,7 @@ export class App {
    * the device is passed to them (choices stay secret) and back. Online: they pick in their own
    * browser; if they don't answer within a minute, their creature acts on its own instincts.
    */
-  async duelPick(a: GameState, b: GameState, battle: Battle, wager: number, circuit = false): Promise<Action | undefined> {
+  async duelPick(a: GameState, b: GameState, battle: Battle, wager: number, circuit: boolean | 'stadium' = false): Promise<Action | undefined> {
     const opts = { ...foeOptions(battle), stake: Math.min(wager, b.coins), circuit };
     const m = activeMatchOf();
     if (this.online && m) {
@@ -1326,7 +1333,7 @@ export class App {
   }
 
   /** The defender's choices in a duel round: their moves, Catch Breath, and swaps. */
-  duelPicker(o: FoeOptions & { stake?: number; circuit?: boolean }, round: number, done: (a: Action) => void): HTMLElement {
+  duelPicker(o: FoeOptions & { stake?: number; circuit?: boolean | 'stadium' }, round: number, done: (a: Action) => void): HTMLElement {
     const body = h('div', { class: 'duel-picker' });
     const swaps = () => body.replaceChildren(
       h('p', null, 'Swap in for ', h('b', null, o.name), ': choose the incoming Alpha.'),
@@ -1342,7 +1349,7 @@ export class App {
         h('button', { class: 'btn ghost sm', onclick: () => giveUp() }, '🏳️ Surrender')));
     // asked in place, so it goes when the prompt does (the round can time out)
     const giveUp = () => body.replaceChildren(
-      this.surrenderTerms(o.lead, [o.circuit ? 'You’re out of the Creature Circuit, and your season ends here.' : o.stake ? `You lose the 💰 ${o.stake} wager.` : 'You lose the duel (there’s no wager).'], o.circuit ? [] : ['You aren’t sent anywhere to rest: you stay where you are.']),
+      this.surrenderTerms(o.lead, [o.circuit === 'stadium' ? 'You lose this battle.' : o.circuit ? 'You’re out of the Creature Circuit, and your season ends here.' : o.stake ? `You lose the 💰 ${o.stake} wager.` : 'You lose the duel (there’s no wager).'], o.circuit ? [] : ['You aren’t sent anywhere to rest: you stay where you are.']),
       h('div', { class: 'row end gap' },
         h('button', { class: 'btn ghost', onclick: () => moves() }, 'Keep fighting'),
         h('button', { class: 'btn primary', onclick: () => done({ kind: 'surrender' }) }, '🏳️ Surrender')));
@@ -1362,7 +1369,7 @@ export class App {
       h('ul', { class: 'small' }, h('li', null, h('b', null, `${c.name} isn’t knocked out`), ', and neither is anyone else still standing.'), keeps.map((t) => h('li', null, t))));
   }
   /** Warn about surrendering this battle, and ask. */
-  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gauntlet?: boolean }): Promise<boolean> {
+  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gauntlet?: boolean; stadium?: boolean }): Promise<boolean> {
     const s = this.s, me = activeOf(b.sides[0]);
     const at = NODE_BY_ID[s.location].name;
     const costs: string[] = [], keeps: string[] = [];
@@ -1371,7 +1378,7 @@ export class App {
       costs.push(stake ? `You lose the 💰 ${stake} wager.` : 'You lose the duel (there’s no wager).');
       keeps.push(`You aren’t sent anywhere to rest: you stay at ${at}.`);
     } else if (ctx.kind === 'endgame') {
-      costs.push('You’re out of the Creature Circuit, and your season ends here.');
+      costs.push(ctx.stadium ? 'You lose this battle.' : 'You’re out of the Creature Circuit, and your season ends here.');
     } else {
       if (ctx.kind === 'trainer') costs.push(`You lose the battle: ${b.sides[1].name} takes d6 coins, as usual, and you lose half of what’s left (you have 💰 ${s.coins}).`);
       else costs.push(`You lose the battle, and half your coins (you have 💰 ${s.coins}).`);
@@ -1853,12 +1860,13 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Duels: the coins at stake. */ wager?: number; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { /** Stadium Mode. */ stadium?: boolean; kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Duels: the coins at stake. */ wager?: number; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
     this.busy = true;
     const bv = this.battleView;
+    bv.fxPace = settings().reduceMotion ? 0.5 : settings().fastBattle ? 0.7 : 1;
     const arenaType = ctx.city ? CITIES[ctx.city].type : undefined;
     // Cliff's crumbling plateau: a countdown chip, updated by 'ring' events
     const ringTimer = b.arena?.trick === 'crumble' ? h('span', { class: 'chip ring-timer', title: 'Beat Cliff before the plateau is gone, or you’re rung out and lose.' }) : null;
@@ -2280,19 +2288,19 @@ export class App {
     });
   }
 
-  /** Wanderer: the team is wiped out; choose a city you've rested at this game to return to. */
+  /** The team is wiped out, and there's more than one home to return to (a Wanderer's rested cities, a sponsor's): choose. */
   pickWipeCity(): Promise<string> {
     const s = this.s;
     const last = W.wipeDefault(s);
     return new Promise((resolve) => {
       this.settleLoss = () => { this.settleLoss = null; close(); resolve(last); };
-      const close = openSheet('⚖️ Where do you rest up?', h('div', null,
-        h('p', { class: 'small' }, 'Your team is wiped out. As a Wanderer you make your home anywhere: return to any city you’ve rested at this game. You still lose half your coins, and your turn ends.'),
+      const close = openSheet('🏠 Where do you rest up?', h('div', null,
+        h('p', { class: 'small' }, `Your team is wiped out. ${s.trainer.style === 'balanced' ? 'As a Wanderer you make your home anywhere: return to any city you’ve rested at this game' : 'Your sponsor’s city is your home too: choose where to return'}. You still lose half your coins, and your turn ends.`),
         h('div', { class: 'list' }, W.wipeOptions(s).map((id) => {
           const c = CITIES[id];
           return h('button', { class: 'choice', onclick: () => { this.settleLoss = null; close(); resolve(id); } },
             h('b', null, h('img', { src: typeIcon(c.type), alt: '', style: 'width:18px;height:18px;vertical-align:-3px;margin-right:6px' }), c.name),
-            h('small', { class: 'muted' }, [`${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}`, id === s.trainer.home ? '🏠 Home' : '', id === last ? 'rested here last' : ''].filter(Boolean).join(' · ')));
+            h('small', { class: 'muted' }, [`${TYPE_LABEL[c.type]} City · Arbiter ${c.arbiter}`, id === s.trainer.home ? '🏠 Home' : '', id === s.sponsor?.city ? '💛 Sponsor’s home' : '', s.trainer.style === 'balanced' && id === last ? 'rested here last' : ''].filter(Boolean).join(' · ')));
         }))), { noClose: true });
     });
   }
@@ -2359,9 +2367,9 @@ export class App {
     const body = h('div', { class: 'city' },
       h('div', { class: 'city-hero', style: `--tc:${TYPE_COLOR[c.type]}` },
         h('img', { src: typeIcon(c.type) }),
-        h('div', null, h('h3', null, c.name), h('small', null, `Inspired by ${c.park} · ${TYPE_LABEL[c.type]} City${s.trainer.home === id ? ' · 🏠 Home' : ''}`), h('p', { class: 'small' }, c.blurb))),
+        h('div', null, h('h3', null, c.name), h('small', null, `Inspired by ${c.park} · ${TYPE_LABEL[c.type]} City${s.trainer.home === id ? ' · 🏠 Home' : ''}${s.sponsor?.city === id ? ` · 💛 Sponsored by ${NPC_BY_ID[s.sponsor.npc]?.name ?? 'a Champion'}` : ''}`), h('p', { class: 'small' }, c.blurb))),
       h('div', { class: 'tiles' },
-        tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.trainer.style === 'balanced' ? ` (doubled — a Wanderer is at home anywhere${W.restedCities(s).includes(id) ? '' : '. Resting here also lets you return here if your team is wiped'})` : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
+        tile('🍲', 'Stable', `${c.hotpot.name}: full recovery + ${c.hotpot.text}${s.trainer.home === id ? ' (doubled — home!)' : s.sponsor?.city === id && s.trainer.style !== 'balanced' ? ' (doubled — your sponsor’s home is yours)' : s.trainer.style === 'balanced' ? ` (doubled — a Wanderer is at home anywhere${W.restedCities(s).includes(id) ? '' : '. Resting here also lets you return here if your team is wiped'})` : ''}`, `${W.stableCost(s)}⚡`, () => this.stable()),
         this.swapTile(),
         // free to browse: the first purchase (or carving) each turn costs the city action
         tile('🛒', 'Market', 'Restores, treats, charms and totems. Free to browse.', !cost ? costTag : W.facilityPaid(s, 'market') ? '✓ paid' : `${costTag} to buy`, () => this.market()),
@@ -2458,10 +2466,29 @@ export class App {
             closeAllSheets(); save(s); this.renderHud();
             await this.runBattle(b, { kind: 'trainer', intro: `${npc.name}: “${npc.lines.greet}”` });
           } }, `⚔️ Challenge · ${W.cityActionCost(s)}⚡`)),
-        why ? h('small', { class: 'muted' }, why) : '');
+        why ? h('small', { class: 'muted' }, why) : '',
+        this.sponsorRow(s, npc, () => render()));
     };
     render();
     openSheet(npc.name, body, { wide: true });
+  }
+
+  /** A Champion's sponsorship, on their sheet: how close you are, their offer, or that they're your sponsor. */
+  private sponsorRow(s: GameState, npc: Npc, changed: () => void): HTMLElement | string {
+    if (npc.kind !== 'champion') return '';
+    const city = CITIES[npc.home].name;
+    const perk = N.sponsorPerk(s, npc) === 'free' ? `You’re already at home in ${city}, so its Nabe would cost you no Initiative.` : `${city} would be your home too: its Nabe doubled, and somewhere to return after a wipe or by Homing Feather.`;
+    if (s.sponsor?.npc === npc.id) return h('p', { class: 'small good-text' }, `💛 ${npc.name} sponsors you. ${N.sponsorPerk(s, npc) === 'free' ? `${city}’s Nabe costs you no Initiative.` : `${city} is your home too.`}`);
+    const r = N.recordWith(s, npc);
+    if (!N.wouldSponsor(s, npc)) return h('p', { class: 'small muted' }, `💛 Sponsorship: Champions sponsor trainers they’re firm friends with (${Math.max(0, Math.min(N.SPONSOR_RAPPORT, r?.rapport ?? 0))}/${N.SPONSOR_RAPPORT}). ${perk}`);
+    const now = s.sponsor ? NPC_BY_ID[s.sponsor.npc] : null;
+    return h('div', { class: 'sponsor-offer' }, h('p', { class: 'small' }, h('b', null, `💛 ${npc.name} offers to sponsor you. `), perk),
+      now ? h('p', { class: 'small muted' }, `You can have one sponsor: this would take ${now.name}’s place.`) : null,
+      h('button', { class: 'btn primary sm', onclick: async () => {
+        if (now && !(await confirmSheet(`Switch to ${npc.name}?`, `${now.name} would no longer sponsor you in ${CITIES[now.home].name}. You can switch back if you’re still firm friends, by meeting them again.`, 'Switch'))) return;
+        if (!N.sponsor(s, npc)) return;
+        sfx.fanfare(); toast(`💛 ${npc.name} is your sponsor!`, 'good', 4000); save(s); this.renderHud(); changed();
+      } }, 'Accept sponsorship'));
   }
 
   /** Menu → Rival Trainers: everyone met, with records, the creatures they've shown and rematches; and the Circuit Standings. */
@@ -2490,7 +2517,7 @@ export class App {
     const where = npc.kind === 'champion' && !r.invite ? N.championAt(s, npc) : null;
     return h('div', { class: 'npc-card', style: `--tc:${TYPE_COLOR[npc.types[0]]}` },
       h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null,
-        h('div', { class: 'row gap-s wrap' }, h('b', null, npc.name), npc.types.map((t) => typeChip(t, true)), h('span', { class: 'chip' }, N.npcMood(r)), N.isContender(s, npc) ? h('span', { class: 'chip good', title: 'Your battles have made a Circuit contender of them' }, '📈 Contender') : null),
+        h('div', { class: 'row gap-s wrap' }, h('b', null, npc.name), npc.types.map((t) => typeChip(t, true)), h('span', { class: 'chip' }, N.npcMood(r)), s.sponsor?.npc === npc.id ? h('span', { class: 'chip good', title: `${CITIES[npc.home].name} is their home city` }, '💛 Your sponsor') : N.wouldSponsor(s, npc) ? h('span', { class: 'chip good', title: 'Find them to accept' }, '💛 Offers to sponsor you') : null, N.isContender(s, npc) ? h('span', { class: 'chip good', title: 'Your battles have made a Circuit contender of them' }, '📈 Contender') : null),
         h('p', { class: 'small' }, npc.blurb),
         h('p', { class: 'small' }, h('b', null, `You ${r.won} · Them ${r.lost}`), r.revenges ? ` · 🔥 ${r.revenges} avenged` : '', r.daresWon || r.daresLost ? ` · 🎯 ${r.daresWon ?? 0}–${r.daresLost ?? 0}` : '', h('span', { class: 'muted' }, ` · Met turn ${r.met}${r.last ? ` · Last: you ${r.last.won ? 'won' : 'lost'} at ${at(r.last.at)}, turn ${r.last.turn}` : ''} · From ${at(npc.home)} · ${N.npcMerits(s, npc).length}/8 Merits`)),
         rev ? h('p', { class: 'small good-text' }, `🔥 Revenge is waiting: ${rev.coins + 1}× coins, +${rev.xp} XP and ${itemInfo(rev.item).icon} ${itemInfo(rev.item).name}.`) : null)),
@@ -3297,7 +3324,7 @@ export class App {
       const why = W.travelBlock(s);
       const targets = W.featherTargets(s);
       if (why || !targets.length) { toast(why ?? 'You’re already home.', 'info'); return; }
-      this.cityPicker('🕊️ Homing Feather', `It carries you to ${s.trainer.style === 'balanced' ? 'any city you’ve rested at' : 'your home city'}. This uses up the rest of your Initiative this turn.`, targets, async (to) => {
+      this.cityPicker('🕊️ Homing Feather', `It carries you to ${s.trainer.style === 'balanced' ? 'any city you’ve rested at' : s.sponsor && s.sponsor.city !== s.trainer.home ? 'your home city or your sponsor’s' : 'your home city'}. This uses up the rest of your Initiative this turn.`, targets, async (to) => {
         const from = s.location;
         if (!W.useFeather(s, to)) return;
         save(s); await this.glide([from, to]); this.renderHud();
@@ -3777,6 +3804,7 @@ export class App {
    */
   async circuitStep() {
     const m = activeMatchOf();
+    if (m?.stadium) { stadiumStep(this, m); return; }
     const g = this.circuitGame();
     const shared = !!m && g === m;
     if (shared && m.players.some((p) => p.phase === 'map')) { await this.handoff(); return; }
@@ -3987,6 +4015,7 @@ export class App {
     const idNo = String(hsh % 100000).padStart(5, '0');
     const home = NODE_BY_ID[s.trainer.home];
     const homeCity = CITIES[s.trainer.home];
+    const sponsored = s.sponsor ? `💛 Sponsored by ${NPC_BY_ID[s.sponsor.npc]?.name ?? 'a Champion'}: ${CITIES[s.sponsor.city]?.name}${W.sponsorFree(s, s.sponsor.city) ? '’s Nabe costs no Initiative.' : ' is home too.'}` : null;
     const styleNow = !own ? null : s.trainer.style === 'nature' ? `This turn: ${W.rangerRefundsLeft(s)} of ${tier} Initiative refunds left.`
       : s.trainer.style === 'pathfinder' ? `This turn: free first move ${s.flags.firstMoveUsed ? 'used' : 'ready'}.`
       : s.trainer.style === 'balanced' ? `If your team is wiped out, you can return to: ${W.restedCities(s).map((id) => CITIES[id].name).join(', ')}. Rest at a city’s stable to add it.`
@@ -4005,6 +4034,7 @@ export class App {
           h('h3', null, s.trainer.name),
           h('div', null, h('small', { class: 'muted' }, 'Home town '), h('b', null, home?.name ?? '—'), homeCity ? h('small', { class: 'muted' }, ` · ${TYPE_LABEL[homeCity.type]} City, Arbiter ${homeCity.arbiter}`) : null),
           h('div', null, h('small', { class: 'muted' }, 'Tier '), h('b', null, `${tier}`), h('small', { class: 'muted' }, ` · ${s.merits.length}/8 Merits · Turn ${s.turn}/100`)))),
+      sponsored ? h('p', { class: 'small good-text' }, sponsored) : null,
       h('h4', null, `${style.icon} ${style.name}`),
       h('div', { class: 'tid-style' },
         h('p', null, h('b', null, '⬆ '), style.perk),

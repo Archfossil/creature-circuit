@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "start": "node server/index.mjs",
     "server": "node server/index.mjs",
+    "debug:saves": "vite-node scripts/debug-save.ts",
     "docs:creatures": "vite-node scripts/creature-checklist.ts",
     "docs:moves": "vite-node scripts/move-checklist.ts",
     "docs:instincts": "vite-node scripts/instinct-checklist.ts"

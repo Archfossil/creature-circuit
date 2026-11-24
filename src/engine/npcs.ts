@@ -10,7 +10,7 @@ import { CITIES, NODE_BY_ID, TOWNS, isCloudNode } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
 import { NATURES, itemInfo } from '../data/content';
 import type { GameState } from './state';
-import { earnCoins, log, tierOf } from './state';
+import { earnCoins, log, record, tierOf } from './state';
 import { dareTurn, type Dare } from './dares';
 import { textStoodUp, textTurn, type Chat } from './messenger';
 import { createBattle, type Battle } from './battle';
@@ -50,6 +50,8 @@ export interface NpcRecord {
   dared?: number;
   daresWon?: number;
   daresLost?: number;
+  /** A Champion's offer to sponsor this trainer has been announced. */
+  offered?: boolean;
 }
 /** A rematch arranged: they're at `at` from turn `from` until the end of turn `until`. */
 export interface Invite { at: string; from: number; until: number; /** You've seen each other there. */ met?: boolean }
@@ -167,6 +169,27 @@ export function meet(s: GameState, npc: Npc): NpcRecord {
   return (all[npc.id] ??= { met: s.turn, won: 0, lost: 0, owed: 0, rapport: 0, seen: [], revenges: 0 });
 }
 export const npcMood = (r: NpcRecord): string => (r.rapport >= 6 ? '💛 Firm friends' : r.rapport >= 3 ? '🙂 Friendly' : r.rapport <= MIFFED ? '😠 Miffed' : r.lost > r.won + 1 ? '😏 Smug' : r.won > r.lost + 1 ? '🔥 Out to beat you' : '🤺 Sizing you up');
+
+// ── Sponsorship ─────────────────────────────────────────────────
+/** A Champion who likes a trainer this much (firm friends) offers to sponsor them. */
+export const SPONSOR_RAPPORT = 6;
+/** Would this Champion sponsor the trainer? (Not if they already do.) */
+export const wouldSponsor = (s: GameState, npc: Npc) => npc.kind === 'champion' && s.sponsor?.npc !== npc.id && (recordWith(s, npc)?.rapport ?? 0) >= SPONSOR_RAPPORT;
+/** What being sponsored by this Champion gives the trainer: a second home, or a free Nabe where they're at home already. */
+export const sponsorPerk = (s: GameState, npc: Npc): 'home' | 'free' => (s.trainer.home === npc.home || s.trainer.style === 'balanced' ? 'free' : 'home');
+/**
+ * Take up a Champion's sponsorship, face to face. Their home city becomes a second home: its Nabe is doubled, and
+ * a wiped-out team or a Homing Feather can go there. A trainer already at home there (it's their home city, or
+ * they're a Wanderer) rests there for no Initiative instead. One sponsor at a time: a new one takes the place of
+ * the last. It's kept even if they fall out.
+ */
+export function sponsor(s: GameState, npc: Npc): boolean {
+  if (!wouldSponsor(s, npc) || !npcsHere(s).includes(npc)) return false;
+  s.sponsor = { npc: npc.id, city: npc.home, since: s.turn };
+  log(s, `${npc.name} is sponsoring you: ${NODE_BY_ID[npc.home].name} ${sponsorPerk(s, npc) === 'free' ? 'serves your Nabe for no Initiative' : 'is your home too'}.`);
+  record(s, 'place', `was sponsored by ${npc.name}, of ${NODE_BY_ID[npc.home].name}`);
+  return true;
+}
 
 /** A battle against a Rival or Champion where the trainer stands. */
 export function npcBattle(s: GameState, npc: Npc): Battle {
@@ -354,6 +377,10 @@ export function npcTurn(s: GameState): string[] {
   const notes: string[] = [];
   for (const npc of NPCS) {
     const r = recordWith(s, npc);
+    if (r && !r.offered && wouldSponsor(s, npc)) {
+      r.offered = true;
+      notes.push(`💛 ${npc.name} is impressed, and offers to sponsor you! Find them to accept${s.sponsor ? ` (in place of ${NPC_BY_ID[s.sponsor.npc]?.name ?? 'your sponsor'})` : ''}.`);
+    }
     if (!r?.invite) continue;
     if (s.turn === r.invite.from) notes.push(`🤺 ${npc.name} is waiting for you at ${NODE_BY_ID[r.invite.at].name} until the end of turn ${r.invite.until}.`);
     else if (s.turn > r.invite.until) {

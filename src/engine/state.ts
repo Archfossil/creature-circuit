@@ -126,6 +126,10 @@ export interface GameState {
   phase: 'map' | 'endgame' | 'champion' | 'over';
   /** In the Creature Circuit: the round they're in (or went out in). `bracket` is only in saves from before it was shared. */
   endgame?: { round: number; eliminated: boolean; bracket?: string[] };
+  /** The Champion sponsoring this trainer, and their home city, which counts as the trainer's home too (npcs.ts → sponsor). */
+  sponsor?: { npc: string; city: string; since: number };
+  /** A Stadium Mode trainer (engine/stadium.ts): lives only for the battle and is never saved. */
+  stadium?: boolean;
   /** Solo: the Creature Circuit's bracket (in a match it's on the Match). */
   circuit?: Circuit;
   stats: TrainerStats;
@@ -322,6 +326,7 @@ function forgetUnsaved(key: string) {
 export function save(s: GameState) {
   // a trainer in a hotseat match is saved as part of the whole match
   if (activeMatch && activeMatch.players.includes(s)) { saveMatch(activeMatch); return; }
+  if (s.stadium) return;
   // online, a trainer from an outdated copy of the match (a newer one arrived): never let it land in the solo save
   if (activeMatch && matchKey !== MATCH_KEY) return;
   store(KEY, s);
@@ -332,7 +337,7 @@ export function save(s: GameState) {
 // records whose turn it is and the shared weather rolls, so every trainer sees the same skies on a
 // given turn. Turns go in seat order: when one trainer ends their turn, the next one starts theirs.
 export const MAX_PLAYERS = 6;
-export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** the shared Creature Circuit, once it's drawn */ circuit?: Circuit; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
+export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** the shared Creature Circuit, once it's drawn */ circuit?: Circuit; /** a Stadium Mode room: the score, and each trainer's team as they brought it */ stadium?: { wins: number[]; teams: CreatureInst[][] }; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
 const MATCH_KEY = 'creature-circuit-match-v1';
 let activeMatch: Match | null = null;
 /** Where the active match is kept: the hotseat slot, or (online) a separate slot so the two never mix. */
@@ -376,7 +381,7 @@ export function nextSeat(m: Match): number {
 export const takenColors = (m: Match | null, except?: GameState) => (m ? m.players.filter((p) => p !== except).map((p) => p.trainer.color) : []);
 
 export function saveMatch(m: Match) {
-  store(matchKey, m);
+  if (!m.stadium) store(matchKey, m);
   matchSaved?.(m);
 }
 /** The online match saved on this device (the last state it saw), if any. */

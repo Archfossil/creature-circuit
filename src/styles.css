@@ -363,6 +363,21 @@ button.status-tag { font-family: inherit; color: inherit; cursor: pointer; }
 /* Mini cards / lists */
 .list { display: grid; gap: 8px; }
 .mini-card { font: inherit; position: relative; display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; text-align: left; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; padding: 6px 10px 6px 6px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; color: var(--ink); width: 100%; }
+.stadium { display: grid; gap: 10px; }
+.stadium-team { display: grid; gap: 6px; padding: 8px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); text-align: left; font: inherit; color: var(--ink); }
+.stadium-team.sel { border-color: var(--ink); background: #fff8dc; }
+.st-pick { font: inherit; color: var(--ink); background: none; border: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; width: 100%; cursor: pointer; text-align: left; }
+.stadium-team.st-pick { border: 2px solid var(--line); display: flex; }
+.st-pick img { width: 44px; height: 44px; }
+.st-pick:disabled { opacity: .5; cursor: not-allowed; }
+.stadium-slot { display: grid; gap: 6px; padding: 8px; border: 2px solid var(--tc); border-radius: 12px; }
+.stadium-slot select { max-width: 190px; }
+.stadium-foes, .stadium-dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.stadium-foe, .stadium-mon { font: inherit; color: var(--ink); display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border: 2px solid var(--tc); border-radius: 12px; background: color-mix(in srgb, var(--tc) 10%, white); cursor: pointer; text-align: center; }
+.stadium-foe:disabled, .stadium-mon:disabled { opacity: .45; cursor: not-allowed; }
+.stadium-foe img, .stadium-mon img { width: 72px; height: 72px; object-fit: contain; }
+.sf-dice { font-size: 40px; line-height: 72px; }
+.sponsor-offer { display: grid; gap: 6px; justify-items: start; margin-top: 8px; padding: 10px; border: 2px solid #e0b020; border-radius: 12px; background: #fff8dc; }
 .swap-entry { display: grid; gap: 5px; margin-bottom: 4px; }
 .swap-entry > .row { justify-content: space-between; flex-wrap: wrap; }
 .mini-card.sel { outline: 3px solid var(--accent-2); background: #fff8dc; }

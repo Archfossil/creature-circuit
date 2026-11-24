@@ -44,6 +44,8 @@ The city Market, Carving Shrine and Workbench are free to browse. The city actio
 
 | Stable (city or town) | 1 | **2** | **0** | **2** |
 
+**Sponsorship:** a Champion's sponsorship adds a second home city for any style, or a free Stable where a trainer is at home already (see [15](./15-rivals-and-champions.md)).
+
 These don't change with any style: town Markets (free), Swap Team (free), Check on Creature (1), Explore the Depths (1) and camping.
 
 **Cloud Island:** every step onto a Cloud Island node costs **+1 Initiative per Tier** on top of the costs above (capped at 5 per step). A Pathfinder's or Trailblazer's free first move still pays the Tier part. See [Arbiters & Arenas](./11-arbiters-and-arenas.md) (Salem).

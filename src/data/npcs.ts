@@ -10,7 +10,7 @@ export interface Npc {
   kind: 'rival' | 'champion';
   /** Favourite types, best loved first (their Ace's type). */
   types: [ElementType, ElementType];
-  /** Home city (a city id). */
+  /** Home city (a city id). Each city is home to one Champion, whose first type is the city's: they can sponsor a trainer there (npcs.ts → sponsor). */
   home: string;
   /** How good they are, for the Circuit Standings (rivals 30–55, Champions 70–95). */
   rating: number;
@@ -43,7 +43,7 @@ export const NPCS: Npc[] = [
   C('okon', 'Champion Okon', ['rock', 'fire'], 'canyon', 84, 'A former Arbiter’s apprentice who still bows before every match.', 'I’m honoured. Please don’t hold back.', 'Thank you for the lesson. I hope I gave one too.', 'You have my respect, and my place in line.', 'Arbiters test you. Rivals teach you. Keep both.'),
   C('hale', 'Champion Hale', ['grass', 'astral'], 'gloom', 80, 'An old forester on one last season, or so they say every year.', 'Mind the roots. And the teeth.', 'Still got it. Ow, my knees.', 'Well, look at that. The forest grows back.', 'I’ve retired four times now. It never takes.'),
   C('bram', 'Champion Bram', ['charm', 'steel'], 'hollow', 78, 'A jeweller whose team shines as brightly as the display case.', 'Let’s see what you’re cut from.', 'A fine stone, not yet polished.', 'Flawless. I’d know.', 'Every gem was a rock that somebody bothered with.'),
-  C('noor', 'Champion Noor', ['water', 'electric'], 'mangrove', 75, 'The newest Champion, with the most to prove and no time to rest.', 'They say I got lucky. Let’s find out.', 'Lucky again, I suppose!', 'So that’s what the others felt like. Huh.', 'A year ago I was where you are. Don’t stop.'),
+  C('noor', 'Champion Noor', ['fire', 'water'], 'kilauea', 75, 'The newest Champion, with the most to prove and no time to rest.', 'They say I got lucky. Let’s find out.', 'Lucky again, I suppose!', 'So that’s what the others felt like. Huh.', 'A year ago I was where you are. Don’t stop.'),
 ];
 export const NPC_BY_ID: Record<string, Npc> = Object.fromEntries(NPCS.map((x) => [x.id, x]));
 export const npcNamed = (name: string) => NPCS.find((x) => x.name === name);

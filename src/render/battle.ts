@@ -3,6 +3,7 @@ import type { SceneView } from './engine';
 import { isMobile } from './engine';
 import { buildCreature, flash, unflash, type CreatureRig } from './creatureModel';
 import { buildTrainer, type TrainerLook, type TrainerRig } from './trainerModel';
+import { attackFx } from './attackFx';
 import { SPECIES_BY_ID } from '../data/species';
 import { BIOME_INFO } from '../data/content';
 import { TYPE_COLOR } from '../data/types';
@@ -217,29 +218,33 @@ export class BattleView implements SceneView {
     const rig = this.rigs[side]; if (!rig) return;
     const from = POS[side].clone();
     const dir = POS[side === 0 ? 1 : 0].clone().sub(from).multiplyScalar(0.55);
-    await this.tween(0.32, (k) => { const e = Math.sin(k * Math.PI); rig.root.position.copy(from).addScaledVector(dir, e * e); rig.root.position.y = Math.sin(k * Math.PI) * 0.6; });
+    let struck = false;
+    const mark = POS[side === 0 ? 1 : 0].clone().setY(0.9);
+    await this.tween(0.32, (k) => { if (!struck && k > 0.5) { struck = true; this.impact(mark, dir); } const e = Math.sin(k * Math.PI); rig.root.position.copy(from).addScaledVector(dir, e * e); rig.root.position.y = Math.sin(k * Math.PI) * 0.6; });
     rig.root.position.copy(from);
   }
 
+  /** An elemental attack: the caster leans into it, and its type's effect plays (attackFx.ts). */
   async projectile(side: 0 | 1, type: ElementType) {
-    const color = TYPE_COLOR[type];
-    const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 1), new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 1.5, flatShading: true }));
-    const light = new THREE.PointLight(color, 8, 6);
-    ball.add(light);
-    const from = POS[side].clone().setY(1.0);
-    const to = POS[side === 0 ? 1 : 0].clone().setY(0.9);
-    this.scene.add(ball);
+    const from = POS[side].clone().setY(1.0), to = POS[side === 0 ? 1 : 0].clone().setY(0.9);
     const rig = this.rigs[side];
-    if (rig) this.tween(0.2, (k) => { rig.root.position.y = Math.sin(k * Math.PI) * 0.3; });
-    await this.tween(0.42, (k) => {
-      ball.position.lerpVectors(from, to, k);
-      ball.position.y += Math.sin(k * Math.PI) * 1.4;
-      ball.rotation.x += 0.3; ball.rotation.y += 0.2;
-      ball.scale.setScalar(1 + Math.sin(k * 20) * 0.15);
-      if (Math.random() < 0.5) this.burst(ball.position.clone(), color, 3, 0.6, 0.35);
-    });
-    this.scene.remove(ball);
-    this.burst(to, color, 50, 5);
+    if (rig) void this.tween(0.22, (k) => { rig.root.position.y = Math.sin(k * Math.PI) * 0.3; });
+    await attackFx(type, {
+      scene: this.scene, tween: (dur, fn) => this.tween(dur * this.fxPace, fn), shake: (n) => { this.shake = Math.max(this.shake, n); },
+      burst: (at, color, count, speed, life, up) => this.burst(at, color, count, speed, life, up),
+    }, from, to);
+  }
+  /** How long attack effects take: 1 as designed, less in fast battles. */
+  fxPace = 1;
+
+  /** A physical blow lands: streaks fly out from where it struck. */
+  private impact(at: THREE.Vector3, dir: THREE.Vector3) {
+    const g = new THREE.Group();
+    const geo = new THREE.BoxGeometry(0.05, 0.05, 0.5), mat = new THREE.MeshBasicMaterial({ color: '#fff6d8', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const spot = at.clone().addScaledVector(dir.clone().normalize(), -0.35);
+    const rays = Array.from({ length: 9 }, () => { const m = new THREE.Mesh(geo, mat), v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.4, Math.random() - 0.5).normalize(); m.position.copy(spot); m.lookAt(spot.clone().add(v)); g.add(m); return { m, v }; });
+    this.scene.add(g);
+    void this.tween(0.22, (k) => { mat.opacity = 1 - k; for (const { m, v } of rays) { m.position.copy(spot).addScaledVector(v, 0.2 + k * 0.9); m.scale.z = 1 - k * 0.7; } }).then(() => { this.scene.remove(g); geo.dispose(); mat.dispose(); });
   }
 
   async support(side: 0 | 1, type?: ElementType) {
@@ -295,7 +300,7 @@ export class BattleView implements SceneView {
       v[i * 3] = d.x; v[i * 3 + 1] = d.y; v[i * 3 + 2] = d.z;
     }
     geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
-    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size: 0.18, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size: 0.2, transparent: true, depthWrite: false }));
     this.scene.add(pts);
     this.bursts.push({ pts, vel: v, life });
   }

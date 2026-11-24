@@ -34,7 +34,7 @@ The named trainers of Margos. **Rivals** turn up through the season and grow wit
 | Champion Okon | `okon` | Rock / Fire | canyon | 84 | A former Arbiter’s apprentice who still bows before every match. |
 | Champion Hale | `hale` | Grass / Astral | gloom | 80 | An old forester on one last season, or so they say every year. |
 | Champion Bram | `bram` | Charm / Steel | hollow | 78 | A jeweller whose team shines as brightly as the display case. |
-| Champion Noor | `noor` | Water / Electric | mangrove | 75 | The newest Champion, with the most to prove and no time to rest. |
+| Champion Noor | `noor` | Fire / Water | kilauea | 75 | The newest Champion, with the most to prove and no time to rest. |
 
 ## Outfits
 
@@ -56,6 +56,14 @@ Each Rival and Champion has an outfit of their own (`NPC_OUTFITS` in `src/render
 - **Rivals** are about one in three of the trainers met on roads and meadows and in Trainer Halls, rising by 10% every 5 turns without one (up to 80%), and are who the Rival Challenge event brings. The three nearest home are about at first, and one more every 8 turns. They rest 3 turns between battles with the same trainer.
 - **Champions** spend 5 turns at a time in a city or town. Whoever is there can be challenged (a city action) or chatted with (once a stay: friendlier for it, sometimes a treat).
 - **Everyone else** is a passer-by with a made-up name: no Ace, no growth, no contact.
+
+## Sponsorship
+
+Each city is home to one Champion, whose first type is the city's. A Champion who is **firm friends** with a trainer (rapport 6, `SPONSOR_RAPPORT`) offers to sponsor them, and is accepted face to face.
+
+- **Their city becomes a second home** (`atHome`): its Nabe is doubled, and a wiped-out team or a Homing Feather can go there. It's the Wanderer's perk, for one city.
+- **Already at home there** (it's the trainer's home city, or they're a Wanderer): its Stable costs **no Initiative** (`sponsorFree`), whatever the style.
+- **One sponsor at a time.** Another Champion's offer replaces the last. A sponsorship is kept even if they fall out later.
 
 ## A helping hand
 

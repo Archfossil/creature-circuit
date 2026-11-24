@@ -143,6 +143,41 @@ describe('rivals and champions', () => {
     expect(b.sides[1].team).toHaveLength(3);
     expect(b.sides[1].team.some((x) => x.ace)).toBe(true);
   });
+  it('every city is home to one Champion of its type, who sponsors a firm friend', () => {
+    expect(N.CHAMPIONS.map((x) => x.home).sort()).toEqual(Object.keys(CITIES).sort());
+    for (const x of N.CHAMPIONS) expect(CITIES[x.home].type, x.id).toBe(x.types[0]);
+    const meetHere = (s: ReturnType<typeof game>, x: typeof champ) => { s.location = N.championAt(s, x); N.meet(s, x).rapport = N.SPONSOR_RAPPORT - 1; };
+    const s = newGame('T', 'urban', 'gloom', 'puddlit', '#fff');
+    meetHere(s, champ);
+    expect(N.sponsor(s, champ)).toBe(false); // not quite friends yet
+    N.recordWith(s, champ)!.rapport++;
+    expect(N.npcTurn(s).filter((t) => /sponsor you/.test(t))).toHaveLength(1);
+    expect(N.npcTurn(s).some((t) => /sponsor you/.test(t))).toBe(false); // said once
+    expect(W.wipeOptions(s)).toEqual(['gloom']);
+    expect(N.sponsor(s, champ)).toBe(true);
+    expect(W.wipeOptions(s)).toEqual(['gloom', 'iron']);
+    expect([W.rest(s, 'iron').advanced, W.rest(s, 'canyon').advanced, W.rest(s, 'gloom').advanced]).toEqual([true, false, true]);
+    // another Champion's offer takes its place; friends no longer, the sponsorship stays
+    const next = N.CHAMPIONS.find((x) => x.id === 'selene')!;
+    meetHere(s, next); N.recordWith(s, next)!.rapport = 9;
+    expect(N.sponsor(s, next)).toBe(true);
+    expect(W.wipeOptions(s)).toEqual(['gloom', 'aurora']);
+    N.recordWith(s, next)!.rapport = -5;
+    expect(W.atHome(s, 'aurora')).toBe(true);
+    // at home there already (or a Wanderer): the stable is free there, and only there
+    for (const [style, home] of [['nature', 'iron'], ['pathfinder', 'iron'], ['balanced', 'gloom']] as const) {
+      const h = newGame('T', style, home, 'puddlit', '#fff');
+      h.location = 'iron';
+      const before = W.stableCost(h);
+      meetHere(h, champ); N.recordWith(h, champ)!.rapport++;
+      expect(N.sponsorPerk(h, champ)).toBe('free');
+      N.sponsor(h, champ);
+      h.location = 'iron';
+      expect([before > 0, W.stableCost(h), W.rest(h, 'iron').advanced]).toEqual([true, 0, true]);
+      h.location = 'canyon';
+      expect(W.stableCost(h)).toBeGreaterThan(0);
+    }
+  });
   it('Rivals turn up on the road, in Halls and in the morning event', () => {
     const s = game();
     const names = new Set<string>();
