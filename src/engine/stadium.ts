@@ -10,7 +10,7 @@ import { playerSide } from './world';
 import { npcTeam } from './npcs';
 import { assignSwapMoves, setSwapMove } from './swaps';
 import { pick } from './dice';
-import { SPECIES, SPECIES_BY_ID } from '../data/species';
+import { SPECIES_BY_ID } from '../data/species';
 import { NATURES, NATURE_BY_ID, WEATHER } from '../data/content';
 import { INSTINCT_BY_ID, INSTINCT_POOL } from '../data/instincts';
 import { CITIES } from '../data/map';
@@ -26,8 +26,8 @@ export const STADIUM_SIZE = 3;
 export interface StadiumPick { species: string; nature: string; instinct?: string; playbook?: string[]; swaps?: Record<number, string> }
 export interface StadiumTeam { name: string; picks: StadiumPick[] }
 
-/** Every creature that can be brought: final stages, and Legendaries. */
-export const stadiumSpecies = (): Species[] => SPECIES.filter((s) => !s.evolvesTo);
+/** Every creature that can be brought: final stages, and Legendaries, from any region (a Stadium battle isn't part of a season). */
+export const stadiumSpecies = (): Species[] => Object.values(SPECIES_BY_ID).filter((s) => !s.evolvesTo);
 /** The Instincts a species can be given: its types', and its own. */
 export const stadiumInstincts = (sp: Species): Instinct[] => [...new Set([INSTINCT_BY_ID[sp.instinct], ...sp.types.flatMap((t) => INSTINCT_POOL[t])])].filter(Boolean);
 

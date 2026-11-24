@@ -2,7 +2,7 @@
 // game: the data files read the packages as the game loads, so anything more would go round in a circle.
 import type { Season } from '../data/content';
 import type { Npc } from '../data/npcs';
-import type { City, MapEdge, MapNode } from '../data/schema';
+import type { Activity, Biome, City, MapEdge, MapNode, Rarity } from '../data/schema';
 import type { Voice } from '../data/texts';
 import type { TrainerLook } from '../render/trainerModel';
 
@@ -25,12 +25,24 @@ export interface Places {
   coasts: string[];
 }
 
+/** How a species differs here: only where it lives, when it's out and how rare it is. Its stats, moves and chart are the same everywhere. */
+export interface LocalForm { biomes?: Biome[]; activity?: Activity; rarity?: Exclude<Rarity, 'legendary'> }
+
+/** Which of the library's species live here (data/species.ts). Nobody else turns up in this region. */
+export interface Codex {
+  /** Their ids, whole families at a time, or every species there is. Their order is the library's. */
+  species: string[] | 'all';
+  starters: string[];
+  /** By species id. Not for Legendaries: they live at their node. */
+  local?: Record<string, LocalForm>;
+}
+
 export interface Region {
   /** Never changes: it will be in saves. */
   id: string;
   name: string;
   map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places };
-  codex: { starters: string[] };
+  codex: Codex;
   /** Rivals and Champions, and by their ids, what they say and wear. */
   people: { npcs: Npc[]; voices: Record<string, Voice>; looks: Record<string, Outfit> };
   /** Each season's weather die. */

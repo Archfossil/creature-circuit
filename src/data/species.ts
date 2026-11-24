@@ -136,7 +136,7 @@ const HANDMADE: Species[] = [
 ];
 
 /** Hand-made creatures first, then the generated placeholders filling the rest of the roster table (roster.ts). */
-export const SPECIES: Species[] = [...HANDMADE, ...PLACEHOLDER_DEFS.map(sp)];
+const LIBRARY: Species[] = [...HANDMADE, ...PLACEHOLDER_DEFS.map(sp)];
 
 // ── Day & night activity ────────────────────────────────────────
 /**
@@ -158,13 +158,22 @@ export function activityFromTypes(types: ElementType[]): Activity {
   if (lean.every((x) => x === 'day')) return 'diurnal';
   return 'crepuscular';
 }
-for (const s of SPECIES) s.activity = s.activity ?? ACTIVITY_OVERRIDE[s.id] ?? activityFromTypes(s.types);
+for (const s of LIBRARY) s.activity = s.activity ?? ACTIVITY_OVERRIDE[s.id] ?? activityFromTypes(s.types);
 
 /** Is this species out in the wild at this time of day? */
 export const isActive = (s: Species, time: TimeOfDay) => s.activity === 'crepuscular' || s.activity === (time === 'day' ? 'diurnal' : 'nocturnal');
 
-export const SPECIES_BY_ID: Record<string, Species> = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
 
+// ── The Codex ───────────────────────────────────────────────────
+/** The species that live in the region being played. Anything that chooses a creature must choose from these. */
+export let SPECIES: Species[];
+/** Every species there is, wherever it lives, as it is in this region. For looking one up, not for choosing. */
+export let SPECIES_BY_ID: Record<string, Species>;
 /** The creatures a trainer can start with. */
 export let STARTERS: string[];
-onRegion((r) => { STARTERS = r.codex.starters; });
+onRegion(({ codex }) => {
+  SPECIES_BY_ID = Object.fromEntries(LIBRARY.map((s) => [s.id, codex.local?.[s.id] ? { ...s, ...codex.local[s.id] } : s]));
+  const lives = codex.species === 'all' ? null : new Set(codex.species);
+  SPECIES = Object.values(SPECIES_BY_ID).filter((s) => !lives || lives.has(s.id));
+  STARTERS = codex.starters;
+});

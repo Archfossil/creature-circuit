@@ -2,13 +2,16 @@
 // are generated placeholders still waiting for a real design and art. Run: npm run docs:creatures
 import { writeFileSync } from 'node:fs';
 import { ROSTER, FAMILY_RARITIES, EXTRA_FAMILIES, extraId, type RosterSlot } from '../src/data/roster';
-import { SPECIES, SPECIES_BY_ID } from '../src/data/species';
+import { SPECIES_BY_ID } from '../src/data/species';
 import { TYPE_LABEL } from '../src/data/types';
 import { ABILITIES, BIOME_INFO, ACTIVITY_INFO } from '../src/data/content';
 import { INSTINCT_BY_ID } from '../src/data/instincts';
 import { MOVE_BY_ID } from '../src/data/moves';
 import { MAP_NODES } from '../src/data/map';
 import type { Species } from '../src/data/schema';
+
+// the whole library, whichever regions they live in
+const SPECIES = Object.values(SPECIES_BY_ID);
 
 const OUT = new URL('../docs/08-creature-checklist.md', import.meta.url);
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);

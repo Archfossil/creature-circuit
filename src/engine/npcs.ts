@@ -89,13 +89,15 @@ export function npcLevel(s: GameState, npc: Npc): number {
 
 const lineFrom = (base: Species): Species[] => { const out = [base]; while (out[out.length - 1].evolvesTo) out.push(SPECIES_BY_ID[out[out.length - 1].evolvesTo!]); return out; };
 const formAt = (base: Species, level: number) => { const line = lineFrom(base); return line[Math.min(line.length, stageCapFor(level)) - 1]; };
+const firsts = () => SPECIES.filter((x) => x.stage === 1 && x.rarity !== 'legendary');
 const families = (rarity: Species['rarity'], fits: (types: ElementType[]) => boolean) => SPECIES.filter((x) => x.stage === 1 && x.evolvesTo && x.rarity === rarity && fits(x.types));
 /** Their creatures' families (base species), the Ace first. The Ace is always the same; the rest are this game's. */
 export function npcFamilies(s: GameState, npc: Npc): Species[] {
   const [a, b] = npc.types;
   const aceRarity = npc.kind === 'champion' ? 'apex' : 'prime';
-  const ace = families(aceRarity, (t) => t.includes(a) && t.includes(b))[0] ?? families(aceRarity, (t) => t[0] === a)[0];
-  const out = [ace];
+  const ace = families(aceRarity, (t) => t.includes(a) && t.includes(b))[0] ?? families(aceRarity, (t) => t[0] === a)[0]
+    ?? firsts().find((x) => x.types.includes(a)) ?? firsts()[0]; // (a Codex without such a family)
+  const out: (Species | undefined)[] = [ace];
   const want: Species['rarity'][] = npc.kind === 'champion' ? ['prime', 'prime', 'apex', 'apex'] : ['common', 'common', 'prime', 'prime'];
   want.forEach((rarity, i) => {
     // mostly their two types; now and then something else turns their head
@@ -105,7 +107,7 @@ export function npcFamilies(s: GameState, npc: Npc): Species[] {
   });
   const swaps = recordWith(s, npc)?.swaps ?? {};
   // a creature this trainer traded them has taken a slot
-  return out.filter(Boolean).map((f, i) => SPECIES_BY_ID[swaps[i]?.species ?? ''] ?? f);
+  return out.filter((f): f is Species => !!f).map((f, i) => SPECIES_BY_ID[swaps[i]?.species ?? ''] ?? f);
 }
 /** How much energy they've imprinted on a creature they teach, at each tier. */
 const TAUGHT = { rival: [0, 1, 1, 2, 2], champion: [1, 1, 2, 2, 3] };

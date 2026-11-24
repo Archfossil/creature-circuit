@@ -524,14 +524,23 @@ export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost:
   };
   if (node.biome === 'prism') {
     const all = (t: ElementType) => speciesPool('prism', t, rarity, stageCap);
-    return byType((t) => all(t).filter((x) => !time || isActive(x, time))) ?? byType(all)!;
+    return byType((t) => all(t).filter((x) => !time || isActive(x, time))) ?? byType(all) ?? nearest(types, rarity, stageCap);
   }
   const area = areaPool(node.biome, rarity, stageCap, time, types);
   const locals = new Set([...area.locals.values()].flat()).size;
   if (area.strays.length && (!locals || Math.random() < (locals === 1 ? STRAY_CHANCE_THIN : STRAY_CHANCE))) {
     return byType((t) => area.strays.filter((x) => x.types[0] === t))!;
   }
-  return byType((t) => area.locals.get(t) ?? []) ?? pickSpecies(node, rarity, level, boost, undefined, types_);
+  return byType((t) => area.locals.get(t) ?? []) ?? (time ? pickSpecies(node, rarity, level, boost, undefined, types_) : nearest(types, rarity, stageCap));
+}
+/** For a Codex with nobody to meet: someone of the area's types (or failing that, anyone), as near to the rarity as there is. */
+function nearest(types: ElementType[], rarity: Rarity, stageCap: number): Species {
+  const all = SPECIES.filter((x) => x.rarity !== 'legendary' && x.stage <= stageCap);
+  const near = all.filter((x) => x.types.some((t) => types.includes(t)));
+  const list = near.length ? near : all;
+  const off = (x: Species) => Math.abs(RARITY_RANK[x.rarity] - RARITY_RANK[rarity]);
+  const best = Math.min(...list.map(off));
+  return pick(list.filter((x) => off(x) === best));
 }
 
 // ── Shifting Depths: Explore the Depths ─────────────────────────
@@ -586,6 +595,7 @@ export function depthsSpecies(material: string, rarity: Rarity, level: number): 
   let list = SPECIES.filter((sp) => fits(sp) && sp.rarity === rarity && sp.stage <= cap);
   if (!list.length) list = SPECIES.filter((sp) => fits(sp) && sp.stage <= cap);
   if (!list.length) list = SPECIES.filter(fits);
+  if (!list.length) return nearest(calls.map((c) => c.type), rarity, cap);
   return weightedPick(list.map((sp) => ({ v: sp, w: appeal(sp) * (sp.stage === cap ? 3 : 1) })));
 }
 

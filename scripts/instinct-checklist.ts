@@ -2,9 +2,12 @@
 // rules, and which creatures have it, as a checklist for the design team. Run: npm run docs:instincts
 import { writeFileSync } from 'node:fs';
 import { INSTINCTS, INSTINCT_ICON, MOMENT_TEXT, instinctRules, type Instinct } from '../src/data/instincts';
-import { SPECIES, SPECIES_BY_ID } from '../src/data/species';
+import { SPECIES_BY_ID } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
 import type { Species } from '../src/data/schema';
+
+// the whole library, whichever regions they live in
+const SPECIES = Object.values(SPECIES_BY_ID);
 
 const OUT = new URL('../docs/14-instinct-checklist.md', import.meta.url);
 

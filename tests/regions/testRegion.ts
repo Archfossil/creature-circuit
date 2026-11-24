@@ -46,7 +46,15 @@ export const TEST_REGION: Region = {
     towns: { 'tt-mill': { blurb: '', sells: ['salve', 'totem'] }, 'tt-quay': { blurb: '', sells: ['calm-tea', 'sunberry'] }, stadium: { blurb: '', sells: ['salve'], special: 'stadium' } },
     places: { wispSpots: nodes.filter((n) => n.kind !== 'legendary' && n.kind !== 'stadium').map((n) => n.id), roamingKeyItems: [], keyItemTowns: [], classicKeyTowns: {}, coasts: [] },
   },
-  codex: { starters: ['cindercub', 'puddlit', 'sproutle'] },
+  // too few for every encounter on purpose: the engine must cope without fetching somebody from outside
+  codex: {
+    species: [
+      'cindercub', 'blazmane', 'pyrothane', 'puddlit', 'marshfin', 'mangrovore', 'sproutle', 'thornback', 'redwarden', 'ph-grass-water-legendary',
+      ...['fire', 'water', 'grass'].flatMap((t) => ['prime', 'apex'].flatMap((r) => [1, 2, 3].map((n) => `ph-${t}-mono-${r}-${n}`))),
+    ],
+    starters: ['cindercub', 'puddlit', 'sproutle'],
+    local: { puddlit: { biomes: ['desert'], activity: 'nocturnal' }, sproutle: { rarity: 'prime' } },
+  },
   people: { npcs, voices: Object.fromEntries(npcs.map((x) => [x.id, voice])), looks: Object.fromEntries(npcs.map((x) => [x.id, outfit])) },
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },
 };

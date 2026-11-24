@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 to 3 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far) and [the active region](#the-active-region)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 4 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region) and [the Codex](#the-codex)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -203,7 +203,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 1 | **Safety net** ✅ built | S | Nothing |
 | 2 | **Move Margos's data** into `src/regions/margos` behind the same names ✅ built | M | Nothing |
 | 3 | **Active region**, plus a tiny test-only second region ✅ built | M | Nothing |
-| 4 | **Codex** separated from the species library | M | Nothing |
+| 4 | **Codex** separated from the species library ✅ built | M | Nothing |
 | 5 | **Arenas** as a per-region table | S–M | Nothing |
 | 6 | **Gimmicks** as plug-ins, one at a time | **L** | Nothing |
 | 7 | **3D map** built for the active region, and rebuilt on a change | M | A short load when changing region |
@@ -247,7 +247,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 
 - **Finding what's left:** apart from `active.ts`, only `data/map.ts` still reads `regions/margos`, for the places that become gimmicks in step 6.
 - **Packages only import types** from the rest of the game. The data files read the packages while the game loads, so anything more could go round in a circle.
-- **Left for their own steps:** the species a region uses (step 4), arena effects (5), gimmicks and Margos-only events (6), and the turn and Merit numbers (8).
+- **Left for their own steps:** arena effects (5), gimmicks and Margos-only events (6), and the turn and Merit numbers (8).
 - **Shared, not Margos's:** which types belong to each biome (`BIOME_TYPES`). The species library uses it to place the placeholders. A region decides where its biomes are.
 
 ### The active region
@@ -256,9 +256,21 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 
 - **Nothing in the game calls `setRegion` yet.** There's one region to play, and a save doesn't record its region until step 8.
 - **A new list or cache made from a region's data goes in `onRegion`.** `tests/regions.test.ts` fails if a switch to the test region (`tests/regions/testRegion.ts`) isn't the same as having started there: its data, teams, coastline and three whole seasons. It also checks that its saves mention nothing of Margos, and that Margos is the saved baseline again afterwards.
-- **It was tested by breaking it:** 26 rebuilds were stopped one at a time, and 23 were caught. The other three are caches that can't be wrong yet. Two hold species (`areaCache`, `usual`), and step 4 must make the tests catch them. The third (`built`) is keyed by Rival and Champion, who have different ids in each region; it would matter if one visits another region.
+- **It was tested by breaking it:** 26 rebuilds were stopped one at a time, and 25 are caught (two of them since step 4). The other, `built`, is a cache keyed by Rival and Champion, who have different ids in each region, so it can't be wrong yet. It would matter if one visits another region.
 - **Places the rules ask for** (wisp spots, key item towns, the Depths' stair, the two coasts of a challenge) are now in the package, as `map.places`.
 - **Still Margos's:** the default home in the new-journey wizard and in Stadium Mode (`thunder`), and the stadium's id, which the test region shares. They go with the other city ids in step 6, or step 9 for the wizard.
+
+### The Codex
+
+`SPECIES` is now the species that live in the active region, and `SPECIES_BY_ID` is still every species there is. **To choose a creature, use `SPECIES`; to look one up, use `SPECIES_BY_ID`.** A region's `codex` lists its species (`'all'` for Margos) and its starters.
+
+- **`codex.local`** changes where a species lives, when it's out or how rare it is. Its stats, energy and recruiting number stay the same. How rare it is here also decides its Research Facility payout, its trade value and, for an Apex, its size. A species still only turns up where its types belong (`BIOME_TYPES`).
+- **Nobody from outside turns up.** `tests/regions.test.ts` plays the test region, which has 28 species, and looks for outsiders in the wild, on Rivals', Champions', Arbiters', Hall and Circuit teams, in the Depths, in trades, in every event, and in whole seasons' saves.
+- **`tests/regions/codexGaps.ts` lists what a Codex is missing:** split families, starters or Legendaries that don't live there, wild encounters with nobody for a biome, rarity, stage and time of day, Arbiters without a full team, and so on. Margos has none, and a new region has to have none.
+- **If there's a gap anyway,** the game picks the nearest rarity among the area's types rather than getting stuck.
+- **Stadium Mode** can use every species from any region, as it isn't part of a season.
+- **It was tested by breaking it:** each place that chooses a creature was made to choose from the whole library. All were caught but the three that walk back up a family, where it makes no difference.
+- **When the Juudlands' creatures arrive,** Margos's `'all'` must become a list first.
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

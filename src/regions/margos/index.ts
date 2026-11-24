@@ -13,7 +13,7 @@ export const MARGOS: Region = {
     scale: MAP_SCALE, nodes, edges, cities: CITIES, towns: TOWNS,
     places: { wispSpots: WISP_SPOTS, roamingKeyItems: ROAMING_KEY_ITEMS, keyItemTowns: KEY_ITEM_TOWNS, classicKeyTowns: CLASSIC_KEY_TOWNS, depthsStair: DEPTHS_STAIR, coasts: ['iron', 'blackSand'] },
   },
-  codex: { starters: STARTERS },
+  codex: { species: 'all', starters: STARTERS },
   people: { npcs: NPCS, voices: VOICES, looks: NPC_OUTFITS },
   weather: WEATHER_DICE,
 };

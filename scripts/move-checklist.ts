@@ -3,10 +3,13 @@
 // moves that stand out from the attack-grid baseline for a balance check. Run: npm run docs:moves
 import { writeFileSync } from 'node:fs';
 import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, statusRollText, moveKeywords, critFaces, critFrom } from '../src/data/moves';
-import { SPECIES } from '../src/data/species';
+import { SPECIES_BY_ID } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
 import type { ElementType, Move, Stats } from '../src/data/schema';
 import { SWAP_MOVES, SWAP_STATUS_ON, swapStatus, type SwapEffect, type SwapMove, type SwapVals } from '../src/data/swapMoves';
+
+// the whole library, whichever regions they live in
+const SPECIES = Object.values(SPECIES_BY_ID);
 
 const OUT = new URL('../docs/09-move-checklist.md', import.meta.url);
 const anchor = (heading: string) => heading.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/ /g, '-');
