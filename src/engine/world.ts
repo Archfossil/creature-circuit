@@ -1083,10 +1083,18 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     }
     if (ctx.kind === 'arbiter' && ctx.city) {
       const city = CITIES[ctx.city];
-      if (!s.merits.includes(ctx.city)) s.merits.push(ctx.city);
-      out.coins = 10 * tierOf(s);
-      out.text.push(`${city.arbiter} awards you the ${city.accolade}!`);
-      log(s, `Earned the ${city.accolade} from ${city.arbiter}.`);
+      (s.arbiterBeat ??= {})[ctx.city] = s.turn;
+      if (s.merits.includes(ctx.city)) {
+        (s.imprints ??= []).push(city.type);
+        out.coins = REMATCH_COINS * tierOf(s);
+        out.text.push(`${city.arbiter} grants you an Imprint of ${TYPE_LABEL[city.type]} energy!`);
+        log(s, `Beat ${city.arbiter} in a rematch: an Imprint of ${TYPE_LABEL[city.type]} energy.`);
+      } else {
+        s.merits.push(ctx.city);
+        out.coins = 10 * tierOf(s);
+        out.text.push(`${city.arbiter} awards you the ${city.accolade}!`);
+        log(s, `Earned the ${city.accolade} from ${city.arbiter}.`);
+      }
     }
     if (ctx.kind === 'legendary' && ctx.nodeId) s.flags.beaten.push(ctx.nodeId);
     const base = out.coins;
@@ -1446,8 +1454,15 @@ export function arbiterHere(s: GameState): string | null {
   return null;
 }
 
+/** Coins per Tier for winning a rematch (a first win pays 10). */
+export const REMATCH_COINS = 5;
+/** Turns an Arbiter's team rests after losing, before another rematch. */
+export const ARBITER_REST = 5;
+/** Turns until an Arbiter this trainer has beaten will battle again (0: now). */
+export const arbiterResting = (s: GameState, cityId: string) => Math.max(0, (s.arbiterBeat?.[cityId] ?? -ARBITER_REST) + ARBITER_REST - s.turn);
 export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; findHim?: boolean; gauntlet?: boolean; cloud?: boolean; trail?: boolean } {
-  if (s.merits.includes(cityId)) return { ok: false, reason: 'You already hold this Arbiter\'s accolade.' };
+  const rest = arbiterResting(s, cityId);
+  if (rest) return { ok: false, reason: `${CITIES[cityId].arbiter}’s team is resting. Come back in ${rest} turn${rest === 1 ? '' : 's'} for a rematch.` };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
   switch (cityId) {
     case 'aurora': {
@@ -1458,6 +1473,7 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
     case 'hollow': return s.flags.fabianFound ? { ok: true } : { ok: false, findHim: true, reason: 'Fabian is hiding somewhere in town, in disguise.' };
     case 'gloom': {
       if (s.location !== FOREST_FLOOR) return { ok: false, reason: `Dahlia's arena hides on the Forest Floor below Gloomshade. Climb down with a Canopy Rope (sold in ${keyTownName(s, 'canopy-rope')} this season) and follow her trail.` };
+      if (s.merits.includes('gloom')) return { ok: true }; // you know the way to her arena now
       const t = trailProgress(s);
       return t.found ? { ok: true } : { ok: false, trail: true, reason: `Follow Dahlia's Trail to find her arena: ${t.steps}/${t.need} signs found. Keep exploring the Forest Floor.` };
     }

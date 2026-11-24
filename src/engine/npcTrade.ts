@@ -26,7 +26,7 @@ const LATE = 12;
 const powers = new Map<string, number>();
 /** A creature's strength (creature.ts → creaturePower), remembered: it's slow to work out. */
 export function powerOf(c: CreatureInst): number {
-  const key = JSON.stringify([c.species, c.level, c.nature, c.bonus, c.extraEnergy, c.bond, c.perks, c.unlocked, c.instinct]);
+  const key = JSON.stringify([c.species, c.level, c.nature, c.bonus, c.extraEnergy, c.imprints, c.bond, c.perks, c.unlocked, c.instinct]);
   let p = powers.get(key);
   if (p === undefined) { p = creaturePower(c); if (powers.size > 600) powers.clear(); powers.set(key, p); }
   return p;
@@ -177,7 +177,7 @@ export function trade(s: GameState, npc: Npc, mine: Mine, theirs: Theirs): strin
     // theirs comes as it is (its own creature now); yours takes its place on their team
     // and has to learn to trust you: no Loyalty or Teamwork comes with it
     receiveCreature(s, { ...theirC, uid: newUid(), loyalty: 0, perks: 0, morale: 5, teamwork: {}, swapMoves: {} });
-    (r.swaps ??= {})[theirs.slot] = { species: familyOf(mineC), nature: mineC.nature, ...(mineC.nickname ? { nickname: mineC.nickname } : {}) };
+    (r.swaps ??= {})[theirs.slot] = { species: familyOf(mineC), nature: mineC.nature, ...(mineC.nickname ? { nickname: mineC.nickname } : {}), ...(mineC.imprints ? { imprints: mineC.imprints } : {}) };
     if (!r.seen.includes(theirs.slot)) r.seen.push(theirs.slot);
     if (r.keen === mineC.uid) r.keen = undefined;
     got.push(nameOf(theirC)); gave.push(nameOf(mineC));

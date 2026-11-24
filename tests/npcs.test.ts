@@ -1,7 +1,7 @@
 // Rivals and Champions: their teams, history, Revenge, rematches and the Circuit Standings.
 import { describe, it, expect } from 'vitest';
 import { NPCS, NPC_BY_ID, npcNamed, passerBy } from '../src/data/npcs';
-import { CITIES, NODE_BY_ID } from '../src/data/map';
+import { CITIES, FOREST_FLOOR, NODE_BY_ID } from '../src/data/map';
 import { ITEMS } from '../src/data/content';
 import * as N from '../src/engine/npcs';
 import * as W from '../src/engine/world';
@@ -19,6 +19,7 @@ import * as T from '../src/engine/messenger';
 import { VOICES } from '../src/data/texts';
 import * as X from '../src/engine/npcTrade';
 import * as D from '../src/engine/dares';
+import { IMPRINT_MAX, applyImprint, imprintBlock, imprintChoices, imprinted, useImprint } from '../src/engine/imprints';
 
 const game = () => {
   const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
@@ -310,7 +311,7 @@ describe('trading with Rivals and Champions', () => {
     up.bonus.power = (up.bonus.power ?? 0) + 3; up.bonus.vigor = (up.bonus.vigor ?? 0) + 2;
     expect(X.creatureValue(up)).toBeGreaterThan(X.creatureValue(a) + 5);
     // a level is worth about what training costs
-    expect(X.creatureValue(createCreature('rivetail', 9)) - X.creatureValue(createCreature('rivetail', 4))).toBeGreaterThan(30);
+    expect(X.creatureValue(createCreature('rivetail', 9, { nature: 'bold' })) - X.creatureValue(createCreature('rivetail', 4, { nature: 'bold' }))).toBeGreaterThan(20); // (growth is random)
     // taste never makes their own a bargain
     for (const id of ['rivetail', 'puddlit']) { const c = createCreature(id, 5); expect(X.askFor(rival, c)).toBeGreaterThan(X.payFor(rival, c)); }
   });
@@ -446,7 +447,7 @@ describe('how Rivals, Champions and the AI play', () => {
     for (const npc of [rival, champ]) {
       const team = N.npcTeam(s, npc, 3);
       for (const c of team) {
-        expect(c.playbook).toEqual(recommendPlaybook(c, { kind: 'balanced' }));
+        expect(c.playbook).toEqual(recommendPlaybook(c, { kind: 'balanced' }, c.imprints?.[0]?.to));
         expect(fits(energy(c), c.playbook)).toBe(true);
         for (const p of team) if (p !== c) {
           expect(swapMoveSet(c, p)).toBe(true);
@@ -623,5 +624,119 @@ describe('side challenges', () => {
     expect(D.dareWith(back, rival)).toEqual(D.dareWith(s, rival));
     expect(D.giveUp(s, rival)!.won).toBe(false);
     expect(N.recordWith(s, rival)!.daresLost).toBe(1);
+  });
+});
+
+describe('arbiter rematches and energy imprints', () => {
+  const beat = (s: GameState, city: string) => { const b = W.arbiterBattle(s, city); b.over = 'win'; return { b, sum: W.finishBattle(s, b, { kind: 'arbiter', city }) }; };
+  it('a first win gives the Merit; a rematch, at the Tier now and after a rest, an Imprint', () => {
+    const s = game();
+    s.location = 'thunder';
+    beat(s, 'thunder');
+    expect(s.merits).toEqual(['thunder']);
+    expect(s.imprints).toBeUndefined();
+    expect(W.arbiterGate(s, 'thunder').ok).toBe(false);
+    s.turn += W.ARBITER_REST;
+    expect(W.arbiterGate(s, 'thunder').ok).toBe(true);
+    s.merits = ['thunder', 'kilauea', 'canyon', 'iron'];
+    const { b, sum } = beat(s, 'thunder');
+    expect(b.arena!.tier).toBe(3);
+    expect(b.sides[1].team).toHaveLength(3);
+    expect(Math.min(...b.sides[1].team.map((c) => c.level))).toBe(7);
+    expect(sum.coins).toBe(W.REMATCH_COINS * 3);
+    expect(s.merits).toHaveLength(4);
+    expect(s.imprints).toEqual(['electric']);
+    expect(migrate(JSON.parse(JSON.stringify(s)))!.imprints).toEqual(['electric']);
+  });
+  it('losing a rematch gives nothing, and they don’t rest', () => {
+    const s = game();
+    s.merits = ['thunder'];
+    const b = W.arbiterBattle(s, 'thunder'); b.over = 'lose';
+    W.finishBattle(s, b, { kind: 'arbiter', city: 'thunder' });
+    expect(s.imprints).toBeUndefined();
+    expect(W.arbiterResting(s, 'thunder')).toBe(0);
+  });
+  it('Dahlia’s rematch needs the Forest Floor, not the trail', () => {
+    const s = game();
+    s.merits = ['gloom'];
+    s.location = 'gloom';
+    expect(W.arbiterGate(s, 'gloom').ok).toBe(false);
+    s.location = FOREST_FLOOR;
+    expect(W.arbiterGate(s, 'gloom').ok).toBe(true);
+  });
+  it('an Imprint swaps one energy, opens moves, and is spent', () => {
+    const s = game();
+    const c = createCreature(SPECIES.find((x) => x.types.join() === 'rock,water' && x.stage === 1)!.id, 1);
+    s.roster.push(c);
+    s.imprints = ['fire', 'fire'];
+    const e0 = energy(c), can = learnable(c);
+    expect(useImprint(s, c.uid, 'rock', 'steel')).toBe(false);
+    expect(useImprint(s, c.uid, 'rock', 'fire')).toBe(true);
+    expect(s.imprints).toEqual(['fire']);
+    const e1 = energy(c);
+    expect(e1).toMatchObject({ rock: e0.rock! - 1, fire: 1, water: e0.water });
+    const now = learnable(c);
+    expect(now.some((id) => !can.includes(id) && MOVE_BY_ID[id].cost.fire)).toBe(true);
+    expect(fits(e1, c.playbook)).toBe(true);
+    expect(c.playbook.every((id) => now.includes(id))).toBe(true);
+    expect(recommendPlaybook(c, { kind: 'balanced' }, 'fire').some((id) => MOVE_BY_ID[id].cost.fire)).toBe(true);
+  });
+  it('limits: three a creature, never the last of its own types; changing one again doesn’t count', () => {
+    const c = createCreature(SPECIES.find((x) => x.types.join() === 'rock,water' && x.stage === 1)!.id, 1);
+    while (imprintChoices(c, 'fire').length) applyImprint(c, imprintChoices(c, 'fire')[0], 'fire');
+    expect(c.imprints!.length).toBeLessThanOrEqual(IMPRINT_MAX);
+    expect(energy(c).rock).toBeGreaterThanOrEqual(1);
+    expect(energy(c).water).toBeGreaterThanOrEqual(1);
+    const n = c.imprints!.length;
+    expect(applyImprint(c, 'fire', 'grass')).toBe(true);
+    expect(c.imprints).toHaveLength(n);
+    // and back to what it was
+    const total = Object.values(energy(c)).reduce((a, x) => a + x!, 0);
+    const back = c.imprints!.find((x) => x.to === 'grass')!.from;
+    expect(applyImprint(c, 'grass', back)).toBe(true);
+    expect(c.imprints!.length).toBe(n - 1);
+    expect(Object.values(energy(c)).reduce((a, x) => a + x!, 0)).toBe(total);
+    expect(imprintBlock(c, 'steel', 'fire')).toMatch(/doesn’t generate/);
+  });
+  it('previews without touching the creature, for every species and type', () => {
+    for (const sp of SPECIES) {
+      const c = createCreature(sp.id, 1);
+      const was = JSON.stringify(c);
+      const to = (['fire', 'astral'] as const).find((t) => !sp.types.includes(t))!;
+      const next = imprinted(c, sp.types[0], to);
+      expect(JSON.stringify(c)).toBe(was);
+      expect(energy(next)[to]).toBe(1);
+      expect(next.playbook.length).toBeGreaterThan(0);
+      expect(fits(energy(next), next.playbook)).toBe(true);
+    }
+  });
+  it('Rivals and Champions teach some of their creatures a favourite type, with a move or two to show for it', () => {
+    const s = game();
+    let taught = 0, all = 0;
+    for (const turn of [1, 25, 85]) {
+      s.turn = turn;
+      for (const npc of NPCS) for (const c of N.npcRoster(s, npc)) {
+        all++;
+        expect(fits(energy(c), c.playbook), c.species).toBe(true);
+        const to = c.imprints?.[0]?.to;
+        if (!to) continue;
+        taught++;
+        if (npc.kind === 'rival') expect(turn).toBeGreaterThan(1);
+        expect(npc.types).toContain(to);
+        const n = c.playbook.filter((id) => MOVE_BY_ID[id].cost[to] && MOVE_BY_ID[id].kind !== 'support').length;
+        expect(n, `${npc.id} ${c.species}`).toBeGreaterThanOrEqual(1);
+        expect(n).toBeLessThanOrEqual(2);
+      }
+    }
+    expect(taught).toBeGreaterThan(10);
+  });
+  it('an imprinted creature traded to them keeps its imprint', () => {
+    const s = game();
+    s.turn = 30;
+    const r = N.meet(s, rival);
+    const fam = N.npcFamilies(s, rival)[1];
+    const to = fam.types.includes('astral') ? 'charm' : 'astral';
+    r.swaps = { 1: { species: fam.id, nature: 'enduring', imprints: [{ from: fam.types[0], to }] } };
+    expect(N.npcRoster(s, rival)[1].imprints).toEqual([{ from: fam.types[0], to }]);
   });
 });

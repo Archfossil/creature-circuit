@@ -17,7 +17,16 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **The battle:** a trainer battle against 2–3 creatures of the Arbiter's type, with the arena effect active all battle. The Arbiter's AI is sharper than wild creatures' and trainers' (only the Champions are sharper), so it rarely picks a poor move.
 - **Winning:** the Merit, **💰 10 × Tier** (Merchant style adds its 25%), and trainer-battle XP (+3 for every creature that fought, on top of the usual XP).
 - **Losing:** no coins lost and no penalty beyond the battle itself (unlike roaming trainers). If the whole team is knocked out, the usual wipe applies: back home, half your coins, Initiative gone. You can try again on a later turn.
-- **Already beaten:** an Arbiter whose Merit you hold won't battle again.
+- **Rematches:** an Arbiter whose Merit you hold will battle again at your **current** Tier, for **💰 5 × Tier** and an **Energy Imprint** of their type. Their team rests **5 turns** after each loss to you (`ARBITER_REST`). Access conditions already met stay met; Dahlia's trail isn't needed again, but her arena is still on the Forest Floor.
+
+### Energy Imprints
+
+Code: `src/engine/imprints.ts`. An Imprint is used at once or kept in the Bag (`GameState.imprints`).
+
+- **What it does:** one creature swaps 1 typed energy it generates for 1 of the Arbiter's type, for good. Moves of that type (and splits with it) open up as far as its energy, Prisma included, allows. Its types, weaknesses, Swap Moves and Prisma don't change.
+- **Limits:** up to **3** imprinted energy a creature (`IMPRINT_MAX`), and it keeps at least 1 of each of its own types. Imprinting an imprinted energy again changes it without adding to the count, and can change it back.
+- **Playbook:** moves that no longer fit leave it; the sheet says which before you confirm.
+- **Kept** through evolution and trades. Rivals and Champions use them too: see [15 · Rivals & Champions](./15-rivals-and-champions.md).
 
 ### Tier scaling (every Arbiter)
 

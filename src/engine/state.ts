@@ -1,4 +1,4 @@
-import type { StatKey } from '../data/schema';
+import type { ElementType, StatKey } from '../data/schema';
 import { teamworkCap } from './teamwork';
 import type { CreatureInst } from './creature';
 import type { PendingEvent } from './events';
@@ -160,6 +160,10 @@ export interface GameState {
   /** Running counts for side challenges (engine/dares.ts). */
   tally?: Record<string, number>;
   npcMerits?: number;
+  /** Energy Imprints won from Arbiters and not used yet (engine/imprints.ts). */
+  imprints?: ElementType[];
+  /** The turn each Arbiter was last beaten (by city id): they rest before another rematch. */
+  arbiterBeat?: Record<string, number>;
 }
 
 const KEY = 'creature-circuit-save-v1';

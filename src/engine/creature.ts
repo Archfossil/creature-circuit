@@ -27,6 +27,8 @@ export interface CreatureInst {
   ace?: boolean;
   bonus: Partial<Stats>;
   extraEnergy: EnergyMap;
+  /** Energy replaced by Arbiters' Imprints: each gives up one `from` for one `to` (see imprints.ts). */
+  imprints?: { from: ElementType; to: ElementType }[];
   unlocked: string[];       // progression node ids (current stage chart)
   signature?: string;       // learned signature move id
   capstone?: boolean;
@@ -102,6 +104,12 @@ export const maxStamina = (c: CreatureInst) => stats(c).stamina;
 export function energy(c: CreatureInst): EnergyMap {
   const e: EnergyMap = { ...speciesOf(c).energy };
   for (const [k, v] of Object.entries(c.extraEnergy)) e[k as EnergyKey] = (e[k as EnergyKey] ?? 0) + v!;
+  for (const { from, to } of c.imprints ?? []) {
+    if ((e[from] ?? 0) < 1) continue;
+    e[from]!--;
+    if (!e[from]) delete e[from];
+    e[to] = (e[to] ?? 0) + 1;
+  }
   return e;
 }
 export const energyTotal = (e: EnergyMap) => Object.values(e).reduce((s, v) => s + (v ?? 0), 0);
@@ -524,9 +532,9 @@ const testFoes = (level: number, vs?: ElementType) => (vs ? [vs] : TYPES).flatMa
  * The best playbook (up to 4 moves that fit the creature's energy) for a goal. A set is judged on how well
  * its best moves do against foes of every type (so coverage, and having an answer to both Armor and Ward,
  * count for what they're worth), plus one useful support move, a quick move, and Purge moves the rest of
- * the set can set up.
+ * the set can set up. With `use`, it includes one or two moves that need that type's energy, if any fit.
  */
-export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal): string[] {
+export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: ElementType): string[] {
   const e = energy(c);
   const foes = testFoes(c.level, goal.kind === 'vs' ? goal.type : undefined);
   const spread = INSTINCT_BY_ID[instinctIdOf(c)]?.passive?.spread ? 1 : 0;
@@ -541,6 +549,8 @@ export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal): string[]
   const pool = [...new Set([
     ...top(attacks, 6), ...top(attacks, 4, (m) => mean(m.id) / cost(m)), ...top(attacks.filter((m) => m.kind === 'physical'), 2),
     ...speciesOf(c).types.flatMap((t) => top(attacks.filter((m) => m.kind === 'elemental' && m.type === t), 2)),
+    // imprinted energy: what it opens up
+    ...[...new Set((c.imprints ?? []).map((x) => x.to))].flatMap((t) => top(attacks.filter((m) => m.cost[t]), 3)),
     ...top(attacks.filter((m) => m.purge), 1), ...top(supports, 3),
   ])];
   const score = (set: Move[]) => {
@@ -552,6 +562,7 @@ export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal): string[]
       sc += first * 0.75 + second * 0.35; // the same move over and over isn't a plan
     }
     sc /= foes.length;
+    if (use) { const n = atk.filter((m) => m.cost[use]).length; if (n < 1) sc -= 100; else if (n > 2) sc -= 50; }
     const sup = set.filter((m) => m.kind === 'support').map((m) => mean(m.id)).sort((a, b) => b - a);
     sc += (sup[0] ?? 0) * 0.3 + (sup[1] ?? 0) * 0.05;
     if (sup.length > 1) sc -= 1;

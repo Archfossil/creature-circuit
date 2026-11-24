@@ -15,6 +15,7 @@ import { dareTurn, type Dare } from './dares';
 import { textStoodUp, textTurn, type Chat } from './messenger';
 import { createBattle, type Battle } from './battle';
 import { createCreature, fullRestore, gainXp, recommendPlaybook, type CreatureInst } from './creature';
+import { teach } from './imprints';
 import { assignSwapMoves } from './swaps';
 import { teamworkCap } from './teamwork';
 import { cityActionCost, here, playerSide, stageCapFor, tierBandLevel, weather } from './world';
@@ -41,7 +42,7 @@ export interface NpcRecord {
   /** Trades this stay (engine/npcTrade.ts). */
   trade?: { stay: number; sold: number[]; spent: number; warmed?: boolean };
   /** Creatures of this trainer's that now fill slots on their team. */
-  swaps?: Record<number, { species: string; nature: string; nickname?: string }>;
+  swaps?: Record<number, { species: string; nature: string; nickname?: string; imprints?: CreatureInst['imprints'] }>;
   /** A creature of this trainer's (uid) they've said they want. */
   keen?: string;
   /** A side challenge under way, when the last one ended, and how they've gone (engine/dares.ts). */
@@ -102,20 +103,34 @@ export function npcFamilies(s: GameState, npc: Npc): Species[] {
   // a creature this trainer traded them has taken a slot
   return out.filter(Boolean).map((f, i) => SPECIES_BY_ID[swaps[i]?.species ?? ''] ?? f);
 }
+/** How much energy they've imprinted on a creature they teach, at each tier. */
+const TAUGHT = { rival: [0, 1, 1, 2, 2], champion: [1, 1, 2, 2, 3] };
+/** How many of their creatures they teach. */
+const TEACHES = { rival: 0.6, champion: 0.85 };
+/** The favourite type they teach a creature of theirs that isn't of that type, and how much of it. Null: it keeps to its own. */
+export function taughtTo(s: GameState, npc: Npc, slot: number, sp: Species): { type: ElementType; n: number } | null {
+  const n = TAUGHT[npc.kind][npcTier(s.turn) - 1];
+  const type = npc.types.find((t) => !sp.types.includes(t));
+  return n && type && chanceOf(s, `${npc.id}:teach:${slot}`) < TEACHES[npc.kind] ? { type, n } : null;
+}
 /** Built creatures, to copy (picking a playbook is slow). */
 const built = new Map<string, string>();
 /** One of their creatures as it stands at a level. */
 export function npcCreature(s: GameState, npc: Npc, slot: number, level: number, as?: { species: string; nature: string }): CreatureInst {
   const sp = formAt(as ? SPECIES_BY_ID[as.species] : npcFamilies(s, npc)[slot], level);
-  const swap: { nature: string; nickname?: string } | undefined = as ?? recordWith(s, npc)?.swaps?.[slot];
+  const swap: { nature: string; nickname?: string; imprints?: CreatureInst['imprints'] } | undefined = as ?? recordWith(s, npc)?.swaps?.[slot];
   const seed = `${s.prismSeed ?? 0}|${npc.id}|${slot}${swap ? `|${swap.nature}|${swap.nickname ?? ''}` : ''}`;
-  const key = `${seed}|${sp.id}|${level}`;
+  // a creature this trainer had imprinted keeps that; otherwise they may teach it a favourite type
+  const taught = swap?.imprints ? null : taughtTo(s, npc, slot, sp);
+  const key = `${seed}|${sp.id}|${level}|${taught ? `${taught.type}${taught.n}` : JSON.stringify(swap?.imprints ?? '')}`;
   const had = built.get(key);
   if (had) return JSON.parse(had) as CreatureInst;
   const made = seededly(seed, () => {
     const c = createCreature(sp.id, level, { nature: swap?.nature ?? NATURES[hash(seed) % NATURES.length].id });
     if (swap?.nickname) c.nickname = swap.nickname;
-    c.playbook = recommendPlaybook(c, { kind: 'balanced' });
+    if (swap?.imprints) c.imprints = swap.imprints.map((x) => ({ ...x }));
+    if (taught) teach(c, taught.type, taught.n);
+    c.playbook = recommendPlaybook(c, { kind: 'balanced' }, taught?.type);
     c.uid = `npc-${npc.id}-${slot}`;
     if (slot === 0) { c.ace = true; c.bond = true; } // an Ace has the same bond as a trainer's own starter
     fullRestore(c);

@@ -75,6 +75,7 @@ tests/       engine tests · server tests (online protocol) · guide tests (How 
 | Swap Moves (set per pair and direction; the Alpha swaps in) | `data/swapMoves.ts`, `engine/swaps.ts`, `battle.ts` → `doSwap`, `swapPreview` |
 | Teamwork between creatures (travel, once-per-battle swaps, cap at half the lower Loyalty) | `engine/teamwork.ts` |
 | Instincts: every species' battle passive (data, and the battle hooks) | `data/instincts.ts`, `engine/battle.ts` |
+| Arbiter rematches, Energy Imprints | `engine/world.ts` → `arbiterResting`, `finishBattle`; `engine/imprints.ts` |
 | Energy requirements, Neutral and Prisma, 4-move playbook | `engine/creature.ts` → `fits`, `learnable`, `allocateEnergy` (which pips the editor crosses out) |
 | 10 XP per level, progression chart (skill tree), Evolve / Capstone | `creature.ts` → `progressionTree`, `availableNodes`, `unlockNode`, `trainStat` |
 | Totems, offerings, Recruitment Threshold | `world.ts` → `attemptRecruit`, `offeringBonus`, `bestOfferings` |

@@ -2,7 +2,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { healthBar, creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
+import { energyPips, healthBar, creatureCard, miniCard, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -16,6 +16,7 @@ import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
 import * as X from '../engine/npcTrade';
 import * as D from '../engine/dares';
+import { IMPRINT_MAX, imprintBlock, imprintChoices, imprinted, useImprint } from '../engine/imprints';
 import type { Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import { alertState, askForAlerts, calm, callFor, canPush, pushSubscription, steadyInterval, testCall } from './attention';
@@ -27,7 +28,7 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { createCreature, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
 import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, INSTINCT_POOL, instinctRules } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
@@ -1485,7 +1486,7 @@ export class App {
     const btn = (icon: string, label: string, fn: () => void, opts: { cost?: number; disabled?: boolean; cls?: string } = {}) =>
       h('button', { class: `act ${opts.cls ?? ''}`, disabled: opts.disabled, onclick: () => { if (!this.busy) fn(); } },
         h('span', { class: 'act-ico' }, icon), h('span', { class: 'act-lbl' }, label), opts.cost !== undefined ? h('span', { class: 'cost' }, opts.cost === 0 ? '0⚡' : `${opts.cost}⚡`) : null);
-    if (s.location === FOREST_FLOOR && W.trailProgress(s).found && !s.merits.includes('gloom')) out.push(btn('🏟️', 'Dahlia', () => this.arbiter(), { cls: 'hl' }));
+    if (s.location === FOREST_FLOOR && (W.trailProgress(s).found || s.merits.includes('gloom'))) out.push(btn('🏟️', 'Dahlia', () => this.arbiter(), { cls: 'hl' }));
     if (node.kind === 'wild') {
       const c = W.reexploreCost(s);
       out.push(btn('🔍', 'Explore', () => this.doExplore(), { cost: c, disabled: s.initiative < c }));
@@ -2126,6 +2127,7 @@ export class App {
     const helper = ctx.kind === 'trainer' ? N.mercyOffer(s, b) : null;
     const mercy = helper ? await this.mercySheet(helper) : undefined;
     if (!mercy && ctx.kind !== 'rival' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
+    const rematch = ctx.kind === 'arbiter' && s.merits.includes(ctx.city!);
     const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo, mercy });
     for (const t of summary.text) toast(t, summary.wiped ? 'bad' : 'good', 3500);
     this.busy = false;
@@ -2134,7 +2136,7 @@ export class App {
       if (summary.wiped) { this.world.setPawnAt(s.location); this.world.focus(s.location, true); }
       save(s);
       this.renderHud();
-      if (ctx.kind === 'arbiter' && result === 'win') this.meritCelebration(ctx.city!);
+      if (ctx.kind === 'arbiter' && result === 'win') { if (rematch) { sfx.fanfare(); this.imprintSheet(CITIES[ctx.city!].type); } else this.meritCelebration(ctx.city!); }
     }
     return result;
   }
@@ -2228,6 +2230,7 @@ export class App {
     const cost = W.cityActionCost(s);
     const costTag = `${cost}⚡`;
     const gate = W.arbiterGate(s, id);
+    const won = `✓ ${c.accolade} earned. A rematch wins an Imprint of ${TYPE_LABEL[c.type]} energy.`;
     const body = h('div', { class: 'city' },
       h('div', { class: 'city-hero', style: `--tc:${TYPE_COLOR[c.type]}` },
         h('img', { src: typeIcon(c.type) }),
@@ -2250,10 +2253,10 @@ export class App {
           return tile('⚓', 'Iron Coast Gauntlet', `Beat ${g.need} local trainers in a row to earn a match with Stella: ${g.wins}/${g.need} so far. Rest at the Stable between matches as often as you like, but leaving the city resets it.`, costTag, () => this.gauntletSheet());
         })() : null,
         c.arenaNode === FOREST_FLOOR
-          ? tile('🌲', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}’s arena hides on the Forest Floor below. Climb down with a Canopy Rope and follow her trail in the dark.`, '', () => this.floorSheet(), s.merits.includes(id))
+          ? tile('🌲', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won} Climb down to the Forest Floor to face Dahlia again.` : `${c.arbiter}’s arena hides on the Forest Floor below. Climb down with a Canopy Rope and follow her trail in the dark.`, '', () => this.floorSheet())
           : c.arenaNode
-          ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market).`, '', () => {}, true)
-          : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `✓ ${c.accolade} earned` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, s.merits.includes(id) ? '' : costTag, () => this.arbiter(), s.merits.includes(id))));
+          ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won} Find ${c.arbiter} on the island.` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market).`, '', () => {}, true)
+          : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won}${gate.ok ? ' Ready.' : ` ${gate.reason}`}` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, costTag, () => this.arbiter())));
     openSheet(c.name, body, { wide: true });
   }
 
@@ -2754,7 +2757,6 @@ export class App {
     if (!id) return;
     const c = CITIES[id];
     const gate = W.arbiterGate(s, id);
-    if (s.merits.includes(id)) { toast(gate.reason ?? '', 'info'); return; }
     if (!gate.ok) {
       if (gate.cloud) { this.cloudSheet(); return; }
       if (gate.trail) { this.floorSheet(); return; }
@@ -2764,16 +2766,18 @@ export class App {
       return;
     }
     const tier = tierOf(s);
+    const again = s.merits.includes(id);
     const body = h('div', { class: 'arbiter', style: `--tc:${TYPE_COLOR[c.type]}` },
       h('div', { class: 'city-hero' }, h('img', { src: typeIcon(c.type) }), h('div', null, h('h3', null, `Arbiter ${c.arbiter}`), h('small', null, `${c.arena.name} · ${TYPE_LABEL[c.type]} specialist`))),
       h('p', null, c.arena.text),
-      h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Your Tier: ${tier}`), h('span', { class: 'chip' }, `${tier === 1 ? 2 : 3} creatures · Lv ~${1 + tier * 2}`), h('span', { class: 'chip' }, `Prize: ${c.accolade} + 💰${10 * tier}`)),
-      h('p', { class: 'small muted' }, 'Arbiters scale to your Tier, so you may challenge them in any order.'),
+      h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Your Tier: ${tier}`), h('span', { class: 'chip' }, `${tier === 1 ? 2 : 3} creatures · Lv ~${1 + tier * 2}`), h('span', { class: 'chip' }, again ? `Prize: ${TYPE_LABEL[c.type]} Imprint + 💰${W.REMATCH_COINS * tier}` : `Prize: ${c.accolade} + 💰${10 * tier}`)),
+      again ? h('p', { class: 'small' }, `A rematch, at your Tier now. Win, and you can imprint ${TYPE_LABEL[c.type]} energy on one of your creatures: it replaces 1 of the energy it generates, opening ${TYPE_LABEL[c.type]} moves to it. ${c.arbiter}’s team rests ${W.ARBITER_REST} turns after a loss.`)
+        : h('p', { class: 'small muted' }, 'Arbiters scale to your Tier, so you may challenge them in any order.'),
       h('div', { class: 'row end gap' }, h('button', { class: 'btn ghost', onclick: () => closeAllSheets() }, 'Not yet'), h('button', { class: 'btn primary', onclick: async () => {
         if (!this.spend()) return;
         closeAllSheets();
-        await this.runBattle(W.arbiterBattle(s, id), { kind: 'arbiter', intro: `Arbiter ${c.arbiter} accepts your challenge!`, city: id });
-      } }, `Challenge · ${W.cityActionCost(s)}⚡`)));
+        await this.runBattle(W.arbiterBattle(s, id), { kind: 'arbiter', intro: again ? `Arbiter ${c.arbiter} is ready for a rematch!` : `Arbiter ${c.arbiter} accepts your challenge!`, city: id });
+      } }, `${again ? 'Rematch' : 'Challenge'} · ${W.cityActionCost(s)}⚡`)));
     openSheet(`${c.name} Arena`, body);
   }
 
@@ -2844,7 +2848,7 @@ export class App {
       beaten ? '' : h('div', { class: 'gauntlet-pips', 'aria-label': `${t.steps} of ${t.need} signs` }, Array.from({ length: t.need }, (_, k) => h('span', { class: k < t.steps ? 'on' : k === t.steps ? 'next' : '' }))),
       rule('➰', 'Getting down', 'Climb down from Gloomshade with a ', h('b', null, 'Canopy Rope'), ` (sold in ${W.keyTownName(s, 'canopy-rope')} this season). The Forest Floor is one node: you explore it again and again (🔍 Explore, the usual Initiative).`),
       rule('🎲', beaten ? 'Exploring the dark (d6, now Dahlia is beaten)' : 'Exploring the dark (d8)', h('b', null, '1–2'), ' nothing, and your active team loses 1 Morale: they fear the dark. ', h('b', null, '3–4'), ' a wild creature (night creatures, it’s always dark). ', h('b', null, '5–6'), ' an exotic find. ', h('b', null, '7–8'), ' a sign of ', h('b', null, 'Dahlia’s Trail'), '.', beaten ? ' With Dahlia beaten, the die is a d6: the same table without the trail, so no explore is wasted on it.' : ''),
-      rule('🏮', 'Dahlia’s Trail', `Find ${t.need} signs (3, +1 per Tier) and her arena appears. Challenge her right there with 🏟️ Dahlia.`),
+      rule('🏮', 'Dahlia’s Trail', beaten ? 'You know the way now: challenge her to a rematch right there with 🏟️ Dahlia, no trail needed.' : `Find ${t.need} signs (3, +1 per Tier) and her arena appears. Challenge her right there with 🏟️ Dahlia.`),
       rule('🚪', 'Leaving loses the trail', h('b', null, 'Leaving the Forest Floor, by choice or by being sent home after a defeat, loses every sign.'), ' You’ll have to start over.'),
       rule('🏃', 'No easy escape', 'Wild creatures are hard to run from down here (you need a 7+, not 4+), unless your follower has Quick Step.'),
       rule('🍄', 'Exotic finds', 'Slightly better than usual: Duskberries (+2 Morale, +1 Loyalty), Root Salve (+2 hearts and clears Fatigue), Heartwood Resin and Glowcaps (stronger offerings).'),
@@ -3334,6 +3338,9 @@ export class App {
       const labels: Record<string, string> = { restore: 'Restoratives', treat: 'Treats', charm: 'Charms', travel: 'Travel', totem: 'Totems', material: 'Offering & Carving Materials', key: 'Key Items' };
       body.replaceChildren(
         h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure active') : null, s.flags.repel ? h('span', { class: 'chip good' }, '💨 Hush Smoke active') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
+        s.imprints?.length ? h('section', null, h('h4', null, 'Energy Imprints'), h('div', { class: 'bag-grid' }, TYPES.filter((t) => s.imprints!.includes(t)).map((t) =>
+          h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, typeIconImg(t, 24)), h('div', null, h('b', null, `${TYPE_LABEL[t]} Imprint ×${s.imprints!.filter((x) => x === t).length}`), h('small', null, `Replaces 1 energy a creature generates with 1 ${TYPE_LABEL[t]}.`)),
+            readOnly ? null : h('button', { class: 'btn sm', onclick: () => this.imprintSheet(t, render) }, 'Use'))))) : '',
         ...Object.entries(groups).filter(([, v]) => v.length).map(([k, ids]) => h('section', null, h('h4', null, labels[k]),
           h('div', { class: 'bag-grid' }, ids.map((id) => {
             const it = itemInfo(id);
@@ -3342,7 +3349,7 @@ export class App {
               usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null,
               id === 'fog-lantern' && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.lanternSheet() }, 'Check') : null);
           })))),
-        Object.keys(s.inventory).length === 0 ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
+        Object.keys(s.inventory).length === 0 && !s.imprints?.length ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
         Object.keys(s.cloudLoot ?? {}).length ? h('section', { class: 'cloud-satchel' }, h('h4', null, '☁️ Cloud satchel (not yet secured)'),
           h('p', { class: 'small' }, 'Items found on Cloud Island stay in this satchel until you escape the island through the portal. If your team is wiped out and you’re sent home, they’re lost.'),
           h('div', { class: 'bag-grid' }, Object.entries(s.cloudLoot!).map(([id, n]) => h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, itemInfo(id).icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', n), h('small', null, itemInfo(id).text)))))) : '',
@@ -3555,6 +3562,50 @@ export class App {
     await wait(1600);
     b.classList.remove('in');
     setTimeout(() => b.remove(), 400);
+  }
+
+  /** Use an Imprint: choose a creature, then which energy it gives up. Put off, it waits in the Bag. */
+  imprintSheet(type: ElementType, then?: () => void) {
+    const s = this.s;
+    const label = TYPE_LABEL[type];
+    const body = h('div', { class: 'imprint', style: `--tc:${TYPE_COLOR[type]}` });
+    const choose = () => body.replaceChildren(
+      h('div', { class: 'row gap-s' }, typeIconImg(type, 32), h('p', null, `Choose a creature. It swaps 1 energy it generates for 1 ${label} energy, for good, and can learn the ${label} moves that fit. Its types don’t change. Up to ${IMPRINT_MAX} of a creature’s energy can be imprinted.`)),
+      h('div', { class: 'list' }, [...s.roster, ...s.reserve].map((c) => {
+        const ok = imprintChoices(c, type).length > 0;
+        const el = miniCard(c, { onClick: () => pickFrom(c), badge: c.imprints?.length ? `✦ ${c.imprints.length}/${IMPRINT_MAX}` : undefined });
+        if (!ok) { el.setAttribute('disabled', ''); el.title = 'None of its energy can be replaced.'; }
+        return el;
+      })),
+      h('div', { class: 'row end gap sticky-foot' }, h('button', { class: 'btn ghost', onclick: () => close() }, 'Later (keep it in your Bag)')));
+    const pickFrom = (c: CreatureInst) => {
+      const e = energy(c);
+      const can = learnable(c);
+      body.replaceChildren(
+        h('h4', null, `${nameOf(c)}: which energy does it give up?`),
+        h('div', { class: 'row gap-s wrap' }, h('small', { class: 'muted' }, 'Now'), energyPips(e)),
+        h('div', { class: 'list' }, TYPES.filter((t) => (e[t] ?? 0) > 0 && t !== type).map((from) => {
+          const why = imprintBlock(c, from, type);
+          const next = imprinted(c, from, type);
+          const learn = learnable(next);
+          const gained = learn.filter((id) => !can.includes(id)).length, lost = can.filter((id) => !learn.includes(id)).length;
+          const dropped = c.playbook.filter((id) => !next.playbook.includes(id)).map((id) => MOVE_BY_ID[id].name);
+          return h('button', { class: 'choice', disabled: !!why, onclick: () => {
+            if (!useImprint(s, c.uid, from, type)) return;
+            close(); sfx.fanfare();
+            toast(`${nameOf(c)} now generates ${energy(c)[type]} ${label} energy. Check its playbook for new moves.`, 'good', 4000);
+            save(s); this.renderHud();
+            then?.();
+          } },
+            h('div', { class: 'row gap-s wrap' }, h('b', null, `1 ${TYPE_LABEL[from]} → 1 ${label}`), why ? null : energyPips(energy(next))),
+            why ? h('small', { class: 'bad-text' }, why)
+              : h('small', null, `Opens ${gained} new move${gained === 1 ? '' : 's'}${lost ? `, closes ${lost}` : ''}.`),
+            !why && dropped.length ? h('small', { class: 'bad-text' }, ` Leaves its playbook: ${dropped.join(', ')}.`) : null);
+        })),
+        h('div', { class: 'row end gap sticky-foot' }, h('button', { class: 'btn ghost', onclick: choose }, '← Another creature')));
+    };
+    const close = openSheet(`✦ ${label} Imprint`, body, { wide: true });
+    choose();
   }
 
   meritCelebration(city: string) {
@@ -4005,9 +4056,9 @@ export class App {
   meritsSheet() {
     const s = this.s;
     openSheet(`Merits · Tier ${tierOf(s)}`, h('div', null,
-      h('p', { class: 'small' }, 'Every 2 Merits raises your Trainer Tier; Arbiters scale their teams and arena tricks to your Tier. 8 Merits = Tier 5 and an invitation to the Circuit.'),
+      h('p', { class: 'small' }, 'Every 2 Merits raises your Trainer Tier; Arbiters scale their teams and arena tricks to your Tier. 8 Merits = Tier 5 and an invitation to the Circuit. Beat an Arbiter again, at your Tier then, to win an Imprint of their type.'),
       h('div', { class: 'merit-list' }, Object.values(CITIES).map((c) => h('div', { class: `merit-row ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` },
-        h('img', { src: typeIcon(c.type) }), h('div', null, h('b', null, c.accolade), h('small', null, `${c.arbiter} · ${c.name}`)), s.merits.includes(c.nodeId) ? '✓' : '')))));
+        h('img', { src: typeIcon(c.type) }), h('div', null, h('b', null, c.accolade), h('small', null, `${c.arbiter} · ${c.name}${s.merits.includes(c.nodeId) ? ` · ${W.arbiterResting(s, c.nodeId) ? `rematch in ${W.arbiterResting(s, c.nodeId)} turn${W.arbiterResting(s, c.nodeId) === 1 ? '' : 's'}` : 'rematch ready'}` : ''}`)), s.merits.includes(c.nodeId) ? '✓' : '')))));
   }
 
   /** Last How to Play tab (category, topic), kept while the game is open. */
