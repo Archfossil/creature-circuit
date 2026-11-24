@@ -205,7 +205,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 3 | **Active region**, plus a tiny test-only second region ✅ built | M | Nothing |
 | 4 | **Codex** separated from the species library ✅ built | M | Nothing |
 | 5 | **Arenas** as a per-region table ✅ built | S–M | Nothing |
-| 6 | **Gimmicks** as plug-ins, one at a time (3 of 9 moved) | **L** | Nothing |
+| 6 | **Gimmicks** as plug-ins, one at a time (4 of 9 moved) | **L** | Nothing |
 | 7 | **3D map** built for the active region, and rebuilt on a change | M | A short load when changing region |
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 | M | Region name on saves |
 | 9 | **Season flow:** region choice at the start, farewell, hall of records | M | Farewell and records; the region page once there are two |
@@ -284,11 +284,11 @@ A region's `arenas` say what each arena does, and a city names one as its `arena
 
 | Gimmick | State |
 |---|---|
-| Katy's whistle, Fabian's disguise, Stella's Gauntlet | ✅ moved |
-| Dahlia, the Depths, wisps, the Rainbow Plains, Salem, Cloud Island | Still in the engine |
+| Katy’s whistle, Fabian’s disguise, Stella’s Gauntlet, Dahlia’s Forest Floor | ✅ moved |
+| The Depths, wisps, the Rainbow Plains, Salem, Cloud Island | Still in the engine |
 | Stray city ids (the world map's walls, the default home, Stadium Mode), Notice Board tips, the guide | Still in the engine and screens |
 
-- **Rules** are in `src/regions/margos/gimmicks`, as answers to the engine's questions (`Gimmick` in `src/regions/gimmick.ts`). So far: `gate`, `onMove`, `battle`, `won` and `surrenderNote`. The first gimmick with an answer to `gate` gives it.
+- **Rules** are in `src/regions/margos/gimmicks`, as answers to the engine's questions (`Gimmick` in `src/regions/gimmick.ts`). So far: `gate`, `onMove`, `explore`, `apart` (somewhere no ride goes) with its own `events`, `battle`, `won` and `surrenderNote`. The first gimmick with an answer to `gate` gives it.
 - **They can't import the engine,** which loads the packages first. The functions they use are handed to them (`Tools`, filled in by `src/engine/tools.ts`).
 - **Screens** are in `src/regions/margos/screens.ts`, which only the app loads, so they can import anything. A gate names the one to open (`show`), and a city's extra tiles come from `tiles`.
 - **Margos's gimmicks keep their old save fields.** A new region's keep theirs in `s.gimmicks`.

@@ -93,7 +93,7 @@ export function drills(g: Game): Season[] {
             const at = W.arbiterHere(s), gate = at ? W.arbiterGate(s, at) : null;
             b.mark([n.id, at, W.weather(s).name, W.travelBlock(s) === null, W.legendaryHere(s, n), W.townKeyItems(s, n.id)]);
             b.mark(map.neighbors(n.id).map((x) => { const c = W.canMoveTo(s, x.node.id); return [x.node.id, c.ok, c.cost, { text: c.reason }]; }));
-            b.mark(gate && [gate.ok, gate.cloud, gate.trail, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined, { text: gate.reason }]);
+            b.mark(gate && [gate.ok, gate.cloud, gate.show === 'floor' || undefined, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined, { text: gate.reason }]);
             b.mark([W.bikeReach(s, 2), W.bikeReach(s, 6)]);
           }
           b.note(`gates keys${Object.keys(keys).length} wisp${wisp}`, [s.keyTowns, W.portalOpen(s)]);
@@ -149,7 +149,7 @@ export function drills(g: Game): Season[] {
           if (beaten) s.merits.push('gloom');
           at(map.FOREST_FLOOR, 43);
           for (let k = 0; k < 14; k++) { ready(b, s); if (s.location === map.FOREST_FLOOR) b.outcome(s, W.reexplore(s)); }
-          b.note(`floor d${W.floorDie(s)} ${W.trailProgress(s).steps}`);
+          b.note(`floor d${s.merits.includes('gloom') ? 6 : 8} ${Math.min(3 + S.tierOf(s), s.flags.dahliaTrail ?? 0)}`);
           at('gloom');
           b.note(`signs ${s.flags.dahliaTrail}`);
           b.write(s);

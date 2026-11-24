@@ -309,6 +309,24 @@ describe('gimmicks', () => {
     expect(s.gimmicks).toEqual({ duel: 'tc-ash>w1' });
     expect(W.gimmickBattle(s, 'duel')).toBe(null);
   });
+  it('can keep a place apart, with its own exploring and events', () => {
+    const { W, E } = t.g, s = start(t.g, 'tc-ash');
+    expect(W.apartAt('w1')).toBe(undefined);
+    expect(t.g.map.neighbors('w2').length).toBeGreaterThan(0);
+    for (const { node } of t.g.map.neighbors('w2')) { s.location = node.id; expect(Object.keys(W.bikeReach(s, 6)).length).toBeGreaterThan(0); expect(W.bikeReach(s, 6)).not.toHaveProperty('w2'); }
+    s.location = 'w2';
+    expect(W.travelBlock(s)).toBe('Test cave.');
+    expect(W.reexplore(s)).toMatchObject({ t: 'trail', steps: 1 });
+    expect(s.deeds![0].text).toBe('test trail 1/2');
+    expect(E.rollEvent(s)!.id).toBe('test-bat');
+    expect(E.resolveEvent(s, 'ok')!.text).toBe('Test bat flew.');
+    expect(s.inventory.salve).toBeGreaterThan(0);
+    s.location = 'w1';
+    expect(W.travelBlock(s)).toBe(null);
+    expect(Array.from({ length: 60 }, () => { s.event = undefined; return E.rollEvent(s)?.id; })).not.toContain('test-bat');
+    expect(m.g.E.EVENT_IDS).not.toContain('test-bat');
+    expect(E.EVENT_IDS.filter((id) => ['floor'].includes(E.EVENT_PLACES[id]))).toEqual([]);
+  });
   it('only name screens that there are', () => {
     const src = (f: string) => readFileSync(new URL(`../src/regions/margos/${f}`, import.meta.url), 'utf-8');
     const named = readdirSync(new URL('../src/regions/margos/gimmicks/', import.meta.url)).flatMap((f) => [...src(`gimmicks/${f}`).matchAll(/show: '(\w+)'/g)].map((x) => x[1]));
@@ -319,7 +337,8 @@ describe('gimmicks', () => {
   it('that have moved leave nothing behind in the engine or screens', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
-    const gone = ['mangrove', 'hollow'];
+    const gone = ['mangrove', 'hollow', 'gloom', 'forestfloor'];
+    expect(files.filter((f) => /FOREST_FLOOR|Dahlia/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/state.ts', 'engine/events.ts', 'ui/guide.ts', 'ui/app.ts'].includes(f))).toEqual([]);
     expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);
   });

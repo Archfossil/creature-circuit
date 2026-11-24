@@ -75,6 +75,14 @@ export const TEST_REGION: Region = {
       won: (s, t) => { t.log(s, 'Duel won.'); return 'Test duel won.'; },
       surrenderNote: 'Test keeps.',
     },
+    // a place apart, with a trail and an event of its own
+    {
+      id: 'cave',
+      apart: { id: 'cave', has: (id) => id === 'w2', noRides: 'Test cave.', found: 'Test glint.' },
+      events: (t) => [{ id: 'test-bat', weight: 1, create: () => ({}), view: () => ({ title: 'Test bat', icon: 'B', text: '', choices: [{ id: 'ok', label: 'OK' }] }), resolve: (s) => { t.addItem(s, 'salve'); return { text: 'Test bat flew.', tone: 'info' }; } }],
+      explore: (s) => (s.location === 'w2' ? { t: 'trail', roll: 1, die: 4, steps: 1, need: 2, found: false } : null),
+      trailText: (o) => `test trail ${o.steps}/${o.need}`,
+    },
     { id: 'late', gate: (_s, city) => (city === 'tc-fen' ? { ok: false, reason: 'Never heard.' } : null) },
   ],
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },

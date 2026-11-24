@@ -10,6 +10,7 @@ import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
 import { gauntletBlock, gauntletLevel, gauntletProgress, gauntletSize } from '../src/regions/margos/gimmicks/gauntlet';
 import { tools } from '../src/engine/tools';
+import { trailNeeded } from '../src/regions/margos/gimmicks/dahlia';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
@@ -1547,8 +1548,8 @@ describe('the Forest Floor (Dahlia)', () => {
     const enc = exploreUntil(s, 'encounter');
     if (enc.t === 'encounter') { expect(enc.die).toBe(8); expect(enc.battle.hardRun).toBe(true); }
     s.flags.dahliaTrail = 0;
-    expect(W.arbiterGate(s, 'gloom')).toMatchObject({ ok: false, trail: true });
-    const need = W.trailNeeded(s);
+    expect(W.arbiterGate(s, 'gloom')).toMatchObject({ ok: false, show: 'floor' });
+    const need = trailNeeded(s, tools);
     expect(need).toBe(3 + tierOf(s));
     let found = false;
     for (let i = 0; i < 2000 && !found; i++) { s.initiative = 5; const o = W.reexplore(s)!; if (o.t === 'trail') { expect(o.die).toBe(8); found = o.found; } }

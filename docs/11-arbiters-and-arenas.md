@@ -6,7 +6,7 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/regions/margos/map.ts`.
 - **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
 - **Arena effects:** `src/regions/margos/arenas.ts` (`ARENAS`: what each one does), played out by `src/engine/battle.ts`.
-- **Katy, Fabian and Stella's conditions:** `src/regions/margos/gimmicks`, with their screens in `src/regions/margos/screens.ts`.
+- **Katy, Fabian, Stella and Dahlia's conditions:** `src/regions/margos/gimmicks`, with their screens in `src/regions/margos/screens.ts`.
 - **Challenge screen and Cloud Island:** `src/ui/app.ts` (`arbiter`, `cloudSheet`).
 
 ## How Arbiters work
@@ -209,7 +209,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 - **Starting over:** **leaving the Forest Floor, by choice or by being sent home after a defeat, loses every sign.** Some Forest Floor events also cost a sign.
 - **Hostile events:** while there, only the Forest Floor's hostile, forced events happen (see the [events doc](./10-events.md#forest-floor-events)).
 - **On screen:** a rules prompt before climbing down, and a 🌲 Forest Floor HUD chip (trail progress, the rules) while there.
-- **Code:** `exploreFloor`, `trailProgress`, `trailNeeded` and `floorFind` in `world.ts`; the trail reset in `moveTrainer` (`state.ts`); `FOREST_FLOOR` in `map.ts`; `hardRun` in `battle.ts`; `floorRules`, `floorPrompt` and `floorSheet` in `app.ts`.
+- **Code:** `src/regions/margos/gimmicks/dahlia.ts` (its events in `dahliaEvents.ts`), its rules sheet, prompt and chip in `src/regions/margos/screens.ts`, and `hardRun` in `battle.ts`.
 
 **Arena effect: Darkness.** In the lightless forest floor, the challenger's accuracy rolls are 1 lower (2 lower at Tier 4+). Sure-hit moves ignore it.
 

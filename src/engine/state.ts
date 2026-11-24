@@ -8,7 +8,7 @@ import type { NpcRecord } from './npcs';
 import { noteArrival } from './dares';
 import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
-import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
+import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
 import { provide, tools } from './tools';
 import { activeRegion } from '../regions/active';
@@ -245,11 +245,6 @@ export function newGame(name: string, style: TrainerStyle, home: string, starter
  */
 export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /** The World Log's words for a ride: "took a taxi to …". */ how?: string } = {}) {
   const place = NODE_BY_ID[id]?.name ?? id;
-  // leaving the Forest Floor, by choice or by defeat, loses Dahlia's Trail
-  if (s.location === FOREST_FLOOR && id !== FOREST_FLOOR && s.flags.dahliaTrail) {
-    log(s, `Left the Forest Floor: Dahlia's Trail is lost (${s.flags.dahliaTrail} found).`);
-    s.flags.dahliaTrail = 0;
-  }
   if (isCloudNode(s.location) && !isCloudNode(id)) {
     // leaving Cloud Island ends any lap in progress
     if (s.flags.cloudLap) { s.flags.cloudLap = 0; s.flags.cloudDir = undefined; }
@@ -650,4 +645,4 @@ export function log(s: GameState, text: string) {
   if (s.log.length > 60) s.log.length = 60;
 }
 
-provide({ hasItem, log, tierOf });
+provide({ addItem, follower, hasItem, log, tierOf });

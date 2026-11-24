@@ -39,7 +39,7 @@ import { createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
 import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, INSTINCT_POOL, instinctRules } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
-import { NODE_BY_ID, FOREST_FLOOR, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
+import { NODE_BY_ID, isCloudNode, CLOUD_EYE, CLOUD_RING, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { ABILITIES, NATURES, NATURE_BY_ID, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
@@ -1585,13 +1585,7 @@ export class App {
       h('b', null, '☁️ Cloud Island'),
       h('small', null, s.flags.salemWorthy ? 'Lap done' : `Lap ${lapNow.steps}/${lapNow.need}`, ' · ', lootN ? `👜 ${lootN} unsecured` : '👜 empty', ' · ', W.portalOpen(s) ? 'portal open' : 'portal shut'),
       h('small', { class: 'cloud-chip-link' }, 'Tap for the rules')) : '';
-    // on the Forest Floor only: Dahlia's Trail at a glance, and the rules on tap
-    const trailNow = W.trailProgress(s);
-    const floorChip = s.location === FOREST_FLOOR ? h('button', { class: 'cloud-chip floor-chip', title: 'Forest Floor rules', onclick: () => this.floorSheet() },
-      h('b', null, '🌲 Forest Floor'),
-      h('small', null, s.merits.includes('gloom') ? 'Dahlia beaten' : trailNow.found ? '🏮 Dahlia’s arena found!' : `Dahlia’s Trail ${trailNow.steps}/${trailNow.need}`),
-      h('small', { class: 'cloud-chip-link' }, 'Tap for the rules')) : '';
-    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team, cloudChip, floorChip), h('div', { class: 'hud-bottom' }, eventPill, fightPill, loc, actions)));
+    this.ui.replaceChildren(h('div', { class: 'hud' }, top, h('div', { class: 'hud-left' }, seats ?? '', followerBtn, team, cloudChip, ...(screens().chips?.(this) ?? [])), h('div', { class: 'hud-bottom' }, eventPill, fightPill, loc, actions)));
     if (this.selected) this.showNodePreview(this.selected);
     this.worldLogLive?.();
   }
@@ -1615,7 +1609,7 @@ export class App {
     const btn = (icon: string, label: string, fn: () => void, opts: { cost?: number; disabled?: boolean; cls?: string } = {}) =>
       h('button', { class: `act ${opts.cls ?? ''}`, disabled: opts.disabled, onclick: () => { if (!this.busy) fn(); } },
         h('span', { class: 'act-ico' }, icon), h('span', { class: 'act-lbl' }, label), opts.cost !== undefined ? h('span', { class: 'cost' }, opts.cost === 0 ? '0⚡' : `${opts.cost}⚡`) : null);
-    if (s.location === FOREST_FLOOR && (W.trailProgress(s).found || s.merits.includes('gloom'))) out.push(btn('🏟️', 'Dahlia', () => this.arbiter(), { cls: 'hl' }));
+    for (const a of screens().actions?.(this) ?? []) out.push(btn(a.icon, a.label, a.go, { cls: 'hl' }));
     if (node.kind === 'wild') {
       const c = W.reexploreCost(s);
       out.push(btn('🔍', 'Explore', () => this.doExplore(), { cost: c, disabled: s.initiative < c }));
@@ -1738,9 +1732,10 @@ export class App {
     if (this.busy) return;
     const s = this.s;
     const from = s.location;
-    if (from !== FOREST_FLOOR && id === FOREST_FLOOR) {
-      const chk = W.canMoveTo(s, id);
-      if (chk.ok && !(await this.floorPrompt(chk.cost))) return;
+    const chk = W.canMoveTo(s, id);
+    const ask = chk.ok ? screens().beforeMove?.(this, id, chk.cost) : null;
+    if (ask) {
+      if (!(await ask)) return;
       if (this.busy) return;
     }
     if (!isCloudNode(from) && isCloudNode(id)) {
@@ -1784,6 +1779,7 @@ export class App {
 
   async handleOutcome(out: W.Outcome) {
     const s = this.s;
+    const apart = W.apartAt(s.location);
     this.busy = true;
     try {
       if (out.t === 'arrive') {
@@ -1795,13 +1791,10 @@ export class App {
         if (out.refund) { toast(`🌲 Ranger’s instinct: +1 Initiative back (${W.rangerRefundsLeft(s)} more this turn).`, 'good', 2600); this.renderHud(); }
         if (out.dark) this.renderHud();
       } else if (out.t === 'trail') {
-        await rollDice('Explore', [{ sides: out.die, value: out.roll, tone: 'good', label: '7–8 Dahlia’s Trail' }], out.found ? 'The trail ends at a ring of lanterns: Dahlia’s arena!' : `A sign of Dahlia’s Trail: ${out.steps}/${out.need}.`, 700, { read: true });
-        sfx.good();
-        if (out.found) { toast('🏮 You found Dahlia’s arena! Challenge her from here (🏟️ Dahlia), before you leave the Forest Floor.', 'good', 5000); this.renderHud(); }
-        else toast(`🌲 Dahlia’s Trail: ${out.steps}/${out.need}. Keep exploring.`, 'info', 2600);
+        await screens().trail?.(this, out);
       } else if (out.t === 'item') {
         // two beats: the explore roll reveals that something's here, then the find roll reveals what
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: out.hushed ? '💨 4 Hushed: Item' : '5–6 Item' }], s.location === FOREST_FLOOR ? 'Something exotic glints in the dark!' : out.hushed ? 'With nothing around to bother you, you poke about and find something!' : 'You discovered something!', 700, { read: true });
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'good', label: out.hushed ? '💨 4 Hushed: Item' : '5–6 Item' }], apart?.found ? apart.found : out.hushed ? 'With nothing around to bother you, you poke about and find something!' : 'You discovered something!', 700, { read: true });
         const names = out.items.map((i) => `${itemInfo(i.id).icon} ${W.itemDisplayName(i.id)}${i.n > 1 ? ' ×' + i.n : ''}`);
         if (out.coins) names.push(`💰 ${out.coins} coins`);
         await rollDice('Find', [{ sides: 6, value: out.itemRoll, tone: 'good', label: 'Find d6' }], `Found ${names.join(', ')}!`, 900, { read: true });
@@ -1825,7 +1818,7 @@ export class App {
         record(s, 'explore', `kept ${label(got)}`);
         log(s, `Found ${label(got)} at ${NODE_BY_ID[s.location].name}.`);
       } else if (out.t === 'encounter') {
-        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], s.location === FOREST_FLOOR ? 'Something moves in the dark…' : 'Something rustles nearby…', 700, { read: true });
+        await rollDice('Explore', [{ sides: out.die ?? 6, value: out.roll, tone: 'bad', label: '3–4 Encounter' }], apart?.met ?? 'Something rustles nearby…', 700, { read: true });
         await rollDice('Rarity Stars', out.stars.map((x) => ({ sides: 6, value: x.face, face: STAR_FACE[x.star], tone: x.star === 'full' ? 'good' : 'info', label: x.star })), `${out.rarity[0].toUpperCase() + out.rarity.slice(1)} creature! ${NODE_BY_ID[s.location].biome === 'prism' ? '(+1 rarity: the Rainbow Plains)' : NODE_BY_ID[s.location].rarity ? '(+★ rare area)' : ''}`, 900, { read: true });
         this.busy = false;
         await this.runBattle(out.battle, { kind: 'wild', intro: `A wild ${nameOf(out.battle.sides[1].team[0])} appeared!` });
@@ -2386,11 +2379,7 @@ export class App {
           ? `Open ${seasonForTurn(s.turn) === 'winter' ? 'all Winter' : 'tonight'}. Step through from the map (the dotted path north-west).${s.flags.salemWorthy ? '' : ` A full lap of the island earns a match with Salem (${W.cloudLapProgress(s).steps}/${W.CLOUD_LAP}).`}`
           : 'Closed by day. The portal opens at night (even turns), and stays open all Winter.', '', () => this.cloudSheet()) : null,
         ...(screens().tiles?.(this, id, costTag) ?? []),
-        c.arenaNode === FOREST_FLOOR
-          ? tile('🌲', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won} Climb down to the Forest Floor to face Dahlia again.` : `${c.arbiter}’s arena hides on the Forest Floor below. Climb down with a Canopy Rope and follow her trail in the dark.`, '', () => this.floorSheet())
-          : c.arenaNode
-          ? tile('⛴️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won} Find ${c.arbiter} on the island.` : `${c.arbiter}\u2019s ${c.arena.name} is offshore, on the island. Take the ferry from the docks to Black Sand Cove (needs a Ferry Pass, sold at this market).`, '', () => {}, true)
-          : tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won}${gate.ok ? ' Ready.' : ` ${gate.reason}`}` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, costTag, () => this.arbiter())));
+        screens().arbiterTile?.(this, id, won) ?? tile('🏟️', `Arbiter ${c.arbiter}`, s.merits.includes(id) ? `${won}${gate.ok ? ' Ready.' : ` ${gate.reason}`}` : `${c.arena.name}. ${gate.ok ? 'Ready to accept your challenge.' : gate.reason}`, costTag, () => this.arbiter())));
     openSheet(c.name, body, { wide: true });
   }
 
@@ -2926,7 +2915,6 @@ export class App {
     const gate = W.arbiterGate(s, id);
     if (!gate.ok) {
       if (gate.cloud) { this.cloudSheet(); return; }
-      if (gate.trail) { this.floorSheet(); return; }
       const screen = gate.show ? screens().show[gate.show] : undefined;
       if (screen) { screen(this); return; }
       toast(gate.reason ?? 'Not yet.', 'bad', 3500);
@@ -2997,44 +2985,6 @@ export class App {
         h('div', { class: 'row end gap sticky-foot' },
           h('button', { class: 'btn ghost', onclick: () => finish(false) }, 'Not now'),
           h('button', { class: 'btn primary', onclick: () => finish(true) }, `Step through · ${cost}⚡`))), { wide: true, onClose: () => { if (!done) { done = true; resolve(false); } } });
-    });
-  }
-
-  /** The Forest Floor rules, with the trainer's current trail. Before climbing down, and from the HUD chip there. */
-  floorRules(): HTMLElement {
-    const s = this.s;
-    const t = W.trailProgress(s);
-    const beaten = s.merits.includes('gloom');
-    const rule = (icon: string, title: string, ...body: (string | Node)[]) => h('div', { class: 'cloud-rule' }, h('span', { class: 'cloud-rule-ico' }, icon), h('div', null, h('b', null, title), h('p', null, ...body)));
-    return h('div', { class: 'cloud-rules' },
-      h('p', null, 'The Forest Floor is a single, lightless place below Gloomshade. Here’s how it works.'),
-      h('div', { class: 'cloud-status' },
-        h('div', null, h('small', null, 'Dahlia’s Trail'), h('b', null, beaten ? '✓ Dahlia beaten' : t.found ? '🏮 Arena found' : `${t.steps} / ${t.need} signs`)),
-        h('div', null, h('small', null, 'Signs needed'), h('b', null, `${t.need} (3 + Tier ${tierOf(s)})`)),
-        h('div', null, h('small', null, 'Explore die'), h('b', null, `🎲 d${W.floorDie(s)}`))),
-      beaten ? '' : h('div', { class: 'gauntlet-pips', 'aria-label': `${t.steps} of ${t.need} signs` }, Array.from({ length: t.need }, (_, k) => h('span', { class: k < t.steps ? 'on' : k === t.steps ? 'next' : '' }))),
-      rule('➰', 'Getting down', 'Climb down from Gloomshade with a ', h('b', null, 'Canopy Rope'), ` (sold in ${W.keyTownName(s, 'canopy-rope')} this season). The Forest Floor is one node: you explore it again and again (🔍 Explore, the usual Initiative).`),
-      rule('🎲', beaten ? 'Exploring the dark (d6, now Dahlia is beaten)' : 'Exploring the dark (d8)', h('b', null, '1–2'), ' nothing, and your active team loses 1 Morale: they fear the dark. ', h('b', null, '3–4'), ' a wild creature (night creatures, it’s always dark). ', h('b', null, '5–6'), ' an exotic find. ', h('b', null, '7–8'), ' a sign of ', h('b', null, 'Dahlia’s Trail'), '.', beaten ? ' With Dahlia beaten, the die is a d6: the same table without the trail, so no explore is wasted on it.' : ''),
-      rule('🏮', 'Dahlia’s Trail', beaten ? 'You know the way now: challenge her to a rematch right there with 🏟️ Dahlia, no trail needed.' : `Find ${t.need} signs (3, +1 per Tier) and her arena appears. Challenge her right there with 🏟️ Dahlia.`),
-      rule('🚪', 'Leaving loses the trail', h('b', null, 'Leaving the Forest Floor, by choice or by being sent home after a defeat, loses every sign.'), ' You’ll have to start over.'),
-      rule('🏃', 'No easy escape', 'Wild creatures are hard to run from down here (you need a 7+, not 4+), unless your follower has Quick Step.'),
-      rule('🍄', 'Exotic finds', 'Slightly better than usual: Duskberries (+2 Morale, +1 Loyalty), Root Salve (+2 hearts and clears Fatigue), Heartwood Resin and Glowcaps (stronger offerings).'),
-      rule('⚠️', 'Hostile events', 'While you’re down here, only the Forest Floor’s events happen, and they’re all dangerous: stalkers, grasping roots, spore clouds, whispers and thieves.'));
-  }
-
-  floorSheet() { openSheet('🌲 The Forest Floor', this.floorRules(), { wide: true }); }
-
-  /** Before climbing down: the rules, and a last chance to turn back. */
-  floorPrompt(cost: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = (go: boolean) => { if (done) return; done = true; close(); resolve(go); };
-      const close = openSheet('➰ Climb down to the Forest Floor?', h('div', null,
-        this.floorRules(),
-        h('p', { class: 'small muted' }, 'You can read these rules again any time down there: tap the 🌲 Forest Floor chip at the top left.'),
-        h('div', { class: 'row end gap sticky-foot' },
-          h('button', { class: 'btn ghost', onclick: () => finish(false) }, 'Not now'),
-          h('button', { class: 'btn primary', onclick: () => finish(true) }, `Climb down · ${cost}⚡`))), { wide: true, onClose: () => { if (!done) { done = true; resolve(false); } } });
     });
   }
 

@@ -255,7 +255,7 @@ export class Bot {
     const city = W.arbiterHere(s);
     if (!city || (s.merits.includes(city) && this.odds(0.6))) return false;
     let gate = W.arbiterGate(s, city);
-    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.trail, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined]);
+    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.show === 'floor' || undefined, gate.show === 'gauntlet' || undefined, gate.show === 'fabian' || undefined]);
     if (gate.show === 'fabian') { s.flags.fabianFound = true; this.note('fabian'); gate = W.arbiterGate(s, city); } // (finding him is a guessing game in app.ts)
     while (gate.show === 'gauntlet' && s.location === city) {
       const r = W.gimmickBattle(s, 'gauntlet');
@@ -264,7 +264,7 @@ export class Bot {
       this.battle(s, r.battle, { kind: 'trainer', gimmick: 'gauntlet' }, `gauntlet ${r.match}/${r.of}`);
       gate = W.arbiterGate(s, city);
     }
-    while (gate.trail && W.arbiterHere(s) === city) {
+    while (gate.show === 'floor' && W.arbiterHere(s) === city) {
       if (s.initiative < W.reexploreCost(s)) return true;
       this.outcome(s, W.reexplore(s));
       gate = W.arbiterGate(s, city);
