@@ -279,6 +279,31 @@ describe('arenas', () => {
   });
 });
 
+describe('gimmicks', () => {
+  let t: Awaited<ReturnType<typeof copy>>, m: Awaited<ReturnType<typeof copy>>;
+  beforeAll(async () => { m = await copy(); t = await copy(TEST_REGION); }, 60000);
+  const start = (g: Game, home: string) => g.S.newGame('T', 'balanced', home, 'cindercub', '#fff');
+
+  it('gate their own region’s Arbiters, the first with an answer deciding', () => {
+    const { W } = t.g, s = start(t.g, 'tc-brook');
+    expect(W.arbiterGate(s, 'tc-brook')).toEqual({ ok: false, reason: 'Arb Brook is shy.' });
+    s.turn = 5;
+    expect(W.arbiterGate(s, 'tc-brook')).toEqual({ ok: true });
+    expect(W.arbiterGate(s, 'tc-fen').ok).toBe(true);
+    s.inventory.totem = 0;
+    expect(W.arbiterGate(s, 'tc-fen')).toMatchObject({ ok: false, reason: 'No totem.' });
+    for (const c of s.roster) c.ko = true; // (what's true everywhere comes first)
+    expect(W.arbiterGate(s, 'tc-fen').reason).toMatch(/rest first/);
+    expect(m.g.W.arbiterGate(start(m.g, 'thunder'), 'mangrove').reason).toMatch(/Root Whistle/);
+  });
+  it('that have moved leave nothing behind in the engine or screens', () => {
+    const root = new URL('../src/', import.meta.url);
+    const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
+    const gone = ['mangrove'];
+    for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);
+  });
+});
+
 describe('changing region', () => {
   const homes = ['tc-ash', 'tc-brook', 'tc-fen'];
   let fresh: ReturnType<typeof everything>, freshSeasons: ReturnType<typeof testSeason>[];

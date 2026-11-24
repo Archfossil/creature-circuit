@@ -1,6 +1,7 @@
 import type { Region } from '../types';
 import { ARENAS } from './arenas';
 import { STARTERS } from './codex';
+import { GIMMICKS } from './gimmicks';
 import { NPC_OUTFITS } from './looks';
 import { CITIES, CLASSIC_KEY_TOWNS, DEPTHS_STAIR, KEY_ITEM_TOWNS, MAP_SCALE, ROAMING_KEY_ITEMS, TOWNS, WISP_SPOTS, edges, nodes } from './map';
 import { NPCS } from './npcs';
@@ -17,5 +18,6 @@ export const MARGOS: Region = {
   codex: { species: 'all', starters: STARTERS },
   people: { npcs: NPCS, voices: VOICES, looks: NPC_OUTFITS },
   arenas: ARENAS,
+  gimmicks: GIMMICKS,
   weather: WEATHER_DICE,
 };

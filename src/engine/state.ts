@@ -10,6 +10,7 @@ import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progres
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, FOREST_FLOOR, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
 import { pick } from './dice';
+import { provide } from './tools';
 import { SPECIES_BY_ID } from '../data/species';
 import { currentMoveId } from '../data/moves';
 
@@ -651,3 +652,5 @@ export function log(s: GameState, text: string) {
   s.log.unshift({ turn: s.turn, text });
   if (s.log.length > 60) s.log.length = 60;
 }
+
+provide({ hasItem });

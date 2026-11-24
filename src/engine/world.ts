@@ -1,6 +1,8 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
 import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, DEPTHS_STAIR, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, FOREST_FLOOR, inWispRegion } from '../data/map';
-import { onRegion } from '../regions/active';
+import { activeRegion, onRegion } from '../regions/active';
+import type { Gate } from '../regions/gimmick';
+import { provide, tools } from './tools';
 import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, NATURE_BY_ID, ABILITIES, type Recipe } from '../data/content';
 import { INSTINCT_BY_ID } from '../data/instincts';
@@ -1549,10 +1551,11 @@ export const REMATCH_COINS = 5;
 export const ARBITER_REST = 5;
 /** Turns until an Arbiter this trainer has beaten will battle again (0: now). */
 export const arbiterResting = (s: GameState, cityId: string) => Math.max(0, (s.arbiterBeat?.[cityId] ?? -ARBITER_REST) + ARBITER_REST - s.turn);
-export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason?: string; findHim?: boolean; gauntlet?: boolean; cloud?: boolean; trail?: boolean } {
+export function arbiterGate(s: GameState, cityId: string): Gate & { findHim?: boolean; gauntlet?: boolean } {
   const rest = arbiterResting(s, cityId);
   if (rest) return { ok: false, reason: `${CITIES[cityId].arbiter}’s team is resting. Come back in ${rest} turn${rest === 1 ? '' : 's'} for a rematch.` };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
+  for (const g of activeRegion().gimmicks) { const gate = g.gate?.(s, cityId, tools); if (gate) return gate; }
   switch (cityId) {
     case 'aurora': {
       if (s.flags.salemWorthy) return { ok: true };
@@ -1571,7 +1574,6 @@ export function arbiterGate(s: GameState, cityId: string): { ok: boolean; reason
       const g = gauntletProgress(s);
       return { ok: false, gauntlet: true, reason: `Stella only faces trainers who clear the Iron Coast Gauntlet: ${g.wins}/${g.need} trainers beaten. Leaving the city resets it.` };
     }
-    case 'mangrove': return hasItem(s, 'root-whistle') ? { ok: true } : { ok: false, reason: `The mangrove roots hide Katy. You need a Root Whistle (sold in ${keyTownName(s, 'root-whistle')} this season).` };
     default: return { ok: true };
   }
 }
@@ -1749,3 +1751,5 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   }
   return report;
 }
+
+provide({ keyTownName });

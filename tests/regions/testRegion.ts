@@ -63,5 +63,11 @@ export const TEST_REGION: Region = {
     // helps the challenger, hinders the Arbiter
     lanterns: { accuracy: { label: 'Lanterns', value: (_tier, si) => (si === 0 ? 2 : -1) } },
   },
+  gimmicks: [
+    { id: 'shy', gate: (s, city) => (city === 'tc-brook' && s.turn < 5 ? { ok: false, reason: 'Arb Brook is shy.' } : null) },
+    // two answers to the same question: the first wins
+    { id: 'twice', gate: (_s, city, t) => (city === 'tc-fen' ? { ok: t.hasItem(_s, 'totem'), reason: 'No totem.' } : null) },
+    { id: 'late', gate: (_s, city) => (city === 'tc-fen' ? { ok: false, reason: 'Never heard.' } : null) },
+  ],
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },
 };

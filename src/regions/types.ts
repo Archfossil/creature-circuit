@@ -5,6 +5,7 @@ import type { Npc } from '../data/npcs';
 import type { Activity, Biome, City, ElementType, MapEdge, MapNode, Rarity, StatKey } from '../data/schema';
 import type { Voice } from '../data/texts';
 import type { TrainerLook } from '../render/trainerModel';
+import type { Gimmick } from './gimmick';
 
 export interface Town { blurb: string; sells: string[]; key?: string; special?: string }
 
@@ -86,6 +87,8 @@ export interface Region {
   people: { npcs: Npc[]; voices: Record<string, Voice>; looks: Record<string, Outfit> };
   /** Arena effects, by the name a city's `arena.trick` gives. */
   arenas: Record<string, ArenaEffect>;
+  /** Rules of its own (gimmick.ts). */
+  gimmicks: Gimmick[];
   /** Each season's weather die. */
   weather: Record<Season, string[]>;
 }
