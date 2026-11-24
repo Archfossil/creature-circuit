@@ -282,7 +282,7 @@ marketStock
   hollow: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
   thunder: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
   kilauea: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix ferry-pass
-  gloom: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix ferry-pass
+  gloom: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
   canyon: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
   iron: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix
   mangrove: salve elixir rousing-salts calm-tea totem sunberry dewberry lure-incense hush-smoke star-charm taxi-ticket trail-mix

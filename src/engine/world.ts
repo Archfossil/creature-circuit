@@ -1162,7 +1162,7 @@ export const keyTownName = (s: GameState, item: string) => NODE_BY_ID[keyTownOf(
 
 export function marketStock(nodeId: string): string[] {
   const n = NODE_BY_ID[nodeId];
-  if (n.kind === 'city') return ['salve', 'elixir', 'rousing-salts', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'hush-smoke', 'star-charm', 'taxi-ticket', 'trail-mix', ...(CITIES[nodeId]?.arenaNode ? ['ferry-pass'] : [])];
+  if (n.kind === 'city') return ['salve', 'elixir', 'rousing-salts', 'calm-tea', 'totem', 'sunberry', 'dewberry', 'lure-incense', 'hush-smoke', 'star-charm', 'taxi-ticket', 'trail-mix', ...(NODE_BY_ID[CITIES[nodeId]?.arenaNode ?? '']?.kind === 'arena' ? ['ferry-pass'] : [])];
   return TOWNS[nodeId]?.sells ?? [];
 }
 

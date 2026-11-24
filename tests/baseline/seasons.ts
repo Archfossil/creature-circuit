@@ -68,6 +68,31 @@ export function seasons(g: Game): Season[] {
     },
   });
   out.push({
+    name: 'tour-dares', about: 'Every kind of side challenge there is, taken up once and played on for three turns.',
+    play: (b) => {
+      const { D, npcs, S } = b.g;
+      for (const kind of ['race', 'arbiter', 'codex', 'recruit', 'solo', 'night', 'nabe', 'coasts', 'walk', 'finds', 'craft', 'treats'] as const) {
+        b.roll(kind);
+        const s = S.newGame('D', 'nature', 'thunder', 'sproutle', '#fff');
+        s.turn = 21;
+        Object.assign(s.inventory, SUPPLIES, MATERIALS);
+        s.npcs = {};
+        for (const n of npcs.NPCS) s.npcs[n.id] = { met: 3, won: 1, lost: 1, owed: 0, rapport: 6, seen: [0], revenges: 0 };
+        // who suggests it depends on the turn
+        let on = false;
+        for (; s.turn < 60 && !on; s.turn++) for (const n of npcs.NPCS) {
+          const idea = D.dareBlock(s, n) ? undefined : D.ideas(s, n).find((x) => x.kind === kind);
+          if (!idea || on) continue;
+          on = true;
+          b.count(`dare:${kind}`);
+          b.note(`dare ${n.id}/${kind} ${D.startDare(s, n, idea, 0)}`);
+        }
+        for (let i = 0; i < 3 && s.phase === 'map'; i++) b.wander(s);
+        b.write(s);
+      }
+    },
+  });
+  out.push({
     name: 'hotseat', about: 'Three trainers at one table: shared weather and Legendaries, gifts, trades and duels, one bracket.',
     play: (b) => {
       const { S, I, Cr } = b.g;

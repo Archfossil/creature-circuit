@@ -2932,6 +2932,7 @@ describe('Fire city and Kilauea island', () => {
     const s = newGame('T', 'balanced', 'kilauea', 'puddlit', '#fff');
     expect(W.canMoveTo(s, 'blackSand').ok).toBe(false);
     expect(W.marketStock('kilauea')).toContain('ferry-pass');
+    expect(Object.keys(CITIES).filter((id) => W.marketStock(id).includes('ferry-pass'))).toEqual(['kilauea']); // (not Gloomshade: Dahlia's arena is below it)
     s.inventory['ferry-pass'] = 1;
     expect(W.canMoveTo(s, 'blackSand').ok).toBe(true);
   });
