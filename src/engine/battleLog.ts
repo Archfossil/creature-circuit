@@ -84,7 +84,7 @@ export function logBattleEvent(lg: BattleLog, b: Battle, e: BEvent, who: (side: 
     case 'end': {
       const r = view === 1 ? flipResult(e.result) : e.result;
       lg.result = r;
-      note(r === 'win' ? 'Victory!' : r === 'lose' ? 'Your team is out of creatures.' : r === 'escaped' ? 'Got away safely.' : 'The foe fled.', { tone: r === 'win' || r === 'escaped' ? 'good' : 'bad' });
+      note(e.surrendered !== undefined ? (mine(e.surrendered) ? 'You surrendered.' : 'Victory! The other trainer surrendered.') : r === 'win' ? 'Victory!' : r === 'lose' ? 'Your team is out of creatures.' : r === 'escaped' ? 'Got away safely.' : 'The foe fled.', { tone: r === 'win' || r === 'escaped' ? 'good' : 'bad' });
       break;
     }
     default: break; // 'ko' is already announced by a 'say'

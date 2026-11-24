@@ -193,7 +193,7 @@ function staminaMeter(c: CreatureInst) {
 
 const MORALE_HELP = `Morale (0–10): how happy this creature is with you.
 Gain: winning battles it fights in (+1), Following you (+1 every other turn), treats and berries, stables, some events.
-Lose: being knocked out (−1), a team wipe (−1 each), waiting in a totem (−1 every 10 turns).
+Lose: being knocked out (−1), a team wipe (−1 each), being out when you surrender a battle (−3), waiting in a totem (−1 every 10 turns).
 High (${MORALE_HIGH}+): +1 Loyalty at the end of every turn, and +1 XP per battle.
 Low (${MORALE_LOW} or less): you get a warning. After that, every turn that ends without its Morale rising rolls a d10. Above its Loyalty, it leaves your team; otherwise it loses 1 Loyalty. Your starter (🤝 special bond) never leaves.`;
 const LOYALTY_HELP = `Loyalty (0–${LOYALTY_MAX}): trust built over time.

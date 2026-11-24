@@ -89,6 +89,7 @@ export const GUIDE: GuideCategory[] = [
         'Happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good.',
         'Unhappy ones (Morale 3 or less) get a ⚠️ warning. If you don’t raise their Morale, each later turn ends with a d10 roll against their Loyalty: above it, they leave; otherwise they lose 1 Loyalty.',
         '🤝 Your starter shares a special bond with you. You choose its Nature, Ability and Instinct when you set out, and it’s tougher than others of its kind (+1 Vigor, and no attribute starts below 1 before its Nature). It never leaves over low Morale, and it can’t be released or traded away, so you always have a partner.',
+        '🏳️ Losing a trainer battle badly? You can surrender. It costs what a full knockout would (the usual coins, half the rest, and your remaining Initiative), and the creature that’s out loses 3 Morale. But it isn’t knocked out, and you aren’t sent home. Surrendering a duel costs just the wager and the Morale.',
         'Treats, wins, rest and Following all lift Morale. Tap Morale or Loyalty on a card for details.',
         'Legendaries lose 1 Loyalty every turn no matter what, and return to their grounds on the map at 0.',
       ] },

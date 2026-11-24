@@ -150,13 +150,15 @@ export function settleChallenge(a: GameState, b: GameState, battle: Battle, wage
     out.push(`${aWon ? a.trainer.name : b.trainer.name} wins the 💰 ${stake} wager.`);
   }
   const foeLevel = Math.max(...a.roster.map((c) => c.level));
-  for (const uid of battle.foeParticipants ?? []) {
+  const unfought = battle.surrendered !== undefined && battle.round === 0; // given up before it began: no XP
+  for (const uid of unfought ? [] : battle.foeParticipants ?? []) {
     const c = b.roster.find((x) => x.uid === uid) ?? b.reserve.find((x) => x.uid === uid);
     if (c) gainXp(c, participationXp(c.level, foeLevel) + TRAINER_BATTLE_XP_BONUS);
   }
   for (const c of b.roster) if (!c.ko) c.health = Math.max(c.health, 1);
-  const result = aWon ? `${a.trainer.name} beat you in a duel at ${NODE_BY_ID[a.location].name}.` : bWon ? `You beat ${a.trainer.name} in a duel at ${NODE_BY_ID[a.location].name}!` : `Your duel with ${a.trainer.name} ended without a winner.`;
-  notify(b, `⚔️ ${result}${stake ? ` (💰 ${stake} ${bWon ? 'won' : 'lost'})` : ''} Your creatures that fought earned XP.`);
+  const gaveUp = battle.surrendered !== undefined;
+  const result = aWon ? (gaveUp ? `You surrendered a duel to ${a.trainer.name} at ${NODE_BY_ID[a.location].name}.` : `${a.trainer.name} beat you in a duel at ${NODE_BY_ID[a.location].name}.`) : bWon && gaveUp ? `${a.trainer.name} surrendered a duel to you at ${NODE_BY_ID[a.location].name}!` : bWon ? `You beat ${a.trainer.name} in a duel at ${NODE_BY_ID[a.location].name}!` : `Your duel with ${a.trainer.name} ended without a winner.`;
+  notify(b, `⚔️ ${result}${stake ? ` (💰 ${stake} ${bWon ? 'won' : 'lost'})` : ''}${unfought ? '' : ' Your creatures that fought earned XP.'}`);
   log(b, result);
   if (a.roster.every((c) => c.ko)) { helpHome(a); out.push(`${a.trainer.name}’s team is helped home to rest.`); }
   if (b.roster.every((c) => c.ko)) { helpHome(b); out.push(`${b.trainer.name}’s team is helped home to rest.`); }

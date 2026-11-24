@@ -26,7 +26,7 @@ import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
-import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
@@ -863,7 +863,7 @@ export class App {
       this.closeAsk();
       net.send({ type: 'answer', id: m.id, ...msg });
     };
-    const pick = m.pick as ({ kind: 'duel'; round: number } & FoeOptions) | undefined;
+    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number } & FoeOptions) | undefined;
     const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
     if (send?.kind === 'duel-send') {
       callFor('Choose your next creature!', `${m.from} is waiting for you.`);
@@ -1162,7 +1162,7 @@ export class App {
         if (!ok) return;
         const battle = I.startChallenge(a, b);
         if (!battle) { toast(I.challengeProblem(a, b) ?? 'The duel can’t start.', 'bad'); return; }
-        await this.runBattle(battle, { kind: 'rival', rival: b, intro: `${b.trainer.name} accepts ${a.trainer.name}’s challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duelLead: W.needsLeadChoice(b) ? (bt, vs) => this.duelLeadPick(a, b, bt, vs) : undefined, duel: (bt) => this.duelPick(a, b, bt), duelSend: (bt) => this.duelSendPick(a, b, bt) });
+        await this.runBattle(battle, { kind: 'rival', rival: b, wager: w, intro: `${b.trainer.name} accepts ${a.trainer.name}’s challenge!`, rivalLook: playerLook(b.trainer.name, b.trainer.color, b.trainer.look), duelLead: W.needsLeadChoice(b) ? (bt, vs) => this.duelLeadPick(a, b, bt, vs) : undefined, duel: (bt) => this.duelPick(a, b, bt, w), duelSend: (bt) => this.duelSendPick(a, b, bt) });
         for (const t of I.settleChallenge(a, b, battle, w)) toast(t, 'info', 4000);
         save(a);
         this.world.setPawnAt(a.location); this.world.focus(a.location, true);
@@ -1175,8 +1175,8 @@ export class App {
    * the device is passed to them (choices stay secret) and back. Online: they pick in their own
    * browser; if they don't answer within a minute, their creature acts on its own instincts.
    */
-  async duelPick(a: GameState, b: GameState, battle: Battle): Promise<Action | undefined> {
-    const opts = foeOptions(battle);
+  async duelPick(a: GameState, b: GameState, battle: Battle, wager: number): Promise<Action | undefined> {
+    const opts = { ...foeOptions(battle), stake: Math.min(wager, b.coins) };
     const m = activeMatchOf();
     if (this.online && m) {
       return this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts });
@@ -1262,7 +1262,7 @@ export class App {
   }
 
   /** The defender's choices in a duel round: their moves, Catch Breath, and swaps. */
-  duelPicker(o: FoeOptions, round: number, done: (a: Action) => void): HTMLElement {
+  duelPicker(o: FoeOptions & { stake?: number }, round: number, done: (a: Action) => void): HTMLElement {
     const body = h('div', { class: 'duel-picker' });
     const swaps = () => body.replaceChildren(
       h('p', null, 'Swap in for ', h('b', null, o.name), ': choose the incoming Alpha.'),
@@ -1274,9 +1274,59 @@ export class App {
       h('div', { class: 'move-grid' }, o.moves.map((id) => moveCard(MOVE_BY_ID[id], { compact: true, vs: o.vs, onClick: () => done({ kind: 'move', move: id }) }))),
       h('div', { class: 'row gap-s wrap center' },
         h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
-        h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight', onclick: swaps }, '🔁 Swap')));
+        h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight', onclick: swaps }, '🔁 Swap'),
+        h('button', { class: 'btn ghost sm', onclick: () => giveUp() }, '🏳️ Surrender')));
+    // asked in place, so it goes when the prompt does (the round can time out)
+    const giveUp = () => body.replaceChildren(
+      this.surrenderTerms(o.lead, [o.stake ? `You lose the 💰 ${o.stake} wager.` : 'You lose the duel (there’s no wager).'], ['You aren’t sent anywhere to rest: you stay where you are.']),
+      h('div', { class: 'row end gap' },
+        h('button', { class: 'btn ghost', onclick: () => moves() }, 'Keep fighting'),
+        h('button', { class: 'btn primary', onclick: () => done({ kind: 'surrender' }) }, '🏳️ Surrender')));
     moves();
     return body;
+  }
+
+  /** What surrendering costs and what it saves. */
+  surrenderTerms(c: { name: string; morale: number; bond?: boolean }, costs: string[], keeps: string[]): HTMLElement {
+    const to = Math.max(0, c.morale - SURRENDER_MORALE);
+    return h('div', { class: 'surrender-terms' },
+      h('h4', null, '🏳️ What it costs'),
+      h('ul', { class: 'small' }, costs.map((t) => h('li', null, t)),
+        h('li', null, h('b', null, `${c.name}’s Morale drops from ${c.morale} to ${to}. `), 'It will feel you don’t believe in it.',
+          to <= MORALE_LOW && !c.bond ? ' ⚠️ That’s low enough that it could leave you.' : '')),
+      h('h4', null, '🛡️ What it saves'),
+      h('ul', { class: 'small' }, h('li', null, h('b', null, `${c.name} isn’t knocked out`), ', and neither is anyone else still standing.'), keeps.map((t) => h('li', null, t))));
+  }
+  /** Warn about surrendering this battle, and ask. */
+  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gauntlet?: boolean }): Promise<boolean> {
+    const s = this.s, me = activeOf(b.sides[0]);
+    const at = NODE_BY_ID[s.location].name;
+    const costs: string[] = [], keeps: string[] = [];
+    if (ctx.kind === 'rival') {
+      const stake = Math.min(ctx.wager ?? 0, s.coins);
+      costs.push(stake ? `You lose the 💰 ${stake} wager.` : 'You lose the duel (there’s no wager).');
+      keeps.push(`You aren’t sent anywhere to rest: you stay at ${at}.`);
+    } else if (ctx.kind === 'endgame') {
+      costs.push('You’re out of the Creature Circuit, and your season ends here.');
+    } else {
+      if (ctx.kind === 'trainer') costs.push(`You lose the battle: ${b.sides[1].name} takes d6 coins, as usual, and you lose half of what’s left (you have 💰 ${s.coins}).`);
+      else costs.push(`You lose the battle, and half your coins (you have 💰 ${s.coins}).`);
+      costs.push(`You lose the rest of your Initiative (${s.initiative} left).`);
+      keeps.push(`You aren’t sent back to a city: you stay at ${at}.`);
+      if (ctx.gauntlet) keeps.push('Your Gauntlet progress is kept.');
+      if (Object.keys(s.cloudLoot ?? {}).length) keeps.push('Your Cloud satchel is kept.');
+    }
+    return new Promise((resolve) => {
+      let done = false;
+      const end = (v: boolean) => { if (done) return; done = true; close(); resolve(v); };
+      const close = openSheet('Surrender this battle?', h('div', null,
+        this.surrenderTerms({ name: nameOf(me), morale: me.morale, bond: me.bond }, costs, keeps),
+        b.arena?.trick === 'crumble' ? h('p', { class: 'small muted' }, '⏳ Being rung out when the plateau is gone costs none of this.') : null,
+        ctx.kind === 'trainer' || ctx.kind === 'arbiter' ? h('p', { class: 'small muted' }, 'If your whole team is knocked out instead, you lose the same coins and Initiative, and everyone loses Morale and is sent back to a city, where they’re fully rested.') : null,
+        h('div', { class: 'row end gap' },
+          h('button', { class: 'btn ghost', onclick: () => end(false) }, 'Keep fighting'),
+          h('button', { class: 'btn primary', onclick: () => end(true) }, '🏳️ Surrender'))), { onClose: () => { if (!done) { done = true; resolve(false); } } });
+    });
   }
 
   /** Ask another trainer about `what` (a trade or a challenge): hand them the device, or ask in their own browser. */
@@ -1733,7 +1783,7 @@ export class App {
     });
   }
 
-  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
+  async runBattle(b: Battle, ctx: { kind: 'wild' | 'trainer' | 'arbiter' | 'legendary' | 'endgame' | 'rival'; intro: string; city?: string; nodeId?: string; gauntlet?: boolean; rivalLook?: TrainerLook; /** Duels: the challenged trainer, who keeps their own log of it. */ rival?: GameState; /** Duels: the coins at stake. */ wager?: number; /** Viewing a duel: the challenged trainer's seat. */ rivalSeat?: number; watch?: AsyncQueue<FeedItem>; /** Viewing: what happened before we looked in. */ past?: BEvent[]; duelLead?: (b: Battle, vs: CreatureInst | null) => Promise<number | undefined>; duel?: (b: Battle) => Promise<Action | undefined>; duelSend?: (b: Battle) => Promise<number | undefined> }): Promise<Battle['over']> {
     const s = this.s;
     closeAllSheets();
     $('.node-preview')?.remove();
@@ -1998,6 +2048,7 @@ export class App {
             h('button', { class: 'btn ghost sm', onclick: () => choose(CATCH_BREATH.id) }, '😮‍💨 Catch Breath'),
             h('button', { class: 'btn ghost sm', disabled: !canSwap, title: canSwap ? '' : 'Swapping is allowed from round 2', onclick: () => swapPicker() }, '🔁 Swap'),
             canRun ? h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'run' }) }, '🏃 Run') : null,
+            canSurrender(b) ? h('button', { class: 'btn ghost sm', title: 'Give up this battle (you’re asked first)', onclick: async () => { if (await this.confirmSurrender(b, ctx) && panel.isConnected && controls.querySelector('.move-grid')) void act({ kind: 'surrender' }); } }, '🏳️ Surrender') : null,
             h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
             h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card')));
       };
@@ -2060,7 +2111,7 @@ export class App {
       const act = async (a: Parameters<typeof resolveRound>[1]) => {
         controls.replaceChildren(h('div', { class: 'waiting' }, ctx.duel ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
         // two-player duel: the other trainer picks their creature's action too
-        const foe = ctx.duel ? await ctx.duel(b) : undefined;
+        const foe = ctx.duel && a.kind !== 'surrender' ? await ctx.duel(b) : undefined;
         const ev = resolveRound(b, a, foe);
         await play(ev);
         showControls();
@@ -2115,7 +2166,7 @@ export class App {
 
     // ── Aftermath ──────────────────────────────────────────────
     if (result === 'win') { sfx.fanfare(); say('Victory!', 'good'); await wait(600); }
-    if (result === 'lose') { sfx.bad(); say('Your team is out of creatures…', 'bad'); await wait(900); }
+    if (result === 'lose') { sfx.bad(); say(b.surrendered === 0 ? 'You surrendered.' : 'Your team is out of creatures…', 'bad'); await wait(900); }
     if (result === 'fled') await wait(500);
     const wild = b.sides[1].team[0];
     if (result === 'win' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) {
@@ -2129,7 +2180,7 @@ export class App {
     if (!mercy && ctx.kind !== 'rival' && s.roster.every((c) => c.ko) && W.wipeOptions(s).length > 1) wipeTo = await this.pickWipeCity();
     const rematch = ctx.kind === 'arbiter' && s.merits.includes(ctx.city!);
     const summary = W.finishBattle(s, b, { kind: ctx.kind, city: ctx.city, nodeId: ctx.nodeId, gauntlet: ctx.gauntlet, wipeTo, mercy });
-    for (const t of summary.text) toast(t, summary.wiped ? 'bad' : 'good', 3500);
+    for (const t of summary.text) toast(t, summary.wiped || b.surrendered === 0 ? 'bad' : 'good', 3500);
     this.busy = false;
     if (ctx.kind !== 'endgame') {
       this.engine.setView(this.world);

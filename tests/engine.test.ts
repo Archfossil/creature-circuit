@@ -3847,3 +3847,55 @@ describe('Move keywords: Potency, Cascade, Purge, and status moves', () => {
     expect(statusBlock(bt, 1, 'burn')).toBeNull();
   });
 });
+
+describe('Surrender', () => {
+  const start = (kind: 'trainer' | 'arbiter' | 'wild') => {
+    const s = newGame('A', 'balanced', 'thunder', 'emberfish', '#fff');
+    s.coins = 41; s.initiative = 4;
+    s.location = 'w1';
+    const b = createBattle(W.playerSide(s), side(kind, [createCreature('zapup', 3)]), WEATHER.clear);
+    return { s, b, me: b.sides[0].team[b.sides[0].active] };
+  };
+  it('loses the coins and Initiative a wipe would, and 3 Morale, but nobody is knocked out or sent home', () => {
+    const { s, b, me } = start('trainer');
+    me.morale = 6;
+    const ev = resolveRound(b, { kind: 'surrender' });
+    expect(b.over).toBe('lose');
+    expect(ev.at(-1)).toMatchObject({ t: 'end', surrendered: 0 });
+    expect(me.morale).toBe(3);
+    expect(ev.some((e) => e.t === 'xp')).toBe(false); // given up before round 1
+    const out = W.finishBattle(s, b, { kind: 'trainer' });
+    expect(out.wiped).toBe(false);
+    expect(s.location).toBe('w1');
+    expect(me.ko).toBe(false);
+    expect(s.initiative).toBe(0);
+    expect(s.coins).toBeGreaterThanOrEqual(17); // (41 − d6) halved
+    expect(s.coins).toBeLessThanOrEqual(20);
+    expect(s.stats.record?.trainer?.lost).toBe(1);
+  });
+  it('takes half your coins against an Arbiter, earns no Merit, and Morale stops at 0', () => {
+    const { s, b, me } = start('arbiter');
+    me.morale = 2;
+    resolveRound(b, { kind: 'surrender' });
+    W.finishBattle(s, b, { kind: 'arbiter', city: 'thunder' });
+    expect([me.morale, s.coins, s.merits.length]).toEqual([0, 20, 0]);
+  });
+  it('is not offered against wild creatures', () => {
+    const { b } = start('wild');
+    expect(resolveRound(b, { kind: 'surrender' })).toEqual([]);
+    expect(b.over).toBeNull();
+  });
+  it('a challenged trainer can surrender a duel: the wager and their creature’s Morale, nothing more', () => {
+    const { s: a } = start('trainer');
+    const { s: z } = start('trainer');
+    z.trainer.name = 'Z';
+    const b = I.startChallenge(a, z)!;
+    expect(b).toBeTruthy();
+    const me = b.sides[1].team[b.sides[1].active];
+    me.morale = 8;
+    resolveRound(b, { kind: 'move', move: 'catch-breath' }, { kind: 'surrender' });
+    expect(b.over).toBe('win');
+    I.settleChallenge(a, z, b, 10);
+    expect([me.morale, me.ko, a.coins, z.coins, z.initiative, z.location]).toEqual([5, false, 51, 31, 4, 'w1']);
+  });
+});

@@ -36,6 +36,8 @@ export interface Battle {
   fleeWarned: boolean;
   status: Record<string, BattleStatus>;
   over: null | 'win' | 'lose' | 'escaped' | 'fled';
+  /** The side whose trainer surrendered. */
+  surrendered?: 0 | 1;
   needSwap: boolean;
   participants: string[];
   biome: string;
@@ -70,7 +72,7 @@ export interface Battle {
   overheal?: Record<string, number>;
 }
 
-export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' };
+export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' } | { kind: 'surrender' };
 
 export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number; /** Overheal: extra Health beyond full that soaks up damage first. */ over?: number }
 export type BEvent =
@@ -94,7 +96,7 @@ export type BEvent =
   | { t: 'arena'; text: string }
   /** Cliff's crumbling plateau: rounds left before the challenger is rung out (of `total`). */
   | { t: 'ring'; left: number; total: number }
-  | { t: 'end'; result: NonNullable<Battle['over']> };
+  | { t: 'end'; result: NonNullable<Battle['over']>; surrendered?: 0 | 1 };
 
 /** One labelled number in a roll or damage formula, e.g. { label: 'Power', value: 3 }. */
 export interface Part { label: string; value: number }
@@ -333,6 +335,7 @@ export function foeOptions(b: Battle) {
     swaps: b.round >= 1 ? side.team.map((c, i) => ({ c, i })).filter((x) => !x.c.ko && x.i !== side.active).map(({ c, i }) => ({ i, name: nameOf(c), row: swapRowInfo(b, 1, i) })) : [],
     vs: speciesOf(activeOf(b.sides[0])).types,
     health: `${totalHealth(me)}/${maxTotal(me)}`, stamina: `${me.stamina}/${maxStamina(me)}`, fatigue: me.fatigue,
+    lead: { name: nameOf(me), morale: me.morale, bond: me.bond },
   };
 }
 export type FoeOptions = ReturnType<typeof foeOptions>;
@@ -598,6 +601,8 @@ function weightedPick(opts: { id: string; score: number }[], sharp: number): str
 export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[] {
   const ev: BEvent[] = [];
   if (b.over) return ev;
+  if (pa.kind === 'surrender') return surrender(b, 0);
+  if (foeAction?.kind === 'surrender') return surrender(b, 1);
   if (b.foeNeedSwap) ev.push(...foeSendIn(b, -1)); // nobody picked a replacement: the next in line goes
   b.round++;
   // the leads take the field as round 1 begins (after the trainer picked who leads)
@@ -673,7 +678,7 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
       break;
     }
     if (act.kind === 'swap') doSwap(b, si, act.to, ev);
-    else useMove(b, si, MOVE_BY_ID[act.move] ?? CATCH_BREATH, ev);
+    else if (act.kind === 'move') useMove(b, si, MOVE_BY_ID[act.move] ?? CATCH_BREATH, ev);
   }
 
   if (!b.over) endOfRound(b, ev);
@@ -1172,6 +1177,31 @@ function awardBattleXp(b: Battle, ev: BEvent[]) {
     const xp = Math.max(1, participationXp(c.level, foeLevel) + bonus + (b.sides[0].xpBonus ?? 0));
     ev.push({ t: 'xp', uid, amount: xp, levels: gainXp(c, xp), reason: 'battle', ...(bonus ? { bonus } : {}) });
   }
+}
+
+// ── Surrender ───────────────────────────────────────────────────
+/** Morale the active creature loses when its trainer surrenders. */
+export const SURRENDER_MORALE = 3;
+/** Only battles with another trainer can be surrendered (you run from wild creatures). */
+export const canSurrender = (b: Battle) => !b.over && !b.legendary && b.sides[1].kind !== 'wild';
+/**
+ * A side's trainer gives up: they lose, but nobody is knocked out for it. Their active creature takes it
+ * hard. What else it costs is settled after the battle (world.ts → finishBattle, interactions.ts).
+ */
+export function surrender(b: Battle, side: 0 | 1): BEvent[] {
+  const me = activeOf(b.sides[side]);
+  if (!canSurrender(b) || me.ko) return [];
+  const ev: BEvent[] = [];
+  const lost = Math.min(me.morale, SURRENDER_MORALE);
+  me.morale -= lost;
+  b.surrendered = side;
+  b.over = side === 0 ? 'lose' : 'win';
+  b.needSwap = b.foeNeedSwap = false;
+  ev.push({ t: 'say', text: `${b.sides[side].name} surrenders!`, tone: side === 0 ? 'bad' : 'good' });
+  ev.push({ t: 'say', text: `${nameOf(me)} hangs its head: its trainer didn’t believe in it. (−${lost} Morale)`, tone: side === 0 ? 'bad' : 'info' });
+  if (b.round > 0) awardBattleXp(b, ev); // nothing is learned from a battle given up before it began
+  ev.push({ t: 'end', result: b.over, surrendered: side });
+  return ev;
 }
 
 function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {

@@ -60,12 +60,22 @@ Aside from their physical attributes, Creatures will have the following social a
 
 Loyalty tracks trust with the trainer and unlocks high-tier behavioral bonuses based on the creature's Nature. Loyalty acts as a currency which can be spent in the Creature's nature to unlock more passive benefits determined by their personality (their Nature.)
 
+## Surrender
+
+> **Prototype rules: surrendering** (`battle.ts` → `surrender`)
+> - Any battle against a trainer (roaming trainers, Rivals, Champions, Arbiters, the Finals, duels) can be surrendered when choosing an action. Wild and Legendary battles can't: you run from those. The game spells out the cost and asks first.
+> - **It's a loss**, with everything a knocked-out team would cost: the d6 coins (roaming trainers, Rivals and Champions), half the remaining coins and the rest of the turn's Initiative. It counts as a loss to a Rival or Champion (so they can be avenged).
+> - **The active creature loses 3 Morale**: its trainer didn't believe in it. The −1 Morale each of a team wipe doesn't apply.
+> - **Nobody is knocked out, and the trainer isn't sent home.** The team stays where it is, unrested, so a Cloud satchel and Gauntlet progress are kept.
+> - **Duels:** either trainer can surrender. It costs only the wager and the Morale. **The Finals:** it ends the season.
+> - Creatures still earn XP for battling, unless it's given up before the first round.
+
 ## Morale
 
 Creatures who avoid being KO'd, win battles in streaks, get chosen as "followers" often, and receive active praise and care from their trainers will have high morale. Creatures who are on losing streaks in battle, are left in their totems, get neglected or ignored by their trainers, or are passed over when the trainer hands out items and treats will have low morale. Creatures with low morale can reject their trainers and return to the wild. Creatures with high Morale gain bonuses to their earned Loyalty and Experience.
 
 > **Prototype rules: Morale & Loyalty** (tap either chip on a creature's card for the in-game summary)
-> - **Morale (0–10).** It rises when the creature wins a battle it fought in (+1), Follows you (+1 every other turn), gets treats or berries, rests at a stable, or through some events. It falls when it's knocked out (−1), on a team wipe (−1 each), and while it waits in a totem (−1 every 10 turns).
+> - **Morale (0–10).** It rises when the creature wins a battle it fought in (+1), Follows you (+1 every other turn), gets treats or berries, rests at a stable, or through some events. It falls when it's knocked out (−1), on a team wipe (−1 each), when its trainer surrenders while it's out (−3), and while it waits in a totem (−1 every 10 turns).
 > - **High Morale (7+)** earns +1 Loyalty at the end of every turn, plus +1 XP per battle.
 > - **Loyalty (0–10).** Reaching each Nature perk's threshold (e.g. 3 / 6 / 10) unlocks that perk automatically and permanently. Perks never re-lock. Loyalty isn't spent. At the Capstone, attacks deal +1 damage per 5 Loyalty.
 > - **Low Morale (3 or less)** first triggers a warning. After that, every turn that ends without the creature's Morale having risen rolls a d10:

@@ -16,7 +16,7 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 - **Challenging:** a city action from the arena (in the city itself, except Amber's, which is on Kilauea island). It costs **1 Initiative** (Ranger 2, Urbanite 0). The team needs at least one creature that isn't KO'd. Some Arbiters have an extra **access condition** (see each card).
 - **The battle:** a trainer battle against 2–3 creatures of the Arbiter's type, with the arena effect active all battle. The Arbiter's AI is sharper than wild creatures' and trainers' (only the Champions are sharper), so it rarely picks a poor move.
 - **Winning:** the Merit, **💰 10 × Tier** (Merchant style adds its 25%), and trainer-battle XP (+3 for every creature that fought, on top of the usual XP).
-- **Losing:** no coins lost and no penalty beyond the battle itself (unlike roaming trainers). If the whole team is knocked out, the usual wipe applies: back home, half your coins, Initiative gone. You can try again on a later turn.
+- **Losing:** no coins lost and no penalty beyond the battle itself (unlike roaming trainers). If the whole team is knocked out, the usual wipe applies: back home, half your coins, Initiative gone. [Surrendering](./03-combat-rules.md) costs the same coins and Initiative, and 3 Morale for the active creature, but nobody is knocked out or sent home. You can try again on a later turn.
 - **Rematches:** an Arbiter whose Merit you hold will battle again at your **current** Tier, for **💰 5 × Tier** and an **Energy Imprint** of their type. Their team rests **5 turns** after each loss to you (`ARBITER_REST`). Access conditions already met stay met; Dahlia's trail isn't needed again, but her arena is still on the Forest Floor.
 
 ### Energy Imprints

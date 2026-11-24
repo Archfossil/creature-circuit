@@ -1127,6 +1127,15 @@ export function finishBattle(s: GameState, b: Battle, ctx: { kind: 'wild' | 'tra
     const dest = wipe(s, ctx.wipeTo);
     out.text.push(`Your team was wiped out. You rush back to ${CITIES[dest].name}…`);
   }
+  if (b.surrendered === 0 && (ctx.kind === 'trainer' || ctx.kind === 'arbiter')) {
+    // surrendering costs what a wipe does (half your coins, the rest of the turn), without the trip home
+    const lost = s.coins - Math.floor(s.coins / 2);
+    s.coins -= lost;
+    s.initiative = 0;
+    const who = b.sides[1].name;
+    out.text.push(`You surrendered: ${lost} coins and the rest of your Initiative are gone, but your team stays where it is.`);
+    log(s, `Surrendered to ${who}. Lost half your coins and the rest of your Initiative.`);
+  }
   // out of combat: the current heart refills (lost hearts need rest)
   for (const c of s.roster) if (!c.ko) { c.health = maxHealth(c); c.stamina = maxStamina(c); }
   return out;
