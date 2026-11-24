@@ -25,7 +25,7 @@ const edges: MapEdge[] = ([
   ['tc-ash', 'w1'], ['w1', 'w2'], ['w2', 'tc-brook'], ['tc-ash', 'tt-mill'], ['tt-mill', 'n1'], ['n1', 'tc-fen'], ['tc-fen', 'n2'], ['n2', 'tc-brook'],
   ['tc-brook', 'tt-quay'], ['w2', 'w3'], ['w3', 'stadium'], ['tt-mill', 'stadium'], ['tc-ash', 'tl-crown'],
 ] as const).map(([a, b]) => ({ a, b }));
-const city = (nodeId: string, name: string, type: ElementType, arbiter: string, trick: City['arena']['trick']): City => ({
+const city = (nodeId: string, name: string, type: ElementType, arbiter: string, trick: string): City => ({
   nodeId, name, type, park: 'Nowhere', arbiter, accolade: `${name} Merit`, arena: { name: `${name} Arena`, trick, text: '' }, hotpot: { name: `${name} Nabe`, buff: { power: 1 }, text: '' }, blurb: '',
 });
 const npc = (id: string, kind: Npc['kind'], types: Npc['types'], home: string, rating: number): Npc => ({ id, name: `Test ${id}`, kind, types, home, rating, blurb: '', lines: { greet: 'Hi.', gloat: 'Ha.', concede: 'Oh.', chat: 'Hm.' } });
@@ -42,7 +42,7 @@ export const TEST_REGION: Region = {
   name: 'Testland',
   map: {
     scale: 1, nodes, edges,
-    cities: { 'tc-ash': city('tc-ash', 'Testash', 'fire', 'Arb Ash', 'flames'), 'tc-brook': city('tc-brook', 'Testbrook', 'water', 'Arb Brook', 'roots'), 'tc-fen': city('tc-fen', 'Testfen', 'grass', 'Arb Fen', 'darkness') },
+    cities: { 'tc-ash': city('tc-ash', 'Testash', 'fire', 'Arb Ash', 'flames'), 'tc-brook': city('tc-brook', 'Testbrook', 'water', 'Arb Brook', 'tide'), 'tc-fen': city('tc-fen', 'Testfen', 'grass', 'Arb Fen', 'lanterns') },
     towns: { 'tt-mill': { blurb: '', sells: ['salve', 'totem'] }, 'tt-quay': { blurb: '', sells: ['calm-tea', 'sunberry'] }, stadium: { blurb: '', sells: ['salve'], special: 'stadium' } },
     places: { wispSpots: nodes.filter((n) => n.kind !== 'legendary' && n.kind !== 'stadium').map((n) => n.id), roamingKeyItems: [], keyItemTowns: [], classicKeyTowns: {}, coasts: [] },
   },
@@ -56,5 +56,12 @@ export const TEST_REGION: Region = {
     local: { puddlit: { biomes: ['desert'], activity: 'nocturnal' }, sproutle: { rarity: 'prime' } },
   },
   people: { npcs, voices: Object.fromEntries(npcs.map((x) => [x.id, voice])), looks: Object.fromEntries(npcs.map((x) => [x.id, outfit])) },
+  arenas: {
+    // Margos has one of these too, but this does something else, and two things at once
+    flames: { stat: (tier, si, k) => (si === 1 && k === 'power' ? tier : 0), roundEnd: ({ hurt, sides }) => { for (const si of sides) hurt(si, 1, 'Test flames singe {n}.'); } },
+    tide: { countdown: { rounds: (tier) => 5 - Math.min(2, tier), name: 'Tide', hint: 'Test hint', leftHint: 'before the tide', surrenderNote: 'Test note', overShort: 'Swept out!', over: 'Test swept out.', near: { 3: 'Test soon.', 1: 'Test nearly.' } }, roundEnd: ({ round, hurt }) => { if (round === 2) hurt(1, 99, 'Test wave.'); } },
+    // helps the challenger, hinders the Arbiter
+    lanterns: { accuracy: { label: 'Lanterns', value: (_tier, si) => (si === 0 ? 2 : -1) } },
+  },
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },
 };

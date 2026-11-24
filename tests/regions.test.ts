@@ -1,5 +1,5 @@
 // Changing region leaves nothing of the last one behind (docs/16-region-packages.md, step 3).
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { Bot, loadGame, type Game } from './baseline/bot';
 import { seasons } from './baseline/seasons';
@@ -14,9 +14,11 @@ async function copy(first?: typeof TEST_REGION) {
   if (first) active.setRegion(first);
   const g = await loadGame();
   const { dataSnapshot } = await import('./baseline/data');
+  const { logBattleEvent: log } = await import('../src/engine/battleLog');
+  const { INSTINCTS } = await import('../src/data/instincts');
   const { opponentLook } = await import('../src/render/npcLooks');
   const { MARGOS } = await import('../src/regions');
-  return { g, active, dataSnapshot, opponentLook, MARGOS };
+  return { g, active, dataSnapshot, opponentLook, MARGOS, log, INSTINCTS };
 }
 /** A season in the test region, and the save it ends with. */
 function testSeason(g: Game, home: string) {
@@ -193,6 +195,88 @@ describe('the Codex', () => {
       expect(outsiders(s)).toEqual([]);
     }
   }, 120000);
+});
+
+describe('arenas', () => {
+  let t: Awaited<ReturnType<typeof copy>>, m: Awaited<ReturnType<typeof copy>>;
+  beforeAll(async () => { m = await copy(); t = await copy(TEST_REGION); }, 60000);
+  const arena = (g: Game, city: string, tier = 1) => {
+    const s = g.S.newGame('T', 'balanced', city, 'cindercub', '#fff');
+    s.merits = Array.from({ length: (tier - 1) * 2 }, (_, i) => `m${i}`);
+    const b = g.W.arbiterBattle(s, city);
+    for (const side of b.sides) for (const c of side.team) { c.health = 999; c.vitality = 9; }
+    return b;
+  };
+  const rest = { kind: 'move' as const, move: 'catch-breath' };
+  // (the same dice every run)
+  let die: Bot;
+  beforeEach(() => { die = new Bot(m.g, 'arenas'); die.start(); });
+  afterEach(() => die.stop());
+
+  it('every city’s is in its region, and every one has a city', () => {
+    for (const g of [m.MARGOS, TEST_REGION]) expect(Object.values(g.map.cities).map((c) => c.arena.trick).sort()).toEqual(Object.keys(g.arenas).sort());
+  });
+  it('are the region’s own, even when they share a name', () => {
+    const { B } = t.g, b = arena(t.g, 'tc-ash', 3);
+    const parts = B.boostsOf(b, 1).find((x) => x.stat === 'power')!.parts;
+    expect(parts).toContainEqual({ label: 'The arena', value: 3 });
+    const texts = B.resolveRound(b, rest).filter((e) => e.t === 'arena').map((e) => (e as { text: string }).text);
+    expect(texts.length).toBe(2); // and it happens on an odd round, to Fire creatures too
+    expect(texts[0]).toMatch(/^Test flames singe \w+/);
+    const there = arena(m.g, 'kilauea', 3);
+    expect(m.g.B.boostsOf(there, 1).find((x) => x.stat === 'power')).toBeUndefined();
+    expect(m.g.B.resolveRound(there, rest).filter((e) => e.t === 'arena')).toEqual([]);
+  });
+  it('can have any timer', () => {
+    const { B } = t.g, b = arena(t.g, 'tc-brook');
+    expect([B.ringRounds(b), B.ringLeft(b)]).toEqual([4, 4]);
+    const seen: string[] = [], lefts: number[] = [], lines: string[] = [];
+    for (let i = 0; i < 9 && !b.over; i++) for (const e of B.resolveRound(b, rest)) {
+      if (e.t === 'arena') seen.push(e.text);
+      if (e.t === 'ring') lefts.push(e.left);
+      const lg = { title: '', turn: 1, entries: [] as { text: string; round: number }[] };
+      t.log(lg, b, e, () => 'x');
+      lines.push(...lg.entries.map((x) => x.text).filter((x) => x.startsWith('Tide')));
+    }
+    expect(lefts).toEqual([3, 2, 1, 0]);
+    expect(seen).toEqual(['Test soon.', 'Test wave.', 'Test nearly.', 'Test swept out.']);
+    expect(lines[0]).toBe('Tide: 3 of 4 rounds left.');
+    expect([b.over, b.round]).toEqual(['lose', 4]);
+    expect(B.ringLeft(arena(t.g, 'tc-ash'))).toBe(null);
+  });
+  it('stops its timer when its own hazard wins the battle', () => {
+    const { B } = t.g, b = arena(t.g, 'tc-brook');
+    B.resolveRound(b, rest);
+    b.sides[1].team.forEach((c, i) => { c.health = 1; c.vitality = 0; if (i !== b.sides[1].active) c.ko = true; });
+    const ev = B.resolveRound(b, rest);
+    expect(b.over).toBe('win');
+    expect(ev.filter((e) => e.t === 'ring')).toEqual([]);
+  });
+  it('can help a side’s accuracy as well as spoil it, and only a penalty is ignored by a steady Instinct', () => {
+    const { B, Cr } = t.g;
+    const rolls = (steady: boolean) => {
+      const b = arena(t.g, 'tc-fen'), out: Record<number, (number | undefined)[]> = { 0: [], 1: [] };
+      const inst = t.INSTINCTS.find((x) => x.passive?.steady)!;
+      for (const side of b.sides) for (const c of side.team) if (steady) c.instinct = inst.id;
+      for (let i = 0; i < 8 && !b.over; i++) {
+        for (const e of B.resolveRound(b, B.chooseAI(b, 0))) if (e.t === 'roll' && e.mods) out[e.side].push(e.mods.find((p) => p.label === 'Lanterns')?.value);
+        if (b.needSwap) break;
+      }
+      expect(Cr.instinctIdOf(b.sides[0].team[0]) === inst.id).toBe(steady);
+      return [new Set(out[0]), new Set(out[1])];
+    };
+    const plain = rolls(false), steady = rolls(true);
+    expect(plain[0].has(2)).toBe(true);
+    expect(plain[1].has(-1)).toBe(true);
+    expect(steady[0].has(2)).toBe(true);
+    expect(steady[1].has(-1)).toBe(false);
+  });
+  it('the engine and screens know none of Margos’s by name', () => {
+    const root = new URL('../src/', import.meta.url);
+    const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => f.endsWith('.ts') && !f.startsWith('regions/'));
+    const names = new RegExp(`trick\\s*[!=]==|case '(${Object.keys(m.MARGOS.arenas).join('|')})'`);
+    expect(files.filter((f) => names.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
+  });
 });
 
 describe('changing region', () => {

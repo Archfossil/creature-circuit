@@ -7,6 +7,7 @@ import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDAR
 import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
+import { MARGOS } from '../src/regions';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { rollWisp, wispLit, moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
@@ -1854,7 +1855,7 @@ describe('arena effects', () => {
   });
   it('Cliff’s plateau counts down each round and rings the challenger out when it’s gone, without dealing damage', () => {
     const b = arena('canyon', 'puddlit');
-    const total = ringRounds(b.arena!.tier);
+    const total = ringRounds(b);
     expect(total).toBe(10);
     expect(ringLeft(b)).toBe(total);
     const lefts: number[] = [];
@@ -1866,7 +1867,7 @@ describe('arena effects', () => {
     expect(b.over).toBe('lose');
     expect(b.round).toBe(total);
     expect(lefts).toEqual(Array.from({ length: total }, (_, i) => total - 1 - i));
-    expect([1, 2, 3, 4, 5].map(ringRounds)).toEqual([10, 10, 9, 9, 8]);
+    expect([1, 2, 3, 4, 5].map(MARGOS.arenas.crumble.countdown!.rounds)).toEqual([10, 10, 9, 9, 8]);
   });
 });
 

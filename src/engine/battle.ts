@@ -1,8 +1,10 @@
-import type { ArenaTrick, ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
+import type { ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
 import { SWAP_STATUS_ON, describeSwap, swapChart, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
+import { activeRegion } from '../regions/active';
+import type { ArenaCountdown, ArenaEffect } from '../regions/types';
 import type { CreatureInst, BattleStatus } from './creature';
 import { stats, moveWorth, healthFraction, STATUS_WORTH, HEART, maxHealth, totalHealth, maxTotal, maxStamina, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, instinctIdOf, gainXp, xpForWin, participationXp, TRAINER_BATTLE_XP_BONUS } from './creature';
 import { roll, clashDie } from './dice';
@@ -31,7 +33,7 @@ export interface Battle {
   sides: [Side, Side];
   round: number;
   weather: WeatherDef;
-  arena?: { trick: ArenaTrick; tier: number; city: string };
+  arena?: { trick: string; tier: number; city: string };
   legendary: boolean;
   fleeWarned: boolean;
   status: Record<string, BattleStatus>;
@@ -98,7 +100,7 @@ export type BEvent =
   | { t: 'send'; side: 0 | 1; idx: number; snap: Snap }
   | { t: 'xp'; uid: string; amount: number; levels: number; reason: 'ko' | 'battle'; foe?: string; bonus?: number }
   | { t: 'arena'; text: string }
-  /** Cliff's crumbling plateau: rounds left before the challenger is rung out (of `total`). */
+  /** An arena's timer: rounds left before the challenger is rung out (of `total`). */
   | { t: 'ring'; left: number; total: number }
   | { t: 'end'; result: NonNullable<Battle['over']>; surrendered?: 0 | 1 };
 
@@ -209,12 +211,7 @@ function effParts(b: Battle, si: 0 | 1, k: StatKey): Part[] {
   const inst = instinctOf(c), p = inst?.passive;
   if (p?.weather?.ids.includes(b.weather.id)) add(`${inst!.name} (${b.weather.name})`, p.weather.mods[k]);
   if (p?.lastHeart && c.vitality === 0) add(`${inst!.name} (last heart)`, p.lastHeart[k]);
-  if (b.arena) {
-    const n = b.arena.tier >= 4 ? 2 : 1;
-    if (si === 1 && b.arena.trick === 'illusion' && k === 'evasion') add('The arena', n);
-    if (si === 1 && b.arena.trick === 'fortress' && (k === 'armor' || k === 'ward')) add('The arena', n);
-    if (si === 0 && b.arena.trick === 'roots' && k === 'speed') add('The arena', -n);
-  }
+  if (b.arena) add('The arena', arenaOf(b)?.stat?.(b.arena.tier, si, k));
   return out;
 }
 /** The attributes that can be up or down on the field (Vigor and Stamina show on their own bars). */
@@ -832,7 +829,7 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
 }
 
 /**
- * Modifiers to an accuracy roll (Beguile, the Darkness arena, Zeroing In). A steady Instinct (Fixed
+ * Modifiers to an accuracy roll (Beguile, the arena, Zeroing In). A steady Instinct (Fixed
  * Star) ignores the penalties; a foe with a shroud (Shadow) cancels Zeroing In.
  */
 function accuracyMods(b: Battle, si: 0 | 1): Part[] {
@@ -841,7 +838,8 @@ function accuracyMods(b: Battle, si: 0 | 1): Part[] {
   const steady = !!passiveOf(c)?.steady;
   const out: Part[] = [];
   if (!steady && b.status[c.uid]?.id === 'beguile') out.push({ label: 'Beguile', value: -1 });
-  if (!steady && si === 0 && b.arena?.trick === 'darkness') out.push({ label: 'Darkness', value: b.arena.tier >= 4 ? -2 : -1 });
+  const dark = arenaOf(b)?.accuracy, off = dark?.value(b.arena!.tier, si) ?? 0;
+  if (off > 0 || (off < 0 && !steady)) out.push({ label: dark!.label, value: off });
   if (b.sides[si].zeroIn && !passiveOf(foe)?.shroud) out.push({ label: 'Zeroing In', value: b.sides[si].zeroIn! });
   return out;
 }
@@ -1356,7 +1354,7 @@ function endOfRound(b: Battle, ev: BEvent[]) {
     if (b.over || c.ko) continue;
     if (st) { st.turns--; if (st.turns <= 0) { delete b.status[c.uid]; ev.push({ t: 'say', text: `${nameOf(c)} shook off ${STATUS_INFO[st.id].name}.` }); ev.push({ t: 'heal', side: si, amount: 0, snap: snap(b, c) }); } }
   }
-  if (b.arena && !b.over) arenaTrick(b, ev);
+  if (b.arena && !b.over) arenaRound(b, ev);
   if (b.legendary && !b.over && !b.fleeWarned) {
     const me = activeOf(b.sides[0]);
     const v = roll(20) + me.level;
@@ -1368,17 +1366,16 @@ function endOfRound(b: Battle, ev: BEvent[]) {
   }
 }
 
-/**
- * Cliff's Crumbling Plateau is a timer: it shrinks every round, and when it's gone the challenger is
- * rung out (loses) if Cliff still has a creature standing. Rounds allowed by Tier: 10, 10, 9, 9, 8.
- */
-export const ringRounds = (tier: number) => [10, 10, 9, 9, 8][Math.max(1, Math.min(5, tier)) - 1];
-/** Rounds left on the plateau before the ring-out (counts down as rounds end). */
-export const ringLeft = (b: Battle) => (b.arena?.trick === 'crumble' ? Math.max(0, ringRounds(b.arena.tier) - b.round) : null);
+// ── Arenas ──────────────────────────────────────────────────────
+/** What this battle's arena does (the region's `arenas`), if it's in one. */
+const arenaOf = (b: Battle): ArenaEffect | undefined => (b.arena ? activeRegion().arenas[b.arena.trick] : undefined);
+/** The arena's timer, if it has one: it counts down as rounds end, and the challenger loses when it's out. */
+export const arenaTimer = (b: Battle): ArenaCountdown | undefined => arenaOf(b)?.countdown;
+/** Rounds the arena's timer began with, and has left (null: no timer). */
+export const ringRounds = (b: Battle) => arenaTimer(b)?.rounds(b.arena!.tier) ?? null;
+export const ringLeft = (b: Battle) => { const total = ringRounds(b); return total === null ? null : Math.max(0, total - b.round); };
 
-function arenaTrick(b: Battle, ev: BEvent[]) {
-  const a = b.arena!;
-  const t = a.tier;
+function arenaRound(b: Battle, ev: BEvent[]) {
   const hurt = (si: 0 | 1, dmg: number, text: string, type?: ElementType) => {
     const c = activeOf(b.sides[si]);
     if (c.ko || b.over) return;
@@ -1401,36 +1398,17 @@ function arenaTrick(b: Battle, ev: BEvent[]) {
     ev.push({ t: 'arena', text: text.replace('{n}', nameOf(c)) });
     ev.push({ t: 'heal', side: si, amount: healed, snap: snap(b, c) });
   };
-  switch (a.trick) {
-    case 'iceFloes':
-      for (const si of [0, 1] as const) if (!hasType(si, 'astral') && roll(6) <= (t >= 3 ? 2 : 1)) hurt(si, 1 + Math.floor(t / 2), '{n} slipped off the ice floe into the frigid water!');
-      break;
-    case 'volts':
-      // the great rod discharges across the arena: Electric creatures (dual types too) drink it in, everyone else is shocked
-      if (roll(6) <= 2 + Math.floor(t / 2)) {
-        const n = 1 + Math.floor(t / 2);
-        for (const si of [0, 1] as const) {
-          if (hasType(si, 'electric')) mend(si, n, 'The Thunder Spike discharges, and {n} soaks up the current!');
-          else hurt(si, n, 'The Thunder Spike discharges into {n}!', 'electric');
-        }
-      }
-      break;
-    case 'flames':
-      if (b.round % 2 === 0) for (const si of [0, 1] as const) if (!hasType(si, 'fire')) hurt(si, 1 + Math.floor(t / 3), 'Scalding steam vents blast {n}!');
-      break;
-    case 'crumble': {
-      const total = ringRounds(t), left = Math.max(0, total - b.round);
-      ev.push({ t: 'ring', left, total });
-      if (left === 0) {
-        ev.push({ t: 'arena', text: 'The last of the plateau crumbles away. You’re rung out!' });
-        b.over = 'lose';
-        awardBattleXp(b, ev);
-        ev.push({ t: 'end', result: 'lose' });
-      } else if (left <= 2) ev.push({ t: 'arena', text: left === 1 ? 'The plateau is almost gone: one round left!' : 'The plateau edges fall away: two rounds left!' });
-      break;
-    }
-    default: break;
-  }
+  arenaOf(b)?.roundEnd?.({ tier: b.arena!.tier, round: b.round, sides: [0, 1], hasType, roll, hurt, mend });
+  const timer = arenaTimer(b);
+  if (!timer || b.over) return;
+  const total = ringRounds(b)!, left = ringLeft(b)!;
+  ev.push({ t: 'ring', left, total });
+  if (left === 0) {
+    ev.push({ t: 'arena', text: timer.over });
+    b.over = 'lose';
+    awardBattleXp(b, ev);
+    ev.push({ t: 'end', result: 'lose' });
+  } else if (timer.near[left]) ev.push({ t: 'arena', text: timer.near[left] });
 }
 
 export function speciesName(id: string) { return SPECIES_BY_ID[id]?.name ?? id; }

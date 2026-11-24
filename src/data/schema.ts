@@ -141,15 +141,12 @@ export interface City {
   park: string;
   arbiter: string;
   accolade: string;
-  arena: { name: string; trick: ArenaTrick; text: string };
+  arena: { name: string; /** Its effect: one of the region's `arenas`. */ trick: string; text: string };
   /** Set when the Arbiter's arena is its own map node away from the city (e.g. across the sea). */
   arenaNode?: string;
   hotpot: { name: string; buff: Partial<Record<StatKey, number>>; text: string };
   blurb: string;
 }
-
-export type ArenaTrick =
-  | 'iceFloes' | 'illusion' | 'volts' | 'flames' | 'darkness' | 'crumble' | 'fortress' | 'roots';
 
 export interface Item {
   id: string;

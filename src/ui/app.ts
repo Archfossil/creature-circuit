@@ -31,7 +31,7 @@ import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
-import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, snap as battleSnap, type Boost, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, arenaTimer, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, snap as battleSnap, type Boost, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
@@ -1392,7 +1392,7 @@ export class App {
       const end = (v: boolean) => { if (done) return; done = true; close(); resolve(v); };
       const close = openSheet('Surrender this battle?', h('div', null,
         this.surrenderTerms({ name: nameOf(me), morale: me.morale, bond: me.bond }, costs, keeps),
-        b.arena?.trick === 'crumble' ? h('p', { class: 'small muted' }, '⏳ Being rung out when the plateau is gone costs none of this.') : null,
+        arenaTimer(b) ? h('p', { class: 'small muted' }, `⏳ ${arenaTimer(b)!.surrenderNote}`) : null,
         ctx.kind === 'trainer' || ctx.kind === 'arbiter' ? h('p', { class: 'small muted' }, 'If your whole team is knocked out instead, you lose the same coins and Initiative, and everyone loses Morale and is sent back to a city, where they’re fully rested.') : null,
         h('div', { class: 'row end gap' },
           h('button', { class: 'btn ghost', onclick: () => end(false) }, 'Keep fighting'),
@@ -1868,15 +1868,16 @@ export class App {
     const bv = this.battleView;
     bv.fxPace = settings().reduceMotion ? 0.5 : settings().fastBattle ? 0.7 : 1;
     const arenaType = ctx.city ? CITIES[ctx.city].type : undefined;
-    // Cliff's crumbling plateau: a countdown chip, updated by 'ring' events
-    const ringTimer = b.arena?.trick === 'crumble' ? h('span', { class: 'chip ring-timer', title: 'Beat Cliff before the plateau is gone, or you’re rung out and lose.' }) : null;
+    // an arena with a timer (Cliff's crumbling plateau): a countdown chip, updated by 'ring' events
+    const timer = arenaTimer(b);
+    const ringTimer = timer ? h('span', { class: 'chip ring-timer', title: timer.hint }) : null;
     const showRing = (left: number, total: number) => {
-      if (!ringTimer) return;
-      ringTimer.textContent = left > 0 ? `⏳ Plateau: ${left} round${left === 1 ? '' : 's'} left` : '⏳ Rung out!';
+      if (!timer || !ringTimer) return;
+      ringTimer.textContent = left > 0 ? `⏳ ${timer.name}: ${left} round${left === 1 ? '' : 's'} left` : `⏳ ${timer.overShort}`;
       ringTimer.classList.toggle('urgent', left <= 2);
-      ringTimer.title = `${left} of ${total} rounds left before the plateau is gone`;
+      ringTimer.title = `${left} of ${total} rounds left ${timer.leftHint}`;
     };
-    if (b.arena?.trick === 'crumble') showRing(ringLeft(b) ?? 0, ringRounds(b.arena.tier));
+    if (timer) showRing(ringLeft(b)!, ringRounds(b)!);
     bv.setup(b.biome as never, arenaType, W.weather(s).id === 'aurora' || ctx.city === 'aurora' || timeOfDay(s.turn) === 'night');
     // trainer minis: only when the opponent is a trainer of some kind
     const foeSide = b.sides[1];

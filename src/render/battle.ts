@@ -134,8 +134,8 @@ export class BattleView implements SceneView {
 
   private ringShrink = 0;
   /**
-   * Cliff's crumbling plateau: shrink the arena floor and its rim toward the creatures. `gone` is how
-   * much of the plateau has crumbled (0 = whole, 1 = rung out). Animates over half a second, with a
+   * An arena with a timer (Cliff's crumbling plateau): shrink the arena floor and its rim toward the creatures. `gone` is how
+   * much of it has crumbled (0 = whole, 1 = rung out). Animates over half a second, with a
    * few chunks breaking off the edge.
    */
   shrinkRing(gone: number): Promise<void> {

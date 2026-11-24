@@ -5,7 +5,7 @@ Every Arbiter in the game, their arena's special effect (the "arena trick"), how
 **Code:**
 - **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/regions/margos/map.ts`.
 - **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
-- **Arena effects:** `src/engine/battle.ts` (stat tricks in `eff()`, accuracy in `accuracyMods()`, hazards in `arenaTrick()`).
+- **Arena effects:** `src/regions/margos/arenas.ts` (`ARENAS`: what each one does), played out by `src/engine/battle.ts`.
 - **Challenge screen and special flows** (Cloud Island, finding Fabian, the Gauntlet): `src/ui/app.ts` (`arbiter`, `cloudSheet`, `findFabian`, `gauntletSheet`).
 
 ## How Arbiters work
@@ -226,7 +226,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-or-chang
 
 - **On screen:** a "⏳ Plateau: N rounds left" chip in the battle header, red and pulsing for the last 2 rounds. The arena floor visibly shrinks toward the creatures as rounds pass, with chunks breaking off the edge.
 - **Losing by ring-out** is a normal Arbiter loss: no coins lost, and creatures still earn their battle XP.
-- **Code:** `ringRounds`, `ringLeft` and the `crumble` case of `arenaTrick()` in `battle.ts`; the `ring` battle event; `shrinkRing` in `render/battle.ts`.
+- **Code:** the `countdown` of `crumble` in `arenas.ts`; `arenaTimer`, `ringRounds` and `ringLeft` in `battle.ts`; the `ring` battle event; `shrinkRing` in `render/battle.ts`.
 
 **City Stable hot pot:** Red Clay Nabe, +1 Armor in your next battle.
 
@@ -357,10 +357,11 @@ Copy this block into [The Arbiters](#the-arbiters) and add a row to the [Overvie
 
 ### Build it (developers)
 
-1. **A new effect:** add its id to `ArenaTrick` in `src/data/schema.ts`, then implement it in `src/engine/battle.ts`:
-   - a stat change for one side goes in `eff()`, next to `illusion` and `fortress`;
-   - an accuracy change goes in `accuracyMods()`, next to `darkness`;
-   - an end-of-round hazard goes in `arenaTrick()`, using its `hurt()` helper, next to `iceFloes` and `flames`.
+1. **A new effect:** add it to `ARENAS` in `src/regions/margos/arenas.ts`. It can do any of these (`ArenaEffect` in `src/regions/types.ts`), and the engine needs no change:
+   - `stat`: change an attribute of one side, like `illusion` and `fortress`;
+   - `accuracy`: change accuracy rolls, like `darkness`;
+   - `roundEnd`: something at the end of each round, using the `hurt()` and `mend()` it's given, like `iceFloes` and `volts`;
+   - `countdown`: a number of rounds to win in, like `crumble`.
 2. **An Arbiter or city:** edit `CITIES` in `src/regions/margos/map.ts` (name, type, park, Arbiter, Merit, arena name, trick and text, hot pot, blurb). A new city also needs a map node and routes.
 3. **An access condition:** add a case to `arbiterGate()` in `src/engine/world.ts`. Special flows like Cloud Island, finding Fabian or the Gauntlet are in `src/ui/app.ts` (`arbiter`).
 4. **Then:**

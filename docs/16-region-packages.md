@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 to 4 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region) and [the Codex](#the-codex)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 5 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex) and [arenas](#arenas)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -204,7 +204,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 2 | **Move Margos's data** into `src/regions/margos` behind the same names ✅ built | M | Nothing |
 | 3 | **Active region**, plus a tiny test-only second region ✅ built | M | Nothing |
 | 4 | **Codex** separated from the species library ✅ built | M | Nothing |
-| 5 | **Arenas** as a per-region table | S–M | Nothing |
+| 5 | **Arenas** as a per-region table ✅ built | S–M | Nothing |
 | 6 | **Gimmicks** as plug-ins, one at a time | **L** | Nothing |
 | 7 | **3D map** built for the active region, and rebuilt on a change | M | A short load when changing region |
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 | M | Region name on saves |
@@ -247,7 +247,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 
 - **Finding what's left:** apart from `active.ts`, only `data/map.ts` still reads `regions/margos`, for the places that become gimmicks in step 6.
 - **Packages only import types** from the rest of the game. The data files read the packages while the game loads, so anything more could go round in a circle.
-- **Left for their own steps:** arena effects (5), gimmicks and Margos-only events (6), and the turn and Merit numbers (8).
+- **Left for their own steps:** gimmicks and Margos-only events (6), and the turn and Merit numbers (8).
 - **Shared, not Margos's:** which types belong to each biome (`BIOME_TYPES`). The species library uses it to place the placeholders. A region decides where its biomes are.
 
 ### The active region
@@ -271,6 +271,14 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 - **Stadium Mode** can use every species from any region, as it isn't part of a season.
 - **It was tested by breaking it:** each place that chooses a creature was made to choose from the whole library. All were caught but the three that walk back up a family, where it makes no difference.
 - **When the Juudlands' creatures arrive,** Margos's `'all'` must become a list first.
+
+### Arenas
+
+A region's `arenas` say what each arena does, and a city names one as its `arena.trick`. An effect can change attributes (`stat`) or accuracy rolls (`accuracy`), do something at the end of a round (`roundEnd`) or give the challenger a number of rounds to win in (`countdown`, with its own wording). It can do several at once. `battle.ts` and the screens no longer know any of Margos's by name, and a test keeps it that way.
+
+- **Dice:** an effect may only roll the dice it's handed, so seeded seasons stay the same.
+- **Same name, different effect:** two regions can both have a `flames`. The active region's is used.
+- **It was tested by breaking it:** 14 changes to Margos's numbers and 6 to the engine. All but two were caught at first; those two now have tests.
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

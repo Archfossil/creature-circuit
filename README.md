@@ -82,7 +82,7 @@ tests/       engine tests · server tests (online protocol) · guide tests (How 
 | 10 XP per level, progression chart (skill tree), Evolve / Capstone | `creature.ts` → `progressionTree`, `availableNodes`, `unlockNode`, `trainStat` |
 | Totems, offerings, Recruitment Threshold | `world.ts` → `attemptRecruit`, `offeringBonus`, `bestOfferings` |
 | Creature Codex: seen creatures, where to find them, effigies, filters (name, type, biome, rarity, seen/recruited) | `battle.ts` → `seenFoes`; `world.ts` → `encounterSpots`, `evolutionLine`, `speciesBiomes`, `speciesPool`, `carveTotem`; `ui/app.ts` → `codex` |
-| Stables (Chanko Nabe), Markets, Shrines, Arbiters, arena tricks (favouring the Arbiter: Watson's lightning heals Electric creatures and shocks the rest; Cliff's plateau is a ring-out timer with an on-screen countdown), Tier scaling | `world.ts` + `battle.ts` → `arenaTrick`, `ringRounds`; `render/battle.ts` → `shrinkRing` |
+| Stables (Chanko Nabe), Markets, Shrines, Arbiters, arena tricks (favouring the Arbiter: Watson's lightning heals Electric creatures and shocks the rest; Cliff's plateau is a ring-out timer with an on-screen countdown), Tier scaling | `regions/margos/arenas.ts` → `ARENAS`; `world.ts` + `battle.ts` → `arenaRound`, `ringRounds`; `render/battle.ts` → `shrinkRing` |
 | Swap Team: trade creatures between the active team (max 3) and totems, free in any city or town | `ui/app.ts` → `swapTile`, `rosterManager` |
 | Check on Creature: on the Swap Team screen, 1 Initiative for +1 Morale, active or in a totem | `world.ts` → `checkOn`; `ui/app.ts` → `rosterManager` |
 | 100 turns, seasons, weather dice, endgame bracket | `world.ts` → `endTurn`, `enterCircuit`; `engine/circuit.ts` (one bracket for everyone); `ui/app.ts` → `circuitStep` |
