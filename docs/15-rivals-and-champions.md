@@ -2,7 +2,7 @@
 
 The named trainers of Margos. **Rivals** turn up through the season and grow with it; **Champions** are the established field of the Creature Circuit and tour the towns before it. All names, lines and numbers are first drafts for the design team.
 
-- **Who they are:** `src/data/npcs.ts` (`NPCS`). To add one, add a line there: id, name, two favourite types (best loved first), home city, rating, blurb and four lines (greet, gloat, concede, chat). A test checks homes, names and Aces. Then add them to the tables below.
+- **Who they are:** `src/regions/margos/npcs.ts` (`NPCS`). To add one, add a line there: id, name, two favourite types (best loved first), home city, rating, blurb and four lines (greet, gloat, concede, chat). A test checks homes, names and Aces. Then add them to the tables below.
 - **The rules:** `src/engine/npcs.ts`. Teams, tours and standings are worked out from the game's seed and the turn, so everyone in a match sees the same ones. Each trainer's save keeps only their own history (`GameState.npcs`).
 - **On screen:** Menu → 🥇 Rival Trainers (`app.ts` → `rivalsSheet`), tiles in cities and towns (`npcTiles`, `npcSheet`).
 
@@ -38,7 +38,7 @@ The named trainers of Margos. **Rivals** turn up through the season and grow wit
 
 ## Outfits
 
-Each Rival and Champion has an outfit of their own (`NPC_OUTFITS` in `src/render/npcLooks.ts`), picked from the player's tops, hats, hair and patterns and worn in battle and portraits. A Rival's base is their favourite type's colour; Champions keep a cape and a gold base. A new Rival or Champion needs an outfit (a test checks).
+Each Rival and Champion has an outfit of their own (`NPC_OUTFITS` in `src/regions/margos/looks.ts`), picked from the player's tops, hats, hair and patterns and worn in battle and portraits. A Rival's base is their favourite type's colour; Champions keep a cape and a gold base. A new Rival or Champion needs an outfit (a test checks).
 
 ## Teams
 
@@ -104,7 +104,7 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 
 ## Messenger
 
-Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/data/texts.ts` (fifteen lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
+Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/regions/margos/voices.ts` (fifteen lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
 
 - **They write first:** only people you've met, at most one text every 3 turns from anyone, and every 8 from the same person. It's a rematch offer after a battle, congratulations on a Merit (as soon as there's a free moment), news of their own, a hello, or a treat by courier from someone friendly. Being stood up always gets a text.
 - **Answers:** a kind reply warms them to you. A cheeky one only costs goodwill with a firm friend. Accepting a rematch sets it at the nearest city or town. A question lapses after 6 turns.

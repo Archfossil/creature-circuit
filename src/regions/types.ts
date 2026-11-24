@@ -1,0 +1,24 @@
+// What a region is made of (docs/16-region-packages.md). Packages only import types from the rest of the
+// game: the data files read the packages as the game loads, so anything more would go round in a circle.
+import type { Season } from '../data/content';
+import type { Npc } from '../data/npcs';
+import type { City, MapEdge, MapNode } from '../data/schema';
+import type { Voice } from '../data/texts';
+import type { TrainerLook } from '../render/trainerModel';
+
+export interface Town { blurb: string; sells: string[]; key?: string; special?: string }
+
+/** A Rival's or Champion's clothes. Their skin comes from their name, and the rest from whether they're a Champion. */
+export type Outfit = Omit<TrainerLook, 'skin' | 'rim' | 'cape' | 'emblem'>;
+
+export interface Region {
+  /** Never changes: it will be in saves. */
+  id: string;
+  name: string;
+  map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town> };
+  codex: { starters: string[] };
+  /** Rivals and Champions, and by their ids, what they say and wear. */
+  people: { npcs: Npc[]; voices: Record<string, Voice>; looks: Record<string, Outfit> };
+  /** Each season's weather die. */
+  weather: Record<Season, string[]>;
+}

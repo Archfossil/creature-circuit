@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: step 1 is built ([the safety net](#the-safety-net)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 and 2 are built ([the safety net](#the-safety-net), and [Margos's data in its own package](#margoss-package-so-far)). Nothing else is yet.** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -201,7 +201,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | # | Step | Size | Players see |
 |---|---|---|---|
 | 1 | **Safety net** ✅ built | S | Nothing |
-| 2 | **Move Margos's data** into `src/regions/margos` behind the same names | M | Nothing |
+| 2 | **Move Margos's data** into `src/regions/margos` behind the same names ✅ built | M | Nothing |
 | 3 | **Active region**, plus a tiny test-only second region | M | Nothing |
 | 4 | **Codex** separated from the species library | M | Nothing |
 | 5 | **Arenas** as a per-region table | S–M | Nothing |
@@ -240,6 +240,15 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 - **It checks its own reach.** A test fails if no season visits a biome, fights an Arbiter, or meets an event, gimmick or system on its list.
 - **It was tested by breaking the game:** 12 deliberate changes to rules, dice order, lists and wording (the Gauntlet, Salem's lap, the satchel, the Forest Floor, gates and others) were all caught.
 - **What it doesn't cover:** screens and the 3D map (`src/ui`, and all of `src/render` but the coastline and outfits), online play, loading old saves, and rules that live in a screen, like the guessing game that finds Fabian. Those have the ordinary tests or need checking by hand; step 8 covers saves and online.
+
+### Margos's package so far
+
+`src/regions/margos` holds the map, cities and towns (`map.ts`), Rivals and Champions (`npcs.ts`), what they say (`voices.ts`) and wear (`looks.ts`), the starters (`codex.ts`) and the weather dice (`weather.ts`). The old names in `src/data` and `render/npcLooks.ts` read from it, so nothing else in the game changed.
+
+- **Finding what's left:** outside `src/regions`, every file that names `MARGOS` or imports `regions/margos` is one step 3 or 6 has to change.
+- **Packages only import types** from the rest of the game. The data files read the packages while the game loads, so anything more could go round in a circle.
+- **Left for their own steps:** the species a region uses (step 4), arena effects (5), gimmicks and Margos-only events (6), and the turn and Merit numbers (8).
+- **Shared, not Margos's:** which types belong to each biome (`BIOME_TYPES`). The species library uses it to place the placeholders. A region decides where its biomes are.
 
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 

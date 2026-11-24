@@ -1,13 +1,15 @@
 # Data Schemas
 
-These are the JSON templates for the game's content. The TypeScript versions, which the engine actually checks, are in [`src/data/schema.ts`](../src/data/schema.ts). The example content is in `src/data/`:
+These are the JSON templates for the game's content. The TypeScript versions, which the engine actually checks, are in [`src/data/schema.ts`](../src/data/schema.ts). The example content is in `src/data/`, and a region's own content is in its package ([`src/regions/margos`](../src/regions/margos)):
 
 | File | Contents |
 | --- | --- |
 | [`species.ts`](../src/data/species.ts) | 52 example creatures (8 types × 6, the Emberfish line, 2 legendaries) |
 | [`moves.ts`](../src/data/moves.ts) | Master Move List: physical, support, 4 elemental moves per type, 8 signature moves |
-| [`map.ts`](../src/data/map.ts) | Margos: 8 cities, 10 towns, Circuit Stadium, 2 legendary nodes, the wild routes and the type pool for each biome |
-| [`content.ts`](../src/data/content.ts) | Natures, abilities, items, offering materials, weather and the seasonal weather dice |
+| [`margos/map.ts`](../src/regions/margos/map.ts) | Margos: 8 cities, 10 towns, Circuit Stadium, 7 legendary nodes and the wild routes |
+| [`map.ts`](../src/data/map.ts) | The type pool for each biome |
+| [`content.ts`](../src/data/content.ts) | Natures, abilities, items, offering materials and weather |
+| [`margos/weather.ts`](../src/regions/margos/weather.ts) | The seasonal weather dice |
 
 To add content, add an entry that follows the template below. Nothing else needs to change: the UI, the procedural 3D models, the encounter tables and the arbiter teams all read from these lists.
 
@@ -202,7 +204,7 @@ Dual attacks are only learnable by creatures that generate both energy types.
 
 An `arena` node is an Arbiter's arena that sits away from its city. It names its city in `arenaOf`, and that city's entry in `CITIES` sets `arenaNode` to the arena's id. Amber's Fire Pit on Kilauea island, reached by ferry from Kilauea Forge, works this way. Edges with `"via": "sea"` are ferry crossings: the 3D map leaves them as open water, so islands stay islands.
 
-Wild nodes are generated from the `routes` list in `map.ts` and numbered in order (`w1`, `w2`, …). Saves store node ids, so **add new routes at the end of the list**. Keep nodes at least 5 units apart and routes from crossing: `tests/engine.test.ts` checks both.
+Wild nodes are generated from the `routes` list in `src/regions/margos/map.ts` and numbered in order (`w1`, `w2`, …). Saves store node ids, so **add new routes at the end of the list**. Keep nodes at least 5 units apart and routes from crossing: `tests/engine.test.ts` checks both.
 
 ## Turn event
 

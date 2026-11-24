@@ -3,7 +3,7 @@
 Every Arbiter in the game, their arena's special effect (the "arena trick"), how they scale, and how to change or add them.
 
 **Code:**
-- **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/data/map.ts`.
+- **City and Arbiter data** (name, type, arena text, Merit, hot pot): `CITIES` in `src/regions/margos/map.ts`.
 - **Teams, challenge rules and rewards:** `src/engine/world.ts` (`arbiterTeam`, `arbiterBattle`, `arbiterGate`, `finishBattle`).
 - **Arena effects:** `src/engine/battle.ts` (stat tricks in `eff()`, accuracy in `accuracyMods()`, hazards in `arenaTrick()`).
 - **Challenge screen and special flows** (Cloud Island, finding Fabian, the Gauntlet): `src/ui/app.ts` (`arbiter`, `cloudSheet`, `findFabian`, `gauntletSheet`).
@@ -361,7 +361,7 @@ Copy this block into [The Arbiters](#the-arbiters) and add a row to the [Overvie
    - a stat change for one side goes in `eff()`, next to `illusion` and `fortress`;
    - an accuracy change goes in `accuracyMods()`, next to `darkness`;
    - an end-of-round hazard goes in `arenaTrick()`, using its `hurt()` helper, next to `iceFloes` and `flames`.
-2. **An Arbiter or city:** edit `CITIES` in `src/data/map.ts` (name, type, park, Arbiter, Merit, arena name, trick and text, hot pot, blurb). A new city also needs a map node and routes.
+2. **An Arbiter or city:** edit `CITIES` in `src/regions/margos/map.ts` (name, type, park, Arbiter, Merit, arena name, trick and text, hot pot, blurb). A new city also needs a map node and routes.
 3. **An access condition:** add a case to `arbiterGate()` in `src/engine/world.ts`. Special flows like Cloud Island, finding Fabian or the Gauntlet are in `src/ui/app.ts` (`arbiter`).
 4. **Then:**
    - Add a test in `tests/engine.test.ts`.

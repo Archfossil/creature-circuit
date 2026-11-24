@@ -25,7 +25,7 @@ Generated **placeholders** (ids starting `ph-`) stand in until the real creature
 - **Types, biomes, Out by, Ability, Instinct and Signature** are the slot’s current game values. Designs can keep them or propose changes. **Out by** is when it roams the wild: Diurnal (day turns), Nocturnal (night turns) or Day & night. It comes from its types (Astral and Charm lean night; Fire, Grass and Electric lean day; with Rock, Steel or Water in it, or a mix, it is out at any time) unless set by hand (`ACTIVITY_OVERRIDE` in `src/data/species.ts`).
 - **Instinct** is the creature's passive in battle (it fires on its own: when it takes the field, loses a heart, is hit, and so on). Every stage of a family shares one. All 48, with their exact rules and who has them: [14 · Instinct Checklist](./14-instinct-checklist.md).
 - **Swapping one in (developers):** add the species in `src/data/species.ts`, then point its slot in `HANDMADE_SLOTS` or `HANDMADE_LEGENDARIES` (`src/data/roster.ts`) at it. The placeholder disappears; regenerate this file.
-- A new Legendary also needs a roaming node on the map (`src/data/map.ts`).
+- A new Legendary also needs a roaming node on the map (`src/regions/margos/map.ts`).
 
 ## Slot overview
 

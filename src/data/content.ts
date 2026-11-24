@@ -1,6 +1,7 @@
 import { PLAIN_TOTEM, typedTotem } from './icons';
 import type { Ability, Item, Nature, WeatherDef, Biome, ElementType, TimeOfDay, Activity } from './schema';
 import { TYPES, TYPE_LABEL } from './types';
+import { MARGOS } from '../regions';
 
 export const NATURES: Nature[] = [
   { id: 'adamant', name: 'Adamant', up: 'power', down: 'focus', text: 'Favors raw physical brawling over elemental channeling.',
@@ -167,10 +168,10 @@ export const WEATHER: Record<string, WeatherDef> = {
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 export const SEASON_INFO: Record<Season, { label: string; icon: string; dice: string[] }> = {
-  spring: { label: 'Spring', icon: '🌱', dice: ['clear', 'clear', 'rain', 'rain', 'bloom', 'windy'] },
-  summer: { label: 'Summer', icon: '🌞', dice: ['clear', 'clear', 'heat', 'storm', 'drought', 'rain'] },
-  autumn: { label: 'Autumn', icon: '🍂', dice: ['clear', 'fog', 'windy', 'rain', 'overcast', 'aurora'] },
-  winter: { label: 'Winter', icon: '❄️', dice: ['clear', 'snow', 'blizzard', 'aurora', 'fog', 'overcast'] },
+  spring: { label: 'Spring', icon: '🌱', dice: MARGOS.weather.spring },
+  summer: { label: 'Summer', icon: '🌞', dice: MARGOS.weather.summer },
+  autumn: { label: 'Autumn', icon: '🍂', dice: MARGOS.weather.autumn },
+  winter: { label: 'Winter', icon: '❄️', dice: MARGOS.weather.winter },
 };
 
 // ── Day & night ─────────────────────────────────────────
