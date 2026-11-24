@@ -60,6 +60,10 @@ Aside from their physical attributes, Creatures will have the following social a
 
 Loyalty tracks trust with the trainer and unlocks high-tier behavioral bonuses based on the creature's Nature. Loyalty acts as a currency which can be spent in the Creature's nature to unlock more passive benefits determined by their personality (their Nature.)
 
+## Attribute changes
+
+> **Prototype rules: showing them** (`battle.ts` → `boostsOf`). While a creature's on the field, its plate shows a pill for each attribute above (▲ green) or below (▼ red) normal: moves, Swap Moves, Instincts, statuses, weather, arenas and the Nabe, all added up. Tap them for where each comes from.
+
 ## Surrender
 
 > **Prototype rules: surrendering** (`battle.ts` → `surrender`)

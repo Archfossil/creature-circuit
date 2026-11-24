@@ -76,7 +76,9 @@ export interface Battle {
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' } | { kind: 'surrender' };
 
-export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number; /** Overheal: extra Health beyond full that soaks up damage first. */ over?: number }
+export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number; /** Overheal: extra Health beyond full that soaks up damage first. */ over?: number; /** On the field: attributes above or below normal right now. */ boosts?: Boost[] }
+/** An attribute's change on the field: `n` in all, and where it comes from. */
+export interface Boost { stat: StatKey; n: number; parts: Part[] }
 export type BEvent =
   | { t: 'say'; text: string; tone?: 'good' | 'bad' | 'info' }
   /** A speed tie. `first`: who acts first (the higher roller, or on equal rolls the winner of a coin flip, `coin`). */
@@ -86,7 +88,7 @@ export type BEvent =
   | { t: 'damage'; side: 0 | 1; amount: number; eff: number; crit: boolean; snap: Snap; calc?: DamageCalc }
   | { t: 'heal'; side: 0 | 1; amount: number; snap: Snap }
   | { t: 'status'; side: 0 | 1; status: StatusId; snap: Snap }
-  | { t: 'buff'; side: 0 | 1; text: string }
+  | { t: 'buff'; side: 0 | 1; text: string; snap?: Snap }
   /** Zeroing In changed: a miss built it up (bonus > 0) or the next accuracy roll used it (bonus 0). */
   | { t: 'zero'; side: 0 | 1; bonus: number; gained: number; snap: Snap }
   | { t: 'tired'; side: 0 | 1; value: number; fatigue: number; fail: boolean; snap: Snap }
@@ -111,9 +113,11 @@ export interface DamageCalc {
 }
 
 export function snap(b: Battle, c: CreatureInst): Snap {
-  const sd = b.sides.find((s) => activeOf(s) === c);
+  const si = b.sides.findIndex((s) => activeOf(s) === c);
+  const sd = b.sides[si];
   const over = b.overheal?.[c.uid] ?? 0;
-  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}), ...(over ? { over } : {}) };
+  const boosts = si < 0 || c.ko ? [] : boostsOf(b, si as 0 | 1);
+  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}), ...(over ? { over } : {}), ...(boosts.length ? { boosts } : {}) };
 }
 
 // ── Overheal ────────────────────────────────────────────────────
@@ -181,27 +185,50 @@ export function createBattle(player: Side, foe: Side, weather: WeatherDef, opts:
 function eff(b: Battle, si: 0 | 1, k: StatKey): number {
   const side = b.sides[si];
   const c = activeOf(side);
-  let v = stats(c, side.buff)[k] + (side.mods[k] ?? 0);
-  if (k === 'speed') v += b.weather.speed ?? 0;
-  if (k === 'evasion') v += b.weather.evasion ?? 0;
-  const st = b.status[c.uid]?.id;
-  if (k === 'speed' && st === 'soak') v -= 2;
-  if (st === 'snare' && (k === 'speed' || k === 'evasion')) v -= 1;
-  if (st === 'stagger' && (k === 'power' || k === 'focus')) v -= 1;
-  if (st === 'sunder' && (k === 'armor' || k === 'ward')) v -= 1;
-  // Instincts: weather boosts, last-heart surges
-  const p = passiveOf(c);
-  if (p?.weather?.ids.includes(b.weather.id)) v += p.weather.mods[k] ?? 0;
-  if (p?.lastHeart && c.vitality === 0) v += p.lastHeart[k] ?? 0;
-  if (b.arena) {
-    const t = b.arena.tier;
-    if (si === 1 && b.arena.trick === 'illusion' && k === 'evasion') v += t >= 4 ? 2 : 1;
-    if (si === 1 && b.arena.trick === 'fortress' && (k === 'armor' || k === 'ward')) v += t >= 4 ? 2 : 1;
-    if (si === 0 && b.arena.trick === 'roots' && k === 'speed') v -= t >= 4 ? 2 : 1;
-  }
+  let v = stats(c, side.buff)[k];
+  for (const p of effParts(b, si, k)) v += p.value;
   if (k === 'evasion') return Math.max(1, Math.min(v, 6));
   return Math.max(0, v);
 }
+
+/** What changes side `si`'s active creature's attribute in this battle (a Nabe apart: it's part of its stats). */
+function effParts(b: Battle, si: 0 | 1, k: StatKey): Part[] {
+  const side = b.sides[si];
+  const c = activeOf(side);
+  const out: Part[] = [];
+  const add = (label: string, value?: number) => { if (value) out.push({ label, value }); };
+  add('Moves and Instincts', side.mods[k]);
+  if (k === 'speed') add(b.weather.name, b.weather.speed);
+  if (k === 'evasion') add(b.weather.name, b.weather.evasion);
+  const st = b.status[c.uid]?.id;
+  if (st === 'soak' && k === 'speed') add(STATUS_INFO[st].name, -2);
+  if (st === 'snare' && (k === 'speed' || k === 'evasion')) add(STATUS_INFO[st].name, -1);
+  if (st === 'stagger' && (k === 'power' || k === 'focus')) add(STATUS_INFO[st].name, -1);
+  if (st === 'sunder' && (k === 'armor' || k === 'ward')) add(STATUS_INFO[st].name, -1);
+  // Instincts: weather boosts, last-heart surges
+  const inst = instinctOf(c), p = inst?.passive;
+  if (p?.weather?.ids.includes(b.weather.id)) add(`${inst!.name} (${b.weather.name})`, p.weather.mods[k]);
+  if (p?.lastHeart && c.vitality === 0) add(`${inst!.name} (last heart)`, p.lastHeart[k]);
+  if (b.arena) {
+    const n = b.arena.tier >= 4 ? 2 : 1;
+    if (si === 1 && b.arena.trick === 'illusion' && k === 'evasion') add('The arena', n);
+    if (si === 1 && b.arena.trick === 'fortress' && (k === 'armor' || k === 'ward')) add('The arena', n);
+    if (si === 0 && b.arena.trick === 'roots' && k === 'speed') add('The arena', -n);
+  }
+  return out;
+}
+/** The attributes that can be up or down on the field (Vigor and Stamina show on their own bars). */
+const BOOSTABLE: StatKey[] = ['power', 'armor', 'focus', 'ward', 'speed', 'evasion'];
+/** Side `si`'s active creature's attributes that are above or below normal right now (after the limits on them). */
+export function boostsOf(b: Battle, si: 0 | 1): Boost[] {
+  const side = b.sides[si], c = activeOf(side), base = stats(c);
+  return BOOSTABLE.flatMap((stat) => {
+    const n = eff(b, si, stat) - base[stat];
+    const nabe = side.buff?.[stat];
+    return n ? [{ stat, n, parts: [...(nabe ? [{ label: 'Nabe', value: nabe }] : []), ...effParts(b, si, stat)] }] : [];
+  });
+}
+function pushBuff(b: Battle, side: 0 | 1, text: string, ev: BEvent[]) { const e: BEvent = { t: 'buff', side, text, snap: snap(b, activeOf(b.sides[side])) }; ev.push(e); }
 
 function addMod(b: Battle, si: 0 | 1, k: StatKey, n: number) {
   const m = b.sides[si].mods;
@@ -251,7 +278,7 @@ function instinctEffect(b: Battle, si: 0 | 1, e: InstinctEffect, ev: BEvent[]) {
       const side = e.who === 'self' ? si : fi;
       if (activeOf(b.sides[side]).ko) return;
       addMod(b, side, e.stat, e.n);
-      ev.push({ t: 'buff', side, text: `${e.n >= 0 ? '+' : '−'}${Math.abs(e.n)} ${STAT_LABEL[e.stat]}` });
+      pushBuff(b, side, `${e.n >= 0 ? '+' : '−'}${Math.abs(e.n)} ${STAT_LABEL[e.stat]}`, ev);
       return;
     }
     case 'status': afflict(b, fi, e.status, ev); return;
@@ -264,7 +291,7 @@ function instinctEffect(b: Battle, si: 0 | 1, e: InstinctEffect, ev: BEvent[]) {
     }
     case 'refill':
       c.stamina = maxStamina(c);
-      ev.push({ t: 'buff', side: si, text: 'Stamina restored' });
+      pushBuff(b, si, 'Stamina restored', ev);
       ev.push({ t: 'stamina', side: si, snap: snap(b, c) });
       return;
     case 'cure': {
@@ -684,6 +711,8 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
   }
 
   if (!b.over) endOfRound(b, ev);
+  // both plates end the round as things stand (statuses wear off, for one)
+  if (!b.over) for (const si of [0, 1] as const) { const c = activeOf(b.sides[si]); if (!c.ko) ev.push({ t: 'stamina', side: si, snap: snap(b, c) }); }
   return ev;
 }
 
@@ -990,10 +1019,10 @@ function applyEffects(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
   if (!e) return;
   const parts: string[] = [];
   for (const [k, v] of Object.entries(e.self ?? {})) { addMod(b, si, k as StatKey, v!); parts.push(`${v! > 0 ? '+' : ''}${v} ${k}`); }
-  if (parts.length) ev.push({ t: 'buff', side: si, text: parts.join(', ') });
+  if (parts.length) pushBuff(b, si, parts.join(', '), ev);
   const fparts: string[] = [];
   for (const [k, v] of Object.entries(e.foe ?? {})) { addMod(b, fi, k as StatKey, v!); fparts.push(`${v} ${k}`); }
-  if (fparts.length) ev.push({ t: 'buff', side: fi, text: fparts.join(', ') });
+  if (fparts.length) pushBuff(b, fi, fparts.join(', '), ev);
   if (e.heal || e.staminaGain) {
     const r = e.heal ? mend(b, c, e.heal) : { healed: 0, over: 0 };
     if (e.staminaGain) c.stamina = Math.min(maxStamina(c), c.stamina + e.staminaGain);
@@ -1099,7 +1128,7 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
       if (e.who === 'foe' && activeOf(b.sides[fi]).ko) return;
       const n = e.n(v);
       addMod(b, e.who === 'self' ? si : fi, e.stat, n);
-      ev.push({ t: 'buff', side: e.who === 'self' ? si : fi, text: `${n >= 0 ? '+' : '−'}${Math.abs(n)} ${STAT_LABEL[e.stat]}` });
+      pushBuff(b, e.who === 'self' ? si : fi, `${n >= 0 ? '+' : '−'}${Math.abs(n)} ${STAT_LABEL[e.stat]}`, ev);
       return;
     }
     case 'heal': {
@@ -1116,13 +1145,13 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
     case 'refill':
       alpha.stamina = maxStamina(alpha);
       partner.stamina = maxStamina(partner);
-      ev.push({ t: 'buff', side: si, text: 'Stamina restored' });
+      pushBuff(b, si, 'Stamina restored', ev);
       ev.push({ t: 'stamina', side: si, snap: snap(b, alpha) });
       return;
     case 'ease':
       alpha.fatigue = Math.max(0, alpha.fatigue - 1);
       partner.fatigue = Math.max(0, partner.fatigue - 1);
-      ev.push({ t: 'buff', side: si, text: '−1 Fatigue' });
+      pushBuff(b, si, '−1 Fatigue', ev);
       ev.push({ t: 'stamina', side: si, snap: snap(b, alpha) });
       return;
     case 'status': {

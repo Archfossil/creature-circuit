@@ -26,7 +26,7 @@ import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
-import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, type Action, type FoeOptions } from '../engine/battle';
+import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, snap as battleSnap, type Boost, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
@@ -1823,7 +1823,7 @@ export class App {
     const live = { battle: JSON.parse(JSON.stringify(b)) as unknown, ctx: { kind: ctx.kind, intro: ctx.intro, city: ctx.city, rivalLook: ctx.rivalLook, rivalSeat: ctx.rival ? activeMatchOf()?.players.indexOf(ctx.rival) : undefined } as WatchCtx, past: [] as BEvent[] };
     if (!ctx.watch && this.online) this.liveFight = live;
     this.feed({ kind: 'battle-start', battle: live.battle, ctx: live.ctx });
-    const disp: [Snap, Snap] = [snapOf(activeOf(b.sides[0])), snapOf(activeOf(b.sides[1]))];
+    const disp: [Snap, Snap] = [battleSnap(b, activeOf(b.sides[0])), battleSnap(b, activeOf(b.sides[1]))];
     const panel = h('div', { class: 'battle-ui' });
     const logLine = h('div', { class: 'battle-log' }, ctx.intro);
     const plates = [h('div', { class: 'plate me' }), h('div', { class: 'plate foe' })];
@@ -1864,7 +1864,10 @@ export class App {
           ...(side === 0 ? [
             h('div', { class: 'bar sta-bar', title: `Stamina ${sn.stamina}/${maxStamina(c)}: each move's 💨 Effort comes out of it. Running out adds Fatigue.` },
               h('i', { style: `width:${Math.min(100, (sn.stamina / maxStamina(c)) * 100)}%` })),
-            h('span', { class: 'num sta-num', title: 'Stamina' }, `💨 ${sn.stamina}/${maxStamina(c)}`)] : [])));
+            h('span', { class: 'num sta-num', title: 'Stamina' }, `💨 ${sn.stamina}/${maxStamina(c)}`)] : [])),
+        // attributes above or below normal right now; tap for where each comes from
+        ...(sn.boosts?.length && !sn.ko ? [h('button', { class: 'pl-boosts', 'aria-label': `${nameOf(c)}’s attribute changes`, onclick: () => boostSheet(nameOf(c), disp[side].boosts ?? []) },
+          sn.boosts.map((x) => h('span', { class: `boost ${x.n > 0 ? 'up' : 'down'}`, title: boostWhy(x) }, `${x.n > 0 ? '▲' : '▼'} ${STAT_LABEL[x.stat]} ${signedN(x.n)}`)))] : []));
     };
     const say = (t: string, tone?: string) => { logLine.textContent = t; logLine.className = `battle-log ${tone ?? ''}`; };
     // Normal battles slow down and explain every roll; Fast battles (Settings) keep the quick pace
@@ -1903,7 +1906,7 @@ export class App {
     for (const e of ctx.past ?? []) {
       atRound(e);
       logBattleEvent(blog, b, e, whoOn, view);
-      if ('snap' in e) disp[e.side] = e.snap;
+      if ('snap' in e && e.snap) disp[e.side] = e.snap;
       if (e.t === 'ring') { showRing(e.left, e.total); void bv.shrinkRing(1 - e.left / e.total); }
       if (e.t === 'end') watchedEnd = e.result;
     }
@@ -2011,7 +2014,7 @@ export class App {
             if (e.bonus > 0) { const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, `⌖ Zeroing in +${e.bonus}`, 'buff'); await wait(slow() ? 650 : 300); }
             break;
           }
-          case 'buff': { const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, e.text, 'buff'); await wait(450); break; }
+          case 'buff': { if (e.snap) { disp[e.side] = e.snap; renderPlate(e.side); } const p = bv.screenOf(e.side); floatText(p.x, p.y + 30, e.text, 'buff'); await wait(450); break; }
           case 'ko': sfx.ko(); await bv.ko(e.side); break;
           case 'send': {
             bv.trainerHop(e.side);
@@ -4238,4 +4241,11 @@ function probAtLeast(target: number) {
   for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (a + b >= target) ok++;
   return ok / 36;
 }
-function snapOf(c: CreatureInst): Snap { return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko }; }
+const signedN = (n: number) => `${n > 0 ? '+' : '−'}${Math.abs(n)}`;
+const boostWhy = (x: Boost) => x.parts.map((p) => `${p.label} ${signedN(p.value)}`).join(', ');
+/** Where a creature's attribute changes come from. */
+function boostSheet(name: string, list: Boost[]) {
+  openSheet(`${name}’s attributes now`, h('div', null,
+    h('div', { class: 'list' }, list.map((x) => h('div', { class: 'boost-row' }, h('span', { class: `boost ${x.n > 0 ? 'up' : 'down'}` }, `${x.n > 0 ? '▲' : '▼'} ${STAT_LABEL[x.stat]} ${signedN(x.n)}`), h('small', null, boostWhy(x))))),
+    h('p', { class: 'small muted' }, 'Changes from moves and Instincts add up to ±3 per attribute and go when the creature leaves the field. Evasion stays between 1 and 6, and the rest never fall below 0.')));
+}

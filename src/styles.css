@@ -579,6 +579,10 @@ button.dex-entry:hover { border-color: var(--ink); }
 .pl-bars .sta-bar i { background: linear-gradient(180deg, #7cc4ff, var(--info)); }
 .pl-bars .sta-num { grid-column: 2; font-size: 9.5px; }
 .pl-bars .fat-badge { grid-column: 3; grid-row: 1 / span 2; }
+.pl-boosts { display: flex; flex-wrap: wrap; gap: 4px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.boost { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 7px; white-space: nowrap; border: 1.5px solid; }
+.boost.up { background: #e2f5dc; border-color: #3f8f3a; color: #22601f; } .boost.down { background: #fde3df; border-color: #c0432f; color: #8c2415; }
+.boost-row { display: flex; align-items: center; gap: 8px; }
 .pl-vit { display: flex; align-items: center; gap: 8px; }
 .pl-bars .hpbar { --hh: 28px; }
 .pl-bars .hpbar .bar { height: 15px; border-width: 2px; }

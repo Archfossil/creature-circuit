@@ -17,7 +17,7 @@ import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
 import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether, settleTeamwork } from '../src/engine/teamwork';
-import { swapPreview } from '../src/engine/battle';
+import { swapPreview, boostsOf, snap } from '../src/engine/battle';
 import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts';
@@ -3936,5 +3936,36 @@ describe('World Log', () => {
     for (let i = 0; i < 200; i++) record(a, 'place', `x${i}`);
     expect(a.deeds!.length).toBe(DEEDS_MAX);
     expect(a.deeds![0].text).toBe('x199');
+  });
+});
+
+describe('Attribute changes on the field', () => {
+  const start = () => createBattle(side('player', [createCreature('emberfish', 5, { nature: 'bold' }), createCreature('puddlit', 5, { nature: 'bold' })]), side('wild', [createCreature('zapup', 5, { nature: 'bold' })]), WEATHER.overcast ?? WEATHER.clear);
+  it('adds up moves, statuses and the Nabe, with where each comes from', () => {
+    const b = start();
+    b.weather = { ...b.weather, speed: 0, evasion: 0 };
+    expect(boostsOf(b, 0)).toEqual([]);
+    const c = activeOf(b.sides[0]);
+    c.bonus = { ...c.bonus, power: 10, armor: 10 };
+    b.sides[0].mods = { power: 2 };
+    b.sides[0].buff = { armor: 1 };
+    b.status[c.uid] = { id: 'stagger', rounds: 3 } as never;
+    const list = boostsOf(b, 0);
+    expect(list.find((x) => x.stat === 'power')).toEqual({ stat: 'power', n: 1, parts: [{ label: 'Moves and Instincts', value: 2 }, { label: 'Stagger', value: -1 }] });
+    expect(list.find((x) => x.stat === 'armor')).toEqual({ stat: 'armor', n: 1, parts: [{ label: 'Nabe', value: 1 }] });
+    expect(snap(b, c).boosts).toEqual(list);
+    expect(snap(b, b.sides[0].team[1]).boosts).toBeUndefined(); // on the bench
+    // what cancels out, or can't go lower, isn't shown
+    b.sides[0].mods = { power: 1 };
+    expect(boostsOf(b, 0).some((x) => x.stat === 'power')).toBe(false);
+  });
+  it('each event that changes them, and the end of each round, carries the new values', () => {
+    const b = start();
+    b.sides[0].mods = { power: 3 };
+    const ev = resolveRound(b, { kind: 'move', move: CATCH_BREATH.id });
+    if (!b.over && !b.needSwap) for (const si of [0, 1] as const) {
+      const last = [...ev].reverse().find((e) => 'snap' in e && e.side === si) as { snap: ReturnType<typeof snap> };
+      expect(last.snap).toEqual(snap(b, activeOf(b.sides[si])));
+    }
   });
 });
