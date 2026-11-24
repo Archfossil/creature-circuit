@@ -83,6 +83,13 @@ export const TEST_REGION: Region = {
       explore: (s) => (s.location === 'w2' ? { t: 'trail', roll: 1, die: 4, steps: 1, need: 2, found: false } : null),
       trailText: (o) => `test trail ${o.steps}/${o.need}`,
     },
+    {
+      id: 'bar',
+      enter: (s) => (s.gimmicks?.bar === 'on' ? 'Test bar.' : null),
+      onBuy: (s, item) => { s.gimmicks = { ...s.gimmicks, bar: item }; },
+      migrate: (s) => { if (s.gimmicks?.bar === 'old') s.gimmicks.bar = 'new'; },
+      effects: (s) => (s.gimmicks?.bar === 'totem' ? [{ id: 'test-effect', icon: 'T', name: 'Test effect', text: '' }] : []),
+    },
     { id: 'late', gate: (_s, city) => (city === 'tc-fen' ? { ok: false, reason: 'Never heard.' } : null) },
   ],
   weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },

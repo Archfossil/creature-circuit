@@ -9,14 +9,14 @@ import type { Outcome } from '../../src/engine/world';
 
 /** The engine. A new copy for every season: its caches could let one season's dice depend on another's. */
 export async function loadGame() {
-  const [W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, { tools }, depths] = await Promise.all([
+  const [W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, { tools }, depths, wisps] = await Promise.all([
     import('../../src/engine/world'), import('../../src/engine/state'), import('../../src/engine/battle'), import('../../src/engine/events'),
     import('../../src/engine/npcs'), import('../../src/engine/npcTrade'), import('../../src/engine/messenger'), import('../../src/engine/dares'), import('../../src/engine/interactions'),
     import('../../src/engine/creature'), import('../../src/engine/circuit'), import('../../src/engine/stadium'), import('../../src/engine/imprints'), import('../../src/engine/swaps'),
     import('../../src/data/map'), import('../../src/data/species'), import('../../src/data/content'), import('../../src/data/npcs'),
-    import('../../src/engine/tools'), import('../../src/regions/margos/gimmicks/depths'),
+    import('../../src/engine/tools'), import('../../src/regions/margos/gimmicks/depths'), import('../../src/regions/margos/gimmicks/wisps'),
   ]);
-  return { W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, tools, depths };
+  return { W, S, B, E, N, T, M, D, I, Cr, Circuit, Stadium, Imp, Sw, map, species, content, npcs, tools, depths, wisps };
 }
 export type Game = Awaited<ReturnType<typeof loadGame>>;
 

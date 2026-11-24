@@ -1,5 +1,5 @@
 import type { Biome, ElementType, MapEdge, MapNode, Rarity, Species, TimeOfDay } from '../data/schema';
-import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS, inWispRegion } from '../data/map';
+import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, CLOUD_RING, isCloudNode, ROAMING_KEY_ITEMS } from '../data/map';
 import { activeRegion, onRegion } from '../regions/active';
 import type { Gate, GimmickBattle } from '../regions/gimmick';
 import { provide, tools } from './tools';
@@ -11,7 +11,7 @@ import type { GameState, Training, Retrain, Match, BattleKind } from './state';
 import { passerBy } from '../data/npcs';
 import { noteBattle, noteNabe, tally } from './dares';
 import { mercyOffer, npcBattle, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
-import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, keyTownOf, rollWisp, wispLit } from './state';
+import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, keyTownOf } from './state';
 import type { CreatureInst } from './creature';
 import { STAT_LABEL, HEART, stats, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
@@ -69,12 +69,7 @@ function routeBlock(s: GameState, nb: { node: MapNode; edge: MapEdge }): string 
   if (nb.edge.via === 'portal' && !portalOpen(s)) return 'The Cloud Island portal only opens at night (even turns), or any time in Winter.';
   const req = nb.edge.requires;
   if (req?.item && !hasItem(s, req.item)) return `Requires ${itemInfo(req.item).name}.`;
-  // the misty way into Lantern Glade (leaving is always open)
-  if (req?.wisp && inWispRegion(nb.node.id) && !inWispRegion(s.location) && !wispLit(s)) {
-    return hasItem(s, 'fog-lantern')
-      ? 'The mist is too thick. Catch a wisp in your Fog Lantern to light the way (check the lantern to see where one waits).'
-      : 'The mist is too thick. A Fog Lantern (Mistfall) with a wisp caught in it lights the way.';
-  }
+  for (const g of activeRegion().gimmicks) { const why = g.enter?.(s, nb, tools); if (why) return why; }
   const nr = nb.node.requires;
   if (nr) {
     if (nr.tier && tierOf(s) < nr.tier) return `Only Tier ${nr.tier}+ trainers may enter.`;
@@ -94,7 +89,7 @@ export const buffText = (buff: Partial<Record<string, number>>) =>
 
 /**
  * Lingering effects on the trainer: a Chanko Nabe's battle buff (until the next battle), an extra
- * rarity die (Star Charm or the Fortune Teller), Lure Incense, and a wisp in the Fog Lantern.
+ * rarity die (Star Charm or the Fortune Teller), Lure Incense, and those of the region's gimmicks.
  */
 export function activeEffects(s: GameState): ActiveEffect[] {
   const out: ActiveEffect[] = [];
@@ -105,7 +100,7 @@ export function activeEffects(s: GameState): ActiveEffect[] {
   if (s.flags.starCharm) out.push({ id: 'starCharm', icon: '⭐', name: 'Lucky stars', text: 'Your next wild encounter rolls an extra rarity die (a Star Charm or the Fortune Teller).' });
   if (s.flags.lure) out.push({ id: 'lure', icon: '🕯️', name: 'Lure Incense', text: 'Your next explore is a guaranteed wild encounter.' });
   if (s.flags.repel) out.push({ id: 'repel', icon: '💨', name: 'Hush Smoke', text: 'Your next explore can’t turn up a creature or trainer: a 3 finds Nothing and a 4 finds an item.' });
-  if (wispLit(s)) out.push({ id: 'wisp', icon: '💫', name: 'Wisp in your Fog Lantern', text: 'The misty way from Fogbank Path to Lantern Glade is lit. It drifts home when you leave the Glade and the Rainbow Plains.' });
+  for (const g of activeRegion().gimmicks) out.push(...(g.effects?.(s, tools) ?? []));
   return out;
 }
 
@@ -1196,7 +1191,7 @@ export function buy(s: GameState, id: string): boolean {
   if (isUnique(it) && hasItem(s, id)) return false;
   s.coins -= p;
   addItem(s, id, 1);
-  if (id === 'fog-lantern' && !s.flags.wisp) rollWisp(s); // a brand new lantern: go and find a wisp first
+  for (const g of activeRegion().gimmicks) g.onBuy?.(s, id, tools);
   return true;
 }
 /** Key items a town sells in this game: its own (Fog Lantern, Summit Pick, Ferry Pass) plus any roaming one rolled here. */

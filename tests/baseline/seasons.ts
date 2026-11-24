@@ -41,7 +41,7 @@ export function seasons(g: Game): Season[] {
       const s = veteran(b, 'pathfinder', 'thunder', 'S', ['redwarden', 'mangrovore', 'polarion'], { ...SUPPLIES, ...KEYS, ...MATERIALS, bike: 1 });
       s.merits = cities.filter((id) => id !== 'aurora' && id !== 'gloom');
       b.roll('wisp');
-      S.rollWisp(s);
+      b.g.wisps.rollWisp(s, b.g.tools);
       b.tour(s, [s.flags.wispAt!, map.LANTERN_GLADE, ...map.RAINBOW_PLAINS, ...['depths', 'valor', 'quillhaven', 'depths', 'valor', 'lumber', 'dustmere', 'ridgeway', 'mistfall', 'saltmarsh', 'blackSand']]);
       b.circuit(b.g.Circuit.soloGame(s));
     },

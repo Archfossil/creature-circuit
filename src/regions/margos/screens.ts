@@ -5,14 +5,15 @@ import { closeAllSheets, h, openSheet, rollDice, tile, toast } from '../../ui/do
 import { sfx } from '../../ui/sound';
 import { itemInfo } from '../../data/content';
 import { STAR_FACE } from '../../data/icons';
-import { CITIES } from '../../data/map';
+import { CITIES, NODE_BY_ID, neighbors } from '../../data/map';
 import { nameOf } from '../../engine/creature';
-import { save, tierOf } from '../../engine/state';
+import { hasItem, save, tierOf } from '../../engine/state';
 import { tools } from '../../engine/tools';
 import * as W from '../../engine/world';
 import { aboveFloor, dahliaBeaten, floorDie, onFloor, trailProgress } from './gimmicks/dahlia';
 import { DEPTHS_COST, depthsBlock, depthsCalls, exploreDepths, inDepths } from './gimmicks/depths';
 import { gauntletBlock, gauntletOpen, gauntletProgress } from './gimmicks/gauntlet';
+import { LANTERN, rollWisp, wispLit } from './gimmicks/wisps';
 import type { Screens } from '../screens';
 
 function findFabian(app: App) {
@@ -157,6 +158,44 @@ async function goDown(app: App, material: string) {
   await app.runBattle(out.battle, { kind: 'wild', intro: `Drawn by your ${itemInfo(material).name}, a wild ${nameOf(out.battle.sides[1].team[0])} climbs out of the Depths!` });
 }
 
+/** Check the Fog Lantern: a wisp held in it, or where the next one waits (marked on the map from now on). */
+function lanternSheet(app: App) {
+  const s = app.s;
+  if (!hasItem(s, LANTERN)) return;
+  if (!wispLit(s) && !s.flags.wispAt) rollWisp(s, tools);
+  closeAllSheets();
+  if (wispLit(s)) {
+    openSheet('🏮 Fog Lantern', h('div', null,
+      h('p', null, '💫 A wisp glows inside your lantern. The misty way from Fogbank Path to Lantern Glade is lit.'),
+      h('p', { class: 'small muted' }, 'When you leave Lantern Glade and the Rainbow Plains behind, it drifts home, and you’ll need to catch a new one to come back.')));
+    return;
+  }
+  const at = s.flags.wispAt!;
+  s.flags.wispSeen = true;
+  save(s);
+  app.renderHud();
+  // steps by road from here (ignoring Initiative and gates)
+  const dist: Record<string, number> = { [s.location]: 0 };
+  const q = [s.location];
+  while (q.length && dist[at] === undefined) { const id = q.shift()!; for (const nb of neighbors(id)) if (dist[nb.node.id] === undefined) { dist[nb.node.id] = dist[id] + 1; q.push(nb.node.id); } }
+  const n = NODE_BY_ID[at];
+  const close = openSheet('🏮 Fog Lantern', h('div', null,
+    h('p', null, 'The lantern is empty, but its flame leans one way: a wisp waits at ', h('b', null, n.name), ` (${app.nodeSubtitle(at).split(' · ')[0]}), ${dist[at] ?? '?'} step${dist[at] === 1 ? '' : 's'} away.`),
+    h('p', { class: 'small' }, 'Go there to catch it. A wisp in your lantern lights the misty way from Fogbank Path to Lantern Glade and the Rainbow Plains. It drifts home when you leave them, so every visit takes a new one.'),
+    h('p', { class: 'small muted' }, 'The wisp is marked on the map with a little light.'),
+    h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => { close(); app.world.focus(at); } }, 'Show on map'))));
+}
+
+/** A wisp was just caught. */
+function wispNews(app: App) {
+  const s = app.s;
+  if (s.flags.wispNews) {
+    s.flags.wispNews = false;
+    save(s);
+    toast(`💫 You caught a wisp in your Fog Lantern! It lights the misty way from Fogbank Path to Lantern Glade.`, 'good', 5000);
+  }
+}
+
 export const margosScreens: Screens = {
   show: { fabian: findFabian, gauntlet: gauntletSheet, floor: floorSheet },
   tiles: (app, at, cost) => [...gauntletTile(app, at, cost), ...depthsTile(app, at)],
@@ -165,4 +204,7 @@ export const margosScreens: Screens = {
   actions: (app) => (onFloor(app.s.location) && (trailProgress(app.s, tools).found || dahliaBeaten(app.s)) ? [{ icon: '🏟️', label: 'Dahlia', go: () => { void app.arbiter(); } }] : []),
   beforeMove: (app, to, cost) => (!onFloor(app.s.location) && onFloor(to) ? floorPrompt(app, cost) : null),
   trail: trailSign,
+  news: wispNews,
+  light: (s) => (hasItem(s, LANTERN) && s.flags.wispSeen && s.flags.wispAt ? s.flags.wispAt : null),
+  itemAction: (app, item) => (item === LANTERN ? { label: 'Check', go: () => lanternSheet(app) } : null),
 };

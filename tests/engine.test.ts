@@ -10,11 +10,12 @@ import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
 import { gauntletBlock, gauntletLevel, gauntletProgress, gauntletSize } from '../src/regions/margos/gimmicks/gauntlet';
 import { tools } from '../src/engine/tools';
+import { rollWisp, wispLit } from '../src/regions/margos/gimmicks/wisps';
 import { DEPTHS_COST, depthsBlock, exploreDepths } from '../src/regions/margos/gimmicks/depths';
 import { trailNeeded } from '../src/regions/margos/gimmicks/dahlia';
 import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
-import { rollWisp, wispLit, moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
+import { moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
 import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
@@ -1282,6 +1283,7 @@ describe('Lantern Glade and the Rainbow Plains', () => {
     expect(at).not.toBe(s.location);
     expect(W.canMoveTo(s, LANTERN_GLADE).ok).toBe(false); // a lantern alone won't do
     expect(W.canMoveTo(s, LANTERN_GLADE).reason).toMatch(/wisp/);
+    expect(W.activeEffects(s).map((e) => e.id)).not.toContain('wisp');
     W.travelTo(s, at);
     expect(wispLit(s)).toBe(true);
     expect(s.flags.wispAt).toBeNull();
@@ -1305,7 +1307,7 @@ describe('Lantern Glade and the Rainbow Plains', () => {
     for (const id of [...WISP_REGION, 'blackSand', 'firepit', FOREST_FLOOR, ...CLOUD_RING, 'ironwake', 'sunspire', 'stadium']) expect(WISP_SPOTS).not.toContain(id);
     for (const id of WISP_SPOTS) expect(['wild', 'town', 'city']).toContain(NODE_BY_ID[id].kind);
     const s = fresh();
-    for (let i = 0; i < 50; i++) { rollWisp(s); expect(s.flags.wispAt).not.toBe(s.location); }
+    for (let i = 0; i < 50; i++) { rollWisp(s, tools); expect(s.flags.wispAt).not.toBe(s.location); }
     // an older save with a Fog Lantern gets its first wisp
     const old = JSON.parse(JSON.stringify(s));
     old.inventory['fog-lantern'] = 1; delete old.flags.wispAt;

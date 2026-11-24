@@ -8,7 +8,7 @@ import type { NpcRecord } from './npcs';
 import { noteArrival } from './dares';
 import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
-import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID, WISP_SPOTS, inWispRegion } from '../data/map';
+import { isCloudNode, ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID } from '../data/map';
 import { pick } from './dice';
 import { provide, tools } from './tools';
 import { activeRegion } from '../regions/active';
@@ -256,20 +256,6 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /
     }
     s.cloudLoot = undefined;
   }
-  // leaving Lantern Glade and the Rainbow Plains: the wisp flies home, and the lantern feels for a new one
-  if (inWispRegion(s.location) && !inWispRegion(id) && s.flags.wisp) {
-    s.flags.wisp = false;
-    log(s, 'Left the Rainbow Plains behind: your wisp drifted home. Check your Fog Lantern to find a new one.');
-    rollWisp(s, id);
-  }
-  // arriving where the wisp waits catches it in the lantern
-  if (s.flags.wispAt === id && (s.inventory['fog-lantern'] ?? 0) > 0) {
-    s.flags.wispAt = null;
-    s.flags.wispSeen = false;
-    s.flags.wisp = true;
-    s.flags.wispNews = true;
-    log(s, `Caught a wisp in your Fog Lantern at ${NODE_BY_ID[id]?.name ?? id}. It will light the way to Lantern Glade.`);
-  }
   for (const g of activeRegion().gimmicks) g.onMove?.(s, s.location, id, tools);
   // reaching your marked next stop clears the marker
   if (s.waypoint === id) s.waypoint = undefined;
@@ -277,20 +263,6 @@ export function moveTrainer(s: GameState, id: string, opts: { wiped?: boolean; /
   s.location = id;
   record(s, 'move', opts.wiped ? `was sent back to ${place} after the whole team was knocked out` : opts.how ?? `moved to ${place}`);
 }
-
-// ── Wisps (the Fog Lantern) ─────────────────────────────────────
-/**
- * Hide a new wisp somewhere on the mainland for this trainer's Fog Lantern: any wild node, town or
- * city that can be walked to without a key item, never `from` (where they stand). The trainer sees
- * where by checking the lantern.
- */
-export function rollWisp(s: GameState, from = s.location) {
-  const spots = WISP_SPOTS.filter((id) => id !== from);
-  s.flags.wispAt = pick(spots);
-  s.flags.wispSeen = false;
-}
-/** A Fog Lantern with a wisp in it: the way into Lantern Glade is lit. */
-export const wispLit = (s: GameState) => (s.inventory['fog-lantern'] ?? 0) > 0 && !!s.flags.wisp;
 
 // An autosave that doesn't fit (or storage that's turned off) is kept here and reported, so it's never lost quietly.
 let unsaved: { key: string; json: string } | null = null;
@@ -584,8 +556,7 @@ export function migrate(s: GameState): GameState | null {
     const starter = mine.find((c) => line.includes(c.species));
     if (starter) starter.bond = true;
   }
-  // Lantern Glade: a Fog Lantern from before wisps feels for its first one
-  if ((s.inventory['fog-lantern'] ?? 0) > 0 && s.flags.wispAt === undefined && !s.flags.wisp) rollWisp(s);
+  for (const g of activeRegion().gimmicks) g.migrate?.(s, tools);
   // Trainer ID: older saves start their detailed stats from here
   if (s.stats && !s.stats.record) { s.stats.record = {}; if (s.turn > 1) s.stats.trackedFrom = s.turn; }
   return s.version === SAVE_VERSION ? s : null;

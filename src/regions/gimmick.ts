@@ -1,11 +1,11 @@
 // A region's gimmicks: rules of its own, as answers to the engine's questions (docs/16-region-packages.md). The first
 // to have an answer gives it. Like the rest of a package, a gimmick's rules only import types, so the engine's
 // functions are handed to it (`t`). Its screens are apart from them (screens.ts).
-import type { MapNode, Species } from '../data/schema';
+import type { MapEdge, MapNode, Species } from '../data/schema';
 import type { Battle } from '../engine/battle';
 import type { EventDef } from '../engine/events';
 import type { GameState } from '../engine/state';
-import type { Outcome } from '../engine/world';
+import type { ActiveEffect, Outcome } from '../engine/world';
 
 /** The engine's functions that gimmicks use. Add to this list as they need more (engine/tools.ts). */
 export type Tools =
@@ -46,6 +46,14 @@ export interface Gimmick {
   gate?(s: GameState, city: string, t: Tools): Gate | null;
   /** The trainer is going from one place to another, by any means (or being sent home). */
   onMove?(s: GameState, from: string, to: string, t: Tools): void;
+  /** Why this step can't be taken, besides what its route and node require. Null: it's not this gimmick's business. */
+  enter?(s: GameState, step: { node: MapNode; edge: MapEdge }, t: Tools): string | null;
+  /** Something was bought. */
+  onBuy?(s: GameState, item: string, t: Tools): void;
+  /** A save is being loaded: put right what an older one lacks. */
+  migrate?(s: GameState, t: Tools): void;
+  /** What's waiting to kick in, for the map's Active effects. */
+  effects?(s: GameState, t: Tools): ActiveEffect[];
   /** Exploring, where that works its own way. Null: that's not here. */
   explore?(s: GameState, t: Tools): Outcome | null;
   /** The World Log's words for a sign of its trail. */

@@ -14,7 +14,7 @@ import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
-import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, rollWisp, wispLit, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
@@ -1523,14 +1523,10 @@ export class App {
     this.world.setReach(this.reach());
     // the Rainbow Plains wear the color of the day's type; a wisp the trainer has looked for glows on the map
     this.world.setPrism(TYPE_COLOR[W.prismType(s)]);
-    this.world.setWisp(hasItem(s, 'fog-lantern') && s.flags.wispSeen && s.flags.wispAt ? s.flags.wispAt : null);
+    this.world.setWisp(screens().light?.(s) ?? null);
     const marker = this.markerOwner();
     this.world.setWaypoint(marker?.waypoint ?? null, marker?.trainer.color);
-    if (s.flags.wispNews && !this.watching) {
-      s.flags.wispNews = false;
-      save(s);
-      toast(`💫 You caught a wisp in your Fog Lantern! It lights the misty way from Fogbank Path to Lantern Glade.`, 'good', 5000);
-    }
+    if (!this.watching) screens().news?.(this);
     const daysLeft = 100 - s.turn;
     const effects = W.activeEffects(s);
     const top = h('div', { class: 'hud-top' },
@@ -3275,34 +3271,6 @@ export class App {
       h('p', { class: 'small muted' }, 'A Chanko Nabe lasts until your next battle. Lucky stars are used up by your next encounter; Lure Incense and Hush Smoke by your next explore.')));
   }
 
-  /** Check the Fog Lantern: a wisp held in it, or where the next one waits (marked on the map from now on). */
-  lanternSheet() {
-    const s = this.s;
-    if (!hasItem(s, 'fog-lantern')) return;
-    if (!wispLit(s) && !s.flags.wispAt) rollWisp(s);
-    closeAllSheets();
-    if (wispLit(s)) {
-      openSheet('🏮 Fog Lantern', h('div', null,
-        h('p', null, '💫 A wisp glows inside your lantern. The misty way from Fogbank Path to Lantern Glade is lit.'),
-        h('p', { class: 'small muted' }, 'When you leave Lantern Glade and the Rainbow Plains behind, it drifts home, and you’ll need to catch a new one to come back.')));
-      return;
-    }
-    const at = s.flags.wispAt!;
-    s.flags.wispSeen = true;
-    save(s);
-    this.renderHud();
-    // steps by road from here (ignoring Initiative and gates)
-    const dist: Record<string, number> = { [s.location]: 0 };
-    const q = [s.location];
-    while (q.length && dist[at] === undefined) { const id = q.shift()!; for (const nb of neighbors(id)) if (dist[nb.node.id] === undefined) { dist[nb.node.id] = dist[id] + 1; q.push(nb.node.id); } }
-    const n = NODE_BY_ID[at];
-    const close = openSheet('🏮 Fog Lantern', h('div', null,
-      h('p', null, 'The lantern is empty, but its flame leans one way: a wisp waits at ', h('b', null, n.name), ` (${this.nodeSubtitle(at).split(' · ')[0]}), ${dist[at] ?? '?'} step${dist[at] === 1 ? '' : 's'} away.`),
-      h('p', { class: 'small' }, 'Go there to catch it. A wisp in your lantern lights the misty way from Fogbank Path to Lantern Glade and the Rainbow Plains. It drifts home when you leave them, so every visit takes a new one.'),
-      h('p', { class: 'small muted' }, 'The wisp is marked on the map with a little light.'),
-      h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => { close(); this.world.focus(at); } }, 'Show on map'))));
-  }
-
   stadiumSheet() {
     const s = this.s;
     openSheet('🏆 Grand Tournament', h('div', null,
@@ -3393,7 +3361,7 @@ export class App {
             const usable = ['restore', 'treat', 'charm', 'travel'].includes(it.kind);
             return h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, it.icon), h('div', null, h('b', null, W.itemDisplayName(id), ' ×', s.inventory[id]), h('small', null, it.text), it.kind === 'material' ? materialDetail(it) : null),
               usable && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.useItemFlow(id, render) }, 'Use') : null,
-              id === 'fog-lantern' && !readOnly ? h('button', { class: 'btn sm', onclick: () => this.lanternSheet() }, 'Check') : null);
+              !readOnly ? (() => { const a = screens().itemAction?.(this, id); return a ? h('button', { class: 'btn sm', onclick: a.go }, a.label) : null; })() : null);
           })))),
         Object.keys(s.inventory).length === 0 && !s.imprints?.length ? h('p', { class: 'muted' }, 'Your bag is empty.') : '',
         Object.keys(s.cloudLoot ?? {}).length ? h('section', { class: 'cloud-satchel' }, h('h4', null, '☁️ Cloud satchel (not yet secured)'),

@@ -327,6 +327,21 @@ describe('gimmicks', () => {
     expect(m.g.E.EVENT_IDS).not.toContain('test-bat');
     expect(E.EVENT_IDS.filter((id) => ['floor'].includes(E.EVENT_PLACES[id]))).toEqual([]);
   });
+  it('can close a step, notice what’s bought, add effects and mend old saves', () => {
+    const { W, S } = t.g, s = start(t.g, 'tc-ash');
+    const next = t.g.map.neighbors('tc-ash').find((x) => !x.node.requires && !x.edge.requires)!.node.id;
+    s.initiative = 5;
+    expect(W.canMoveTo(s, next).ok).toBe(true);
+    s.gimmicks = { bar: 'on' };
+    expect(W.canMoveTo(s, next).reason).toBe('Test bar.');
+    s.gimmicks = {};
+    expect(W.activeEffects(s)).toEqual([]);
+    s.coins = 99;
+    W.buy(s, 'totem');
+    expect(s.gimmicks).toEqual({ bar: 'totem' });
+    expect(W.activeEffects(s).map((e) => e.id)).toEqual(['test-effect']);
+    expect(S.migrate(JSON.parse(JSON.stringify({ ...s, gimmicks: { bar: 'old' } })))!.gimmicks).toEqual({ bar: 'new' });
+  });
   it('only name screens that there are', () => {
     const src = (f: string) => readFileSync(new URL(`../src/regions/margos/${f}`, import.meta.url), 'utf-8');
     const named = readdirSync(new URL('../src/regions/margos/gimmicks/', import.meta.url)).flatMap((f) => [...src(`gimmicks/${f}`).matchAll(/show: '(\w+)'/g)].map((x) => x[1]));
@@ -338,7 +353,7 @@ describe('gimmicks', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
     const gone = ['mangrove', 'hollow', 'gloom', 'forestfloor'];
-    expect(files.filter((f) => /DEPTHS|exploreDepths/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
+    expect(files.filter((f) => /DEPTHS|exploreDepths|rollWisp|wispLit|WISP_REGION|inWispRegion|fog-lantern/.test(readFileSync(new URL(f, root), 'utf-8')))).toEqual([]);
     expect(files.filter((f) => /FOREST_FLOOR|Dahlia/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/state.ts', 'engine/events.ts', 'ui/guide.ts', 'ui/app.ts'].includes(f))).toEqual([]);
     expect(files.filter((f) => !f.startsWith('render/') && /'iron'|auntlet(Win|Battle|Progress)/.test(readFileSync(new URL(f, root), 'utf-8'))).filter((f) => !['engine/dares.ts', 'engine/state.ts'].includes(f))).toEqual([]); // (state.ts: the save's own field; the map's walls are step 7's)
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);

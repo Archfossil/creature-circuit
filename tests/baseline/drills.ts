@@ -123,7 +123,7 @@ export function drills(g: Game): Season[] {
         // the wisp and the Plains: in, around, and home, on several days
         for (const turn of [21, 23, 25, 91]) {
           at('mistfall', turn);
-          S.rollWisp(s);
+          b.g.wisps.rollWisp(s, b.g.tools);
           b.note(`wisp at ${s.flags.wispAt}`);
           at(s.flags.wispAt!);
           b.note(`wisp ${s.flags.wisp}`, W.activeEffects(s));
