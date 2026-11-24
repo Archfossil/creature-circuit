@@ -255,8 +255,8 @@ export class Bot {
     const city = W.arbiterHere(s);
     if (!city || (s.merits.includes(city) && this.odds(0.6))) return false;
     let gate = W.arbiterGate(s, city);
-    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.trail, gate.gauntlet, gate.findHim]);
-    if (gate.findHim) { s.flags.fabianFound = true; this.note('fabian'); gate = W.arbiterGate(s, city); } // (finding him is a guessing game in app.ts)
+    this.note(`gate ${city} ${gate.ok}`, [{ text: gate.reason }, gate.cloud, gate.trail, gate.gauntlet, gate.show === 'fabian' || undefined]);
+    if (gate.show === 'fabian') { s.flags.fabianFound = true; this.note('fabian'); gate = W.arbiterGate(s, city); } // (finding him is a guessing game in app.ts)
     while (gate.gauntlet && s.location === S.GAUNTLET_CITY) {
       const r = W.gauntletBattle(s);
       if (!r) return true;

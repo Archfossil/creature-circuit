@@ -296,10 +296,17 @@ describe('gimmicks', () => {
     expect(W.arbiterGate(s, 'tc-fen').reason).toMatch(/rest first/);
     expect(m.g.W.arbiterGate(start(m.g, 'thunder'), 'mangrove').reason).toMatch(/Root Whistle/);
   });
+  it('only name screens that there are', () => {
+    const src = (f: string) => readFileSync(new URL(`../src/regions/margos/${f}`, import.meta.url), 'utf-8');
+    const named = readdirSync(new URL('../src/regions/margos/gimmicks/', import.meta.url)).flatMap((f) => [...src(`gimmicks/${f}`).matchAll(/show: '(\w+)'/g)].map((x) => x[1]));
+    const there = /show: \{([^}]*)\}/.exec(src('screens.ts'))![1];
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.filter((x) => !new RegExp(`\\b${x}:`).test(there))).toEqual([]);
+  });
   it('that have moved leave nothing behind in the engine or screens', () => {
     const root = new URL('../src/', import.meta.url);
     const files = (readdirSync(root, { recursive: true }) as string[]).map((f) => f.replace(/\\/g, '/')).filter((f) => /^(engine|ui|render)\/.*\.ts$/.test(f));
-    const gone = ['mangrove'];
+    const gone = ['mangrove', 'hollow'];
     for (const id of gone) expect(files.filter((f) => new RegExp(`'${id}'`).test(readFileSync(new URL(f, root), 'utf-8'))), id).toEqual([]);
   });
 });

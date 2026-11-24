@@ -1,4 +1,5 @@
 import { STAR_FACE } from '../data/icons';
+import { screens } from '../regions/screens';
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf } from './dom';
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
@@ -2927,7 +2928,8 @@ export class App {
     if (!gate.ok) {
       if (gate.cloud) { this.cloudSheet(); return; }
       if (gate.trail) { this.floorSheet(); return; }
-      if (gate.findHim) { this.findFabian(); return; }
+      const screen = gate.show ? screens().show[gate.show] : undefined;
+      if (screen) { screen(this); return; }
       if (gate.gauntlet) { this.gauntletSheet(); return; }
       toast(gate.reason ?? 'Not yet.', 'bad', 3500);
       return;
@@ -3063,20 +3065,6 @@ export class App {
           if (s.flags.stellaOpen && !s.merits.includes(GAUNTLET_CITY)) toast('⚓ The Gauntlet is cleared. Stella’s fortress rises from the waves!', 'good', 4500);
         } }, `Battle the next trainer · ${W.cityActionCost(s)}⚡`)),
       why ? h('p', { class: 'small muted' }, why) : null));
-  }
-
-  findFabian() {
-    const s = this.s;
-    const faces = ['🧑‍🌾', '👵', '🧔', '👩‍🎨', '🧙'];
-    const fab = Math.floor(Math.random() * 3);
-    const shown = [...faces].sort(() => Math.random() - 0.5).slice(0, 3);
-    const close = openSheet('Where is Fabian?', h('div', null,
-      h('p', null, 'Fabian hides among the townsfolk of Hollow Crest in disguise. Who looks suspicious? (A wrong guess costs 1 Initiative as you get pranked.)'),
-      h('div', { class: 'fabian' }, shown.map((f, i) => h('button', { class: 'villager', onclick: () => {
-        close();
-        if (i === fab) { s.flags.fabianFound = true; toast('"Ha! You saw through my glamour." Fabian will accept your challenge.', 'good', 4000); save(s); this.arbiter(); }
-        else { s.initiative = Math.max(0, s.initiative - 1); toast('A bucket of glitter falls on you. Wrong villager!', 'bad', 3000); save(s); this.renderHud(); }
-      } }, f)))));
   }
 
   townSheet() {

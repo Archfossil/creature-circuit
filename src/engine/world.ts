@@ -1551,7 +1551,7 @@ export const REMATCH_COINS = 5;
 export const ARBITER_REST = 5;
 /** Turns until an Arbiter this trainer has beaten will battle again (0: now). */
 export const arbiterResting = (s: GameState, cityId: string) => Math.max(0, (s.arbiterBeat?.[cityId] ?? -ARBITER_REST) + ARBITER_REST - s.turn);
-export function arbiterGate(s: GameState, cityId: string): Gate & { findHim?: boolean; gauntlet?: boolean } {
+export function arbiterGate(s: GameState, cityId: string): Gate & { gauntlet?: boolean } {
   const rest = arbiterResting(s, cityId);
   if (rest) return { ok: false, reason: `${CITIES[cityId].arbiter}’s team is resting. Come back in ${rest} turn${rest === 1 ? '' : 's'} for a rematch.` };
   if (s.roster.every((c) => c.ko)) return { ok: false, reason: 'Your team needs rest first.' };
@@ -1562,7 +1562,6 @@ export function arbiterGate(s: GameState, cityId: string): Gate & { findHim?: bo
       const lap = cloudLapProgress(s);
       return { ok: false, cloud: true, reason: `Salem only faces trainers who have walked a full lap of Cloud Island (${lap.steps}/${lap.need} steps). Its portal opens at night, or any time in Winter.` };
     }
-    case 'hollow': return s.flags.fabianFound ? { ok: true } : { ok: false, findHim: true, reason: 'Fabian is hiding somewhere in town, in disguise.' };
     case 'gloom': {
       if (s.location !== FOREST_FLOOR) return { ok: false, reason: `Dahlia's arena hides on the Forest Floor below Gloomshade. Climb down with a Canopy Rope (sold in ${keyTownName(s, 'canopy-rope')} this season) and follow her trail.` };
       if (s.merits.includes('gloom')) return { ok: true }; // you know the way to her arena now
