@@ -3,7 +3,7 @@ import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { attackStat, MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom, critText, critsMore } from '../data/moves';
-import { ABILITIES, NATURE_BY_ID } from '../data/content';
+import { natureText, ABILITIES, NATURE_BY_ID } from '../data/content';
 import { describeSwap, swapText } from '../data/swapMoves';
 import { setSwapMove, swapChoices, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
 import { INSTINCT_BY_ID, INSTINCT_ICON, instinctRules } from '../data/instincts';
@@ -405,7 +405,7 @@ Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to it
       inst ? h('div', { class: 'mini-panel', title: instinctRules(inst) }, h('h5', null, `${INSTINCT_ICON} Instinct · `, inst.name), h('p', null, inst.text), h('small', { class: 'muted' }, 'Fires on its own in battle.'), retrained(c.instinct, sp.instinct, INSTINCT_BY_ID[sp.instinct]?.name)) : null),
     swapSection(c, opts.teammates === undefined ? [] : opts.teammates, opts.editable ? (m) => editSwapMove(c, m, changed, opts.onEdit) : undefined),
     h('section', { class: 'ic-sec' },
-      h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` +${nat.up} / −${nat.down}`)),
+      h('h4', null, `Nature · ${nat.name}`, h('span', { class: 'muted' }, ` ${natureText(nat)}`)),
       h('p', { class: 'small' }, nat.text),
       h('div', { class: 'perks' }, nat.perks.map((p, i) => {
         const have = i < c.perks;

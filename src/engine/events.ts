@@ -5,7 +5,7 @@ import { NPC_BY_ID, passerBy } from '../data/npcs';
 import { npcBattle, pickRival } from './npcs';
 import type { ElementType, Rarity, TimeOfDay } from '../data/schema';
 import { SPECIES_BY_ID } from '../data/species';
-import { NATURES, NATURE_BY_ID, ABILITIES, ITEMS, BIOME_MATERIALS, timeOfDay } from '../data/content';
+import { natureText, NATURES, NATURE_BY_ID, ABILITIES, ITEMS, BIOME_MATERIALS, timeOfDay } from '../data/content';
 import { INSTINCTS, INSTINCT_BY_ID } from '../data/instincts';
 import { TYPE_LABEL } from '../data/types';
 import type { GameState } from './state';
@@ -140,7 +140,7 @@ const SHARED: EventDef[] = [
         ...(d.natures as string[]).map((id): EventChoice => {
           const n = NATURE_BY_ID[id];
           return {
-            id: `nature:${id}`, label: `Become ${n.name}`, detail: `+${n.up} / −${n.down}. ${n.text}`, pick: true,
+            id: `nature:${id}`, label: `Become ${n.name}`, detail: `${natureText(n)}. ${n.text}`, pick: true,
             canPick: (c) => (c.nature === id ? `Already ${n.name}.` : null),
             preview: (c) => ({ after: withNature(c, id), note: c.perks ? `Keeps ${c.perks} Nature perk${c.perks === 1 ? '' : 's'}, now from ${n.name}.` : undefined }),
           };

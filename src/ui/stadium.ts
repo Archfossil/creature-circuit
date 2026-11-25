@@ -11,13 +11,12 @@ import * as S from '../engine/stadium';
 import { instinctIdOf, nameOf, type CreatureInst } from '../engine/creature';
 import type { Battle } from '../engine/battle';
 import { load, newMatch, saveMatch, type GameState, type Match, type TrainerLookChoice } from '../engine/state';
-import { NATURES, WEATHER } from '../data/content';
+import { natureText, NATURES, WEATHER } from '../data/content';
 import { INSTINCT_BY_ID, instinctRules } from '../data/instincts';
 import { SPECIES_BY_ID } from '../data/species';
 import { NPC_BY_ID } from '../data/npcs';
 import { CITIES } from '../data/map';
 import { TYPES, TYPE_COLOR, TYPE_LABEL } from '../data/types';
-import { STAT_LABEL } from '../engine/creature';
 import type { ElementType, Rarity } from '../data/schema';
 
 const KEY = 'creature-circuit-stadium-v1';
@@ -103,7 +102,7 @@ function editTeam(start: S.StadiumTeam, done: (t: S.StadiumTeam) => void) {
         return h('div', { class: 'stadium-slot', style: tcOf(sp) },
           miniCard(c, { badge: i === 0 ? 'Leads' : undefined, onClick: () => openCard(i) }),
           h('div', { class: 'row gap-s wrap' },
-            h('label', { class: 'row gap-s small' }, 'Nature ', h('select', { onchange: (e: Event) => { p.nature = (e.target as HTMLSelectElement).value; render(); } }, NATURES.map((n) => h('option', { value: n.id, selected: n.id === c.nature }, `${n.name} (+${STAT_LABEL[n.up]} −${STAT_LABEL[n.down]})`)))),
+            h('label', { class: 'row gap-s small' }, 'Nature ', h('select', { onchange: (e: Event) => { p.nature = (e.target as HTMLSelectElement).value; render(); } }, NATURES.map((n) => h('option', { value: n.id, selected: n.id === c.nature }, `${n.name} (${natureText(n)})`)))),
             h('label', { class: 'row gap-s small' }, 'Instinct ', h('select', { onchange: (e: Event) => { p.instinct = (e.target as HTMLSelectElement).value; render(); } }, S.stadiumInstincts(sp).map((x) => h('option', { value: x.id, selected: x.id === inst?.id }, x.name))))),
           inst ? h('small', { class: 'muted' }, instinctRules(inst)) : null,
           h('div', { class: 'row gap-s wrap' },

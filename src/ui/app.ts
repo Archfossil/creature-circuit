@@ -46,7 +46,7 @@ import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } fr
 import { NODE_BY_ID, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { leadTypes, SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { statsText, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
-import { ABILITIES, NATURES, NATURE_BY_ID, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
+import { natureText, ABILITIES, NATURES, NATURE_BY_ID, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
 
@@ -313,12 +313,12 @@ export class App {
           h('img', { src: portrait(sp.id), alt: '' }),
           h('div', null, h('h3', null, sp.name),
             h('div', { class: 'row gap-s wrap' }, h('span', { class: 'chip' }, nat.name), n > 3 ? h('span', { class: 'chip' }, '🌿 ', ABILITIES[traits.ability!].name) : null, n > 4 ? h('span', { class: 'chip' }, `${INSTINCT_ICON} `, INSTINCT_BY_ID[traits.instinct!].name) : null),
-            h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${k === nat.up ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
-        const intro = n === 3 ? 'Its Nature raises one attribute and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health: a heart of 5 for each point.'
+            h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${nat.up.includes(k) ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
+        const intro = n === 3 ? 'Its Nature raises an attribute (Volatile raises two) and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health: a heart of 5 for each point.'
           : n === 4 ? 'Its Ability helps you on the map while it’s Following you.'
             : `Its Instinct fires on its own in battle. Here are the ${types} ones.`;
         const grid = n === 3 ? NATURES.map((x) => pickBtn(traits.nature === x.id, () => { traits.nature = x.id; },
-          h('b', null, x.name), h('small', null, h('span', { class: 'good-text' }, `+1 ${STAT_LABEL[x.up]}`), ' · ', h('span', { class: 'bad-text' }, `−1 ${STAT_LABEL[x.down]}`)),
+          h('b', null, x.name), h('small', null, h('span', { class: 'good-text' }, x.up.map((k) => `+1 ${STAT_LABEL[k]}`).join(', ')), ' · ', h('span', { class: 'bad-text' }, `−1 ${STAT_LABEL[x.down]}`)),
           h('small', null, x.text), h('small', { class: 'muted' }, `Perks: ${x.perks.map((p) => p.text).join(' → ')}`)))
           : n === 4 ? Object.values(ABILITIES).map((x) => pickBtn(traits.ability === x.id, () => { traits.ability = x.id; }, h('b', null, `🌿 ${x.name}`), h('small', null, x.text), usual(x.id === sp.ability)))
             : starterInstincts(sp).map((x) => pickBtn(traits.instinct === x.id, () => { traits.instinct = x.id; }, h('b', null, `${INSTINCT_ICON} ${x.name}`), h('small', null, x.text), h('small', { class: 'muted' }, instinctRules(x)), usual(x.id === sp.instinct)));
@@ -3203,7 +3203,7 @@ export class App {
       const label: Record<W.RetrainPart, string> = { nature: 'Nature', ability: 'Ability', instinct: 'Instinct' };
       const current: Record<W.RetrainPart, string> = c ? { nature: c.nature, ability: abilityOf(c), instinct: instinctIdOf(c) } : { nature: '', ability: '', instinct: '' };
       const options: Record<W.RetrainPart, { id: string; name: string; group?: string; text: string }[]> = {
-        nature: NATURES.map((n) => ({ id: n.id, name: n.name, text: `+${n.up} / −${n.down}` })),
+        nature: NATURES.map((n) => ({ id: n.id, name: n.name, text: natureText(n) })),
         ability: Object.values(ABILITIES).map((a) => ({ id: a.id, name: a.name, text: a.text })),
         instinct: INSTINCTS.map((i) => ({ id: i.id, name: i.name, group: TYPE_LABEL[i.type], text: i.text })),
       };

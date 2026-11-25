@@ -144,11 +144,18 @@ export function drills(g: Game): Season[] {
           b.note(`satchel ${s.cloudLoot === undefined} ${s.inventory['star-charm']}`);
           b.write(s);
         }
+        // the Eye of the Sky, stepped into from the ring (Nimbalune is there, whatever the dice did before)
+        at(ring[0], 42);
+        s.merits.push('aurora');
+        s.flags.beaten = [];
+        b.step(s, 'cloudeye');
+        s.merits.pop();
+        b.write(s);
         // the Forest Floor: signs found and lost on leaving, and a smaller die once Dahlia is beaten
         for (const beaten of [false, true]) {
           if (beaten) s.merits.push('gloom');
           at(map.FOREST_FLOOR, 43);
-          for (let k = 0; k < 14; k++) { ready(b, s); if (s.location === map.FOREST_FLOOR) b.outcome(s, W.reexplore(s)); }
+          for (let k = 0; k < 14; k++) { ready(b, s); if (s.location === map.FOREST_FLOOR) { b.count('biome:deepwood'); b.outcome(s, W.reexplore(s)); } }
           b.note(`floor d${s.merits.includes('gloom') ? 6 : 8} ${Math.min(3 + S.tierOf(s), s.flags.dahliaTrail ?? 0)}`);
           at('gloom');
           b.note(`signs ${s.flags.dahliaTrail}`);

@@ -4,19 +4,21 @@ import { TYPES, TYPE_LABEL } from './types';
 import { onRegion } from '../regions/active';
 
 export const NATURES: Nature[] = [
-  { id: 'adamant', name: 'Adamant', up: 'power', down: 'focus', text: 'Favors raw physical brawling over elemental channeling.',
+  { id: 'adamant', name: 'Adamant', up: ['power'], down: 'focus', text: 'Favors raw physical brawling over elemental channeling.',
     perks: [{ cost: 3, name: 'Knuckle Down', bonus: { power: 1 }, text: '+1 Power' }, { cost: 6, name: 'Thick Hide', bonus: { armor: 1 }, text: '+1 Armor' }, { cost: 10, name: 'Unbreakable', bonus: { vigor: 1, power: 1 }, text: '+1 Vigor, +1 Power' }] },
-  { id: 'timid', name: 'Timid', up: 'speed', down: 'power', text: 'Prioritizes lightning-fast positioning at the cost of force.',
+  { id: 'timid', name: 'Timid', up: ['speed'], down: 'power', text: 'Prioritizes lightning-fast positioning at the cost of force.',
     perks: [{ cost: 3, name: 'Light Feet', bonus: { speed: 1 }, text: '+1 Speed' }, { cost: 6, name: 'Skittish', bonus: { evasion: 1 }, text: '+1 Evasion' }, { cost: 10, name: 'Brave Heart', bonus: { power: 2 }, text: '+2 Power' }] },
-  { id: 'fortified', name: 'Fortified', up: 'armor', down: 'speed', text: 'Builds an immovable defensive wall, sacrificing mobility.',
+  { id: 'fortified', name: 'Fortified', up: ['armor'], down: 'speed', text: 'Builds an immovable defensive wall, sacrificing mobility.',
     perks: [{ cost: 3, name: 'Shell Up', bonus: { armor: 1 }, text: '+1 Armor' }, { cost: 6, name: 'Rooted', bonus: { ward: 1 }, text: '+1 Ward' }, { cost: 10, name: 'Bastion', bonus: { vigor: 1, armor: 1 }, text: '+1 Vigor, +1 Armor' }] },
-  { id: 'resonant', name: 'Resonant', up: 'focus', down: 'armor', text: 'Leans into elemental mastery and status effects; physical defenses go soft.',
+  { id: 'resonant', name: 'Resonant', up: ['focus'], down: 'armor', text: 'Leans into elemental mastery and status effects; physical defenses go soft.',
     perks: [{ cost: 3, name: 'Attuned', bonus: { focus: 1 }, text: '+1 Focus' }, { cost: 6, name: 'Harmonic', bonus: { ward: 1 }, text: '+1 Ward' }, { cost: 10, name: 'Crescendo', bonus: { focus: 2 }, text: '+2 Focus' }] },
-  { id: 'enduring', name: 'Enduring', up: 'vigor', down: 'ward', text: 'Piles on health to soak damage, but is open to elemental energy.',
+  { id: 'enduring', name: 'Enduring', up: ['vigor'], down: 'ward', text: 'Piles on health to soak damage, but is open to elemental energy.',
     perks: [{ cost: 3, name: 'Deep Breath', bonus: { stamina: 2 }, text: '+2 Stamina' }, { cost: 6, name: 'Stubborn', bonus: { ward: 1 }, text: '+1 Ward' }, { cost: 10, name: 'Last Stand', bonus: { vigor: 1, armor: 1 }, text: '+1 Vigor, +1 Armor' }] },
-  { id: 'volatile', name: 'Volatile', up: 'stamina', down: 'evasion', text: 'Pushes limits with demanding moves; cavalier with its own safety.',
-    perks: [{ cost: 3, name: 'Hot Blooded', bonus: { stamina: 2 }, text: '+2 Stamina' }, { cost: 6, name: 'Reckless', bonus: { power: 1, focus: 1 }, text: '+1 Power, +1 Focus' }, { cost: 10, name: 'Overdrive', bonus: { speed: 2 }, text: '+2 Speed' }] },
+  { id: 'volatile', name: 'Volatile', up: ['stamina', 'power'], down: 'evasion', text: 'All power, and the stamina to keep throwing it; cavalier with its own safety.',
+    perks: [{ cost: 3, name: 'Hot Blooded', bonus: { stamina: 1, focus: 1 }, text: '+1 Stamina, +1 Focus' }, { cost: 6, name: 'Reckless', bonus: { power: 1, focus: 1 }, text: '+1 Power, +1 Focus' }, { cost: 10, name: 'Overdrive', bonus: { power: 2, focus: 2 }, text: '+2 Power, +2 Focus' }] },
 ];
+/** What a Nature raises and lowers, e.g. "+Stamina +Power / −Evasion". */
+export const natureText = (n: Nature) => { const name = (k: string) => k[0].toUpperCase() + k.slice(1); return `${n.up.map((k) => `+${name(k)}`).join(' ')} / −${name(n.down)}`; };
 export const NATURE_BY_ID = Object.fromEntries(NATURES.map((n) => [n.id, n]));
 
 /** Overworld passives — only the Following creature's ability is active. */

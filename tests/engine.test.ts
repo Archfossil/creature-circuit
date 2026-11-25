@@ -17,10 +17,10 @@ import { rollWisp, wispLit } from '../src/regions/margos/gimmicks/wisps';
 import { DEPTHS_COST, depthsBlock, exploreDepths } from '../src/regions/margos/gimmicks/depths';
 import { trailNeeded } from '../src/regions/margos/gimmicks/dahlia';
 import { landmassOf, landField } from '../src/render/land';
-import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
+import { natureText, WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
-import { moveWorth, speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { syncPerks, moveWorth, speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { onSaveStatus, retrySave, newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
@@ -544,6 +544,18 @@ describe('morale and loyalty', () => {
     expect(NATURE_BY_ID[d.nature]).toBeDefined();
     expect([d.ability, d.instinct]).toEqual([undefined, undefined]);
   });
+  it('Volatile trades Evasion for power and the stamina to use it', () => {
+    const total = (loyalty: number) => {
+      const c = createCreature('puddlit', 1, { nature: 'volatile' }), b = createCreature('puddlit', 1, { nature: 'volatile' });
+      b.nature = 'none';
+      c.loyalty = loyalty; syncPerks(c);
+      const [x, y] = [stats(c), stats(b)];
+      return [x.stamina - y.stamina, x.power - y.power, x.focus - y.focus, x.evasion - y.evasion, x.speed - y.speed];
+    };
+    expect([0, 3, 6, 10].map(total)).toEqual([[1, 1, 0, -1, 0], [2, 1, 1, -1, 0], [2, 2, 2, -1, 0], [2, 4, 4, -1, 0]]);
+    expect(natureText(NATURE_BY_ID.volatile)).toBe('+Stamina +Power / −Evasion');
+    expect(natureText(NATURE_BY_ID.timid)).toBe('+Speed / −Power');
+  });
   it('the starter’s bond gives +1 Vigor and no attribute under 1, before its Nature', () => {
     for (const id of STARTERS) {
       const c = newGame('U', 'balanced', 'mangrove', id, '#000').roster[0];
@@ -551,7 +563,7 @@ describe('morale and loyalty', () => {
       expect([c.health, c.vitality]).toEqual([maxHealth(c), maxVitality(c)]);
       for (const k of ['vigor', 'power', 'armor', 'focus', 'ward', 'speed', 'stamina'] as const) {
         const before = Math.max(1, base[k]) + (k === 'vigor' ? 1 : 0);
-        expect(stats(c)[k]).toBe(Math.max(0, before + (nat.up === k ? 1 : 0) - (nat.down === k ? 1 : 0)));
+        expect(stats(c)[k]).toBe(Math.max(0, before + (nat.up.includes(k) ? 1 : 0) - (nat.down === k ? 1 : 0)));
       }
       expect(stats(wild).vigor).toBe(stats(c).vigor - 1); // others of its kind don't get it
     }

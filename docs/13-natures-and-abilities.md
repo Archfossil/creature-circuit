@@ -18,7 +18,7 @@ The traits every creature carries, shown on its index card:
 ### How Natures work
 
 - **Assigned at random** when a creature is created (wild, trainer or recruited). A starter's is chosen by its trainer at the start, as are its Ability (any of the eight) and Instinct (any of its type's six). A few sources set it: the Roaming Trader's creature shows its Nature up front.
-- **Stats:** the Nature's **up** stat gets +1 and its **down** stat −1 (never below 0). Evasion always stays within 1–6.
+- **Stats:** the Nature's **up** stat gets +1 (Volatile has two) and its **down** stat −1 (never below 0). Evasion always stays within 1–6.
 - **Perks:** each Nature has three perks that unlock **permanently** when the creature's Loyalty reaches **3**, **6** and **10**. Perks never re-lock, even if Loyalty drops later. Loyalty ranges 0–10.
 - **Changing it:** the Creature Caretaker event lets the player pick a new Nature for one creature (from 3 offered). The creature keeps the *number* of perks it had unlocked, now taken from the new Nature, starting with its first perk.
 
@@ -31,7 +31,7 @@ The traits every creature carries, shown on its index card:
 | 3 | Fortified | `fortified` | Armor | Speed | Shell Up: +1 Armor | Rooted: +1 Ward | Bastion: +1 Vigor, +1 Armor | 4 |
 | 4 | Resonant | `resonant` | Focus | Armor | Attuned: +1 Focus | Harmonic: +1 Ward | Crescendo: +2 Focus | 4 |
 | 5 | Enduring | `enduring` | Vigor | Ward | Deep Breath: +2 Stamina | Stubborn: +1 Ward | Last Stand: +1 Vigor, +1 Armor | 5 (2 of them Stamina) |
-| 6 | Volatile | `volatile` | Stamina | Evasion | Hot Blooded: +2 Stamina | Reckless: +1 Power, +1 Focus | Overdrive: +2 Speed | 6 (2 of them Stamina) |
+| 6 | Volatile | `volatile` | Stamina, Power | Evasion | Hot Blooded: +1 Stamina, +1 Focus | Reckless: +1 Power, +1 Focus | Overdrive: +2 Power, +2 Focus | 8 (1 of them Stamina) |
 
 ### The Natures
 
@@ -91,17 +91,17 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-nature) 
 
 | Up | Down | In-game text |
 |---|---|---|
-| +1 Stamina | −1 Evasion | "Pushes limits with demanding moves; cavalier with its own safety." |
+| +1 Stamina, +1 Power | −1 Evasion | "All power, and the stamina to keep throwing it; cavalier with its own safety." |
 
-**Perks:** Hot Blooded (3): +2 Stamina · Reckless (6): +1 Power, +1 Focus · Overdrive (10): +2 Speed.
+**Perks:** Hot Blooded (3): +1 Stamina, +1 Focus · Reckless (6): +1 Power, +1 Focus · Overdrive (10): +2 Power, +2 Focus.
 
-**Suits:** creatures with heavy, high-Effort moves.
+**Suits:** attackers of either kind with heavy, high-Effort moves. At full Loyalty it's +4 Power, +4 Focus and +2 Stamina in total, and a foe finds it easier to hit the whole way.
 
 ### Nature balance notes
 
 To review when balancing. Tick them off or move them into a card once decided.
 
-- [ ] **Perk totals differ:** Adamant, Timid, Fortified and Resonant give 4 stat points. Enduring gives 5 and Volatile 6, but 2 of each are Stamina, which is worth less than a combat stat.
+- [ ] **Perk totals differ:** Adamant, Timid, Fortified and Resonant give 4 stat points. Enduring gives 5 (2 of them Stamina, which is worth less than a combat stat). Volatile gives 8, as Evasion is the dearest stat to lose: before it was raised, Volatile creatures won 41% of simulated fights where the others won 49–56%.
 - [ ] **Down stats are never below 0, and Evasion stays within 1–6**, so a Volatile creature with Evasion 1 loses nothing from its down stat.
 - [ ] **Enduring's first perk is Stamina,** while its theme (and up stat) is Vigor. Intended?
 - [ ] **Timid's last perk (+2 Power)** fully reverses its down stat. Other Natures never recover their down stat (Enduring partly does, through Ward).
