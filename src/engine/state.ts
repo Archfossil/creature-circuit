@@ -91,8 +91,9 @@ export interface GameState {
     /** Ranger: Nothing refunds used this turn (up to Tier). */
     rangerRefunds?: number;
     firstMoveUsed: boolean;
+    /** Lure Incense: every explore this turn is a wild encounter. */
     lure: boolean;
-    /** Hush Smoke: the next explore can't turn up a creature or trainer. */
+    /** Hush Smoke: exploring can't turn up a creature or trainer this turn. */
     repel?: boolean;
     starCharm: boolean;
     beaten: string[];       // legendary node ids already resolved

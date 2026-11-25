@@ -33,7 +33,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         '- 1–2: nothing.',
         '- 3–4: a wild creature (or a roaming trainer) wants to battle.',
         '- 5–6: you find items or coins.',
-        '- 🕯️ Lure Incense makes your next explore a wild encounter. 💨 Hush Smoke does the opposite: on your next explore a 3 is Nothing and a 4 is a find, so nothing can battle you. Lighting one puts the other out.',
+        '- 🕯️ Lure Incense makes every explore a wild encounter until the end of your turn. 💨 Hush Smoke does the opposite: until the end of your turn, a 3 is Nothing and a 4 is a find, so nothing can battle you. Lighting one puts the other out.',
         'For creatures, rarity star dice decide Common, Prime or Apex. Rare areas and higher Tiers roll more stars.',
       ] },
       { id: 'travel', title: 'Getting around faster', body: [

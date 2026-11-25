@@ -51,8 +51,8 @@ export const ITEMS: Record<string, Item> = {
   'duskberry': { id: 'duskberry', name: 'Duskberry', kind: 'treat', price: 4, icon: '🍑', text: 'A Forest Floor treat: +2 Morale, +1 Loyalty.' },
   'moonberry': { id: 'moonberry', name: 'Moonberry', kind: 'treat', price: 5, icon: '🍇', text: 'A rare treat: +2 Morale, +2 Loyalty.' },
   // charms
-  'lure-incense': { id: 'lure-incense', name: 'Lure Incense', kind: 'charm', price: 6, icon: '🕯️', text: 'Your next explore is a guaranteed wild encounter.' },
-  'hush-smoke': { id: 'hush-smoke', name: 'Hush Smoke', kind: 'charm', price: 5, icon: '💨', text: 'Your next explore can’t turn up a creature or trainer: its encounter faces become Nothing and a find instead.' },
+  'lure-incense': { id: 'lure-incense', name: 'Lure Incense', kind: 'charm', price: 6, icon: '🕯️', text: 'Until the end of your turn, every explore is a wild encounter.' },
+  'hush-smoke': { id: 'hush-smoke', name: 'Hush Smoke', kind: 'charm', price: 5, icon: '💨', text: 'Until the end of your turn, exploring can’t turn up a creature or trainer: the encounter faces become Nothing and a find instead.' },
   'star-charm': { id: 'star-charm', name: 'Star Charm', kind: 'charm', price: 8, icon: '⭐', text: 'Roll +1 rarity die on your next encounter.' },
   // travel: getting around the big map faster (world.ts → travel items & rides)
   'bike': { id: 'bike', name: 'Bike', kind: 'travel', unique: true, price: 25, icon: '🚲', text: 'Once a turn, roll a d6 and ride up to that many steps for free, without exploring on the way or where you stop. Not on Cloud Island or the Forest Floor, and not over the sea.' },

@@ -99,8 +99,8 @@ export function activeEffects(s: GameState): ActiveEffect[] {
     out.push({ id: 'hotpot', icon: '🍲', name: ci?.hotpot.name ?? 'Chanko Nabe', text: `${buffText(s.hotpot.buff)} for your team in your next battle${ci ? ` (from ${ci.name})` : ''}.` });
   }
   if (s.flags.starCharm) out.push({ id: 'starCharm', icon: '⭐', name: 'Lucky stars', text: 'Your next wild encounter rolls an extra rarity die (a Star Charm or the Fortune Teller).' });
-  if (s.flags.lure) out.push({ id: 'lure', icon: '🕯️', name: 'Lure Incense', text: 'Your next explore is a guaranteed wild encounter.' });
-  if (s.flags.repel) out.push({ id: 'repel', icon: '💨', name: 'Hush Smoke', text: 'Your next explore can’t turn up a creature or trainer: a 3 finds Nothing and a 4 finds an item.' });
+  if (s.flags.lure) out.push({ id: 'lure', icon: '🕯️', name: 'Lure Incense', text: 'Every explore is a wild encounter until the end of your turn.' });
+  if (s.flags.repel) out.push({ id: 'repel', icon: '💨', name: 'Hush Smoke', text: 'Exploring can’t turn up a creature or trainer until the end of your turn: a 3 finds Nothing and a 4 finds an item.' });
   for (const g of activeRegion().gimmicks) out.push(...(g.effects?.(s, tools) ?? []));
   return out;
 }
@@ -305,17 +305,16 @@ function exploreRoll(s: GameState): Outcome {
   s.stats.explored++;
   let r = roll(6);
   const ab = ability(s);
-  if (s.flags.lure) { s.flags.lure = false; r = 3 + (r % 2); }
+  if (s.flags.lure) r = 3 + (r % 2); // (and never a trainer)
   // Hush Smoke: the encounter faces split into a quiet Nothing (3) and a find (4); Sweet Scent is masked too
   if (s.flags.repel) {
-    s.flags.repel = false;
     if (r <= 3) return { t: 'nothing', roll: r, hushed: r === 3 || undefined };
     return { ...discoverItem(s, node, r, landsOf(node.biome)?.exotic ? exoticFind : rollFind), hushed: r === 4 || undefined } as Outcome;
   }
   const encounterRange = ab === 'sweetScent' ? [3, 5] : [3, 4];
   if (r < encounterRange[0]) return { t: 'nothing', roll: r };
   if (r <= encounterRange[1]) {
-    if ((node.biome === 'road' || node.biome === 'meadow') && Math.random() < 0.4) return trainerEncounter(s, node, r);
+    if (!s.flags.lure && (node.biome === 'road' || node.biome === 'meadow') && Math.random() < 0.4) return trainerEncounter(s, node, r);
     return wildEncounter(s, node, r);
   }
   return discoverItem(s, node, r, landsOf(node.biome)?.exotic ? exoticFind : rollFind);
@@ -1289,8 +1288,8 @@ export function useItem(s: GameState, id: string, uid: string, type?: ElementTyp
     const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;
     c.morale = Math.min(10, c.morale + mor); addLoyalty(c, loy); msg = `${nameOf(c)} happily munches the ${it.name}! (+${mor} Morale, +${loy} Loyalty)`;
   }
-  else if (id === 'lure-incense') { s.flags.lure = true; s.flags.repel = false; msg = 'You light the incense. Wild creatures will come to you.'; }
-  else if (id === 'hush-smoke') { s.flags.repel = true; s.flags.lure = false; msg = 'You wave the smoke around. Nothing will come near on your next explore.'; }
+  else if (id === 'lure-incense') { s.flags.lure = true; s.flags.repel = false; msg = 'You light the incense. Wild creatures will come to you until the end of your turn.'; }
+  else if (id === 'hush-smoke') { s.flags.repel = true; s.flags.lure = false; msg = 'You wave the smoke around. Nothing will come near until the end of your turn.'; }
   else if (id === 'star-charm') { s.flags.starCharm = true; msg = 'The Star Charm glimmers. Your next encounter rolls an extra star die.'; }
   else return 'That can\'t be used here.';
   addItem(s, id, -1);
@@ -1503,6 +1502,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   s.flags.rangerRefunds = 0;
   s.flags.bikeUsed = false; s.flags.bikeRoll = 0; s.flags.trailMix = false;
   s.flags.firstMoveUsed = false;
+  s.flags.lure = s.flags.repel = false; // the smoke clears
   s.flags.salemNight = false;
   s.flags.sparred = [];
   s.flags.paid = [];

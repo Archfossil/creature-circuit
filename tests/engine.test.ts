@@ -1342,7 +1342,7 @@ describe('Lantern Glade and the Rainbow Plains', () => {
     for (let i = 0; i < 300; i++) {
       s.turn = 1 + (i % 20);
       s.initiative = 5;
-      if (i % 2 === 0) s.flags.lure = true;
+      s.flags.lure = i % 2 === 0;
       const out = W.reexplore(s)!;
       if (out.t === 'encounter') {
         encounters++;
@@ -3475,7 +3475,7 @@ describe('Hush Smoke', () => {
     s.location = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === 'meadow')!.id;
     return s;
   };
-  it('turns the encounter faces into a quiet Nothing (3) and a find (4), and is spent', () => {
+  it('turns the encounter faces into a quiet Nothing (3) and a find (4), until the turn ends', () => {
     for (const [r, face] of [[0.01, 1], [0.34, 3], [0.5, 4], [0.7, 5], [0.99, 6]] as const) {
       const s = meadow();
       s.initiative = 5; s.inventory['hush-smoke'] = 1;
@@ -3484,7 +3484,25 @@ describe('Hush Smoke', () => {
       const out = withRolls(r, () => W.reexplore(s))!;
       expect(out.t, `face ${face}`).toMatch(face <= 3 ? /nothing/ : /item/);
       expect('hushed' in out && out.hushed === true).toBe(face === 3 || face === 4);
+      expect(s.flags.repel).toBe(true); // still hanging about
+      s.initiative = 5;
+      expect(withRolls(0.5, () => W.reexplore(s))!.t, `face ${face}, again`).toBe('item');
+      W.endTurn(s);
       expect(s.flags.repel).toBe(false);
+    }
+  });
+  it('Lure Incense makes every explore of the turn a wild encounter, never a trainer, and then burns out', () => {
+    for (const biome of ['meadow', 'road', 'deepwood'] as const) {
+      const at = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === biome);
+      if (!at) continue;
+      const s = meadow();
+      s.location = at.id;
+      s.inventory['lure-incense'] = 1;
+      W.useItem(s, 'lure-incense', s.roster[0].uid);
+      for (let i = 0; i < 40; i++) { s.initiative = 5; expect(W.reexplore(s)!.t, biome).toBe('encounter'); }
+      expect(W.activeEffects(s).map((e) => e.id)).toContain('lure');
+      W.endTurn(s);
+      expect([s.flags.lure, W.activeEffects(s).some((e) => e.id === 'lure')]).toEqual([false, false]);
     }
   });
   it('is sold in city markets, and Lure Incense and Hush Smoke put each other out', () => {

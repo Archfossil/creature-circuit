@@ -141,7 +141,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 
 **Exact rule:** when exploring a wild node, a d6 roll of **3–5** is a wild encounter, instead of 3–4. On a road or meadow node, 40% of encounters are a roaming trainer, as usual. Only a 6 now finds items.
 
-**Interactions:** a Lure Incense already guarantees an encounter, so Sweet Scent adds nothing on that explore. Hush Smoke masks it: on a hushed explore a 5 is a find again.
+**Interactions:** a Lure Incense already guarantees an encounter, so Sweet Scent adds nothing while it burns. Hush Smoke masks it: while hushed, a 5 is a find again.
 
 #### 2. Baby-Doll Eyes · `babyEyes`
 

@@ -47,10 +47,9 @@ export const dahlia: Gimmick = {
     s.stats.explored++;
     const die = floorDie(s);
     let r = t.roll(die);
-    if (s.flags.lure) { s.flags.lure = false; r = 3 + (r % 2); }
-    // Hush Smoke: a 3 is a quiet Nothing (no fear of the dark), a 4 an exotic find; it's spent on any roll
+    if (s.flags.lure) r = 3 + (r % 2);
+    // Hush Smoke: a 3 is a quiet Nothing (no fear of the dark), a 4 an exotic find
     if (s.flags.repel) {
-      s.flags.repel = false;
       if (r === 3) return { t: 'nothing', roll: r, die, hushed: true };
       if (r >= 4 && r <= 6) return { ...t.discoverItem(s, node, r, t.exoticFind, die), hushed: r === 4 || undefined } as Outcome;
     }
