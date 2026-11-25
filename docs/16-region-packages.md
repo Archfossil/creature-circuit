@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 to 9 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas), [gimmicks](#gimmicks-in-packages), [the 3D map](#the-3d-map), [saves and online](#saves-and-online-as-built) and [the season flow](#the-season-flow-as-built)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 10 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas), [gimmicks](#gimmicks-in-packages), [the 3D map](#the-3d-map), [saves and online](#saves-and-online-as-built), [the season flow](#the-season-flow-as-built) and [balanced starters](#balanced-starters-as-built)).** Step 11 can wait ([18 · Steam](./18-steam.md)). It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -209,7 +209,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 7 | **3D map** built for the active region, and rebuilt on a change ✅ built | M | A short load when changing region |
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 ✅ built | M | Region name on saves |
 | 9 | **Season flow:** region choice at the start, farewell, hall of records ✅ built | M | Farewell and records; the region page once there are two |
-| 10 | **Balanced starters:** the rules above | S–M | Nothing until the Juudlands |
+| 10 | **Balanced starters:** the rules above ✅ built | S–M | Nothing until the Juudlands |
 | 11 | **Load on demand:** a region's data and art only when it's played. Can wait: an installed game doesn't need it ([18](./18-steam.md)) | S–M | Faster first load later on |
 
 **What each step needs to be called done**
@@ -322,6 +322,14 @@ A region's `arenas` say what each arena does, and a city names one as its `arena
 - **A finished game** waits on the title screen as "Season's end" until its farewell.
 - **Nothing in the rules reads the hall,** and a test keeps it that way.
 
+### Balanced starters, as built
+
+- **`balanced: true`** on a species' definition (`Def`) does it all, in every stage of its family. `leadTypes(species)` is both its types; for any other creature it's the first. New code that treats a creature's first type as the main one should use it.
+- **Nobody in the game is balanced yet.** The tests make a family up (`addSpecies`), which is also how a region's own creatures can join the library.
+- **Swap Moves of "its type"** (Tag Strike and Siphon) use the better type against the foe in front of it, or the first if they're equal. Away from a battle, the words say "Fire or Water, whichever is better".
+- **Energy Tonic:** the screen asks. If nobody's asked, it goes to the type it has less of. The item's own text says "primary type", and is to be reworded with the Juudlands.
+- **Not done here:** choosing the pairs, and comparing them on the type chart (decision 8).
+
 ### Legacy (maybe, later)
 
 A past season leaves no mark on play (decision 2). This is a note that it could one day, not a plan.
@@ -372,7 +380,7 @@ None of these hold up steps 1–7.
 | 3 | Can a Margos Rival or Champion visit another region? | Yes, as a guest or two, with their records starting fresh. | The Juudlands |
 | 4 | Do Margos's Legendaries appear elsewhere? | One or two as rare guests; the rest are the region's own. | The Juudlands |
 | 5 | Always 100 turns and 8 Merits? | Keep both at first. The package allows others. | The Juudlands |
-| 6 | Energy Tonic on a balanced creature | The trainer picks the type. It's the one time they choose to break the balance, along with Imprints. | Step 10 |
-| 7 | Swap Moves on a balanced creature | Use its better type against that foe: it has no main type, so this is its edge. | Step 10 |
+| 6 | Energy Tonic on a balanced creature | **Decided.** The trainer picks the type. It's the one time they choose to break the balance, along with Imprints. | Step 10 |
+| 7 | Swap Moves on a balanced creature | **Decided.** Use its better type against that foe: it has no main type, so this is its edge. | Step 10 |
 | 8 | The Juudlands' four pairs | The design team's call, checked against the type chart. | The Juudlands |
 | 9 | Can a region's starters be met in the wild there, and in other regions? | In their own region, like Margos's. Elsewhere only if its Codex shares them. They stay balanced everywhere. | The Juudlands |

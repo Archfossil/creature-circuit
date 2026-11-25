@@ -45,6 +45,8 @@ export interface Species {
   ability: string;        // ability id (overworld passive)
   instinct: string;       // Instinct id (data/instincts.ts): its passive in battle
   signature?: string;     // move id unlocked via progression
+  /** Both its types are equal: it gains as much energy of each, and neither is its main one (docs/16-region-packages.md → Starters by region). */
+  balanced?: true;
   /** Naturally high Vigor (a Vigor bias): one Vigor node on its later charts instead of two. */
   sturdy?: true;
   /** Already bulky: its chart has no Vigor node at this stage (another stat takes its place). */

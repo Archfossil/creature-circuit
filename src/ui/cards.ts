@@ -8,7 +8,7 @@ import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
 import { setSwapMove, swapLock, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
 import { INSTINCT_BY_ID, INSTINCT_ICON, instinctRules } from '../data/instincts';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
-import type { ElementType, EnergyKey, Move } from '../data/schema';
+import type { Species, ElementType, EnergyKey, Move } from '../data/schema';
 import { portrait } from '../render/engine';
 import { typeMatchup } from '../engine/battle';
 import { teamworkOf, teamworkCap, teamworkBonus, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
@@ -121,9 +121,11 @@ export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boole
     opts.compact ? null : h('div', { class: 'mc-cost' }, energyPips(m.cost as Record<string, number>, true)));
 }
 
+/** A species' colour, for `style`: its main type's, and for a balanced one both (`--tc2`; see styles.css → Balanced). */
+export const tcOf = (sp: Species) => `--tc:${TYPE_COLOR[sp.types[0]]}${sp.balanced ? `;--tc2:${TYPE_COLOR[sp.types[1]!]}` : ''}`;
 export function miniCard(c: CreatureInst, opts: { onClick?: () => void; badge?: string; selected?: boolean } = {}) {
   const sp = speciesOf(c);
-  return h('button', { class: `mini-card ${c.ko ? 'ko' : ''} ${opts.selected ? 'sel' : ''}`, onclick: opts.onClick, type: 'button', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+  return h('button', { class: `mini-card ${c.ko ? 'ko' : ''} ${opts.selected ? 'sel' : ''}`, onclick: opts.onClick, type: 'button', style: tcOf(sp) },
     h('div', { class: 'mini-portrait' }, h('img', { src: portrait(sp.id), alt: sp.name })),
     h('div', { class: 'mini-info' },
       h('div', { class: 'mini-name' }, h('b', null, nameOf(c)), h('span', { class: 'lv' }, `Lv ${c.level}`)),
@@ -141,7 +143,7 @@ export function statCompare(before: CreatureInst, after: CreatureInst, labels: [
   const sb = stats(before), sa = stats(after);
   const who = (c: CreatureInst, label: string) => {
     const sp = speciesOf(c);
-    return h('div', { class: 'cmp-who', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+    return h('div', { class: 'cmp-who', style: tcOf(sp) },
       h('small', null, label),
       h('img', { src: portrait(sp.id), alt: '' }),
       h('b', null, nameOf(c)),
@@ -263,7 +265,7 @@ export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
   const sa = stats(alpha), sp = stats(partner);
   const who = (c: CreatureInst, role: 'alpha' | 'partner') => {
     const s = speciesOf(c);
-    return h('div', { class: `swap-who ${role}`, style: `--tc:${TYPE_COLOR[s.types[0]]}` },
+    return h('div', { class: `swap-who ${role}`, style: tcOf(s) },
       h('small', null, role === 'alpha' ? '⭐ Alpha · swapping in' : 'Partner · swapping out'),
       h('img', { src: portrait(s.id), alt: '' }),
       h('b', null, nameOf(c)),
@@ -371,7 +373,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
   const retrained = (own: string | undefined, usual: string, name: string | undefined) => (own && own !== usual ? h('small', { class: 'muted' }, ` ${c.bond ? 'Its own' : 'Retrained'} (a ${sp.name} usually has ${name}).`) : null);
   const spent = allocateEnergy(e, c.playbook);
   const free = energyTotal(e) - energyTotal(spent);
-  return h('article', { class: 'index-card', style: `--tc:${TYPE_COLOR[sp.types[0]]};--tc2:${TYPE_COLOR[sp.types[1] ?? sp.types[0]]}` },
+  return h('article', { class: `index-card ${sp.balanced ? 'balanced' : ''}`, style: `--tc:${TYPE_COLOR[sp.types[0]]};--tc2:${TYPE_COLOR[sp.types[1] ?? sp.types[0]]}` },
     h('header', { class: 'ic-head' },
       h('div', null,
         h('h3', null, nameOf(c)),
@@ -444,7 +446,7 @@ function cardBack(c: CreatureInst, flip: () => void, changed: () => void, editab
   requestAnimationFrame(draw);
   setTimeout(draw, 400); // again once the sheet / flip animation has settled
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(chart);
-  return h('article', { class: 'index-card back', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+  return h('article', { class: 'index-card back', style: tcOf(sp) },
     h('header', { class: 'ic-head' },
       h('div', null, h('h3', null, `${nameOf(c)} · Chart`), h('div', { class: 'ic-sub' }, h('span', null, chartComplete(c)
         ? `Chart complete · ${c.points} point${c.points === 1 ? '' : 's'} to train · every 10 XP earns one`
@@ -539,7 +541,7 @@ function playbookSidebar(c: CreatureInst, sel: string[], usage: Node, remove: (i
   }
   const effort = picks.reduce((a, m) => a + m.effort, 0);
   const hint = h('p', { class: 'pb-hint small muted', 'aria-live': 'polite' }, 'Power boosts Physical moves, Focus boosts Elemental ones. Hover or tap a stat for more.');
-  return h('aside', { class: 'pb-side', style: `--tc:${TYPE_COLOR[sp.types[0]]}`, 'aria-label': `${nameOf(c)}’s stats` },
+  return h('aside', { class: 'pb-side', style: tcOf(sp), 'aria-label': `${nameOf(c)}’s stats` },
     h('div', { class: 'pb-who' },
       h('img', { src: portrait(sp.id), alt: '' }),
       h('div', null,

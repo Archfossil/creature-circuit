@@ -398,7 +398,7 @@ export function outlook(b: Battle, si: 0 | 1, idx: number, opts: { free?: boolea
     hp -= take * 0.9;
     const m = swapMoveOf(c, activeOf(side));
     if (m.hit) {
-      const v = swapVals(c, activeOf(side), { f: theirs });
+      const v = swapVals(c, activeOf(side), { f: theirs, foe });
       const chart = swapChart(m, v);
       const def = m.hit.kind === 'physical' ? theirs.armor : theirs.ward;
       foeHp -= (m.hit.acc ? hitChance(m.hit.acc, theirs.evasion) : 1) * Math.max(1, (m.hit.die + 1) / 2 + m.hit.parts(v).reduce((a, p) => a + p.value, 0) - def) * (chart ? effectiveness(chart, speciesOf(foe).types) : 1);
@@ -1043,17 +1043,17 @@ export function swapPreview(b: Battle, si: 0 | 1, to: number) {
   const partner = activeOf(side), alpha = side.team[to];
   const fi: 0 | 1 = si === 0 ? 1 : 0;
   const m = swapMoveOf(alpha, partner);
-  const v = swapVals(alpha, partner, { a: stats(alpha, side.buff), f: statsOf(b, fi) });
+  const v = swapVals(alpha, partner, { a: stats(alpha, side.buff), f: statsOf(b, fi), foe: activeOf(b.sides[fi]) });
   const earned = (b.teamworkPairs ?? []).includes(pairKey(alpha, partner));
   const capped = teamworkOf(alpha, partner) >= teamworkCap(alpha, partner) && teamworkOf(partner, alpha) >= teamworkCap(alpha, partner);
-  return { move: m, power: m.name, teamwork: teamworkOf(alpha, partner), bonus: v.bonus, earned, capped, effect: describeSwap(m, v) };
+  return { move: m, power: m.name, teamwork: teamworkOf(alpha, partner), bonus: v.bonus, earned, capped, effect: describeSwap(m, v), aType: v.aType, pType: v.pType };
 }
 
 /** Everything the swap screen shows for one incoming creature: a plain copy, so it can be sent to another browser. */
 export function swapRowInfo(b: Battle, si: 0 | 1, to: number) {
-  const { move, teamwork, bonus, earned, capped, effect } = swapPreview(b, si, to);
+  const { move, teamwork, bonus, earned, capped, effect, aType, pType } = swapPreview(b, si, to);
   const plain = (c: CreatureInst) => JSON.parse(JSON.stringify(c)) as CreatureInst;
-  return { c: plain(b.sides[si].team[to]), partner: plain(activeOf(b.sides[si])), move: move.id, teamwork, bonus, earned, capped, effect };
+  return { c: plain(b.sides[si].team[to]), partner: plain(activeOf(b.sides[si])), move: move.id, teamwork, bonus, earned, capped, effect, aType, pType };
 }
 export type SwapRowInfo = ReturnType<typeof swapRowInfo>;
 
@@ -1071,7 +1071,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
   fireInstinct(b, si, 'enter', ev);
   // the bonus uses the Teamwork from before this swap; a pair earns Teamwork from swapping once per battle
-  const v = swapVals(alpha, partner);
+  const v = swapVals(alpha, partner, { foe: activeOf(b.sides[si === 0 ? 1 : 0]) });
   const key = pairKey(alpha, partner);
   if (!(b.teamworkPairs ??= []).includes(key)) {
     b.teamworkPairs.push(key);

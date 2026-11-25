@@ -1,7 +1,7 @@
 import type { EnergyMap, ElementType, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
-import { SPECIES_BY_ID } from '../data/species';
+import { SPECIES_BY_ID, leadTypes } from '../data/species';
 import { MOVES, MOVE_BY_ID, avgRoll, diceText, critFaces, statusChance, zeroInOf } from '../data/moves';
-import { INSTINCT_BY_ID } from '../data/instincts';
+import { INSTINCT_BY_ID, INSTINCT_POOL, type Instinct } from '../data/instincts';
 import { NATURES, NATURE_BY_ID } from '../data/content';
 import { TYPES, effectiveness } from '../data/types';
 import { pick, uid } from './dice';
@@ -182,13 +182,16 @@ export function learnable(c: CreatureInst): string[] {
  */
 /** Varied (NPC) playbooks lean toward carrying one buff / debuff / heal, so opponents have something to set up with. */
 const SUPPORT_PULL = 1;
+/** A balanced creature's playbooks lean toward moves that cost both its types evenly. */
+const EVEN_PULL = 0.5;
+const evenCost = (m: Move, types: readonly ElementType[]) => !!types[1] && !!m.cost[types[0]] && m.cost[types[0]] === m.cost[types[1]];
 export function autoPlaybook(c: CreatureInst, varied = false): string[] {
   const e = energy(c);
-  const prim = speciesOf(c).types[0];
+  const sp = speciesOf(c), own = leadTypes(sp);
   const val = (id: string) => {
     const m = MOVE_BY_ID[id];
     const typed = Object.keys(m.cost).some((k) => k !== 'neutral');
-    return avgRoll(m) + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2;
+    return avgRoll(m) + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2 + (sp.balanced && evenCost(m, sp.types) ? EVEN_PULL : 0);
   };
   // The attack grid makes the learnable list long (dozens for dual types), so search a shortlist:
   // the strongest moves, the best value per energy, and the best of each kind and of the main type.
@@ -198,7 +201,7 @@ export function autoPlaybook(c: CreatureInst, varied = false): string[] {
   const byEff = [...all].sort((x, y) => val(y) / costOf(y) - val(x) / costOf(x));
   const bestWhere = (f: (m: Move) => boolean, n: number) => byVal.filter((id) => f(MOVE_BY_ID[id])).slice(0, n);
   const opts = [...new Set([
-    ...bestWhere((m) => m.kind === 'elemental' && m.type === prim, 3),
+    ...own.flatMap((t) => bestWhere((m) => m.kind === 'elemental' && m.type === t, 3)),
     ...bestWhere((m) => m.kind === 'physical', 2),
     ...bestWhere((m) => m.kind === 'support', 2),
     ...byEff.slice(0, 6), ...byVal.slice(0, 6),
@@ -209,10 +212,11 @@ export function autoPlaybook(c: CreatureInst, varied = false): string[] {
   let best: string[] = [];
   let bestScore = -1;
   const score = (set: string[]) => {
-    const own = set.some((id) => MOVE_BY_ID[id].type === prim && MOVE_BY_ID[id].kind === 'elemental');
+    // an attack of its own type (balanced: one of each counts as much, between them)
+    const typed = own.filter((t) => set.some((id) => MOVE_BY_ID[id].type === t && MOVE_BY_ID[id].kind === 'elemental')).length / own.length;
     const phys = set.some((id) => MOVE_BY_ID[id].kind === 'physical');
     const sup = set.filter((id) => MOVE_BY_ID[id].kind === 'support').length;
-    return set.reduce((a, id) => a + val(id) + (whim[id] ?? 0), 0) + set.length * 2 + (own ? 4 : 0) + (phys ? 1.5 : 0) - (sup > 1 ? 5 : 0) + (varied && sup === 1 ? SUPPORT_PULL : 0) + Math.random() * 0.4;
+    return set.reduce((a, id) => a + val(id) + (whim[id] ?? 0), 0) + set.length * 2 + typed * 4 + (phys ? 1.5 : 0) - (sup > 1 ? 5 : 0) + (varied && sup === 1 ? SUPPORT_PULL : 0) + Math.random() * 0.4;
   };
   const dfs = (start: number, set: string[]) => {
     if (set.length) { const sc = score(set); if (sc > bestScore) { bestScore = sc; best = [...set]; } }
@@ -271,6 +275,11 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
   const energyNode = (p: Place, k: ElementType): ProgNode => ({
     ...p, label: `+${NODE_ENERGY} ${cap(k)} Energy`, text: `Generate ${NODE_ENERGY} more energy for your playbook.`, icon: '◆', kind: 'energy', apply: (cc) => addEnergy(cc, k, NODE_ENERGY),
   });
+  // balanced: +1 of each at both energy nodes, so it's even whichever is bought and whenever it evolves
+  const bothNode = (p: Place): ProgNode => ({
+    ...p, label: `+${NODE_ENERGY / 2} ${cap(prim)} & ${cap(sec)} Energy`, text: 'Generate 1 more energy of each type for your playbook.', icon: '◆', kind: 'energy',
+    apply: (cc) => { for (const t of sp.types) addEnergy(cc, t, NODE_ENERGY / 2); },
+  });
   const bias = (Object.entries(sp.base) as [StatKey, number][]).filter(([k]) => k !== 'evasion').sort((a, b) => b[1] - a[1]).map(([k]) => k);
   const first = bias[0] === 'vigor' ? 'power' : bias[0];
   const second = bias.find((k) => k !== first && !['vigor', 'speed', 'stamina'].includes(k)) ?? 'armor';
@@ -282,14 +291,14 @@ export function progressionTree(c: CreatureInst): ProgNode[] {
 
   const nodes: ProgNode[] = [
     statNode({ id: 'a', row: 0, col: 1, requires: [] }, first),
-    energyNode({ id: 'b', row: 1, col: 0, requires: ['a'] }, prim),
+    sp.balanced ? bothNode({ id: 'b', row: 1, col: 0, requires: ['a'] }) : energyNode({ id: 'b', row: 1, col: 0, requires: ['a'] }, prim),
     sp.bulky || late ? statNode(c_, third) : vigorNode(c_),
     sp.signature
       ? { id: 'd', row: 2, col: 0, requires: ['b'], label: 'Signature Move', text: `Learn ${MOVE_BY_ID[sp.signature].name} (${sigSummary(MOVE_BY_ID[sp.signature])}).`, icon: '★', kind: 'signature', apply: (cc) => { cc.signature = sp.signature; } }
       : statNode({ id: 'd', row: 2, col: 0, requires: ['b'] }, 'focus'),
     statNode({ id: 'e', row: 2, col: 1, requires: ['b', 'c'] }, second),
     statNode({ id: 'f', row: 2, col: 2, requires: ['c'] }, 'speed'),
-    energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
+    sp.balanced ? bothNode({ id: 'g', row: 3, col: 0, requires: ['d'] }) : energyNode({ id: 'g', row: 3, col: 0, requires: ['d'] }, sec),
     sp.bulky ? statNode(h_, fourth) : late || !sp.sturdy ? vigorNode(h_) : statNode(h_, third),
     statNode({ id: 'i', row: 3, col: 2, requires: ['f'] }, 'stamina'),
   ];
@@ -345,6 +354,13 @@ export function trainStat(c: CreatureInst, k: StatKey): boolean {
   return true;
 }
 
+/** The Instincts a starter of this species can be given: its main type's, or for a balanced one both types'. */
+export const starterInstincts = (sp: Species): Instinct[] => leadTypes(sp).flatMap((t) => INSTINCT_POOL[t]);
+/** The type of energy a balanced creature generates less of (its first, if they're even). */
+export function lesserType(c: CreatureInst): ElementType {
+  const e = energy(c);
+  return [...speciesOf(c).types].sort((a, b) => (e[a] ?? 0) - (e[b] ?? 0))[0];
+}
 export function evolve(c: CreatureInst) {
   const sp = speciesOf(c);
   if (!sp.evolvesTo) return;
@@ -535,7 +551,7 @@ const testFoes = (level: number, vs?: ElementType) => (vs ? [vs] : TYPES).flatMa
  * the set can set up. With `use`, it includes one or two moves that need that type's energy, if any fit.
  */
 export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: ElementType): string[] {
-  const e = energy(c);
+  const e = energy(c), sp = speciesOf(c);
   const foes = testFoes(c.level, goal.kind === 'vs' ? goal.type : undefined);
   const spread = INSTINCT_BY_ID[instinctIdOf(c)]?.passive?.spread ? 1 : 0;
   const weight = (m: Move) => (goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4) : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1);
@@ -552,6 +568,7 @@ export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: Ele
     // imprinted energy: what it opens up
     ...[...new Set((c.imprints ?? []).map((x) => x.to))].flatMap((t) => top(attacks.filter((m) => m.cost[t]), 3)),
     ...top(attacks.filter((m) => m.purge), 1), ...top(supports, 3),
+    ...(sp.balanced ? top(attacks.filter((m) => evenCost(m, sp.types)), 3) : []),
   ])];
   const score = (set: Move[]) => {
     const atk = set.filter((m) => m.kind !== 'support');
@@ -567,6 +584,7 @@ export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: Ele
     sc += (sup[0] ?? 0) * 0.3 + (sup[1] ?? 0) * 0.05;
     if (sup.length > 1) sc -= 1;
     if (atk.some((m) => m.speed > 0)) sc += 0.3;
+    if (sp.balanced) sc += atk.filter((m) => evenCost(m, sp.types)).length * EVEN_PULL * 0.3;
     for (const m of atk) if (m.purge) {
       // how often something else in the set will have set it up
       const ready = Math.max(0, ...set.filter((x) => x !== m && x.status && (!m.purge!.status || x.status === m.purge!.status)).map((x) => (x.kind === 'support' ? 0.6 : statusChance(x, spread) * 0.8)));

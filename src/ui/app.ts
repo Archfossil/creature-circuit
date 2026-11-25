@@ -9,7 +9,7 @@ import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFli
 import { sfx, applyVolume } from './sound';
 import { settings, setSetting } from './settings';
 import { GUIDE, welcomeTour } from './guide';
-import { energyPips, healthBar, creatureCard, miniCard, moraleChip, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
+import { tcOf, energyPips, healthBar, creatureCard, miniCard, moraleChip, moveCard, typeChip, typeIconImg, rarityBadge, typeChartSheet, statusGuide, statCompare, socialHelp, fatigueBadge, fmtTeamwork, editSwapMove, alphaText } from './cards';
 import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
@@ -39,12 +39,12 @@ import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
 import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, arenaTimer, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, snap as battleSnap, type Boost, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
-import { createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
+import { starterInstincts, createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
-import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, INSTINCT_POOL, instinctRules } from '../data/instincts';
+import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, instinctRules } from '../data/instincts';
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
-import { SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
+import { leadTypes, SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
 import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { ABILITIES, NATURES, NATURE_BY_ID, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
@@ -286,10 +286,10 @@ export class App {
         body = h('div', { class: 'wizard' },
           h('div', { class: 'starter-grid' }, STARTERS.map((id) => {
             const x = SPECIES_BY_ID[id];
-            return h('button', { class: `starter ${starter === id ? 'sel' : ''}`, style: `--tc:${TYPE_COLOR[x.types[0]]}`, onclick: () => { if (id !== starter) { starter = id; traits = defaults(id); } step(2); } },
-              h('img', { src: portrait(id), alt: x.name }), h('b', null, x.name), typeChip(x.types[0], true));
+            return h('button', { class: `starter ${starter === id ? 'sel' : ''}`, style: tcOf(x), onclick: () => { if (id !== starter) { starter = id; traits = defaults(id); } step(2); } },
+              h('img', { src: portrait(id), alt: x.name }), h('b', null, x.name), x.types.map((k) => typeChip(k, true)));
           })),
-          h('div', { class: 'starter-detail', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+          h('div', { class: 'starter-detail', style: tcOf(sp) },
             h('img', { src: portrait(sp.id) }),
             h('div', null, h('h3', null, sp.name), h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t))), h('p', { class: 'small' }, sp.dex),
               h('p', { class: 'small' }, 'Usually: 🌿 ', h('b', null, ABILITIES[sp.ability].name), ' — ', ABILITIES[sp.ability].text),
@@ -300,26 +300,26 @@ export class App {
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(1) }, '← Back'), h('button', { class: 'btn primary', onclick: () => step(3) }, 'Next: Nature →')));
       } else {
         const sp = SPECIES_BY_ID[starter];
-        const type = sp.types[0];
+        const types = leadTypes(sp).map((k) => TYPE_LABEL[k]).join(' and ');
         const pickBtn = (on: boolean, pickIt: () => void, ...kids: (Node | null)[]) => h('button', { class: `choice ${on ? 'sel' : ''}`, 'aria-pressed': String(on), onclick: () => { pickIt(); step(n); } }, ...kids);
         const usual = (on: boolean) => (on ? h('small', { class: 'good-text' }, `${sp.name}’s usual`) : null);
         // the starter as picked so far, to show what its Nature does
         const c = createCreature(starter, 1, { nature: traits.nature });
         c.bond = true;
         const st = stats(c), nat = NATURE_BY_ID[traits.nature!];
-        const head = h('div', { class: 'starter-detail', style: `--tc:${TYPE_COLOR[type]}` },
+        const head = h('div', { class: 'starter-detail', style: tcOf(sp) },
           h('img', { src: portrait(sp.id), alt: '' }),
           h('div', null, h('h3', null, sp.name),
             h('div', { class: 'row gap-s wrap' }, h('span', { class: 'chip' }, nat.name), n > 3 ? h('span', { class: 'chip' }, '🌿 ', ABILITIES[traits.ability!].name) : null, n > 4 ? h('span', { class: 'chip' }, `${INSTINCT_ICON} `, INSTINCT_BY_ID[traits.instinct!].name) : null),
             h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${k === nat.up ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
         const intro = n === 3 ? 'Its Nature raises one attribute and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health: a heart of 5 for each point.'
           : n === 4 ? 'Its Ability helps you on the map while it’s Following you.'
-            : `Its Instinct fires on its own in battle. Here are the ${TYPE_LABEL[type]} ones.`;
+            : `Its Instinct fires on its own in battle. Here are the ${types} ones.`;
         const grid = n === 3 ? NATURES.map((x) => pickBtn(traits.nature === x.id, () => { traits.nature = x.id; },
           h('b', null, x.name), h('small', null, h('span', { class: 'good-text' }, `+1 ${STAT_LABEL[x.up]}`), ' · ', h('span', { class: 'bad-text' }, `−1 ${STAT_LABEL[x.down]}`)),
           h('small', null, x.text), h('small', { class: 'muted' }, `Perks: ${x.perks.map((p) => p.text).join(' → ')}`)))
           : n === 4 ? Object.values(ABILITIES).map((x) => pickBtn(traits.ability === x.id, () => { traits.ability = x.id; }, h('b', null, `🌿 ${x.name}`), h('small', null, x.text), usual(x.id === sp.ability)))
-            : INSTINCT_POOL[type].map((x) => pickBtn(traits.instinct === x.id, () => { traits.instinct = x.id; }, h('b', null, `${INSTINCT_ICON} ${x.name}`), h('small', null, x.text), h('small', { class: 'muted' }, instinctRules(x)), usual(x.id === sp.instinct)));
+            : starterInstincts(sp).map((x) => pickBtn(traits.instinct === x.id, () => { traits.instinct = x.id; }, h('b', null, `${INSTINCT_ICON} ${x.name}`), h('small', null, x.text), h('small', { class: 'muted' }, instinctRules(x)), usual(x.id === sp.instinct)));
         body = h('div', { class: 'wizard' }, head, h('p', { class: 'small' }, intro), h('div', { class: 'choice-grid' }, grid),
           h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: () => step(n - 1) }, '← Back'),
             n < 5 ? h('button', { class: 'btn primary', onclick: () => step(n + 1) }, n === 3 ? 'Next: Ability →' : 'Next: Instinct →')
@@ -1379,7 +1379,7 @@ export class App {
       h('div', { class: 'small' },
         h('div', null, '🔁 ', h('b', null, m.name), ` · 🤝 Teamwork ${fmtTeamwork(r.teamwork)} with ${P} → `, h('b', null, r.bonus ? `+${r.bonus} bonus` : 'no bonus yet'),
           change ? h('button', { class: 'link', onclick: change }, 'Change') : null),
-        h('div', null, alphaText(swapText(m, { A, P, aType: speciesOf(r.c).types[0], pType: speciesOf(r.partner).types[0] }), A, P)),
+        h('div', null, alphaText(swapText(m, { A, P, aType: r.aType, pType: r.pType }), A, P)),
         h('div', { class: 'muted' }, alphaText(r.effect, A, P)),
         h('div', { class: 'muted' }, grows)));
   }
@@ -1641,7 +1641,7 @@ export class App {
       f ? h('img', { src: portrait(f.species), alt: '' }) : h('span', { class: 'none' }, '—'),
       h('div', null, h('small', null, 'Following'), h('b', null, f ? nameOf(f) : 'Nobody')),
       f ? h('span', { class: 'ability-tag' }, ABILITIES[abilityOf(f)].name) : null);
-    const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale})${c.bond ? '' : ' and may leave'}` : undefined, style: `--tc:${TYPE_COLOR[speciesOf(c).types[0]]}`, onclick: () => this.showCreature(c) },
+    const team = h('div', { class: 'team-strip' }, s.roster.map((c) => h('button', { class: `team-dot ${c.ko ? 'ko' : ''} ${c.points ? 'up' : ''} ${c.morale <= MORALE_LOW ? 'unhappy' : ''}`, title: c.morale <= MORALE_LOW ? `${nameOf(c)} is unhappy (Morale ${c.morale})${c.bond ? '' : ' and may leave'}` : undefined, style: tcOf(speciesOf(c)), onclick: () => this.showCreature(c) },
       h('img', { src: portrait(c.species), alt: nameOf(c) }),
       h('i', { style: `--p:${healthFraction(c)}` }))));
     const ev = E.eventView(s);
@@ -2382,7 +2382,7 @@ export class App {
         const need = W.recruitTarget(wild);
         const chance = probAtLeast(need - mods);
         body.replaceChildren(
-          h('div', { class: 'recruit-head', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+          h('div', { class: 'recruit-head', style: tcOf(sp) },
             h('img', { src: portrait(sp.id) }),
             h('div', null, h('h3', null, sp.name), h('div', { class: 'row gap-s' }, sp.types.map((t) => typeChip(t, true)), rarityBadge(sp.rarity)),
               h('p', { class: 'small' }, `Defeated, ${sp.name} watches you warily. Offer a totem — if it accepts, it will inhabit the totem and join you.`))),
@@ -3316,7 +3316,7 @@ export class App {
         return h('small', null, '🌿 ', h('b', null, ab.name), ' · ', ab.text);
       };
       const current = cur
-        ? h('div', { class: 'follow-current', style: `--tc:${TYPE_COLOR[speciesOf(cur).types[0]]}` },
+        ? h('div', { class: 'follow-current', style: tcOf(speciesOf(cur)) },
           h('img', { src: portrait(cur.species), alt: '' }),
           h('div', { class: 'follow-info' },
             h('small', { class: 'muted' }, 'Following you now'),
@@ -3368,13 +3368,26 @@ export class App {
     render();
   }
 
+  /** A balanced creature's types are equal, so its trainer picks which an Energy Tonic is for. */
+  pickTonicType(c: CreatureInst): Promise<ElementType | null> {
+    return new Promise((resolve) => {
+      let picked: ElementType | null = null;
+      const e = energy(c);
+      const close = openSheet(`⚗️ Which energy for ${nameOf(c)}?`, h('div', null,
+        h('p', { class: 'small' }, 'Permanently +1 energy of one of its types. They’ve been equal until now: it’s yours to tip.'),
+        h('div', { class: 'list' }, speciesOf(c).types.map((t) => h('button', { class: 'choice', onclick: () => { picked = t; close(); } }, h('div', { class: 'row gap-s' }, typeChip(t), h('span', null, `${e[t] ?? 0} → ${(e[t] ?? 0) + 1}`)))))), { onClose: () => resolve(picked) });
+    });
+  }
+
   useItemFlow(id: string, after: () => void) {
     const s = this.s;
     const it = itemInfo(id);
     if (it.kind === 'charm') { const m = W.useItem(s, id, s.roster[0].uid); if (m) toast(m, 'good'); save(s); after(); return; }
     if (it.kind === 'travel') { closeAllSheets(); this.travelItemFlow(id); return; }
-    const close = openSheet(`Use ${it.name} on…`, h('div', { class: 'list' }, [...s.roster, ...s.reserve].map((c) => miniCard(c, { onClick: () => {
-      const m = W.useItem(s, id, c.uid);
+    const close = openSheet(`Use ${it.name} on…`, h('div', { class: 'list' }, [...s.roster, ...s.reserve].map((c) => miniCard(c, { onClick: async () => {
+      let type: ElementType | undefined;
+      if (id === 'energy-tonic' && speciesOf(c).balanced) { const t = await this.pickTonicType(c); if (!t) return; type = t; }
+      const m = W.useItem(s, id, c.uid, type);
       if (m) toast(m, m.includes('must') || m.includes('can\'t') ? 'bad' : 'good', 2800);
       save(s); close(); after(); this.renderHud();
     } }))));
@@ -4137,7 +4150,7 @@ export class App {
       grid.replaceChildren(...(list.length ? list.map((sp) => {
         const st = status(sp.id);
         const known = st !== 'unseen';
-        return h(known ? 'button' : 'div', { class: `dex-entry ${st === 'caught' ? 'caught' : known ? 'seen' : 'unknown'}`, style: `--tc:${TYPE_COLOR[sp.types[0]]}`, title: known ? `${sp.name} · ${cap(sp.rarity)} · Stage ${sp.stage}` : 'Not seen yet', onclick: known ? () => this.codexEntry(sp.id) : undefined },
+        return h(known ? 'button' : 'div', { class: `dex-entry ${st === 'caught' ? 'caught' : known ? 'seen' : 'unknown'}`, style: tcOf(sp), title: known ? `${sp.name} · ${cap(sp.rarity)} · Stage ${sp.stage}` : 'Not seen yet', onclick: known ? () => this.codexEntry(sp.id) : undefined },
           known ? h('img', { src: portrait(sp.id), alt: '' }) : h('div', { class: 'qm' }, '?'),
           h('b', null, known ? sp.name : '???'),
           h('div', { class: 'row gap-xs center' }, known ? sp.types.map((t) => typeIconImg(t, 14)) : null, h('span', { class: `dex-rarity r-${sp.rarity}`, title: cap(sp.rarity) }, '★'.repeat(rank(sp.rarity) + 1)), st === 'caught' ? h('span', { title: 'Recruited' }, '🗿') : null));
@@ -4198,7 +4211,7 @@ export class App {
     const offers = W.bestOfferings(id);
     const biomesText = (mid: string) => materialBiomes(mid).map((b) => `${BIOME_INFO[b].icon} ${BIOME_INFO[b].label}`).join(', ');
     openSheet(sp.name, h('div', { class: 'codex-entry' },
-      h('div', { class: 'recruit-head', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+      h('div', { class: 'recruit-head', style: tcOf(sp) },
         h('img', { src: portrait(sp.id), alt: '' }),
         h('div', null,
           h('h3', null, sp.name, caught ? h('span', { title: 'Recruited' }, ' 🗿') : null),

@@ -3,7 +3,7 @@ import { NODE_BY_ID, neighbors, CITIES, BIOME_TYPES, TOWNS, isTown, MAP_NODES, R
 import { activeRegion, onRegion } from '../regions/active';
 import type { Gate, GimmickBattle } from '../regions/gimmick';
 import { provide, tools } from './tools';
-import { SPECIES, SPECIES_BY_ID, isActive } from '../data/species';
+import { SPECIES, SPECIES_BY_ID, isActive, leadTypes, ledBy } from '../data/species';
 import { WEATHER, SEASON_INFO, seasonForTurn, BIOME_MATERIALS, ITEMS, itemInfo, isUnique, timeOfDay, RECIPES, NATURE_BY_ID, ABILITIES, type Recipe } from '../data/content';
 import { INSTINCT_BY_ID } from '../data/instincts';
 import { TYPES, TYPE_LABEL } from '../data/types';
@@ -13,7 +13,7 @@ import { noteBattle, noteNabe, tally } from './dares';
 import { mercyOffer, npcBattle, npcTurn, pickRival, rivalChance, settleNpc } from './npcs';
 import { tierOf, follower, addItem, hasItem, log, record, earnCoins, activeMatchOf, moveTrainer, keyTownOf } from './state';
 import type { CreatureInst } from './creature';
-import { STAT_LABEL, HEART, stats, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
+import { STAT_LABEL, HEART, lesserType, stats, createCreature, fullRestore, speciesOf, abilityOf, instinctIdOf, nameOf, maxHearts, maxVitality, maxHealth, maxStamina, energy, autoSpend, gainXp, addLoyalty, MORALE_HIGH, MORALE_LOW, LEGENDARY_LOYALTY_DRAIN } from './creature';
 import type { Battle, Side } from './battle';
 import { createBattle } from './battle';
 import { roll, pick, starDie, weightedPick, type Star } from './dice';
@@ -464,7 +464,7 @@ export function pickSpecies(node: MapNode, rarity: Rarity, level: number, boost:
   const area = areaPool(node.biome, rarity, stageCap, time, types);
   const locals = new Set([...area.locals.values()].flat()).size;
   if (area.strays.length && (!locals || Math.random() < (locals === 1 ? STRAY_CHANCE_THIN : STRAY_CHANCE))) {
-    return byType((t) => area.strays.filter((x) => x.types[0] === t))!;
+    return byType((t) => area.strays.filter((x) => ledBy(x, t)))!;
   }
   return byType((t) => area.locals.get(t) ?? []) ?? (time ? pickSpecies(node, rarity, level, boost, undefined, types_) : nearest(types, rarity, stageCap));
 }
@@ -500,7 +500,7 @@ function areaPool(biome: Biome, rarity: Rarity, stageCap: number, time?: TimeOfD
     const listed = all.filter((x) => x.biomes.includes(biome));
     return [t, listed.length ? listed : all] as const;
   }));
-  const strays = out.filter((x) => types.includes(x.types[0]) && x.biomes.includes(biome) && !native.includes(x));
+  const strays = out.filter((x) => leadTypes(x).some((t) => types.includes(t)) && x.biomes.includes(biome) && !native.includes(x));
   const pool = { locals, strays };
   areaCache.set(key, pool);
   return pool;
@@ -509,9 +509,9 @@ function areaPool(biome: Biome, rarity: Rarity, stageCap: number, time?: TimeOfD
 /** The species of a given type (locals of it, and strays led by it) a biome can produce at a rarity and stage cap (shared by encounters and the Codex). */
 export function speciesPool(biome: Biome, type: ElementType, rarity: Rarity, stageCap: number, time?: TimeOfDay): Species[] {
   // a gimmick's lands: anyone led by the type
-  if (landsOf(biome)) return SPECIES.filter((x) => x.types[0] === type && x.rarity === rarity && x.stage <= stageCap);
+  if (landsOf(biome)) return SPECIES.filter((x) => ledBy(x, type) && x.rarity === rarity && x.stage <= stageCap);
   const area = areaPool(biome, rarity, stageCap, time);
-  return [...(area.locals.get(type) ?? []), ...area.strays.filter((x) => x.types[0] === type)];
+  return [...(area.locals.get(type) ?? []), ...area.strays.filter((x) => ledBy(x, type))];
 }
 
 // ── Creature Codex helpers ──────────────────────────────────────
@@ -528,9 +528,10 @@ export function encounterSpots(speciesId: string): Spot[] {
   for (const node of MAP_NODES) {
     if (node.kind === 'legendary') { if (node.legendary === speciesId) out.push({ node, minStage: 1 }); continue; }
     if (node.kind !== 'wild' || sp.rarity === 'legendary') continue;
-    if (!BIOME_TYPES[node.biome].includes(sp.types[0])) continue;
+    const lead = leadTypes(sp).filter((t) => BIOME_TYPES[node.biome].includes(t));
+    if (!lead.length) continue;
     if (sp.rarity === 'common' && (landsOf(node.biome)?.rarity?.('common') ?? 'common') !== 'common') continue; // every Common is raised
-    const cap = [1, 2, 3].find((c) => (['day', 'night'] as const).some((t) => speciesPool(node.biome, sp.types[0], sp.rarity, c, t).includes(sp)));
+    const cap = [1, 2, 3].find((c) => (['day', 'night'] as const).some((t) => lead.some((type) => speciesPool(node.biome, type, sp.rarity, c, t).includes(sp))));
     if (cap) out.push({ node, minStage: cap });
   }
   return out;
@@ -1271,7 +1272,8 @@ function revive(c: CreatureInst) {
   c.stamina = maxStamina(c);
 }
 
-export function useItem(s: GameState, id: string, uid: string): string | null {
+/** `type`: which of a balanced creature's types an Energy Tonic is for (its lesser one, if it isn't said). */
+export function useItem(s: GameState, id: string, uid: string, type?: ElementType): string | null {
   const c = [...s.roster, ...s.reserve].find((x) => x.uid === uid);
   if (!c || !hasItem(s, id)) return null;
   const it = itemInfo(id);
@@ -1281,7 +1283,7 @@ export function useItem(s: GameState, id: string, uid: string): string | null {
   else if (id === 'rousing-salts') { if (!c.ko) return 'A creature must be KO\'d to need Rousing Salts.'; revive(c); c.fatigue += SALTS_FATIGUE; msg = `${nameOf(c)} is back on its feet with ${c.vitality + 1} of ${maxHearts(c)} hearts, but worn out (Fatigue ${c.fatigue}).`; }
   else if (id === 'calm-tea') { c.fatigue = 0; msg = `${nameOf(c)} sips the tea. Fatigue cleared.`; }
   else if (id === 'root-salve') { if (c.ko) return 'KO\'d creatures must be revived at a stable or with Rousing Salts.'; c.vitality = Math.min(maxVitality(c), c.vitality + 2); c.fatigue = 0; msg = `${nameOf(c)} regained up to 2 hearts, and its Fatigue is cleared.`; }
-  else if (id === 'energy-tonic') { const t = speciesOf(c).types[0]; c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
+  else if (id === 'energy-tonic') { const own = speciesOf(c), t = !own.balanced ? own.types[0] : type && ledBy(own, type) ? type : lesserType(c); c.extraEnergy[t] = (c.extraEnergy[t] ?? 0) + 1; msg = `${nameOf(c)} now generates ${energy(c)[t]} ${TYPE_LABEL[t]} energy.`; }
   else if (it.kind === 'treat') {
     tally(s, 'treats');
     const mor = id === 'moonberry' || id === 'duskberry' ? 2 : 1, loy = id === 'moonberry' ? 2 : 1;

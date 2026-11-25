@@ -435,7 +435,8 @@ export function buildCreature(sp: Species): CreatureRig {
     case 'crystal': {
       const cm = new THREE.MeshStandardMaterial({ color: typeCol, emissive: new THREE.Color(typeCol), emissiveIntensity: 0.6, roughness: 0.15, metalness: 0.3, flatShading: true });
       crestParent.add(mesh(OCTA, cm, [0, top + 0.14, cz], [0.12, 0.22, 0.12]));
-      crestParent.add(mesh(OCTA, cm, [0.14, top + 0.04, cz - 0.05], [0.07, 0.13, 0.07], [0, 0, -0.5]));
+      const cm2 = sp.balanced ? new THREE.MeshStandardMaterial({ color: TYPE_COLOR[sp.types[1]!], emissive: new THREE.Color(TYPE_COLOR[sp.types[1]!]), emissiveIntensity: 0.6, roughness: 0.15, metalness: 0.3, flatShading: true }) : cm;
+      crestParent.add(mesh(OCTA, cm2, [0.14, top + 0.04, cz - 0.05], [0.07, 0.13, 0.07], [0, 0, -0.5]));
       break;
     }
     case 'fin':

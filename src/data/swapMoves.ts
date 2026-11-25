@@ -15,12 +15,12 @@ import { STATUS_FOR, STATUS_INFO } from './moves';
 import { TYPE_LABEL } from './types';
 
 /** The numbers a Swap Move works from: the Alpha's (a), partner's (p) and foe's (f, unknown off the battlefield) stats. */
-export interface SwapVals { a: Stats; p: Stats; f?: Stats; bonus: number; A: string; P: string; aType: ElementType; pType: ElementType }
+export interface SwapVals { a: Stats; p: Stats; f?: Stats; bonus: number; A: string; P: string; aType: ElementType; pType: ElementType; /** Balanced creatures', while the foe isn't known: whichever of both is better against it. */ aEither?: ElementType[]; pEither?: ElementType[] }
 /**
  * Who a Swap Move's words are about: the Alpha (A, swapping in) and the partner (P, swapping out), with
  * their main types when known. Off a real pair (docs) they're "the Alpha" / "the partner".
  */
-export interface SwapNames { A: string; P: string; aType?: ElementType; pType?: ElementType }
+export interface SwapNames { A: string; P: string; aType?: ElementType; pType?: ElementType; aEither?: ElementType[]; pEither?: ElementType[] }
 /** One labelled number added to a Swap Move's damage roll. */
 export interface SwapPart { label: string; value: number }
 
@@ -89,18 +89,19 @@ const mod = (who: 'self' | 'foe', stat: StatKey, n: (v: SwapVals) => number): Sw
 const heal = (who: 'alpha' | 'partner', n: (v: SwapVals) => number): SwapEffect => ({ t: 'heal', who, n });
 const fixed = (n: number) => () => n;
 /** " (Water)" after "Sproutle’s type", when the type is known. */
-const typeOf = (t?: ElementType) => (t ? ` (${TYPE_LABEL[t]})` : '');
+const typeOf = (t?: ElementType, either?: ElementType[]) => (either ? ` (${eitherText(either)})` : t ? ` (${TYPE_LABEL[t]})` : '');
+const eitherText = (ts: ElementType[]) => `${ts.map((t) => TYPE_LABEL[t]).join(' or ')}, whichever is better`;
 
 export const SWAP_MOVES: SwapMove[] = [
   // ── Neutral: open to every pair (an unset slot uses one of these, picked at random) ──
-  { id: 'tagStrike', name: 'Tag Strike', teamwork: 0, text: (n) => `${n.A} swaps in with an attack of ${n.P}’s type${typeOf(n.pType)}, powered by ${n.P}’s Focus.`,
+  { id: 'tagStrike', name: 'Tag Strike', teamwork: 0, text: (n) => `${n.A} swaps in with an attack of ${n.P}’s type${typeOf(n.pType, n.pEither)}, powered by ${n.P}’s Focus.`,
     hit: { acc: 8, die: 6, kind: 'elemental', chart: 'partner', parts: parts(of('p', 'focus')) } },
   { id: 'shieldPass', name: 'Shield Pass', teamwork: 0, text: (n) => `${n.A} borrows half of ${n.P}’s Armor and Ward for as long as it stays in, then counters with a physical hit.`,
     before: [mod('self', 'armor', borrow('armor')), mod('self', 'ward', borrow('ward'))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
   { id: 'slipstream', name: 'Slipstream', teamwork: 0, speed: 3, text: (n) => `${n.A} rides ${n.P}’s Speed to strike first with a physical hit.`,
     hit: { die: 6, kind: 'physical', parts: parts(of('a', 'power'), (v) => ({ label: `${v.P}’s Speed ÷ 3`, value: Math.floor(v.p.speed / 3) })) } },
-  { id: 'siphon', name: 'Siphon', teamwork: 0, text: (n) => `${n.A} drains the foe with an attack of its own type${typeOf(n.aType)}, then heals using ${n.P}’s Vigor.`,
+  { id: 'siphon', name: 'Siphon', teamwork: 0, text: (n) => `${n.A} drains the foe with an attack of its own type${typeOf(n.aType, n.aEither)}, then heals using ${n.P}’s Vigor.`,
     hit: { die: 6, kind: 'elemental', chart: 'alpha', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', healFrom('p'))] },
   { id: 'rally', name: 'Rally', teamwork: 0, text: (n) => `${n.P} cheers ${n.A} on: both restore Stamina and shake off some Fatigue, and ${n.A} gains Power and Focus.`,
@@ -186,7 +187,7 @@ export const SWAP_MOVES: SwapMove[] = [
  * describes a move without a partner in mind).
  */
 export function swapText(m: SwapMove, n: Partial<SwapNames> = {}): string {
-  const s = m.text({ A: n.A ?? 'the Alpha', P: n.P ?? 'the partner', aType: n.aType, pType: n.pType });
+  const s = m.text({ A: n.A ?? 'the Alpha', P: n.P ?? 'the partner', aType: n.aType, pType: n.pType, aEither: n.aEither, pEither: n.pEither });
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -239,8 +240,9 @@ export function describeSwap(m: SwapMove, v: SwapVals): string {
     const foeDef = v.f ? ` − ${v.f[def]} (foe’s ${LABEL[def]})` : ` − foe’s ${LABEL[def]}`;
     const acc = h === m.second ? `then ${v.P} joins in (a sure hit, if the foe still stands): ` : h.acc ? `${v.A} attacks: d${h.acc} to hit${v.f ? ` (needs ${v.f.evasion}+)` : ' vs the foe’s Evasion'}, then ` : `${v.A} attacks (a sure hit): `;
     const chart = swapChart(m, v, h);
+    const either = h.chart === 'alpha' ? v.aEither : h.chart === 'partner' ? v.pEither : undefined;
     const st = h.status ? swapStatus(m) : undefined;
-    out.push(`${acc}d${h.die}${sum}${foeDef} damage${chart ? `, as ${TYPE_LABEL[chart]}` : ''}${st ? ` (${STATUS_INFO[st].name} on a 1–${h.statusOn ?? SWAP_STATUS_ON})` : ''}`);
+    out.push(`${acc}d${h.die}${sum}${foeDef} damage${chart ? `, as ${either ? eitherText(either) : TYPE_LABEL[chart]}` : ''}${st ? ` (${STATUS_INFO[st].name} on a 1–${h.statusOn ?? SWAP_STATUS_ON})` : ''}`);
   }
   out.push(...effectsText(m, m.after ?? [], v));
   const s = out.filter(Boolean).join('; ');

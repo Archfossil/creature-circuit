@@ -4,7 +4,8 @@
 // that pair (seeded by the two uids, so it stays the same until the trainer sets one).
 import type { ElementType, Stats } from '../data/schema';
 import { SWAP_MOVES, SWAP_MOVE_BY_ID, SWAP_STATUS_ON, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
-import { TYPE_LABEL } from '../data/types';
+import { TYPE_LABEL, effectiveness } from '../data/types';
+import { leadTypes } from '../data/species';
 import { STATUS_WORTH, nameOf, speciesOf, stats, typicalGuard, type CreatureInst } from './creature';
 import { teamworkBonus, teamworkOf, teamworkShown } from './teamwork';
 
@@ -84,10 +85,23 @@ export function setSwapMove(alpha: CreatureInst, partner: CreatureInst, id: stri
   return true;
 }
 
+/** A creature's own type for a Swap Move: its main one, or for a balanced creature, whichever is better against the foe. */
+export function ownType(c: CreatureInst, foe?: CreatureInst): ElementType {
+  const ts = leadTypes(speciesOf(c));
+  if (ts.length < 2 || !foe) return ts[0];
+  const vs = (t: ElementType) => effectiveness(t, speciesOf(foe).types);
+  return vs(ts[1]) > vs(ts[0]) ? ts[1] : ts[0];
+}
+/** Which types a Swap Move's words should name: `foe` is who it would hit, if that's known. */
+export function swapTypes(alpha: CreatureInst, partner: CreatureInst, foe?: CreatureInst): Pick<SwapVals, 'aType' | 'pType' | 'aEither' | 'pEither'> {
+  const either = (c: CreatureInst) => (!foe && speciesOf(c).balanced ? [...speciesOf(c).types] : undefined);
+  const a = either(alpha), p = either(partner);
+  return { aType: ownType(alpha, foe), pType: ownType(partner, foe), ...(a ? { aEither: a } : {}), ...(p ? { pEither: p } : {}) };
+}
 /** The numbers a Swap Move works from, for describing it (pass the foe's stats once it's known). */
-export function swapVals(alpha: CreatureInst, partner: CreatureInst, opts: { a?: Stats; f?: Stats } = {}): SwapVals {
+export function swapVals(alpha: CreatureInst, partner: CreatureInst, opts: { a?: Stats; f?: Stats; /** who it would hit */ foe?: CreatureInst } = {}): SwapVals {
   return {
     a: opts.a ?? stats(alpha), p: stats(partner), f: opts.f, bonus: teamworkBonus(alpha, partner),
-    A: nameOf(alpha), P: nameOf(partner), aType: speciesOf(alpha).types[0] as ElementType, pType: speciesOf(partner).types[0] as ElementType,
+    A: nameOf(alpha), P: nameOf(partner), ...swapTypes(alpha, partner, opts.foe),
   };
 }

@@ -27,11 +27,12 @@ function baseStats(rarity: Rarity, stage: number, bias: StatKey[], weak?: StatKe
 /** Energy is generated at 2x the original prototype rate so playbooks have room for real choices. */
 export const ENERGY_SCALE = 2;
 
-function energyFor(types: ElementType[], rarity: Rarity, stage: number): EnergyMap {
+function energyFor(types: ElementType[], rarity: Rarity, stage: number, balanced?: boolean): EnergyMap {
   const r = rarity === 'common' ? 0 : rarity === 'prime' ? 1 : rarity === 'apex' ? 2 : 3;
   const total = (3 + (stage - 1) * 2 + r) * ENERGY_SCALE;
   const e: EnergyMap = {};
   if (types.length === 1) e[types[0]] = total;
+  else if (balanced) { e[types[0]] = total / 2; e[types[1]] = total / 2; }
   else { e[types[0]] = Math.ceil(total * 0.6); e[types[1]] = Math.floor(total * 0.4); }
   if (stage === 3 || r >= 2) e.prisma = (r >= 3 ? 2 : 1) * ENERGY_SCALE;
   return e;
@@ -41,12 +42,13 @@ function sp(d: Def): Species {
   const rt = { common: 5, prime: 7, apex: 9, legendary: 12 }[d.rarity] + (d.stage - 1);
   return {
     id: d.id, name: d.name, types: d.types as Species['types'], rarity: d.rarity, stage: d.stage,
-    evolvesTo: d.next, base: baseStats(d.rarity, d.stage, d.bias, d.weak), energy: energyFor(d.types, d.rarity, d.stage),
+    evolvesTo: d.next, base: baseStats(d.rarity, d.stage, d.bias, d.weak), energy: energyFor(d.types, d.rarity, d.stage, d.balanced),
     rt, ability: d.ability, instinct: d.instinct, signature: d.sig, biomes: d.biomes, dex: d.dex,
     look: { shape: d.shape, primary: d.c[0], secondary: d.c[1], crest: d.crest, ...(d.eyes ? { eyes: d.eyes } : {}), ...(d.marks ? { marks: d.marks } : {}) },
     ...(d.activity ? { activity: d.activity } : {}),
     ...(d.bias.includes('vigor') ? { sturdy: true as const } : {}),
     ...(d.bulky ? { bulky: true as const } : {}),
+    ...(d.balanced ? { balanced: true as const } : {}),
     ...(d.placeholder ? { placeholder: true } : {}),
   };
 }
@@ -158,7 +160,8 @@ export function activityFromTypes(types: ElementType[]): Activity {
   if (lean.every((x) => x === 'day')) return 'diurnal';
   return 'crepuscular';
 }
-for (const s of LIBRARY) s.activity = s.activity ?? ACTIVITY_OVERRIDE[s.id] ?? activityFromTypes(s.types);
+const withActivity = (s: Species) => { s.activity = s.activity ?? ACTIVITY_OVERRIDE[s.id] ?? activityFromTypes(s.types); return s; };
+LIBRARY.forEach(withActivity);
 
 /** Is this species out in the wild at this time of day? */
 export const isActive = (s: Species, time: TimeOfDay) => s.activity === 'crepuscular' || s.activity === (time === 'day' ? 'diurnal' : 'nocturnal');
@@ -171,6 +174,11 @@ export let SPECIES: Species[];
 export let SPECIES_BY_ID: Record<string, Species>;
 /** The creatures a trainer can start with. */
 export let STARTERS: string[];
+/** The types a species is led by: where it lives, and what it counts as. A balanced one's are both. */
+export const leadTypes = (s: Pick<Species, 'types' | 'balanced'>): ElementType[] => (s.balanced ? [...s.types] : [s.types[0]]);
+export const ledBy = (s: Pick<Species, 'types' | 'balanced'>, t: ElementType) => leadTypes(s).includes(t);
+/** Add species to the library. (They're in a region once its Codex lists them and it's gone to.) */
+export function addSpecies(defs: Def[]) { LIBRARY.push(...defs.map((d) => withActivity(sp(d)))); }
 onRegion(({ codex }) => {
   SPECIES_BY_ID = Object.fromEntries(LIBRARY.map((s) => [s.id, codex.local?.[s.id] ? { ...s, ...codex.local[s.id] } : s]));
   const lives = codex.species === 'all' ? null : new Set(codex.species);

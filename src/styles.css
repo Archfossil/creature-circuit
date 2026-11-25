@@ -1218,3 +1218,8 @@ button.seat:hover, button.seat:focus-visible { background: var(--tc); color: #ff
 .hall-team span { display: inline-flex; align-items: center; gap: 2px; }
 .hall-team img { width: 34px; height: 34px; }
 .farewell .link { justify-self: center; }
+
+/* ── Balanced creatures (both types equal): both colours, split ── */
+.starter[style*="--tc2"], .starter-detail[style*="--tc2"], .recruit-head[style*="--tc2"], .follow-current[style*="--tc2"], .cmp-who[style*="--tc2"], .stadium-slot[style*="--tc2"], .stadium-mon[style*="--tc2"],
+.mini-card[style*="--tc2"] .mini-portrait, .dex-entry.caught[style*="--tc2"], .team-dot[style*="--tc2"], .index-card.balanced .ic-art { background: linear-gradient(110deg, color-mix(in srgb, var(--tc) 30%, white) 46%, color-mix(in srgb, var(--tc2) 30%, white) 54%); }
+.pb-side[style*="--tc2"], .index-card.back[style*="--tc2"] { border-image: linear-gradient(90deg, var(--tc) 50%, var(--tc2) 50%) 1; }

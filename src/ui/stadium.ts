@@ -3,7 +3,7 @@
 import { activeRegion } from '../regions/active';
 import type { App } from './app';
 import { closeAllSheets, confirmSheet, h, openSheet, toast } from './dom';
-import { creatureCard, miniCard, typeChip } from './cards';
+import { tcOf, creatureCard, miniCard, typeChip } from './cards';
 import { portrait, trainerPortrait } from '../render/engine';
 import { npcLook } from '../render/npcLooks';
 import { arbiterLook, playerLook } from '../render/trainerModel';
@@ -100,7 +100,7 @@ function editTeam(start: S.StadiumTeam, done: (t: S.StadiumTeam) => void) {
       ...built.map((c, i) => {
         const sp = SPECIES_BY_ID[c.species], p = t.picks[i];
         const inst = INSTINCT_BY_ID[instinctIdOf(c)];
-        return h('div', { class: 'stadium-slot', style: `--tc:${TYPE_COLOR[sp.types[0]]}` },
+        return h('div', { class: 'stadium-slot', style: tcOf(sp) },
           miniCard(c, { badge: i === 0 ? 'Leads' : undefined, onClick: () => openCard(i) }),
           h('div', { class: 'row gap-s wrap' },
             h('label', { class: 'row gap-s small' }, 'Nature ', h('select', { onchange: (e: Event) => { p.nature = (e.target as HTMLSelectElement).value; render(); } }, NATURES.map((n) => h('option', { value: n.id, selected: n.id === c.nature }, `${n.name} (+${STAT_LABEL[n.up]} −${STAT_LABEL[n.down]})`)))),
@@ -132,7 +132,7 @@ function pickSpecies(taken: string[], done: (id: string) => void) {
   const render = () => {
     const list = S.stadiumSpecies().filter((sp) => (type === 'all' || sp.types.includes(type)) && (rarity === 'all' || sp.rarity === rarity) && sp.name.toLowerCase().includes(text))
       .sort((a, b) => TYPES.indexOf(a.types[0]) - TYPES.indexOf(b.types[0]) || a.name.localeCompare(b.name));
-    grid.replaceChildren(...list.slice(0, show).map((sp) => h('button', { class: 'stadium-mon', disabled: taken.includes(sp.id), style: `--tc:${TYPE_COLOR[sp.types[0]]}`, title: taken.includes(sp.id) ? 'Already on the team' : sp.dex, onclick: () => { close(); done(sp.id); } },
+    grid.replaceChildren(...list.slice(0, show).map((sp) => h('button', { class: 'stadium-mon', disabled: taken.includes(sp.id), style: tcOf(sp), title: taken.includes(sp.id) ? 'Already on the team' : sp.dex, onclick: () => { close(); done(sp.id); } },
       h('img', { src: portrait(sp.id), alt: '' }), h('b', null, sp.name), h('span', { class: 'row gap-s wrap center' }, sp.types.map((t) => typeChip(t, true))), h('small', { class: 'muted' }, sp.rarity))));
     more.replaceChildren(list.length > show ? h('button', { class: 'btn ghost sm', onclick: () => { show += 24; render(); } }, `Show more (${list.length - show})`) : '');
   };
