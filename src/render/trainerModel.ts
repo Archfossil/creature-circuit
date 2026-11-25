@@ -42,12 +42,9 @@ export const HAT_OPTIONS: { id: Hat; label: string }[] = [
   { id: 'cap', label: 'Cap' }, { id: 'backcap', label: 'Backwards cap' }, { id: 'brim', label: 'Wide brim' }, { id: 'beanie', label: 'Beanie' }, { id: 'ushanka', label: 'Ushanka' },
   { id: 'bucket', label: 'Bucket hat' }, { id: 'beret', label: 'Beret' }, { id: 'headband', label: 'Headband' }, { id: 'tophat', label: 'Top hat' }, { id: 'cowboy', label: 'Cowboy hat' }, { id: 'none', label: 'No hat' },
 ];
-/** Tops. A `-pack` id is the same cut worn with a backpack. */
-export type TopId = Jacket | `${'jacket' | 'tee' | 'pouch' | 'coat' | 'vest'}-pack`;
-export const JACKET_OPTIONS: { id: TopId; label: string }[] = [
+export const JACKET_OPTIONS: { id: Jacket; label: string }[] = [
   { id: 'jacket', label: 'Long shirt' }, { id: 'tee', label: 'Tee' }, { id: 'pouch', label: 'Pouch jacket' }, { id: 'coat', label: 'Long coat' }, { id: 'vest', label: 'Vest' },
   { id: 'overalls', label: 'Overalls' }, { id: 'poncho', label: 'Poncho' },
-  { id: 'jacket-pack', label: 'Long shirt + backpack' }, { id: 'tee-pack', label: 'Tee + backpack' }, { id: 'pouch-pack', label: 'Pouch jacket + backpack' }, { id: 'coat-pack', label: 'Long coat + backpack' }, { id: 'vest-pack', label: 'Vest + backpack' },
 ];
 export const HAIR_STYLE_OPTIONS: { id: HairStyle; label: string }[] = [
   { id: 'short', label: 'Short' }, { id: 'ponytail', label: 'Ponytail' }, { id: 'streak', label: 'Streak' }, { id: 'spiky', label: 'Spiky' }, { id: 'long', label: 'Long' },
@@ -67,17 +64,18 @@ export const SECONDARY = ['#fff8e8', '#2b2a33', '#8d8a99', '#7a4a2a', '#ffd84a',
 
 /** The player's chosen look (saved with the game). Every field is optional: gaps are filled from the name. */
 export interface TrainerAppearance {
-  skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string;
+  skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string; pack?: boolean;
   topPattern?: string; hatPattern?: string; hairPattern?: string; topColor2?: string; hatColor2?: string; hairColor2?: string;
 }
 
-/** Which top the player wears. Looks saved before patterns existed always had a backpack, so they keep it. */
-export function topOf(app: TrainerAppearance): TopId {
-  const id = app.jacket === 'hoodie' ? 'pouch' : app.jacket; // early saves called the pouch jacket a hoodie
-  const top = JACKET_OPTIONS.find((o) => o.id === id)?.id ?? 'jacket';
-  if (app.topPattern !== undefined) return top;
-  return JACKET_OPTIONS.find((o) => o.id === `${top}-pack`)?.id ?? top;
+/** Which top the player wears (older saves: a `-pack` id is the same top with a backpack, and the pouch jacket was once a hoodie). */
+export function topOf(app: TrainerAppearance): Jacket {
+  const id = app.jacket === 'hoodie' ? 'pouch' : app.jacket?.replace(/-pack$/, '');
+  return JACKET_OPTIONS.find((o) => o.id === id)?.id ?? 'jacket';
 }
+/** Whether they wear a backpack. Older saves: it came with the top, and looks from before patterns always had one. */
+export const packOf = (app: TrainerAppearance): boolean =>
+  app.pack ?? (!!app.jacket?.endsWith('-pack') || (app.topPattern === undefined && !['overalls', 'poncho'].includes(topOf(app))));
 
 /** Small deterministic RNG so a name always produces the same mini. */
 function seeded(name: string) {
@@ -103,11 +101,11 @@ export function playerLook(name: string, color: string, app: TrainerAppearance =
   const hairStyle = (HAIR_STYLE_OPTIONS.find((o) => o.id === app.hairStyle)?.id ?? 'short');
   return {
     outfit: color, accent: app.topColor2 ?? SECONDARY[0], hatColor: color, hatAccent: app.hatColor2 ?? SECONDARY[0],
-    jacket: top.replace('-pack', '') as Jacket, hairStyle, hairAccent: app.hairColor2 ?? color,
+    jacket: top, hairStyle, hairAccent: app.hairColor2 ?? color,
     topPattern: TOP_PATTERN_OPTIONS.find((o) => o.id === app.topPattern)?.id ?? 'plain',
     hatPattern: HAT_PATTERN_OPTIONS.find((o) => o.id === app.hatPattern)?.id ?? 'plain',
     hairPattern: HAIR_PATTERN_OPTIONS.find((o) => o.id === app.hairPattern)?.id ?? 'plain',
-    pants: app.pants ?? PANTS[0], skin: app.skin ?? skin, hair: app.hair ?? hair, hat, pack: top.endsWith('-pack'), rim: color,
+    pants: app.pants ?? PANTS[0], skin: app.skin ?? skin, hair: app.hair ?? hair, hat, pack: packOf(app), rim: color,
   };
 }
 
@@ -362,7 +360,7 @@ export function buildTrainer(look: TrainerLook): TrainerRig {
   const hatC = look.hatColor ?? look.accent;
   const trim = look.hatAccent ?? '#fff8e8';
   // where the patterns sit on each hat: the line a band is measured from, and the middle of a badge (from hatY)
-  const [line, badge] = ({ brim: [0, 0.1], beanie: [-0.08, 0.04], bucket: [0.02, 0.12], beret: [0, 0.06], headband: [-0.095, -0.07], tophat: [0, 0.14], cowboy: [0, 0.12] } as Partial<Record<Hat, [number, number]>>)[look.hat] ?? [-0.04, 0.05];
+  const [line, badge] = ({ brim: [0, 0.1], beanie: [-0.08, 0.04], bucket: [0.02, 0.12], beret: [0, 0.06], headband: [-0.095, -0.07], tophat: [0, 0.14], cowboy: [0.035, 0.12] } as Partial<Record<Hat, [number, number]>>)[look.hat] ?? [-0.04, 0.05];
   const onBadge = look.hatPattern === 'badge';
   const hatPaint: Paint = { key: `hat:${look.hatPattern ?? 'plain'}`, second: trim, origin: [0, hatY + (onBadge ? badge : line), 0] };
   const felt = (geo: THREE.BufferGeometry, pos: [number, number, number], rot?: [number, number, number]) => figure.add(part(geo, hatC, pos, rot, undefined, hatPaint));
@@ -408,7 +406,9 @@ export function buildTrainer(look: TrainerLook): TrainerRig {
     const bp = brim.attributes.position;
     for (let i = 0; i < bp.count; i++) bp.setY(i, bp.getY(i) + Math.pow(Math.abs(bp.getX(i)) / 0.46, 2) * 0.14);
     brim.computeVertexNormals();
-    felt(brim, [0, hatY - 0.01, 0]);
+    // (a band goes round the crown: not across the sides of the brim, which curl up as high)
+    if (look.hatPattern === 'band') figure.add(part(brim, hatC, [0, hatY - 0.01, 0]));
+    else felt(brim, [0, hatY - 0.01, 0]);
     felt(new THREE.CylinderGeometry(0.17, 0.225, 0.22, 12), [0, hatY + 0.1, 0]);
     for (const sx of [-1, 1]) felt(new THREE.SphereGeometry(0.09, 8, 6), [sx * 0.075, hatY + 0.2, 0]);
   } else if (look.hat === 'circlet') {
@@ -419,8 +419,9 @@ export function buildTrainer(look: TrainerLook): TrainerRig {
   if (look.cape) figure.add(part(new THREE.BoxGeometry(0.5, 0.95, 0.04), look.accent === '#ffd84a' ? look.outfit : look.accent, [0, 0.72, -0.25], [0.12, 0, 0]));
   if (look.cape) figure.add(part(new THREE.BoxGeometry(0.52, 0.05, 0.06), look.accent, [0, 1.17, -0.22]));
   if (look.pack) {
-    figure.add(part(new THREE.BoxGeometry(0.34, 0.4, 0.18), look.accent, [0, 0.9, -0.28]));
-    for (const sx of [-0.15, 0.15]) figure.add(part(new THREE.BoxGeometry(0.05, 0.4, 0.03), '#5a4a3a', [sx, 0.97, 0.205])); // straps
+    const cloak = look.jacket === 'poncho'; // worn over it: further out, with straps down its slope
+    figure.add(part(new THREE.BoxGeometry(0.34, 0.4, 0.18), look.accent, [0, 0.9, cloak ? -0.42 : -0.28]));
+    for (const sx of [-0.15, 0.15]) figure.add(part(new THREE.BoxGeometry(0.05, 0.4, 0.03), '#5a4a3a', cloak ? [sx, 0.98, 0.3] : [sx, 0.97, 0.205], cloak ? [-0.62, 0, 0] : undefined)); // straps
   }
 
   // Arbiters: their type emblem floats above

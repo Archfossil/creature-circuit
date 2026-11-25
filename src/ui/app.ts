@@ -14,7 +14,7 @@ import { Engine, portrait } from '../render/engine';
 import { WorldView, type Reach } from '../render/world';
 import { BattleView } from '../render/battle';
 import { npcLook, opponentLook } from '../render/npcLooks';
-import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, TOP_PATTERN_OPTIONS, HAT_PATTERN_OPTIONS, HAIR_PATTERN_OPTIONS, SECONDARY, topOf, type TrainerLook } from '../render/trainerModel';
+import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, TOP_PATTERN_OPTIONS, HAT_PATTERN_OPTIONS, HAIR_PATTERN_OPTIONS, SECONDARY, topOf, packOf, type TrainerLook } from '../render/trainerModel';
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
@@ -62,7 +62,7 @@ function trainerLookEditor(get: () => { name: string; color: string; look: Train
   const { name, color, look } = get();
   const full = playerLook(name, color, look);
   const cur = {
-    skin: full.skin, hair: full.hair, pants: full.pants, hat: full.hat, jacket: topOf(look), hairStyle: full.hairStyle ?? 'short',
+    skin: full.skin, hair: full.hair, pants: full.pants, hat: full.hat, jacket: topOf(look), pack: packOf(look), hairStyle: full.hairStyle ?? 'short',
     topPattern: full.topPattern ?? 'plain', hatPattern: full.hatPattern ?? 'plain', hairPattern: full.hairPattern ?? 'plain',
     topColor2: look.topColor2, hatColor2: look.hatColor2, hairColor2: look.hairColor2, // unset: cream, or the main colour for hair
   };
@@ -81,6 +81,8 @@ function trainerLookEditor(get: () => { name: string; color: string; look: Train
     h('div', { class: 'look-fields' },
       swatches(taken.length ? 'Main colour (top, hat and token; each trainer’s is unique)' : 'Main colour (top, hat and token)', TRAINER_COLORS, color, (c) => upd({}, c), taken),
       options('Top', JACKET_OPTIONS, cur.jacket, (v) => upd({ jacket: v })),
+      h('div', { class: 'field' }, h('span', null, 'Backpack'), h('div', { class: 'look-opts' },
+        h('button', { class: `pb-filter ${cur.pack ? 'on' : ''}`, 'aria-pressed': String(cur.pack), onclick: () => upd({ pack: !cur.pack }) }, cur.pack ? '🎒 Backpack: on' : '🎒 Backpack: off'))),
       options('Top pattern', TOP_PATTERN_OPTIONS, cur.topPattern, (v) => upd({ topPattern: v })),
       swatches('Top secondary colour (pattern, trim and backpack)', SECONDARY, full.accent, (v) => upd({ topColor2: v })),
       options('Hat', HAT_OPTIONS, cur.hat, (v) => upd({ hat: v })),

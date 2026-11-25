@@ -35,7 +35,7 @@ import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts'
 import { Box3 } from 'three';
 import { npcLook, opponentLook, NPC_OUTFITS } from '../src/render/npcLooks';
 import { NPCS as NPC_LIST } from '../src/data/npcs';
-import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, TOP_PATTERN_OPTIONS, HAT_PATTERN_OPTIONS, HAIR_PATTERN_OPTIONS, hasPattern, topOf } from '../src/render/trainerModel';
+import { buildTrainer, playerLook, arbiterLook, championLook, roamingLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS, HAIR_STYLE_OPTIONS, TOP_PATTERN_OPTIONS, HAT_PATTERN_OPTIONS, HAIR_PATTERN_OPTIONS, hasPattern, topOf, packOf } from '../src/render/trainerModel';
 
 const energyTotalOf = (c: ReturnType<typeof createCreature>) => Object.values(energy(c)).reduce((a, v) => a + (v ?? 0), 0);
 const side = (kind: Side['kind'], team: ReturnType<typeof createCreature>[]): Side => ({ kind, name: kind, team, active: 0, mods: {} });
@@ -3229,8 +3229,9 @@ describe('trainer minis', () => {
     const s = newGame('T', 'balanced', 'mangrove', 'puddlit', '#fff', { hat: 'brim' });
     expect(s.trainer.look).toEqual({ hat: 'brim' });
   });
-  it('has ten or more tops, hats and hair styles, each with five patterns that can be drawn', () => {
-    expect(JACKET_OPTIONS.length).toBeGreaterThanOrEqual(10);
+  it('has seven tops, and ten hats and hair styles, each with five patterns that can be drawn', () => {
+    expect(JACKET_OPTIONS.length).toBe(7);
+    expect(JACKET_OPTIONS.some((o) => /pack/i.test(o.id + o.label))).toBe(false);
     expect(HAT_OPTIONS.filter((o) => o.id !== 'none').length).toBe(10);
     expect(HAIR_STYLE_OPTIONS.filter((o) => o.id !== 'bald').length).toBe(10);
     for (const [kind, list] of [['top', TOP_PATTERN_OPTIONS], ['hat', HAT_PATTERN_OPTIONS], ['hair', HAIR_PATTERN_OPTIONS]] as const) {
@@ -3244,12 +3245,15 @@ describe('trainer minis', () => {
       .toMatchObject({ outfit: '#3d8bff', hatColor: '#3d8bff', topPattern: 'dots', accent: '#111111', hatPattern: 'badge', hatAccent: '#222222', hairPattern: 'split', hairAccent: '#333333' });
     expect(playerLook('R', '#3d8bff', { topPattern: 'x', hatPattern: 'x', hairPattern: 'x' })).toMatchObject({ topPattern: 'plain', hatPattern: 'plain', hairPattern: 'plain' });
   });
-  it('backpacks come with the top, and looks saved before patterns keep theirs', () => {
+  it('a backpack goes on any top, and older saves keep the one they had', () => {
+    for (const o of JACKET_OPTIONS) for (const pack of [true, false]) expect(playerLook('R', '#fff', { jacket: o.id, topPattern: 'plain', pack })).toMatchObject({ jacket: o.id, pack });
     expect(playerLook('R', '#fff', { jacket: 'tee', topPattern: 'plain' })).toMatchObject({ jacket: 'tee', pack: false });
     expect(playerLook('R', '#fff', { jacket: 'tee-pack', topPattern: 'plain' })).toMatchObject({ jacket: 'tee', pack: true });
-    expect(playerLook('R', '#fff', { jacket: 'coat' })).toMatchObject({ jacket: 'coat', pack: true });
-    expect(topOf({ jacket: 'hoodie' })).toBe('pouch-pack');
-    expect(topOf({})).toBe('jacket-pack');
+    expect(playerLook('R', '#fff', { jacket: 'tee-pack', topPattern: 'plain', pack: false })).toMatchObject({ jacket: 'tee', pack: false }); // taken off since
+    expect(playerLook('R', '#fff', { jacket: 'coat' })).toMatchObject({ jacket: 'coat', pack: true }); // from before patterns
+    expect([topOf({ jacket: 'hoodie' }), packOf({ jacket: 'hoodie' })]).toEqual(['pouch', true]);
+    expect([topOf({}), packOf({})]).toEqual(['jacket', true]);
+    expect(packOf({ jacket: 'poncho' })).toBe(false);
   });
   it('every jacket and hat builds a mini of a sensible size', () => {
     for (const j of JACKET_OPTIONS) for (const hat of HAT_OPTIONS) for (const hs of HAIR_STYLE_OPTIONS) {

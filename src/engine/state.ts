@@ -209,7 +209,9 @@ export interface Retrain { nature?: string; ability?: string; instinct?: string 
 
 export interface TrainerLookChoice {
   skin?: string; hair?: string; pants?: string; hat?: string; jacket?: string; hairStyle?: string;
-  /** Detail patterns (ids) and the secondary colours they're drawn in. No `topPattern` means a look saved before patterns: it keeps its backpack. */
+  /** Wears a backpack. Unset in older saves, where it came with the top (trainerModel.ts → packOf). */
+  pack?: boolean;
+  /** Detail patterns (ids) and the secondary colours they're drawn in. */
   topPattern?: string; hatPattern?: string; hairPattern?: string; topColor2?: string; hatColor2?: string; hairColor2?: string;
 }
 

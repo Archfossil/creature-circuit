@@ -107,7 +107,7 @@ The save also holds:
 - **`training`:** creatures away at a Battle School, as `{ creature, school, xp, turns, started }`. A retraining course adds `retrain: { nature?, ability?, instinct? }` (the ids it changes to), earns no XP, and lasts until the next morning.
 - **`lastBattle`** (optional): the log of this trainer's latest battle, as `{ title, turn, result?, entries }` (see `engine/battleLog.ts`). Saved copies leave it out.
 - **`circuit`** (on the save when solo, on the match otherwise): `{ entrants: [8 of { name, seat? | npc? }] in bracket order, winners: [7 entrant indexes or null], bots? }`. Matches 0–3 are the quarterfinals, 4–5 the semifinals, 6 the final.
-- **`trainer.look`:** the trainer's customisation: skin, hair, hair style, hat, jacket (a `-pack` id adds a backpack) and pants, plus `topPattern`, `hatPattern` and `hairPattern` with their secondary colours `topColor2`, `hatColor2` and `hairColor2`.
+- **`trainer.look`:** the trainer's customisation: skin, hair, hair style, hat, jacket, pants and whether they wear a backpack (`pack`; in older saves a `-pack` jacket id), plus `topPattern`, `hatPattern` and `hairPattern` with their secondary colours `topColor2`, `hatColor2` and `hairColor2`.
 
 A **hotseat match** is saved under its own key as `{ version, players: GameState[], current, rolls }`:
 - **`players`:** one full save per trainer, in seat order.

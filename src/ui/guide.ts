@@ -254,7 +254,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         'It also keeps your journey stats: creatures encountered, foes knocked out, items found, steps and coins, your won / lost record against wild creatures, trainers and Arbiters, and your favoured move types.',
       ] },
       { id: 'look', title: 'Your look', body: [
-        'Pick a top (some come with a backpack), hat, hair style, skin tone, hair colour and pants when you start, or later in ☰ Menu → Trainer Look. Tops, hats and hair each take a detail pattern and a secondary colour.',
+        'Pick a top, hat, hair style, skin tone, hair colour and pants, and wear a backpack or not, when you start, or later in ☰ Menu → Trainer Look. Tops, hats and hair each take a detail pattern and a secondary colour.',
         'Your main colour always goes on the top and the hat, and on hair ties and streaks unless you pick another colour. That mini is your token on the map and stands behind you in trainer battles.',
       ] },
       { id: 'stadium', title: 'Stadium', body: [
