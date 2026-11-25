@@ -68,7 +68,7 @@ export function buildTeam(team: StadiumTeam, side = 'a'): CreatureInst[] {
 const teamGoal = (c: CreatureInst): PlaybookGoal => { const g = suggestGoal(c).goal; return g.kind === 'elemental' ? g : { kind: 'balanced' }; };
 const bestPlaybook = (c: CreatureInst, goal: PlaybookGoal = teamGoal(c)) => { const m = recommendPlaybook(c, goal); return m.length ? m : autoPlaybook(c); };
 /** A good playbook that isn't the same every time. */
-const variedPlaybook = (c: CreatureInst) => { const m = recommendPlaybook(c, teamGoal(c), undefined, true); return m.length ? m : autoPlaybook(c, true); };
+const variedPlaybook = (c: CreatureInst) => { const m = recommendPlaybook(c, teamGoal(c), undefined, Math.random); return m.length ? m : autoPlaybook(c, true); };
 /** Read a built creature's choices back into its recipe (after its card was edited). */
 export function readPick(c: CreatureInst, team: CreatureInst[]): StadiumPick {
   const swaps: Record<number, string> = {};

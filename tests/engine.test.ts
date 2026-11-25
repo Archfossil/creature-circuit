@@ -3364,11 +3364,11 @@ describe('extra damage dice and wide crits', () => {
     expect(b.status[foe.uid]).toBeUndefined();
   });
 
-  it('Claw crits on a 5 or 6; Tackle only on a 6; Rampage on 6–8', async () => {
+  it('Claw crits on a 5 or 6; Tackle only on a 6; Rampage on 7–8', async () => {
     const { critFrom } = await import('../src/data/moves');
     expect(critFrom(MOVE_BY_ID.claw, 6)).toBe(5);
     expect(critFrom(MOVE_BY_ID.tackle, 6)).toBe(6);
-    expect(critFrom(MOVE_BY_ID.rampage, 8)).toBe(6);
+    expect(critFrom(MOVE_BY_ID.rampage, 8)).toBe(7);
     expect(critFrom(MOVE_BY_ID.claw, 4)).toBe(3); // a Dazed d4 keeps the two-face range
     expect(critFrom(MOVE_BY_ID['thorn-volley'], 6)).toBe(0); // most elemental moves don't crit
     expect(critFrom(MOVE_BY_ID.thunderclap, 6)).toBe(6); // but some do

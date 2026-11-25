@@ -79,7 +79,7 @@ const HANDMADE: Move[] = [
   P('quick-jab', 'Quick Jab', { cost: { neutral: 1 }, dmgDie: 0, dmgFlat: 2, speed: 3, accuracy: 'sure' }, 'Strikes first and never misses.'),
   P('headbutt', 'Headbutt', { cost: { neutral: 3 }, dmgDie: 8, effort: 2, speed: -1 }, 'Heavy, slow, and hard to shrug off.'),
   P('pounce', 'Pounce', { cost: { neutral: 2 }, dmgDie: 4, dmgFlat: 1, speed: 2, zeroIn: 2 }, 'Leaps in before the foe can react.'),
-  P('rampage', 'Rampage', { cost: { neutral: 4 }, dmgDie: 10, effort: 3, speed: -2, accuracy: 8, zeroIn: 0, critRange: 3 }, 'An all-out charge. Exhausting.'),
+  P('rampage', 'Rampage', { cost: { neutral: 4 }, dmgDie: 10, effort: 3, speed: -2, accuracy: 8, zeroIn: 0, critRange: 2 }, 'An all-out charge. Exhausting.'),
   P('tail-whip', 'Tail Lash', { cost: { neutral: 2 }, dmgDie: 4, effect: { foe: { armor: -1 } } }, 'A stinging lash of the tail.'),
   // Cascade: a top-face damage roll rolls again (or rolls the named die) and keeps chaining
   P('flurry', 'Flurry', { cost: { neutral: 2 }, dmgDie: 4, cascade: true }, 'A blur of quick blows that can snowball.'),

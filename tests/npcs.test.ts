@@ -481,7 +481,7 @@ describe('how Rivals, Champions and the AI play', () => {
     for (const npc of [rival, champ]) {
       const team = N.npcTeam(s, npc, 3);
       for (const c of team) {
-        expect(c.playbook).toEqual(recommendPlaybook(c, { kind: 'balanced' }, c.imprints?.[0]?.to));
+        expect(c.playbook).toEqual(recommendPlaybook(c, { kind: 'balanced' }, c.imprints?.[0]?.to, N.tasteOf(npc, Number(c.uid.split('-').pop()))));
         expect(fits(energy(c), c.playbook)).toBe(true);
         for (const p of team) if (p !== c) {
           expect(swapMoveSet(c, p)).toBe(true);
@@ -490,6 +490,23 @@ describe('how Rivals, Champions and the AI play', () => {
         }
       }
     }
+  });
+  it('each trainer has their own taste in moves, and keeps it', () => {
+    const s = game();
+    const sets = new Map<string, number>(); let n = 0, rampage = 0;
+    for (const npc of NPCS) for (const c of N.npcRoster(s, npc, 12)) {
+      const key = [...c.playbook].sort().join('+');
+      sets.set(key, (sets.get(key) ?? 0) + 1); n++; rampage += Number(c.playbook.includes('rampage'));
+      expect(c.playbook.filter((m) => MOVE_BY_ID[m].kind === 'physical').length, c.species).toBeLessThan(3);
+    }
+    expect(sets.size / n).toBeGreaterThan(0.8);
+    expect(rampage / n).toBeLessThan(0.45);
+    expect(N.tasteOf(rival, 1)('claw')).toBe(N.tasteOf(rival, 1)('claw'));
+    expect(N.tasteOf(rival, 1)('claw')).not.toBe(N.tasteOf(champ, 1)('claw'));
+    // like someone's, whatever the dice are doing
+    const a = JSON.stringify(N.npcTeam(s, champ, 3).map((c) => c.playbook));
+    Math.random(); Math.random();
+    expect(JSON.stringify(N.npcTeam(s, champ, 3).map((c) => c.playbook))).toBe(a);
   });
   it('recommended playbooks weigh every move element', () => {
     const c = createCreature('cindercub', 8);

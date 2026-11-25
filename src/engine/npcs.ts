@@ -119,6 +119,8 @@ export function taughtTo(s: GameState, npc: Npc, slot: number, sp: Species): { t
   const type = npc.types.find((t) => !sp.types.includes(t));
   return n && type && chanceOf(s, `${npc.id}:teach:${slot}`) < TEACHES[npc.kind] ? { type, n } : null;
 }
+/** How much a trainer likes each move, for one of their creatures: theirs for good, whatever the season, so their playbooks differ from each other's and stay recognisable as they grow. */
+export const tasteOf = (npc: Npc, slot: number) => (move: string) => seededly(`${npc.id}|${slot}|${move}`, () => Math.random());
 /** Built creatures, to copy (picking a playbook is slow). */
 const built = new Map<string, string>();
 onRegion(() => built.clear());
@@ -137,7 +139,7 @@ export function npcCreature(s: GameState, npc: Npc, slot: number, level: number,
     if (swap?.nickname) c.nickname = swap.nickname;
     if (swap?.imprints) c.imprints = swap.imprints.map((x) => ({ ...x }));
     if (taught) teach(c, taught.type, taught.n);
-    c.playbook = recommendPlaybook(c, { kind: 'balanced' }, taught?.type);
+    c.playbook = recommendPlaybook(c, { kind: 'balanced' }, taught?.type, tasteOf(npc, slot));
     c.uid = `npc-${npc.id}-${slot}`;
     if (slot === 0) { c.ace = true; c.bond = true; } // an Ace has the same bond as a trainer's own starter
     fullRestore(c);

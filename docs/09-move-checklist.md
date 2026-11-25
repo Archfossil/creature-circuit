@@ -71,7 +71,7 @@ Type-free attacks: Power vs Armor, ignore the type chart, crit on the accuracy d
 | **Quick Jab** | `quick-jab` | 1 Neutral | Physical | 2 | 2.0 | 2.00 | Sure-hit | +3 | 1 | — | — | — | — | Hand-made | ☑ | ☐ |
 | **Headbutt** | `headbutt` | 3 Neutral | Physical | d8 | 4.5 | 1.50 | d6 | -1 | 2 | — | — | — | — | Hand-made | ☑ | ☐ |
 | **Pounce** | `pounce` | 2 Neutral | Physical | d4+1 | 3.5 | 1.75 | d6 (⌖ +2) | +2 | 1 | — | — | — | — | Hand-made | ☑ | ☐ |
-| **Rampage** | `rampage` | 4 Neutral | Physical | d10 | 5.5 | 1.38 | d8 (✸ 6+) (⌖ ✕) | -2 | 3 | — | — | — | — | Hand-made | ☑ | ☐ |
+| **Rampage** | `rampage` | 4 Neutral | Physical | d10 | 5.5 | 1.38 | d8 (✸ 7+) (⌖ ✕) | -2 | 3 | — | — | — | — | Hand-made | ☑ | ☐ |
 | **Tail Lash** | `tail-whip` | 2 Neutral | Physical | d4 | 2.5 | 1.25 | d6 | 0 | 1 | — | — | On a hit, the foe gets −1 Armor. | — | Hand-made | ☑ | ☐ |
 | **Flurry** | `flurry` | 2 Neutral | Physical | d4 | 3.3 | 1.67 | d6 | 0 | 1 | — | Cascade | — | — | Hand-made | ☑ | ☐ |
 | **Wild Swing** | `wild-swing` | 3 Neutral | Physical | d6+1 | 5.1 | 1.69 | d6 | 0 | 2 | — | Cascade d4 | — | — | Hand-made | ☑ | ☐ |

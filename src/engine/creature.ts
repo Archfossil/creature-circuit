@@ -558,16 +558,16 @@ const testFoes = (level: number, vs?: ElementType) => (vs ? [vs] : TYPES).flatMa
  * its best moves do against foes of every type (so coverage, and having an answer to both Armor and Ward,
  * count for what they're worth), plus one useful support move, a quick move, and Purge moves the rest of
  * the set can set up. With `use`, it includes one or two moves that need that type's energy, if any fit.
- * `varied` gives a good set rather than the best one: every move gets its own random appeal, and the set
+ * `varied` gives a good set rather than the best one: every move gets its own appeal (0–1, by id), and the set
  * leans toward an attack of each of the creature's types and away from more than two physical ones.
  */
-export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: ElementType, varied = false): string[] {
+export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: ElementType, varied?: (id: string) => number): string[] {
   const e = energy(c), sp = speciesOf(c);
   const foes = testFoes(c.level, goal.kind === 'vs' ? goal.type : undefined);
   const spread = INSTINCT_BY_ID[instinctIdOf(c)]?.passive?.spread ? 1 : 0;
   const weight = (m: Move) => (goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4) : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1);
   const all = learnable(c).map((id) => MOVE_BY_ID[id]);
-  const appeal = new Map(varied ? all.map((m) => [m.id, 0.5 + Math.random()]) : []);
+  const appeal = new Map(varied ? all.map((m) => [m.id, 0.5 + varied(m.id)]) : []);
   const rows = new Map(all.map((m) => [m.id, foes.map((f) => Math.max(0, moveWorth(c, m, f)) * (m.kind === 'support' ? 1 : weight(m)) * (appeal.get(m.id) ?? 1))]));
   const mean = (id: string) => rows.get(id)!.reduce((a, x) => a + x, 0) / foes.length;
   const top = (list: Move[], n: number, by = (m: Move) => mean(m.id)) => [...list].sort((a, b) => by(b) - by(a)).slice(0, n);

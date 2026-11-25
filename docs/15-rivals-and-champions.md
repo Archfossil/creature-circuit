@@ -47,7 +47,7 @@ Each Rival and Champion has an outfit of their own (`NPC_OUTFITS` in `src/region
 - **Rarity:** a Rival's Ace is Prime, with Commons first and Primes later. A Champion's Ace is Apex, with Primes first and Apexes later.
 - **Level:** halfway between the season's pace and the challenger's Tier, +1 (Champions +2 before turn 20).
 - **The Ace ★** has the starter's special bond (+1 Vigor, no attribute under 1), goes last, and isn't sent against a lone creature. In battle it's a gold star among the team's dots and has an ★ Ace tag.
-- **Playbooks** are the game's balanced recommendation for each creature. **Teamwork** grows with the season (about 1 a tier, Champions 1 more), and every pair has its best Swap Move set.
+- **Playbooks** are the game's balanced recommendation for each creature, varied by the trainer's own taste in moves (`tasteOf`), which never changes: trainers' sets differ from one another's, with no more than two physical moves in any. **Teamwork** grows with the season (about 1 a tier, Champions 1 more), and every pair has its best Swap Move set.
 - **Imprints** (`taughtTo`): many of their creatures (about 60% of a Rival's, 85% of a Champion's) that lack one of the two favourite types are taught it, with 1–2 imprinted energy (Rivals from tier 2; Champions from the start, up to 3) and one or two moves that use it. A creature you imprinted and traded to them keeps yours.
 - **In battle** Rivals play like trainers and Champions like Champions: see [03 · Combat Rules](./03-combat-rules.md) and the AI notes in the README. Both swap out of bad matchups, and send in whoever fares best after a knockout, keeping the Ace for last.
 
