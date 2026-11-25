@@ -73,7 +73,8 @@ export class Bot {
   }
   /** Write a trainer's turn down: what they did, where it left them, and marks that stand for everything else. */
   write(s: GameState) {
-    this.mark([s, this.game.rolls]);
+    const { region: _, ...rest } = s; // (it's in every save, and isn't a rule)
+    this.mark([rest, this.game.rolls]);
     const mark = (h: ReturnType<typeof createHash>) => h.copy().digest('hex').slice(0, 8);
     const team = s.roster.map((c) => `${c.species}${c.level}${c.ko ? '†' : ''}`).join(',');
     this.lines.push(`T${s.turn} ${s.trainer.name} @${s.location} coins${s.coins} merits${s.merits.length} [${team}]+${s.reserve.length} dice${this.game.rolls} rules:${mark(this.rules)} words:${mark(this.words)} | ${this.turnText.join('; ')}`);

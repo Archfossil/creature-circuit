@@ -2,7 +2,7 @@
 // screen and ☰ Menu), plus the short welcome tour shown when a journey starts. Content only; the
 // App renders it. In topic text, a line starting with "- " is a bullet.
 
-import { onRegion } from '../regions/active';
+import { activeRegion, onRegion } from '../regions/active';
 
 export interface GuideTopic { id: string; title: string; body: string[] }
 /** A topic or line by name is the region's own (Region.guide), left out if it has none. */
@@ -14,7 +14,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
     id: 'basics', icon: '🧭', label: 'Basics',
     topics: [
       { id: 'goal', title: 'The goal', body: [
-        'Earn 8 Merits by beating the Arbiters of Margos’s eight cities, then be standing in Circuit Stadium when Turn 100 ends. Until then the Stadium works as a town, with a stable and market.',
+        'Earn {merits} Merits by beating the Arbiters of {region}’s {cities} cities, then be standing in Circuit Stadium when Turn {turns} ends. Until then the Stadium works as a town, with a stable and market.',
         'Everyone who makes it enters one 8-trainer bracket, with the strongest Champions and Rivals filling the rest. When two players meet, they duel. Only one trainer is crowned Champion.',
         'The season has four seasons of 25 turns each. The Turn pill (top left) shows where you are; tap it for the calendar and weather.',
       ] },
@@ -267,9 +267,11 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
 ];
 
 export let GUIDE: GuideCategory[];
-onRegion(({ guide }) => {
+onRegion(({ guide, name, map, season }) => {
+  const COUNT = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'], n = Object.keys(map.cities).length;
+  const fill = (l: string) => l.replace('{region}', name).replace('{cities}', COUNT[n] ?? String(n)).replace('{turns}', String(season.turns)).replace('{merits}', String(season.merits));
   const named = SHARED.flatMap((c) => c.topics);
-  const own = (x: SharedTopic): GuideTopic[] => (typeof x !== 'string' ? [{ ...x, body: x.body.flatMap((l) => (typeof l === 'string' ? l : guide.lines[l.more] ?? [])) }] : guide.topics.filter((g) => g.id === x));
+  const own = (x: SharedTopic): GuideTopic[] => (typeof x !== 'string' ? [{ ...x, body: x.body.flatMap((l) => (typeof l === 'string' ? fill(l) : guide.lines[l.more] ?? [])) }] : guide.topics.filter((g) => g.id === x));
   GUIDE = SHARED.map((c) => ({
     ...c,
     // a region's other topics are about its places
@@ -282,8 +284,8 @@ export interface TourStep { icon: string; title: string; lines: string[] }
 export function welcomeTour(o: { name: string; home: string; starter: string }): TourStep[] {
   return [
     { icon: '🏆', title: 'Your goal', lines: [
-      `Welcome to Margos, ${o.name}! You set out from ${o.home} with ${o.starter}.`,
-      'Beat the Arbiters of the 8 cities to earn 8 Merits, then reach Circuit Stadium by the end of Turn 100 to fight for the Championship.',
+      `Welcome to ${activeRegion().name}, ${o.name}! You set out from ${o.home} with ${o.starter}.`,
+      `Beat the Arbiters of the ${Object.keys(activeRegion().map.cities).length} cities to earn ${activeRegion().season.merits} Merits, then reach Circuit Stadium by the end of Turn ${activeRegion().season.turns} to fight for the Championship.`,
     ] },
     { icon: '⚡', title: 'Your turn', lines: [
       'Each turn you have 5 Initiative. Moving to a neighbouring node costs 1: tap a glowing node, then Travel.',

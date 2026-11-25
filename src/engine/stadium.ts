@@ -114,7 +114,7 @@ export function readTeamCode(text: string): StadiumTeam | null {
 export function stadiumTrainer(name: string, color: string, look: GameState['trainer']['look'], team: CreatureInst[]): GameState {
   const s = newGame(name, 'balanced', activeRegion().home, 'puddlit', color, look);
   s.stadium = true;
-  s.turn = 99; // the season is all but over, and it is day
+  s.turn = activeRegion().season.turns - 1; // the season is all but over, and it is day
   s.location = MAP_NODES.find((n) => n.kind === 'stadium')!.id;
   s.weather = 'clear';
   s.merits = Object.keys(CITIES);

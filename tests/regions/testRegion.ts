@@ -47,6 +47,7 @@ export const TEST_REGION: Region = {
     bounds: { land: { x: [-25, 85], z: [-40, 70] }, pan: { x: [-10, 65], z: [-25, 50] }, sea: [25, 15], sun: [30, 15], title: [25, 15] },
     places: { wispSpots: nodes.filter((n) => n.kind !== 'legendary' && n.kind !== 'stadium').map((n) => n.id), roamingKeyItems: [], keyItemTowns: [], classicKeyTowns: {}, coasts: [] },
   },
+  season: { turns: 100, merits: 8 },
   // too few for every encounter on purpose: the engine must cope without fetching somebody from outside
   codex: {
     species: [
@@ -105,5 +106,5 @@ export const TEST_REGION: Region = {
   home: 'tc-brook',
   notices: (_s, t) => ({ keys: [{ item: 'totem', text: `Test key ${t.keyTownName(_s, 'totem')}` }], tips: ['Test tip.'] }),
   guide: { topics: [{ id: 'test-topic', title: 'Test topic', body: ['Test body.'] }], lines: { bike: ['Test bike.'] } },
-  weather: { spring: ['clear', 'rain'], summer: ['heat'], autumn: ['fog'], winter: ['snow'] },
+  weather: { spring: ['clear', 'rain', 'clear', 'rain', 'clear', 'rain'], summer: ['heat', 'heat', 'heat', 'heat', 'heat', 'heat'], autumn: ['fog', 'fog', 'fog', 'fog', 'fog', 'fog'], winter: ['snow', 'snow', 'snow', 'snow', 'snow', 'snow'] },
 };

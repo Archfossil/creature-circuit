@@ -65,7 +65,7 @@ const connected = (room, clientId) => room.sockets.has(clientId);
 /** Room info everyone needs: seats, who's connected, host, controller, timer. (No match: that's sent separately.) */
 function roomInfo(room) {
   return {
-    type: 'room', code: room.code, host: room.host, started: room.started, controller: room.controller,
+    type: 'room', code: room.code, region: room.region, host: room.host, started: room.started, controller: room.controller,
     turnSeconds: room.turnSeconds, deadline: room.deadline,
     seats: room.seats.map((s) => ({ clientId: s.clientId, name: s.name, trainer: s.trainer, online: connected(room, s.clientId) })),
   };
@@ -128,7 +128,8 @@ function handle(ws, clientId, msg) {
   switch (msg.type) {
     case 'ping': send(ws, { type: 'pong' }); return null; // a returning browser checking its connection is real
     case 'create': {
-      const r = { code: newCode(), host: clientId, seats: [], started: false, match: null, controller: null, turnSeconds: 0, deadline: null, timer: null, sockets: new Map(), touched: Date.now() };
+      const region = [msg.region, msg.match?.region].find((x) => typeof x === 'string' && /^[\w-]{1,40}$/.test(x)); // the host's, for everyone (a resumed game says its own)
+      const r = { code: newCode(), region, host: clientId, seats: [], started: false, match: null, controller: null, turnSeconds: 0, deadline: null, timer: null, sockets: new Map(), touched: Date.now() };
       // re-opening a saved online match: seats come back with their owners
       if (msg.match && Array.isArray(msg.match.players) && Array.isArray(msg.owners)) {
         r.match = msg.match;
@@ -146,6 +147,8 @@ function handle(ws, clientId, msg) {
     }
     case 'join': {
       if (!room) { send(ws, { type: 'error', text: 'No room with that code. Check it, or ask the host to open it again.' }); return null; }
+      // a browser with an old copy of the game may not have this region (the oldest only have Margos, and don't say)
+      if (!(Array.isArray(msg.regions) ? msg.regions : ['margos']).includes(room.region ?? 'margos')) { send(ws, { type: 'error', text: 'That room is playing in a region your copy of the game doesn’t have yet. Reload the page to update it, then join again.' }); return null; }
       room.sockets.set(clientId, ws);
       send(ws, { type: 'push-key', key: publicKey });
       if (room.started && room.match) {
@@ -167,6 +170,8 @@ function handle(ws, clientId, msg) {
   switch (msg.type) {
     case 'seat': { // lobby: add or update my trainer
       if (room.started) return room;
+      // one region for everyone: the host's (a Stadium team can come from anywhere)
+      if (msg.trainer && !msg.trainer.stadium && (msg.trainer.region ?? 'margos') !== (room.region ?? 'margos')) { send(ws, { type: 'error', text: 'That trainer is from another region. Reload the page, then make one for this room.' }); return room; }
       const mine = room.seats.find((s) => s.clientId === clientId);
       if (mine) { mine.trainer = msg.trainer; mine.name = msg.trainer?.trainer?.name ?? mine.name; }
       else if (room.seats.length < 6) room.seats.push({ clientId, name: msg.trainer?.trainer?.name ?? 'Trainer', trainer: msg.trainer });

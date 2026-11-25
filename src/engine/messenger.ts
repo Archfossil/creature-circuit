@@ -1,6 +1,7 @@
 // The messenger: short texts between a trainer and the Rivals and Champions they've met (voices in
 // data/texts.ts). They get in touch by themselves now and then, and some texts wait for a reply; the
 // trainer can write first too. Nothing here interrupts a turn: texts wait in the Rival Trainers menu.
+import { activeRegion } from '../regions/active';
 import { NPCS, NPC_BY_ID, type Npc } from '../data/npcs';
 import { VOICES } from '../data/texts';
 import { CITIES, NODE_BY_ID } from '../data/map';
@@ -69,7 +70,7 @@ export function textTurn(s: GameState): string[] {
   // Merits earned since the last look: worth a word whenever one comes
   if (s.npcMerits === undefined || !Object.keys(s.npcs ?? {}).length) s.npcMerits = s.merits.length;
   const fresh = s.merits.slice(s.npcMerits);
-  if (s.turn - (s.lastText ?? 0) < TEXT_EVERY || s.turn >= 100) return [];
+  if (s.turn - (s.lastText ?? 0) < TEXT_EVERY || s.turn >= activeRegion().season.turns) return [];
   const known = NPCS.filter((x) => { const r = recordWith(s, x); return r && !r.invite && !r.chat?.ask; });
   const free = known.filter((x) => { const t = chatWithNpc(s, x)?.texts.filter((m) => !m.me).pop()?.turn; return t === undefined || s.turn - t >= SAME_EVERY; });
   const sent = (npc: Npc) => { s.lastText = s.turn; return [`💬 ${npc.name} sent you a message.`]; };

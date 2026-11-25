@@ -601,7 +601,7 @@ export class WorldView implements SceneView {
             pole.position.set(Math.cos(a) * 1.9, 1.0, Math.sin(a) * 1.9);
             g.add(flag, pole);
           }
-          const lab = labelSprite(n.name, { bg: '#ffd84a', sub: 'Turn 100 · Grand Tournament', size: 0.026 });
+          const lab = labelSprite(n.name, { bg: '#ffd84a', sub: `Turn ${activeRegion().season.turns} · Grand Tournament`, size: 0.026 });
           lab.position.y = 2.8; g.add(lab);
         } else {
           this.addHouses(g, n, '#c75b39', 3);

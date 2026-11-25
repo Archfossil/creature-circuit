@@ -1,5 +1,6 @@
 // Stadium Mode's screens (rules in engine/stadium.ts): build teams, pick an opponent, battle. Teams are kept in
 // this browser, apart from saves; a Stadium battle never touches a journey.
+import { activeRegion } from '../regions/active';
 import type { App } from './app';
 import { closeAllSheets, confirmSheet, h, openSheet, toast } from './dom';
 import { creatureCard, miniCard, typeChip } from './cards';
@@ -205,14 +206,18 @@ export function bringTeam(done: (s: GameState) => void) {
 async function hostStadium(app: App, t: S.StadiumTeam) {
   if (!(await app.connectOnline())) { stadiumSheet(app); return; }
   app.stadiumSeat = me(book(), t);
-  app.online!.create();
+  app.online!.create(activeRegion().id);
 }
 /** Start a Stadium room's match: the two trainers, and their teams as they came. */
 export function stadiumMatch(players: GameState[]): Match {
   // two people can bring the same team: keep their creatures apart
   const apart = players.map((p, i) => { const s: GameState = JSON.parse(JSON.stringify(p)); const id = (u: string) => u.replace(/^stadium-\w+-/, `stadium-${i}-`); for (const c of s.roster) { c.uid = id(c.uid); c.teamwork = Object.fromEntries(Object.entries(c.teamwork).map(([k, v]) => [id(k), v])); c.swapMoves = Object.fromEntries(Object.entries(c.swapMoves).map(([k, v]) => [id(k), v])); } s.following = s.roster[0]?.uid ?? null; return s; });
+  // everyone stands in the host's region's stadium, wherever they brought their team from
+  const here = activeRegion();
+  for (const p of apart) { p.region = here.id; p.location = here.map.nodes.find((n) => n.kind === 'stadium')!.id; p.trainer.home = here.home; p.merits = Object.keys(here.map.cities); }
   const m = newMatch(apart);
-  m.rolls[99] = m.rolls[100] = 1;
+  const { turns } = activeRegion().season;
+  m.rolls[turns - 1] = m.rolls[turns] = 1;
   m.stadium = { wins: apart.map(() => 0), teams: JSON.parse(JSON.stringify(apart.map((p) => p.roster))) };
   return m;
 }

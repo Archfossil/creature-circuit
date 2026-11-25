@@ -5,7 +5,7 @@
 // sees the same teams and the same tour, and saves stay small. What a trainer's own save keeps
 // (GameState.npcs) is their history with each one they've met.
 import type { ElementType, Species } from '../data/schema';
-import { onRegion } from '../regions/active';
+import { activeRegion, onRegion } from '../regions/active';
 import { NPCS, NPC_BY_ID, type Npc } from '../data/npcs';
 import { CITIES, NODE_BY_ID, TOWNS } from '../data/map';
 import { SPECIES, SPECIES_BY_ID } from '../data/species';
@@ -334,14 +334,14 @@ export function inviteBlock(s: GameState, npc: Npc): string | null {
   if (r.invite) return 'A rematch is already arranged.';
   if (invites(s).length >= INVITES_MAX) return `You already have ${INVITES_MAX} rematches arranged.`;
   if (npcResting(s, npc)) return 'They’re resting their team after your last battle.';
-  if (s.turn + INVITE_TRAVEL > 99) return 'There’s no time left before the Circuit.';
+  if (s.turn + INVITE_TRAVEL >= activeRegion().season.turns) return 'There’s no time left before the Circuit.';
   return null;
 }
 /** Invite someone you've met to a rematch at a city or town. */
 export function inviteNpc(s: GameState, npc: Npc, at: string): boolean {
   if (inviteBlock(s, npc) || !STOPS.includes(at)) return false;
   const from = s.turn + INVITE_TRAVEL;
-  recordWith(s, npc)!.invite = { at, from, until: Math.min(100, from + INVITE_WAIT - 1) };
+  recordWith(s, npc)!.invite = { at, from, until: Math.min(activeRegion().season.turns, from + INVITE_WAIT - 1) };
   log(s, `Invited ${npc.name} to a rematch at ${NODE_BY_ID[at].name}.`);
   return true;
 }
@@ -403,7 +403,7 @@ export function npcTurn(s: GameState): string[] {
     const now = npcMerits(s, npc), before = npcMerits(s, npc, s.turn - 1);
     if (now.length <= before.length) continue;
     const city = CITIES[now[now.length - 1]];
-    const text = `${npc.name} beat ${city.arbiter} for the ${city.accolade} (${now.length}/8).`;
+    const text = `${npc.name} beat ${city.arbiter} for the ${city.accolade} (${now.length}/${activeRegion().season.merits}).`;
     (s.circuitNews ??= []).unshift({ turn: s.turn, text });
     // only people you know are worth interrupting for
     if (recordWith(s, npc)) notes.push(`📰 ${text}`);

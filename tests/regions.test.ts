@@ -1,5 +1,5 @@
 // Changing region leaves nothing of the last one behind (docs/16-region-packages.md, step 3).
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { Bot, loadGame, type Game } from './baseline/bot';
 import { seasons } from './baseline/seasons';
@@ -17,9 +17,10 @@ async function copy(first?: typeof TEST_REGION) {
   const { logBattleEvent: log } = await import('../src/engine/battleLog');
   const { INSTINCTS } = await import('../src/data/instincts');
   const { opponentLook } = await import('../src/render/npcLooks');
-  const { MARGOS } = await import('../src/regions');
+  const { MARGOS, REGIONS } = await import('../src/regions');
+  if (first) REGIONS[first.id] = first;
   const guide = await import('../src/ui/guide');
-  return { g, active, dataSnapshot, opponentLook, MARGOS, log, INSTINCTS, guide };
+  return { g, active, dataSnapshot, opponentLook, MARGOS, REGIONS, log, INSTINCTS, guide };
 }
 /** A season in the test region, and the save it ends with. */
 function testSeason(g: Game, home: string) {
@@ -434,6 +435,113 @@ describe('gimmicks', () => {
   });
 });
 
+describe('saves', () => {
+  let t: Awaited<ReturnType<typeof copy>>, m: Awaited<ReturnType<typeof copy>>;
+  const store = new Map<string, string>();
+  beforeAll(async () => {
+    vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
+    m = await copy(); t = await copy(TEST_REGION);
+  }, 60000);
+  beforeEach(() => store.clear());
+  afterAll(() => vi.unstubAllGlobals());
+  const plain = <T>(x: T): T => JSON.parse(JSON.stringify(x));
+  const game = (g: Game, home: string) => g.S.newGame('T', 'balanced', home, 'cindercub', '#fff');
+
+  it('record their region, and those from before it are Margos’s', () => {
+    expect(game(t.g, 'tc-ash').region).toBe('test');
+    const s = game(m.g, 'thunder');
+    expect(s.region).toBe('margos');
+    const old = plain(s);
+    delete old.region;
+    expect(m.g.S.regionOf(old)!.name).toBe('Margos');
+    const back = m.g.S.migrate(plain(old))!;
+    expect(back).toEqual(s); // nothing else is new
+    const om = { version: 1 as const, players: [old, plain(old)], current: 0, rolls: {} };
+    expect(m.g.S.migrateMatch(plain(om))!.players[1].region).toBe('margos');
+    expect(m.g.S.parseSaveFile(JSON.stringify(om))).toMatchObject({ kind: 'match', match: { region: 'margos', rules: 1 } });
+    expect(m.g.S.describeSave('solo', back)).toBe('T · Margos · Turn 1/100 · 0/8 Merits · 1 creatures');
+    expect(m.g.S.describeSave('hotseat', om)).toContain('· Margos ·');
+  });
+
+  it('of a match are in one region, with the rules they’re played by', () => {
+    const { S } = m.g, a = game(m.g, 'thunder'), b = game(m.g, 'iron');
+    const x = S.newMatch([a, b]);
+    expect(x).toMatchObject({ region: 'margos', rules: S.RULES_VERSION });
+    expect(S.migrateMatch(plain(x))).not.toBe(null);
+    const later = { ...plain(x), rules: S.RULES_VERSION + 1 };
+    expect(S.migrateMatch(plain(later))).toBe(null);
+    expect(S.parseSaveFile(JSON.stringify(later))).toBe(null);
+    expect(S.fromNewer(JSON.stringify(later))).toBe(true);
+    const mixed = plain(x);
+    mixed.players[1].region = 'elsewhere';
+    expect(S.migrateMatch(mixed)).toBe(null);
+    mixed.players[1].region = 'test';
+    m.REGIONS.test = TEST_REGION;
+    try { expect(S.migrateMatch(mixed)).toBe(null); } finally { delete m.REGIONS.test; }
+    b.region = 'elsewhere';
+    expect(S.newMatch([a, b]).players[1].region).toBe('margos'); // (the host's)
+  });
+
+  it('from a region this version doesn’t have aren’t opened, changed, or taken for nothing', () => {
+    const { S } = m.g, s = plain(game(m.g, 'thunder'));
+    s.region = 'juudlands';
+    const was = plain(s);
+    expect(S.migrate(s)).toBe(null);
+    expect(s).toEqual(was);
+    expect(S.heldForNewer('solo')).toBe(false);
+    store.set('creature-circuit-save-v1', JSON.stringify(s));
+    expect(S.load()).toBe(null);
+    expect(S.heldForNewer('solo')).toBe(true);
+    expect(S.heldForNewer('hotseat')).toBe(false);
+    store.set('creature-circuit-match-v1', JSON.stringify({ version: 1, players: [s], current: 0, rolls: {} }));
+    expect(S.loadMatch()).toBe(null);
+    expect(S.heldForNewer('hotseat')).toBe(true);
+    expect(S.parseSaveFile(JSON.stringify(s))).toBe(null);
+    expect(S.regionName(s)).toBe('a newer region');
+    for (const no of ['', 'null', '{}', '[]', '5', 'not json', JSON.stringify(game(m.g, 'thunder'))]) expect(S.fromNewer(no), no).toBe(false);
+    for (const id of ['constructor', '__proto__', 'toString']) expect(S.regionOf({ region: id }), id).toBe(undefined);
+  });
+
+  it('of two regions can be kept side by side, and each opens as its own', () => {
+    m.REGIONS.test = TEST_REGION;
+    try {
+      const { S } = m.g, mine = game(m.g, 'thunder');
+      m.active.setRegion(TEST_REGION);
+      const other = game(m.g, 'tc-ash');
+      expect([S.regionOf(mine)!.id, S.regionOf(other)!.id]).toEqual(['margos', 'test']);
+      // read while the other region is being played, each is mended by its own gimmicks
+      mine.inventory['fog-lantern'] = 1;
+      expect(S.migrate(plain(mine))!.flags.wispAt).toBeTruthy();
+      expect(S.migrate({ ...plain(other), gimmicks: { bar: 'old' } })!.gimmicks).toEqual({ bar: 'new' });
+      m.active.setRegion(m.MARGOS);
+      expect(S.migrate({ ...plain(other), gimmicks: { bar: 'old' } })!.gimmicks).toEqual({ bar: 'new' });
+      const a = S.saveCopy('solo', mine) as { id: string; summary: string }, b = S.saveCopy('solo', other) as { id: string; summary: string };
+      expect([a.summary.split(' · ')[1], b.summary.split(' · ')[1]]).toEqual(['Margos', 'Testland']);
+      expect((S.restoreCopy(b.id) as { save: { region: string } }).save.region).toBe('test');
+      expect(S.load()!.region).toBe('test');
+      expect((S.restoreCopy(a.id) as { save: { region: string } }).save.region).toBe('margos');
+    } finally { delete m.REGIONS.test; m.active.setRegion(m.MARGOS); }
+  });
+
+  it('and the season’s length and Merits are the region’s', () => {
+    const { W, N } = t.g, short = TEST_REGION.season;
+    TEST_REGION.season = { turns: 60, merits: 3 };
+    try {
+      const s = game(t.g, 'tc-ash');
+      Object.assign(s, { turn: 60, location: 'tc-bowl', merits: ['a', 'b'] });
+      expect(W.endTurn(plain(s)).ended).toBe('over');
+      s.merits.push('c');
+      expect(W.endTurn(plain(s)).ended).toBe('endgame');
+      expect(W.endTurn(Object.assign(plain(s), { turn: 59 })).ended).toBe(undefined);
+      expect(t.g.S.describeSave('solo', s)).not.toContain('/100');
+      const npc = t.g.npcs.NPCS[0];
+      s.turn = 59; s.npcs = { [npc.id]: { met: 3, won: 1, lost: 1, owed: 0, rapport: 6, seen: [0], revenges: 0 } };
+      expect(N.inviteBlock(s, npc)).toMatch(/no time left/);
+      expect(t.g.Stadium.stadiumTrainer('T', '#fff', s.trainer.look, s.roster).turn).toBe(59);
+    } finally { TEST_REGION.season = short; }
+  });
+});
+
 describe('changing region', () => {
   const homes = ['tc-ash', 'tc-brook', 'tc-fen'];
   let fresh: ReturnType<typeof everything>, freshSeasons: ReturnType<typeof testSeason>[];
@@ -497,6 +605,7 @@ describe('changing region', () => {
         // within reach of the camera, which sees a good way past where it's pointed
         expect(Math.max(pan.x[0] * k - n.x, n.x - pan.x[1] * k, pan.z[0] * k - n.z, n.z - pan.z[1] * k), n.id).toBeLessThan(12 * k);
       }
+      for (const [k, die] of Object.entries(r.weather)) { expect(die.length, k).toBe(6); for (const id of die) expect(c.g.content.WEATHER[id], id).toBeDefined(); }
       expect(title[0] > pan.x[0] && title[0] < pan.x[1] && title[1] > pan.z[0] && title[1] < pan.z[1]).toBe(true);
     }
     c.active.setRegion(c.MARGOS);

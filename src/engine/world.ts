@@ -1489,8 +1489,8 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
     s.teamworkNews = [...(s.teamworkNews ?? []), ...rises];
     for (const t of rises) log(s, `Teamwork grew. ${t}.`);
   }
-  if (s.turn === 100) {
-    if (here(s).kind === 'stadium' && s.merits.length >= 8) { enterCircuit(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
+  if (s.turn === activeRegion().season.turns) {
+    if (here(s).kind === 'stadium' && s.merits.length >= activeRegion().season.merits) { enterCircuit(s); record(s, 'place', 'entered the Creature Circuit'); report.ended = 'endgame'; }
     else { s.phase = 'over'; report.ended = 'over'; record(s, 'place', 'finished the season'); }
     return report;
   }

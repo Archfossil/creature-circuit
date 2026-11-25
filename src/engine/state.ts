@@ -12,6 +12,8 @@ import { ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID } from
 import { pick } from './dice';
 import { provide, tools } from './tools';
 import { activeRegion } from '../regions/active';
+import { DEFAULT_REGION, REGIONS } from '../regions';
+import type { Region } from '../regions/types';
 import { SPECIES_BY_ID } from '../data/species';
 import { currentMoveId } from '../data/moves';
 
@@ -65,6 +67,8 @@ export interface Circuit { entrants: CircuitEntrant[]; winners: (number | null)[
 
 export interface GameState {
   version: number;
+  /** The region's id. Saves from before regions have none, and are Margos's (regionOf). */
+  region?: string;
   trainer: { name: string; style: TrainerStyle; home: string; color: string; look?: TrainerLookChoice };
   turn: number;
   initiative: number;
@@ -212,7 +216,7 @@ export interface StarterTraits { nature?: string; ability?: string; instinct?: s
 
 export function newGame(name: string, style: TrainerStyle, home: string, starter: string, color: string, look?: TrainerLookChoice, traits: StarterTraits = {}): GameState {
   const s: GameState = {
-    version: SAVE_VERSION,
+    version: SAVE_VERSION, region: activeRegion().id,
     trainer: { name, style, home, color, ...(look ? { look } : {}) },
     turn: 1, initiative: 5, weather: pick(SEASON_INFO.spring.dice),
     location: home, visited: [home], rested: [home], coins: 15,
@@ -259,6 +263,28 @@ let saveStatus: ((ok: boolean) => void) | null = null;
 /** Told whenever autosaving starts failing (false) or works again (true). */
 export function onSaveStatus(fn: ((ok: boolean) => void) | null) { saveStatus = fn; }
 export const savingFailed = () => unsaved !== null;
+// ── Regions ─────────────────────────────────────────────────────
+type InRegion = { region?: string; players?: { region?: string }[] };
+/** The id of the region a save or match is in. */
+export const regionIdOf = (x: InRegion): string => x.region ?? x.players?.find((p) => p?.region)?.region ?? DEFAULT_REGION;
+/** The region a save or match is in, or undefined if this version of the game doesn't have it. */
+export const regionOf = (x: InRegion): Region | undefined => Object.values(REGIONS).find((r) => r.id === regionIdOf(x));
+export const regionName = (x: InRegion) => regionOf(x)?.name ?? 'a newer region';
+/** Can this version play this match: does it have its region (one for everyone) and its rules? */
+export const readable = (m: Match) => !!regionOf(m) && (m.rules ?? 1) <= RULES_VERSION && m.players.every((p) => !p || regionIdOf(p) === regionIdOf(m));
+/** Is this a save or match from a region, or rules, that only a newer version of the game has? (A reload fetches it.) */
+export function fromNewer(text: string | null): boolean {
+  try {
+    const d = JSON.parse(text ?? 'null') as (Partial<GameState> & Partial<Match>) | null;
+    if (!d || typeof d !== 'object' || !(d.trainer || Array.isArray(d.players))) return false;
+    return !regionOf(d) || (d.rules ?? 1) > RULES_VERSION || (d.players ?? []).some((p) => p && !regionOf(p));
+  } catch { return false; }
+}
+/** Does a live slot hold a game that only a newer version can open? It must not be taken for an empty slot. */
+export function heldForNewer(kind: SaveKind): boolean {
+  try { return fromNewer(localStorage.getItem(kind === 'solo' ? KEY : kind === 'hotseat' ? MATCH_KEY : 'creature-circuit-online-v1')); } catch { return false; }
+}
+
 function put(key: string, json: string) {
   const was = unsaved;
   try { localStorage.setItem(key, json); if (unsaved?.key === key) unsaved = null; } catch { unsaved = { key, json }; }
@@ -291,7 +317,9 @@ export function save(s: GameState) {
 // records whose turn it is and the shared weather rolls, so every trainer sees the same skies on a
 // given turn. Turns go in seat order: when one trainer ends their turn, the next one starts theirs.
 export const MAX_PLAYERS = 6;
-export interface Match { version: 1; players: GameState[]; current: number; rolls: Record<number, number>; /** the shared Creature Circuit, once it's drawn */ circuit?: Circuit; /** a Stadium Mode room: the score, and each trainer's team as they brought it */ stadium?: { wins: number[]; teams: CreatureInst[][] }; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
+/** Goes up when the rules change so much that a match can't be finished on older ones. Matches record theirs. */
+export const RULES_VERSION = 1;
+export interface Match { version: 1; /** everyone's region (none: Margos) */ region?: string; /** the rules it's played by (none: 1) */ rules?: number; players: GameState[]; current: number; rolls: Record<number, number>; /** the shared Creature Circuit, once it's drawn */ circuit?: Circuit; /** a Stadium Mode room: the score, and each trainer's team as they brought it */ stadium?: { wins: number[]; teams: CreatureInst[][] }; /** online: which browser owns each seat */ owners?: string[]; code?: string; turnSeconds?: number; /** online: the browser that last sent this copy */ by?: string }
 const MATCH_KEY = 'creature-circuit-match-v1';
 let activeMatch: Match | null = null;
 /** Where the active match is kept: the hotseat slot, or (online) a separate slot so the two never mix. */
@@ -310,7 +338,9 @@ export function newMatch(players: GameState[]): Match {
   const keyTowns = players[0]?.keyTowns ?? rollKeyTowns();
   const prismSeed = players[0]?.prismSeed ?? Math.floor(Math.random() * 1e9);
   for (const p of players) { p.keyTowns = { ...keyTowns }; p.prismSeed = prismSeed; }
-  return { version: 1, players, current: 0, rolls: {} };
+  const region = regionIdOf(players[0] ?? {});
+  for (const p of players) p.region = region;
+  return { version: 1, region, rules: RULES_VERSION, players, current: 0, rolls: {} };
 }
 
 /** Roll a town for each roaming key item: all different, from the eligible towns. */
@@ -359,6 +389,7 @@ export function loadMatch(): Match | null {
 }
 /** Bring every trainer in a match up to the current version (null if one can't be). Also used on matches a server room sends, which may predate this build. */
 export function migrateMatch(m: Match): Match | null {
+  if (!readable(m)) return null;
   const players = m.players.map((p) => migrate(p));
   return players.some((p) => !p) ? null : { ...m, players: players as GameState[] };
 }
@@ -371,8 +402,8 @@ export function parseSaveFile(text: string): { kind: 'solo'; save: GameState } |
     const data = JSON.parse(text);
     if (data && Array.isArray(data.players)) {
       const players = (data.players as GameState[]).map((p) => migrate(p));
-      if (!players.length || players.some((p) => !p || !p.trainer)) return null;
-      return { kind: 'match', match: { version: 1, players: players as GameState[], current: Math.min(data.current ?? 0, players.length - 1), rolls: data.rolls ?? {}, ...(data.circuit ? { circuit: data.circuit as Circuit } : {}) } };
+      if (!players.length || players.some((p) => !p || !p.trainer) || !readable(data)) return null;
+      return { kind: 'match', match: { version: 1, region: regionIdOf(data as Match), rules: data.rules ?? 1, players: players as GameState[], current: Math.min(data.current ?? 0, players.length - 1), rolls: data.rolls ?? {}, ...(data.circuit ? { circuit: data.circuit as Circuit } : {}) } };
     }
     if (data && data.trainer && Array.isArray(data.roster)) {
       const s = migrate(data as GameState);
@@ -404,10 +435,11 @@ function writeCopies(list: SavedCopy[]): string | null {
 export function describeSave(kind: SaveKind, data: GameState | Match): string {
   if (kind === 'solo') {
     const s = data as GameState;
-    return `${s.trainer.name} · Turn ${s.turn}/100 · ${s.merits.length}/8 Merits · ${s.roster.length + s.reserve.length} creatures`;
+    const r = regionOf(s);
+    return `${s.trainer.name} · ${regionName(s)} · Turn ${s.turn}/${r?.season.turns ?? '?'} · ${s.merits.length}/${r?.season.merits ?? '?'} Merits · ${s.roster.length + s.reserve.length} creatures`;
   }
   const m = data as Match;
-  return `${m.players.map((p) => p.trainer.name).join(', ')} · Turn ${m.players[m.current]?.turn ?? 1} · ${m.players[m.current]?.trainer.name ?? ''} to play`;
+  return `${m.players.map((p) => p.trainer.name).join(', ')} · ${regionName(m)} · Turn ${m.players[m.current]?.turn ?? 1} · ${m.players[m.current]?.trainer.name ?? ''} to play`;
 }
 
 /** Keep a named copy of a game. Returns the copy, or an error message (library full, storage full). */
@@ -493,6 +525,9 @@ function heartsFromV3(c: CreatureInst) {
 
 /** Bring an older save up to SAVE_VERSION, or null if it can't be read. */
 export function migrate(s: GameState): GameState | null {
+  const region = regionOf(s);
+  if (!region) return null;
+  s.region = region.id;
   if (s.version === 1) {
     // energy nodes unlocked under v1 granted +1; they grant +2 now
     for (const c of [...s.roster, ...s.reserve]) {
@@ -545,7 +580,7 @@ export function migrate(s: GameState): GameState | null {
     const starter = mine.find((c) => line.includes(c.species));
     if (starter) starter.bond = true;
   }
-  for (const g of activeRegion().gimmicks) g.migrate?.(s, tools);
+  for (const g of region.gimmicks) g.migrate?.(s, tools);
   // Trainer ID: older saves start their detailed stats from here
   if (s.stats && !s.stats.record) { s.stats.record = {}; if (s.turn > 1) s.stats.trackedFrom = s.turn; }
   return s.version === SAVE_VERSION ? s : null;

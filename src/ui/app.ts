@@ -16,7 +16,7 @@ import { playerLook, arbiterLook, SKIN, HAIR, PANTS, HAT_OPTIONS, JACKET_OPTIONS
 import { trainerPortrait } from '../render/engine';
 import type { TrainerLookChoice } from '../engine/state';
 import type { GameState, TrainerStyle, BattleKind, Retrain, StarterTraits, DeedKind } from '../engine/state';
-import { onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
+import { fromNewer, heldForNewer, regionIdOf, regionName, regionOf, onSaveStatus, retrySave, newGame, save, load, clearSave, hasItem, tierOf, season, follower, log, record, worldLog, TRAINER_STYLES, MAX_PLAYERS, newMatch, setActiveMatch, activeMatchOf, saveMatch, loadMatch, migrateMatch, clearMatch, nextSeat, stillPlaying, takenColors, useMatchSlot, onMatchSaved, loadOnlineMatch, clearOnlineMatch, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, describeSave, defaultCopyName, saveKindOf, LIBRARY_MAX, type Circuit, type Match, type SaveKind, type SavedCopy } from '../engine/state';
 import { applyEdit, setWaypoint, type CreatureEdit } from '../engine/edits';
 import * as N from '../engine/npcs';
 import * as T from '../engine/messenger';
@@ -108,6 +108,9 @@ class AsyncQueue<T> {
   next(): Promise<T> { return this.items.length ? Promise.resolve(this.items.shift()!) : new Promise((r) => this.waiters.push(r)); }
 }
 
+/** The active region's season: how many turns, and the Merits that qualify. */
+const goal = () => activeRegion().season;
+
 export class App {
   engine: Engine;
   world: WorldView;
@@ -144,13 +147,16 @@ export class App {
     if (resumeRoom) void this.connectOnline().then((ok) => { if (ok) { closeAllSheets(); this.online!.join(resumeRoom); } });
   }
 
-  /**
-   * Change region: the old map is put away and the new one built, behind the loading screen. Only from the title
-   * screen, as a trainer on the map would be left standing on the old one.
-   */
-  async changeRegion(r: Region) {
+  private changing: Promise<void> | null = null;
+  /** Change region: the old map is put away and the new one built, behind the loading screen. Whoever was on it is put away too. */
+  async changeRegion(r: Region): Promise<void> {
+    while (this.changing) await this.changing; // one at a time
     if (r === activeRegion()) return;
-    if (!this.world.title) throw new Error('The region can only be changed from the title screen.');
+    this.changing = this.buildRegion(r);
+    try { await this.changing; } finally { this.changing = null; }
+  }
+  private async buildRegion(r: Region) {
+    if (!this.world.title) { this.ui.replaceChildren(); this.engine.setView(this.world); this.world.setTitleMode(true); }
     const veil = h('div', { id: 'boot' }, h('div', { class: 'boot-spinner' }), h('p', null, `Shaping the land of ${r.name}…`));
     document.body.append(veil);
     await new Promise<void>((done) => { requestAnimationFrame(() => setTimeout(done, 30)); }); // let it be drawn first
@@ -163,6 +169,17 @@ export class App {
       setTimeout(() => veil.remove(), 600);
     }
   }
+
+  /** Is the map the one this game is on? */
+  onRightMap(x: GameState | Match) { return regionOf(x) === activeRegion(); }
+  /** Change to the region a game is in. Resolves to false (and says why) if this version of the game doesn't have it. */
+  async goToRegionOf(x: { region?: string }): Promise<boolean> {
+    const r = regionOf(x);
+    if (!r) { this.needsReload(); return false; }
+    await this.changeRegion(r);
+    return true;
+  }
+  needsReload() { toast('This game is in a region that your copy of Creature Circuit doesn’t have yet. Reload the page to get the latest version.', 'bad', 8000); }
 
   // ════════════════════════════════════════════════════════════
   // Title & new game
@@ -178,20 +195,24 @@ export class App {
     const saved = load();
     const match = loadMatch();
     const matchLive = match && match.players.some(stillPlaying);
+    const held = (['solo', 'hotseat'] as const).filter(heldForNewer); // games only a newer version can open: don't take them for empty slots
     this.ui.replaceChildren(h('div', { class: 'title-screen' },
       h('div', { class: 'title-card' },
         h('div', { class: 'logo' },
           h('div', { class: 'logo-icons' }, TYPES.map((t) => h('img', { src: typeIcon(t), alt: '' }))),
           h('h1', null, 'Creature', h('br'), 'Circuit'),
-          h('p', null, 'Explore Margos · Befriend creatures · Earn 8 Merits · Win the Circuit')),
+          h('p', null, `Explore ${activeRegion().name} · Befriend creatures · Earn ${goal().merits} Merits · Win the Circuit`)),
         h('div', { class: 'title-actions' },
           saved && saved.phase !== 'over' ? h('button', { class: 'btn primary big', onclick: () => this.start(saved) }, `Continue · ${saved.trainer.name}, Turn ${saved.turn}`) : null,
           matchLive ? h('button', { class: 'btn primary big', onclick: () => this.startMatch(match!) }, `Continue hotseat · ${match!.players.length} trainers, Turn ${match!.players[match!.current].turn}`) : null,
+          held.length ? h('div', { class: 'small' }, h('p', null, `Your ${held.map((k) => (k === 'solo' ? 'solo journey' : 'hotseat game')).join(' and ')} ${held.length > 1 ? 'are' : 'is'} in a region this version of the game doesn’t have. Reload to get the latest version.`), h('button', { class: 'btn ghost', onclick: () => location.reload() }, '🔄 Reload')) : null,
           h('button', { class: `btn ${saved || matchLive ? 'ghost' : 'primary'} big`, onclick: async () => {
+            if (held.includes('solo') && !(await confirmSheet('Start a new journey?', 'Your solo journey, in a region this version doesn’t have, will be replaced once the new one starts. Reload the page first to open it.', 'Start anyway'))) return;
             if (saved && saved.phase !== 'over' && !(await confirmSheet('Start a new journey?', `Your solo journey with ${saved.trainer.name} (Turn ${saved.turn}) will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
             setActiveMatch(null); this.newGameWizard();
           } }, 'New Journey'),
           h('button', { class: 'btn ghost big', onclick: async () => {
+            if (held.includes('hotseat') && !(await confirmSheet('Start a new hotseat game?', 'Your hotseat game, in a region this version doesn’t have, will be replaced once the new one starts. Reload the page first to open it.', 'Start anyway'))) return;
             if (matchLive && !(await confirmSheet('Start a new hotseat game?', `Your hotseat game with ${match!.players.map((p) => p.trainer.name).join(', ')} will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
             this.hotseatSetup();
           } }, `👥 Hotseat (2–${MAX_PLAYERS} trainers)`),
@@ -211,7 +232,7 @@ export class App {
   newGameWizard(opts: { seat?: number; total?: number; taken?: string[]; onDone?: (s: GameState) => void; onCancel?: () => void } = {}) {
     let finished = false;
     const taken = opts.taken ?? [];
-    let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = activeRegion().home, starter = STARTERS[3];
+    let name = opts.seat !== undefined ? DEFAULT_NAMES[opts.seat] : 'Rowan', color = TRAINER_COLORS.find((c) => !taken.includes(c)) ?? TRAINER_COLORS[0], style: TrainerStyle = 'balanced', home = activeRegion().home, starter = STARTERS[3] ?? STARTERS[0];
     const who = opts.seat !== undefined ? `Trainer ${opts.seat + 1} of ${opts.total} · ` : '';
     let look: TrainerLookChoice = { skin: SKIN[1], hair: HAIR[1], pants: PANTS[0], hat: 'cap', jacket: 'jacket-pack', hairStyle: 'short', topPattern: 'plain' };
     // the starter's traits: a random Nature to begin with, and its species' usual Ability and Instinct
@@ -299,6 +320,7 @@ export class App {
   }
 
   start(s: GameState, fresh = false) {
+    if (!this.onRightMap(s)) { void this.goToRegionOf(s).then((ok) => { if (ok) this.start(s, fresh); }); return; }
     this.busy = false; // (whatever was under way is replaced)
     rememberSession(this.online?.code ?? null);
     this.liveLog = null;
@@ -342,6 +364,7 @@ export class App {
         if (!file) return;
         const text = await file.text();
         const kind = saveKindOf(text);
+        if (!kind && fromNewer(text)) { this.needsReload(); return; }
         if (!kind) { toast('That file isn’t a Creature Circuit save.', 'bad'); return; }
         const r = saveCopy(kind, JSON.parse(text), file.name.replace(/\.json$/i, ''));
         if (typeof r === 'string') { toast(r, 'bad', 5000); return; }
@@ -361,8 +384,10 @@ export class App {
     const loadCopy = async (c: SavedCopy) => {
       const live = c.kind === 'solo' ? load() : c.kind === 'hotseat' ? loadMatch() : loadOnlineMatch();
       const what = c.kind === 'solo' ? 'solo journey' : c.kind === 'hotseat' ? 'hotseat game' : 'saved online game';
+      if (!live && heldForNewer(c.kind) && !(await confirmSheet(`Load “${c.name}”?`, `This replaces your current ${what}, which is in a region this version doesn’t have. Reload the page first to open it.`, 'Load'))) return;
       if (live && !(await confirmSheet(`Load “${c.name}”?`, `This replaces your current ${what} (${describeSave(c.kind, live)}). Save a copy of it first if you want to keep it.`, 'Load'))) return;
       const g = restoreCopy(c.id);
+      if (!g && fromNewer(JSON.stringify(c.data))) { this.needsReload(); return; }
       if (!g) { toast('That copy can’t be loaded (it may be from an older version, or storage is full).', 'bad', 5000); return; }
       closeAllSheets();
       if (g.kind === 'solo') { setActiveMatch(null); this.start(g.save); }
@@ -374,7 +399,7 @@ export class App {
       const match = loadMatch();
       const online = loadOnlineMatch();
       const copies = listCopies();
-      const status = (p: GameState) => (p.phase === 'champion' ? '🏆 Champion' : p.phase === 'over' ? 'Season over' : p.phase === 'endgame' ? 'In the Circuit bracket' : `Turn ${p.turn}/100`);
+      const status = (p: GameState) => (p.phase === 'champion' ? '🏆 Champion' : p.phase === 'over' ? 'Season over' : p.phase === 'endgame' ? 'In the Circuit bracket' : `Turn ${p.turn}/${regionOf(p)?.season.turns ?? '?'}`);
       const card = (title: string, lines: (string | HTMLElement)[], actions: (HTMLElement | null)[]) =>
         h('div', { class: 'save-card' }, h('b', null, title), ...lines.map((l) => (typeof l === 'string' ? h('small', null, l) : l)), h('div', { class: 'row gap-s wrap' }, actions));
       const seatsOf = (m: Match) => h('div', { class: 'seats' }, m.players.map((p, i) => h('span', { class: `seat ${i === m.current && stillPlaying(p) ? 'now' : ''} ${stillPlaying(p) ? '' : 'done'}`, style: `--tc:${p.trainer.color}` }, p.trainer.name)));
@@ -383,31 +408,31 @@ export class App {
         h('p', { class: 'small muted' }, 'Your games autosave as you play. 📌 Save a copy keeps a snapshot you can load again later (also from ☰ Menu in game). Saves live in this browser: export one to back it up or move it to another device.'),
         h('h4', null, '🧭 Solo journey'),
         solo
-          ? card(solo.trainer.name, [`${status(solo)} · ${NODE_BY_ID[solo.location]?.name ?? ''} · ${solo.merits.length}/8 Merits · ${solo.roster.length + solo.reserve.length} creatures`], [
+          ? card(solo.trainer.name, [`${status(solo)} · ${regionOf(solo)?.map.nodes.find((n) => n.id === solo.location)?.name ?? ''} · ${regionName(solo)} · ${solo.merits.length}/${regionOf(solo)?.season.merits ?? '?'} Merits · ${solo.roster.length + solo.reserve.length} creatures`], [
             solo.phase !== 'over' && solo.phase !== 'champion' ? h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); this.start(solo); } }, 'Continue') : null,
             h('button', { class: 'btn ghost sm', onclick: () => void keepCopy('solo', solo) }, '📌 Save a copy'),
             h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-${solo.trainer.name}-turn${solo.turn}.json`, solo) }, '⬇ Export'),
             h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete solo journey?', `${solo.trainer.name}’s journey (${status(solo)}) will be deleted. Saved copies and your other games are not affected.`, 'Delete')) { clearSave(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
           ])
-          : h('p', { class: 'small muted' }, 'No solo journey in progress.'),
+          : h('p', { class: 'small muted' }, heldForNewer('solo') ? 'In a region this version of the game doesn’t have. Reload the page to get the latest version.' : 'No solo journey in progress.'),
         h('h4', null, '👥 Hotseat game'),
         match
-          ? card(`${match.players.length} trainers`, [seatsOf(match), match.players.map((p) => `${p.trainer.name}: ${status(p)}, ${p.merits.length}/8 Merits`).join(' · ')], [
+          ? card(`${match.players.length} trainers`, [seatsOf(match), regionName(match), match.players.map((p) => `${p.trainer.name}: ${status(p)}, ${p.merits.length}/${regionOf(match)?.season.merits ?? '?'} Merits`).join(' · ')], [
             match.players.some(stillPlaying) ? h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); void this.startMatch(match); } }, 'Continue') : null,
             h('button', { class: 'btn ghost sm', onclick: () => void keepCopy('hotseat', match) }, '📌 Save a copy'),
             h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-hotseat-${match.players.length}p-turn${match.players[match.current].turn}.json`, match) }, '⬇ Export'),
             h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Delete hotseat game?', `The game with ${match.players.map((p) => p.trainer.name).join(', ')} will be deleted for every trainer. Saved copies and your other games are not affected.`, 'Delete')) { clearMatch(); render(); this.title(); this.savesSheet(); } } }, '🗑 Delete'),
           ])
-          : h('p', { class: 'small muted' }, 'No hotseat game in progress.'),
+          : h('p', { class: 'small muted' }, heldForNewer('hotseat') ? 'In a region this version of the game doesn’t have. Reload the page to get the latest version.' : 'No hotseat game in progress.'),
         h('h4', null, '🌐 Online game'),
         online
-          ? card(`${online.players.length} trainers${online.code ? ` · room ${online.code}` : ''}`, [seatsOf(online), 'The last state this browser saw. Reopen it as host from 🌐 Online if its room has closed.'], [
+          ? card(`${online.players.length} trainers${online.code ? ` · room ${online.code}` : ''}`, [seatsOf(online), regionName(online), 'The last state this browser saw. Reopen it as host from 🌐 Online if its room has closed.'], [
             h('button', { class: 'btn primary sm', onclick: () => { closeAllSheets(); this.onlineSheet(); } }, '🌐 Online…'),
             h('button', { class: 'btn ghost sm', onclick: () => void keepCopy('online', online) }, '📌 Save a copy'),
             h('button', { class: 'btn ghost sm', onclick: () => download(`creature-circuit-online-${online.players.length}p-turn${online.players[online.current].turn}.json`, online) }, '⬇ Export'),
             h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Forget online game?', 'This browser forgets its copy of the online game. The room itself (and everyone else’s copy) is not affected.', 'Forget')) { clearOnlineMatch(); render(); } } }, '🗑 Forget'),
           ])
-          : h('p', { class: 'small muted' }, 'No online game on this device.'),
+          : h('p', { class: 'small muted' }, heldForNewer('online') ? 'In a region this version of the game doesn’t have. Reload the page to get the latest version.' : 'No online game on this device.'),
         h('h4', null, `🗂 Saved copies (${copies.length}/${LIBRARY_MAX})`),
         copies.length ? h('div', { class: 'list' }, copies.map((c) => card(c.name, [
           h('small', { class: 'muted' }, `${kindIcon[c.kind]} · saved ${new Date(c.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`), c.summary,
@@ -556,14 +581,14 @@ export class App {
     const close = openSheet('🌐 Online', h('div', { class: 'online' },
       h('p', null, 'Play turn by turn with up to six trainers over the internet. Everyone watches the current trainer’s moves and battles live; when your turn comes up you’ll get a ping, even in another tab.'),
       h('div', { class: 'row gap-s wrap' },
-        h('button', { class: 'btn primary', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create(); } }, '➕ Host a new room')),
+        h('button', { class: 'btn primary', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create(activeRegion().id); } }, '➕ Host a new room')),
       h('h4', null, 'Join a room'),
       h('div', { class: 'row gap-s' }, input,
         h('button', { class: 'btn primary', onclick: async () => { const c = input.value.trim().toUpperCase(); if (c.length !== 5) { toast('Room codes have 5 letters.', 'info'); return; } void askForAlerts(); close(); if (await this.connectOnline()) this.online!.join(c); } }, 'Join')),
       last && !code ? h('p', { class: 'small' }, h('button', { class: 'link', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.join(last); } }, `Rejoin room ${last}`)) : '',
       saved && saved.owners ? h('div', null, h('h4', null, 'Your saved online game'),
         h('p', { class: 'small muted' }, `${saved.players.map((p) => p.trainer.name).join(', ')} · Turn ${saved.players[saved.current].turn}. If its room has closed (e.g. the server restarted), open it again as host and share the new code.`),
-        h('button', { class: 'btn ghost', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create({ match: saved, owners: saved.owners!, turnSeconds: saved.turnSeconds ?? 0 }); } }, '♻️ Reopen as host')) : '',
+        h('button', { class: 'btn ghost', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create(regionIdOf(saved), { match: saved, owners: saved.owners!, turnSeconds: saved.turnSeconds ?? 0 }); } }, '♻️ Reopen as host')) : '',
       h('p', { class: 'small muted' }, 'Online play needs the game server: it runs on Render from render.yaml, or locally with npm run server.')), { wide: true });
   }
 
@@ -691,6 +716,7 @@ export class App {
       this.closeLobby = () => { done(); this.lobbyBody = null; this.closeLobby = null; };
     }
     const mine = room.seats.find((s) => s.clientId === net.id);
+    const region = regionOf(room);
     const link = `${location.origin}${location.pathname}?room=${room.code}`;
     const taken = room.seats.filter((s) => s.clientId !== net.id && s.trainer).map((s) => s.trainer!.trainer.color);
     const ready = room.seats.filter((s) => s.trainer).length;
@@ -698,6 +724,7 @@ export class App {
     this.lobbyBody.replaceChildren(
       h('p', null, stadium ? '🏟️ A Stadium battle: share this code or link. Your opponent brings a team here, then the host starts.' : 'Share this code or link. Everyone creates a trainer here, then the host starts the game.'),
       this.alertRow(() => this.lobby()),
+      stadium ? '' : region ? h('p', { class: 'small' }, '🗺️ Region: ', h('b', null, region.name)) : h('p', { class: 'bad-text' }, 'This room’s game is in a region your copy of Creature Circuit doesn’t have yet. ', h('button', { class: 'link', onclick: () => location.reload() }, 'Reload the page')),
       h('div', { class: 'row gap-s wrap' }, h('b', { class: 'room-code' }, room.code),
         h('button', { class: 'btn ghost sm', onclick: () => { void navigator.clipboard?.writeText(link); toast('Invite link copied.', 'good'); } }, '🔗 Copy invite link')),
       h('h4', null, `Trainers (${room.seats.length}/${MAX_PLAYERS})`),
@@ -707,9 +734,10 @@ export class App {
       h('div', { class: 'row gap-s wrap' },
         room.seats.length < (stadium ? 2 : MAX_PLAYERS) || mine ? h('button', { class: 'btn primary', onclick: () => {
           if (stadium) { bringTeam((s) => { s.trainer.color = taken.includes(s.trainer.color) ? TRAINER_COLORS.find((c) => !taken.includes(c)) ?? s.trainer.color : s.trainer.color; net.send({ type: 'seat', trainer: s }); this.lobby(); }); return; }
+          if (!region) { this.needsReload(); return; }
           this.closeLobby?.();
           this.inWizard = true;
-          this.newGameWizard({ taken, onDone: (s) => { this.inWizard = false; net.send({ type: 'seat', trainer: s }); this.lobby(); }, onCancel: () => { this.inWizard = false; this.lobby(); } });
+          void this.changeRegion(region).then(() => this.newGameWizard({ taken, onDone: (s) => { this.inWizard = false; net.send({ type: 'seat', trainer: s }); this.lobby(); }, onCancel: () => { this.inWizard = false; this.lobby(); } }));
         } }, stadium ? (mine ? '✏️ Change my team' : '➕ Bring a team') : mine?.trainer ? '✏️ Remake my trainer' : '➕ Create my trainer') : h('p', { class: 'small muted' }, 'The room is full.'),
         mine ? h('button', { class: 'btn ghost', onclick: () => net.send({ type: 'leave-seat' }) }, 'Give up my seat') : ''),
       net.isHost ? h('div', { class: 'host-box' },
@@ -733,7 +761,8 @@ export class App {
   /** A new match snapshot from the server. */
   applyState(sent: Match) {
     const match = migrateMatch(sent); // the room may have been started by an older build
-    if (!match) { toast('This room’s game is from a different version. Reload the page, or start a new room.', 'bad', 6000); return; }
+    if (!match) { if (fromNewer(JSON.stringify(sent))) this.needsReload(); else toast('This room’s game is from a different version. Reload the page, or start a new room.', 'bad', 6000); return; }
+    if (!this.onRightMap(match)) { void this.goToRegionOf(match).then((ok) => { if (ok && this.online) this.applyState(sent); }); return; }
     if (!match.stadium) try { localStorage.setItem('creature-circuit-online-v1', JSON.stringify(match)); } catch { /* ignore */ }
     // we're the one playing: our copy is the newest (unless we just reconnected and someone else played on)
     const theirs = this.resync && !!sent.by && sent.by !== this.online?.id;
@@ -1056,6 +1085,7 @@ export class App {
 
   /** Begin (or resume) a hotseat match with whoever's seat it is. */
   async startMatch(m: Match, fresh = false) {
+    if (!this.onRightMap(m) && !(await this.goToRegionOf(m))) return;
     setActiveMatch(m);
     const s = m.players[m.current];
     if (s.phase === 'endgame') { // the season is over for them: on with whoever is left, or with the Circuit
@@ -1120,7 +1150,7 @@ export class App {
       saveMatch(m);
       this.renderHud();
       const se = season(s);
-      if (s.turn > 1 && seasonForTurn(s.turn - 1) !== se) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in Margos.`);
+      if (s.turn > 1 && seasonForTurn(s.turn - 1) !== se) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in ${activeRegion().name}.`);
       const w = WEATHER[s.weather];
       await rollDice(`Weather for Turn ${s.turn} · everyone`, [{ sides: 6, value: roll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 900, { read: true });
     }
@@ -1156,7 +1186,7 @@ export class App {
           h('img', { src: trainerPortrait(playerLook(b.trainer.name, b.trainer.color, b.trainer.look)), alt: '' }),
           h('div', { class: 'trainer-info' },
             h('b', null, b.trainer.name, stillPlaying(b) ? '' : ' · finished'),
-            h('small', null, `${here ? '📍 Here with you' : `At ${NODE_BY_ID[b.location].name}`} · 💰 ${b.coins} · ${b.merits.length}/8 Merits · ${b.roster.length + b.reserve.length} creatures`),
+            h('small', null, `${here ? '📍 Here with you' : `At ${NODE_BY_ID[b.location].name}`} · 💰 ${b.coins} · ${b.merits.length}/${goal().merits} Merits · ${b.roster.length + b.reserve.length} creatures`),
             h('div', { class: 'row gap-s wrap' },
               h('button', { class: 'btn ghost sm', onclick: () => { close(); this.giftSheet(b); } }, '📦 Send a gift'),
               h('button', { class: 'btn ghost sm', title: here ? 'Trade coins, items and creatures' : 'Trade coins and items by courier (meet on the same spot to trade creatures)', onclick: () => { close(); this.tradeSheet(b); } }, here ? '🤝 Trade' : '🤝 Trade items'),
@@ -1507,7 +1537,7 @@ export class App {
       h('ol', { class: 'standings' }, ranked.map((p) => h('li', { style: `--tc:${p.trainer.color}` },
         h('b', null, p.trainer.name),
         h('span', null, p.phase === 'champion' ? ' 🏆 Champion of the Circuit' : p.endgame ? ` · out in the ${C.CIRCUIT_ROUNDS[p.endgame.round] ?? 'Circuit'}` : ' · missed the Circuit'),
-        h('small', { class: 'muted' }, ` · ${p.merits.length}/8 Merits · ${p.stats.battlesWon} wins · ${p.stats.recruited} recruited`)))),
+        h('small', { class: 'muted' }, ` · ${p.merits.length}/${goal().merits} Merits · ${p.stats.battlesWon} wins · ${p.stats.recruited} recruited`)))),
       h('button', { class: 'btn primary big', onclick: () => { if (this.online) { clearOnlineMatch(); this.leaveOnline(); } else { clearMatch(); this.title(); } } }, 'New Journey'))));
   }
 
@@ -1550,11 +1580,11 @@ export class App {
     const marker = this.markerOwner();
     this.world.setWaypoint(marker?.waypoint ?? null, marker?.trainer.color);
     if (!this.watching) screens().news?.(this);
-    const daysLeft = 100 - s.turn;
+    const daysLeft = goal().turns - s.turn;
     const effects = W.activeEffects(s);
     const top = h('div', { class: 'hud-top' },
       h('button', { class: 'hud-pill turn', onclick: () => this.calendar() },
-        h('span', { class: 'season' }, SEASON_INFO[se].icon), h('b', null, `Turn ${s.turn}`), h('small', null, `/100 · ${SEASON_INFO[se].label}`)),
+        h('span', { class: 'season' }, SEASON_INFO[se].icon), h('b', null, `Turn ${s.turn}`), h('small', null, `/${goal().turns} · ${SEASON_INFO[se].label}`)),
       h('button', { class: `hud-pill tod ${tod}`, title: tod === 'night' ? 'Night (even turns): nocturnal creatures are out, and night events happen.' : 'Day (odd turns): diurnal creatures are out, and day events happen.', onclick: () => this.calendar() },
         h('span', null, TIME_INFO[tod].icon), h('small', { class: 'hide-xs' }, TIME_INFO[tod].label)),
       h('button', { class: 'hud-pill', onclick: () => this.calendar() }, h('span', null, w.icon), h('small', { class: 'hide-xs' }, w.name)),
@@ -1576,7 +1606,7 @@ export class App {
       // my private next-stop flag: tap to find it on the map
       marker?.waypoint ? h('button', { class: 'next-stop-chip', style: `--tc:${marker.trainer.color}`, title: 'Show your next-stop flag on the map', onclick: () => this.findNextStop() },
         '📍 ', h('small', null, 'Your next stop: '), h('b', null, NODE_BY_ID[marker.waypoint]?.name ?? '')) : null,
-      daysLeft <= 10 && s.phase === 'map' ? h('div', { class: 'warn' }, `⏳ ${daysLeft + 1} turns left — reach Circuit Stadium with 8 Merits!`) : null);
+      daysLeft <= 10 && s.phase === 'map' ? h('div', { class: 'warn' }, `⏳ ${daysLeft + 1} turns left — reach Circuit Stadium with ${goal().merits} Merits!`) : null);
     const actions = h('div', { class: 'action-bar' }, this.actionButtons());
     const followerBtn = h('button', { class: 'follower-chip', onclick: () => this.pickFollower() },
       f ? h('img', { src: portrait(f.species), alt: '' }) : h('span', { class: 'none' }, '—'),
@@ -1606,7 +1636,7 @@ export class App {
     const n = NODE_BY_ID[id];
     if (n.kind === 'city') return `${TYPE_LABEL[n.cityType!]} City · Arbiter ${CITIES[id].arbiter}${this.s.merits.includes(id) ? ' ✓' : ''}`;
     if (n.kind === 'town') return 'Town · Safe haven';
-    if (n.kind === 'stadium') return 'Town · Be here at the end of Turn 100';
+    if (n.kind === 'stadium') return `Town · Be here at the end of Turn ${goal().turns}`;
     if (n.kind === 'legendary') return 'Legendary grounds';
     if (n.kind === 'arena') { const c = CITIES[n.arenaOf!]; return `${TYPE_LABEL[c.type]} Arena · Arbiter ${c.arbiter}${this.s.merits.includes(c.nodeId) ? ' ✓' : ''}`; }
     const special = screens().nodeSubtitle?.(this.s, n);
@@ -2480,7 +2510,7 @@ export class App {
       h('div', { class: 'npc-head' }, h('img', { src: this.npcPortrait(npc), alt: '' }), h('div', null,
         h('div', { class: 'row gap-s wrap' }, h('b', null, npc.name), npc.types.map((t) => typeChip(t, true)), h('span', { class: 'chip' }, N.npcMood(r)), s.sponsor?.npc === npc.id ? h('span', { class: 'chip good', title: `${CITIES[npc.home].name} is their home city` }, '💛 Your sponsor') : N.wouldSponsor(s, npc) ? h('span', { class: 'chip good', title: 'Find them to accept' }, '💛 Offers to sponsor you') : null, N.isContender(s, npc) ? h('span', { class: 'chip good', title: 'Your battles have made a Circuit contender of them' }, '📈 Contender') : null),
         h('p', { class: 'small' }, npc.blurb),
-        h('p', { class: 'small' }, h('b', null, `You ${r.won} · Them ${r.lost}`), r.revenges ? ` · 🔥 ${r.revenges} avenged` : '', r.daresWon || r.daresLost ? ` · 🎯 ${r.daresWon ?? 0}–${r.daresLost ?? 0}` : '', h('span', { class: 'muted' }, ` · Met turn ${r.met}${r.last ? ` · Last: you ${r.last.won ? 'won' : 'lost'} at ${at(r.last.at)}, turn ${r.last.turn}` : ''} · From ${at(npc.home)} · ${N.npcMerits(s, npc).length}/8 Merits`)),
+        h('p', { class: 'small' }, h('b', null, `You ${r.won} · Them ${r.lost}`), r.revenges ? ` · 🔥 ${r.revenges} avenged` : '', r.daresWon || r.daresLost ? ` · 🎯 ${r.daresWon ?? 0}–${r.daresLost ?? 0}` : '', h('span', { class: 'muted' }, ` · Met turn ${r.met}${r.last ? ` · Last: you ${r.last.won ? 'won' : 'lost'} at ${at(r.last.at)}, turn ${r.last.turn}` : ''} · From ${at(npc.home)} · ${N.npcMerits(s, npc).length}/${goal().merits} Merits`)),
         rev ? h('p', { class: 'small good-text' }, `🔥 Revenge is waiting: ${rev.coins + 1}× coins, +${rev.xp} XP and ${itemInfo(rev.item).icon} ${itemInfo(rev.item).name}.`) : null)),
       h('div', { class: 'npc-team', 'aria-label': 'Their creatures' }, N.npcLineup(s, npc).map((sp, i) => {
         const seen = r.seen.includes(i), ace = i === 0;
@@ -2631,7 +2661,7 @@ export class App {
   private standingsBody(s: GameState) {
     const rows = N.standings(s);
     return h('div', null,
-      h('p', { class: 'small muted' }, `Who’s on course for the Circuit. On Turn 100 the strongest of them fill whatever places trainers leave in the bracket of eight${activeMatchOf() ? '' : ` (the top ${N.FIELD})`}. A Rival you battle often, or who keeps beating you, climbs fast.`),
+      h('p', { class: 'small muted' }, `Who’s on course for the Circuit. On Turn ${goal().turns} the strongest of them fill whatever places trainers leave in the bracket of eight${activeMatchOf() ? '' : ` (the top ${N.FIELD})`}. A Rival you battle often, or who keeps beating you, climbs fast.`),
       h('table', { class: 'tid-record standings' },
         h('thead', null, h('tr', null, h('th', null, ''), h('th', null, 'Trainer'), h('th', null, 'Merits'), h('th', null, 'You · Them'))),
         h('tbody', null, rows.map((x, i) => {
@@ -2639,7 +2669,7 @@ export class App {
           return h('tr', { class: `${x.seeded ? 'in' : ''} ${i === N.FIELD - 1 ? 'cut' : ''}` },
             h('td', null, String(i + 1)),
             h('td', null, x.npc.kind === 'champion' ? '🏅 ' : '🤺 ', x.npc.name, ' ', x.npc.types.map((t) => typeIconImg(t, 14)), x.contender ? ' 📈' : ''),
-            h('td', null, `${x.merits}/8`), h('td', null, r ? `${r.won} · ${r.lost}` : '—'));
+            h('td', null, `${x.merits}/${goal().merits}`), h('td', null, r ? `${r.won} · ${r.lost}` : '—'));
         }))),
       s.circuitNews?.length ? h('div', null, h('h4', null, '📰 Circuit news'), s.circuitNews.slice(0, 8).map((x) => h('p', { class: 'small' }, h('span', { class: 'muted' }, `Turn ${x.turn} · `), x.text))) : '');
   }
@@ -2919,7 +2949,7 @@ export class App {
         tile('🛠️', 'Workbench', 'Craft salves, teas, charms and more from offering materials.', '0⚡', () => this.workbench(true)),
         this.workTile(),
         ...this.npcTiles(),
-        t.special === 'stadium' ? tile('🏆', 'Grand Tournament', 'Be here with all 8 Merits as Turn 100 ends to enter the bracket.', '', () => this.stadiumSheet()) : null,
+        t.special === 'stadium' ? tile('🏆', 'Grand Tournament', `Be here with all ${goal().merits} Merits as Turn ${goal().turns} ends to enter the bracket.`, '', () => this.stadiumSheet()) : null,
         t.special === 'school' ? tile('🥋', 'Battle School', 'Pay coins and leave a creature with the drill masters: it earns 1 XP per coin, at 2 XP a turn. Or have it retrained overnight with a new Nature, Ability or Instinct.', '', () => this.schoolSheet()) : null,
         ...(screens().tiles?.(this, s.location, '') ?? []),
         t.special === 'research' ? tile('🔬', 'Research Facility', 'Release a recruited creature into the researchers’ care for coins: its level × 2 (Common), 3 (Prime), 4 (Apex) or 5 (Legendary).', '0⚡', () => this.researchSheet()) : null,
@@ -3212,8 +3242,8 @@ export class App {
   stadiumSheet() {
     const s = this.s;
     openSheet('🏆 Grand Tournament', h('div', null,
-      h('p', null, 'The grand tournament of Margos convenes here when the year ends. Be standing in this stadium as Turn 100 ends with all 8 Merits to enter the bracket.'),
-      h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Merits: ${s.merits.length}/8`), h('span', { class: 'chip' }, `Turn ${s.turn}/100`)),
+      h('p', null, `The grand tournament of ${activeRegion().name} convenes here when the year ends. Be standing in this stadium as Turn ${goal().turns} ends with all ${goal().merits} Merits to enter the bracket.`),
+      h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, `Merits: ${s.merits.length}/${goal().merits}`), h('span', { class: 'chip' }, `Turn ${s.turn}/${goal().turns}`)),
       h('p', { class: 'small muted' }, 'Bracket: 8 trainers, 3v3 elimination, one Champion. Everyone here who qualifies is in the same bracket, and the strongest Champions and Rivals fill the rest. Your team is fully restored between matches.')));
   }
 
@@ -3416,7 +3446,7 @@ export class App {
       return;
     }
     const se = season(s);
-    if (r.seasonChanged) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in Margos.`);
+    if (r.seasonChanged) await this.banner(`${SEASON_INFO[se].icon} ${SEASON_INFO[se].label}`, `Turn ${s.turn} — the season turns in ${activeRegion().name}.`);
     const w = WEATHER[s.weather];
     await rollDice(`Weather · ${SEASON_INFO[se].label}`, [{ sides: 6, value: r.weatherRoll, face: w.icon, label: w.name }], `${w.name}: ${w.text}`, 650, { read: true });
     this.busy = false;
@@ -3735,7 +3765,7 @@ export class App {
     this.world.setTitleMode(true);
     const s = this.s;
     const c = this.circuitGame().circuit, champ = c ? C.championOf(c) : null;
-    const why = s.endgame?.eliminated ? `Eliminated in the ${['Quarterfinal', 'Semifinal', 'Grand Final'][s.endgame.round]}.` : s.merits.length < 8 ? `The year ended with ${s.merits.length}/8 Merits.` : 'You weren\'t at Circuit Stadium when Turn 100 ended.';
+    const why = s.endgame?.eliminated ? `Eliminated in the ${['Quarterfinal', 'Semifinal', 'Grand Final'][s.endgame.round]}.` : s.merits.length < goal().merits ? `The year ended with ${s.merits.length}/${goal().merits} Merits.` : `You weren't at Circuit Stadium when Turn ${goal().turns} ended.`;
     this.ui.replaceChildren(h('div', { class: 'title-screen' }, h('div', { class: 'title-card' },
       h('h1', null, 'Season Over'),
       h('p', null, why, champ ? ` ${champ.name} won the Circuit.` : ''),
@@ -3747,7 +3777,7 @@ export class App {
   statsLine() {
     const s = this.s;
     return h('div', { class: 'row center gap-s wrap' },
-      h('span', { class: 'chip' }, `🏅 ${s.merits.length}/8 Merits`), h('span', { class: 'chip' }, `⚔️ ${s.stats.battlesWon} wins`),
+      h('span', { class: 'chip' }, `🏅 ${s.merits.length}/${goal().merits} Merits`), h('span', { class: 'chip' }, `⚔️ ${s.stats.battlesWon} wins`),
       h('span', { class: 'chip' }, `🗿 ${s.stats.recruited} recruited`), h('span', { class: 'chip' }, `📖 ${s.dex.caught.length}/${SPECIES.length} caught`));
   }
 
@@ -3817,7 +3847,7 @@ export class App {
           h('small', { class: 'tid-no' }, `TRAINER ID · No. ${idNo}`),
           h('h3', null, s.trainer.name),
           h('div', null, h('small', { class: 'muted' }, 'Home town '), h('b', null, home?.name ?? '—'), homeCity ? h('small', { class: 'muted' }, ` · ${TYPE_LABEL[homeCity.type]} City, Arbiter ${homeCity.arbiter}`) : null),
-          h('div', null, h('small', { class: 'muted' }, 'Tier '), h('b', null, `${tier}`), h('small', { class: 'muted' }, ` · ${s.merits.length}/8 Merits · Turn ${s.turn}/100`)))),
+          h('div', null, h('small', { class: 'muted' }, 'Tier '), h('b', null, `${tier}`), h('small', { class: 'muted' }, ` · ${s.merits.length}/${goal().merits} Merits · Turn ${s.turn}/${goal().turns}`)))),
       sponsored ? h('p', { class: 'small good-text' }, sponsored) : null,
       h('h4', null, `${style.icon} ${style.name}`),
       h('div', { class: 'tid-style' },
@@ -4152,7 +4182,7 @@ export class App {
         h('b', null, `${TIME_INFO[tod].label} · Turn ${s.turn}`),
         h('small', null, `Odd turns are day, even turns are night. ${tod === 'day' ? 'Diurnal' : 'Nocturnal'} and Day & night creatures are out in the wild now, and ${tod} events can happen. Next turn is ${tod === 'day' ? 'night' : 'day'}.`))),
       h('div', { class: 'calendar' }, (['spring', 'summer', 'autumn', 'winter'] as const).map((k, i) => h('div', { class: `cal ${k === se ? 'now' : ''}` }, h('span', null, SEASON_INFO[k].icon), h('b', null, SEASON_INFO[k].label), h('small', null, `Turns ${i * 25 + 1}–${i * 25 + 25}`)))),
-      h('div', { class: 'progress' }, h('i', { style: `width:${s.turn}%` })),
+      h('div', { class: 'progress' }, h('i', { style: `width:${(s.turn / goal().turns) * 100}%` })),
       h('h4', null, `${w.icon} ${w.name}`), h('p', null, w.text),
       h('h4', null, `${SEASON_INFO[se].label} weather die`),
       h('div', { class: 'chips' }, SEASON_INFO[se].dice.map((id, i) => h('span', { class: 'chip' }, `${i + 1}: ${WEATHER[id].icon} ${WEATHER[id].name}`)))));
@@ -4161,7 +4191,7 @@ export class App {
   meritsSheet() {
     const s = this.s;
     openSheet(`Merits · Tier ${tierOf(s)}`, h('div', null,
-      h('p', { class: 'small' }, 'Every 2 Merits raises your Trainer Tier; Arbiters scale their teams and arena tricks to your Tier. 8 Merits = Tier 5 and an invitation to the Circuit. Beat an Arbiter again, at your Tier then, to win an Imprint of their type.'),
+      h('p', { class: 'small' }, `Every 2 Merits raises your Trainer Tier; Arbiters scale their teams and arena tricks to your Tier. ${goal().merits} Merits = Tier 5 and an invitation to the Circuit. Beat an Arbiter again, at your Tier then, to win an Imprint of their type.`),
       h('div', { class: 'merit-list' }, Object.values(CITIES).map((c) => h('div', { class: `merit-row ${s.merits.includes(c.nodeId) ? 'on' : ''}`, style: `--tc:${TYPE_COLOR[c.type]}` },
         h('img', { src: typeIcon(c.type) }), h('div', null, h('b', null, c.accolade), h('small', null, `${c.arbiter} · ${c.name}${s.merits.includes(c.nodeId) ? ` · ${W.arbiterResting(s, c.nodeId) ? `rematch in ${W.arbiterResting(s, c.nodeId)} turn${W.arbiterResting(s, c.nodeId) === 1 ? '' : 's'}` : 'rematch ready'}` : ''}`)), s.merits.includes(c.nodeId) ? '✓' : '')))));
   }

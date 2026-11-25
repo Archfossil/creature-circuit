@@ -85,6 +85,26 @@ describe('online server', () => {
     expect(await r.text()).toBe('ok');
   });
 
+  it('keeps a room to the host’s region, and tells a browser without it to reload', async () => {
+    const a = new Client('host-r'), b = new Client('old-r'), c = new Client('new-r');
+    await Promise.all([a.open(), b.open(), c.open()]);
+    a.send({ type: 'create', region: 'juudlands' });
+    const created = await a.wait((m) => m.type === 'created');
+    a.code = b.code = c.code = String(created.code);
+    expect((await a.wait((m) => m.type === 'room')).region).toBe('juudlands');
+    b.send({ type: 'join' });
+    expect((await b.wait((m) => m.type === 'error')).text).toMatch(/Reload/);
+    b.send({ type: 'seat', trainer: trainer('Old') });
+    c.send({ type: 'join', regions: ['margos', 'juudlands'] });
+    expect((await c.wait((m) => m.type === 'room')).region).toBe('juudlands');
+    c.send({ type: 'seat', trainer: trainer('Astray') });
+    expect((await c.wait((m) => m.type === 'error')).text).toMatch(/another region/);
+    c.send({ type: 'seat', trainer: { ...(trainer('Cy') as object), region: 'juudlands' } });
+    const room = await a.wait((m) => m.type === 'room' && (m.seats as unknown[]).length === 1);
+    expect((room.seats as { name: string }[]).map((x) => x.name)).toEqual(['Cy']);
+    for (const x of [a, b, c]) x.close?.();
+  });
+
   it('runs a room: lobby, start, turn hand-over, controller-only pushes, prompts, host controls and the timer', async () => {
     const a = new Client('host-a'), b = new Client('guest-b');
     await Promise.all([a.open(), b.open()]);

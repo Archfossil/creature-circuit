@@ -2,9 +2,10 @@
 // game logic; this just sends and receives messages and remembers who we are.
 import type { GameState, Match } from '../engine/state';
 import type { CreatureEdit } from '../engine/edits';
+import { REGIONS } from '../regions';
 
 export interface SeatInfo { clientId: string; name: string; trainer: GameState | null; online: boolean }
-export interface RoomInfo { code: string; host: string; started: boolean; controller: string | null; turnSeconds: number; deadline: number | null; seats: SeatInfo[] }
+export interface RoomInfo { code: string; /** (none: Margos) */ region?: string; host: string; started: boolean; controller: string | null; turnSeconds: number; deadline: number | null; seats: SeatInfo[] }
 
 /** Things the controlling browser mirrors to everyone watching. */
 export type FeedItem =
@@ -71,7 +72,7 @@ export class Online {
       const ws = new WebSocket(`${proto}://${location.host}/ws?id=${encodeURIComponent(this.id)}`);
       this.ws = ws;
       ws.onopen = () => {
-        if (this.code) ws.send(JSON.stringify({ type: 'join', code: this.code })); // coming back after a dropped connection
+        if (this.code) ws.send(JSON.stringify({ type: 'join', code: this.code, regions: Object.keys(REGIONS) })); // coming back after a dropped connection
         for (const q of this.queue.splice(0)) ws.send(q);
         resolve();
       };
@@ -116,8 +117,9 @@ export class Online {
   }
   close() { const ws = this.ws; this.ws = null; ws?.close(); }
 
-  create(resume?: { match: Match; owners: string[]; turnSeconds: number }) { this.send({ type: 'create', ...(resume ?? {}) }); }
-  join(code: string) { this.code = code.toUpperCase(); rememberRoom(this.code); this.send({ type: 'join' }); }
+  /** Open a room. Everyone in it plays in the host's region. */
+  create(region: string, resume?: { match: Match; owners: string[]; turnSeconds: number }) { this.send({ type: 'create', region, ...(resume ?? {}) }); }
+  join(code: string) { this.code = code.toUpperCase(); rememberRoom(this.code); this.send({ type: 'join', regions: Object.keys(REGIONS) }); }
 
   get isHost() { return !!this.room && this.room.host === this.id; }
   get isController() { return !!this.room && this.room.controller === this.id; }
