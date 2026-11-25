@@ -552,8 +552,8 @@ describe('morale and loyalty', () => {
       const [x, y] = [stats(c), stats(b)];
       return [x.stamina - y.stamina, x.power - y.power, x.focus - y.focus, x.evasion - y.evasion, x.speed - y.speed];
     };
-    expect([0, 3, 6, 10].map(total)).toEqual([[1, 1, 0, -1, 0], [2, 1, 1, -1, 0], [2, 2, 2, -1, 0], [2, 4, 4, -1, 0]]);
-    expect(natureText(NATURE_BY_ID.volatile)).toBe('+Stamina +Power / −Evasion');
+    expect([0, 3, 6, 10].map(total)).toEqual([[1, 2, 0, -1, 0], [2, 2, 1, -1, 0], [2, 3, 2, -1, 0], [2, 5, 4, -1, 0]]);
+    expect(natureText(NATURE_BY_ID.volatile)).toBe('+Stamina +2 Power / −Evasion');
     expect(natureText(NATURE_BY_ID.timid)).toBe('+Speed / −Power');
   });
   it('the starter’s bond gives +1 Vigor and no attribute under 1, before its Nature', () => {
@@ -563,7 +563,7 @@ describe('morale and loyalty', () => {
       expect([c.health, c.vitality]).toEqual([maxHealth(c), maxVitality(c)]);
       for (const k of ['vigor', 'power', 'armor', 'focus', 'ward', 'speed', 'stamina'] as const) {
         const before = Math.max(1, base[k]) + (k === 'vigor' ? 1 : 0);
-        expect(stats(c)[k]).toBe(Math.max(0, before + (nat.up.includes(k) ? 1 : 0) - (nat.down === k ? 1 : 0)));
+        expect(stats(c)[k]).toBe(Math.max(0, before + (nat.up[k] ?? 0) - (nat.down === k ? 1 : 0)));
       }
       expect(stats(wild).vigor).toBe(stats(c).vigor - 1); // others of its kind don't get it
     }

@@ -74,7 +74,7 @@ export function stats(c: CreatureInst, extra?: Partial<Stats>): Stats {
     for (const k of STAT_KEYS) s[k] = Math.max(BOND_MIN_STAT, s[k]);
     s.vigor += BOND_VIGOR;
   }
-  if (nat) { for (const k of nat.up) s[k] += 1; s[nat.down] = Math.max(0, s[nat.down] - 1); }
+  if (nat) { for (const [k, v] of Object.entries(nat.up)) s[k as StatKey] += v!; s[nat.down] = Math.max(0, s[nat.down] - 1); }
   for (const k of STAT_KEYS) s[k] += c.bonus[k] ?? 0;
   if (nat) for (let i = 0; i < c.perks; i++) for (const [k, v] of Object.entries(nat.perks[i].bonus)) s[k as StatKey] += v!;
   if (extra) for (const [k, v] of Object.entries(extra)) s[k as StatKey] += v!;

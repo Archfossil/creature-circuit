@@ -168,8 +168,8 @@ export interface Item {
 export interface Nature {
   id: string;
   name: string;
-  /** +1 to each of these … */
-  up: StatKey[];
+  /** What it raises, and by how much … */
+  up: Partial<Record<StatKey, number>>;
   /** … and −1 to this. */
   down: StatKey;
   text: string;

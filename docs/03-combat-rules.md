@@ -185,7 +185,7 @@ Natures define a creature's innate behavioral bias, creating stat exchanges.
 * **Fortified** :: +Armor, -Speed -- Builds an immovable defensive wall, sacrificing mobility.
 * **Resonant** :: +Focus, -Armor -- Leans heavily into elemental mastery and status effects, leaving physical defenses soft.
 * **Enduring** :: +Vigor, -Ward -- Piles on massive health pools to soak damage, but leaves them more vulnerable to specialized elemental energy.
-* **Volatile** :: +Stamina, +Power, -Evasion -- All power, and the stamina to keep throwing it, but makes creatures cavalier with their own safety.
+* **Volatile** :: +Stamina, +2 Power, -Evasion -- All power, and the stamina to keep throwing it, but makes creatures cavalier with their own safety.
 
 # Example Abilities
 

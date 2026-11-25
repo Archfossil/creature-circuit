@@ -313,12 +313,12 @@ export class App {
           h('img', { src: portrait(sp.id), alt: '' }),
           h('div', null, h('h3', null, sp.name),
             h('div', { class: 'row gap-s wrap' }, h('span', { class: 'chip' }, nat.name), n > 3 ? h('span', { class: 'chip' }, '🌿 ', ABILITIES[traits.ability!].name) : null, n > 4 ? h('span', { class: 'chip' }, `${INSTINCT_ICON} `, INSTINCT_BY_ID[traits.instinct!].name) : null),
-            h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${nat.up.includes(k) ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
+            h('div', { class: 'starter-stats' }, STAT_KEYS.map((k) => h('div', { class: `stat ${nat.up[k] ? 'up' : k === nat.down ? 'down' : ''}` }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]))))));
         const intro = n === 3 ? 'Its Nature raises an attribute (Volatile raises two) and lowers another, and sets the perks it unlocks as its Loyalty grows. Vigor is its Health: a heart of 5 for each point.'
           : n === 4 ? 'Its Ability helps you on the map while it’s Following you.'
             : `Its Instinct fires on its own in battle. Here are the ${types} ones.`;
         const grid = n === 3 ? NATURES.map((x) => pickBtn(traits.nature === x.id, () => { traits.nature = x.id; },
-          h('b', null, x.name), h('small', null, h('span', { class: 'good-text' }, x.up.map((k) => `+1 ${STAT_LABEL[k]}`).join(', ')), ' · ', h('span', { class: 'bad-text' }, `−1 ${STAT_LABEL[x.down]}`)),
+          h('b', null, x.name), h('small', null, h('span', { class: 'good-text' }, Object.entries(x.up).map(([k, v]) => `+${v} ${STAT_LABEL[k as keyof typeof STAT_LABEL]}`).join(', ')), ' · ', h('span', { class: 'bad-text' }, `−1 ${STAT_LABEL[x.down]}`)),
           h('small', null, x.text), h('small', { class: 'muted' }, `Perks: ${x.perks.map((p) => p.text).join(' → ')}`)))
           : n === 4 ? Object.values(ABILITIES).map((x) => pickBtn(traits.ability === x.id, () => { traits.ability = x.id; }, h('b', null, `🌿 ${x.name}`), h('small', null, x.text), usual(x.id === sp.ability)))
             : starterInstincts(sp).map((x) => pickBtn(traits.instinct === x.id, () => { traits.instinct = x.id; }, h('b', null, `${INSTINCT_ICON} ${x.name}`), h('small', null, x.text), h('small', { class: 'muted' }, instinctRules(x)), usual(x.id === sp.instinct)));
