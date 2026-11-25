@@ -152,6 +152,7 @@ export function statCompare(before: CreatureInst, after: CreatureInst, labels: [
   };
   const rows: [string, number, number][] = [
     ['Health', maxTotal(before), maxTotal(after)],
+    [STAT_LABEL.vigor, sb.vigor, sa.vigor],
     ['Stamina', maxStamina(before), maxStamina(after)],
     ...STAT_KEYS.filter((k) => k !== 'vigor' && k !== 'stamina').map((k): [string, number, number] => [STAT_LABEL[k], sb[k], sa[k]]),
     ['Energy', energyTotal(energy(before)), energyTotal(energy(after))],
@@ -274,6 +275,7 @@ export function swapPair(alpha: CreatureInst, partner: CreatureInst) {
   const of = (v: number, max: number) => `${Math.max(0, v)}/${max}`;
   const rows: [string, string | number, string | number][] = [
     ['Health', of(totalHealth(alpha), maxTotal(alpha)), of(totalHealth(partner), maxTotal(partner))],
+    [STAT_LABEL.vigor, sa.vigor, sp.vigor],
     ['Stamina', of(alpha.stamina, maxStamina(alpha)), of(partner.stamina, maxStamina(partner))],
     ...STAT_KEYS.filter((k) => k !== 'vigor' && k !== 'stamina').map((k): [string, number, number] => [STAT_LABEL[k], sa[k], sp[k]]),
   ];
