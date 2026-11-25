@@ -1,42 +1,42 @@
 # Every Arbiter at every Tier, and a rematch.
-T51 A @aurora coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice2659 rules:e9a17678 words:33e0942f | tier aurora true; arbiter aurora:win
-T52 A @aurora coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice7401 rules:49827b9d words:971ae1ca | tier aurora true; arbiter aurora:win
-T53 A @aurora coins530 merits5 [redwarden12†,stormhound13†,polarion12]+0 dice9243 rules:25395c64 words:dc819a60 | tier aurora true; arbiter aurora:win
-T54 A @aurora coins540 merits7 [redwarden12†,stormhound12†,polarion13]+0 dice14618 rules:eb943d7b words:92baa091 | tier aurora true; arbiter aurora:win
-T55 A @aurora coins525 merits8 [redwarden12†,stormhound13†,polarion13]+0 dice13428 rules:44a0657e words:6f39c7fb | tier aurora true; arbiter aurora:win; imprint astral true
-T51 A @hollow coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice1114 rules:06971c54 words:1621a78b | tier hollow true; arbiter hollow:win
-T52 A @hollow coins520 merits3 [redwarden12†,stormhound13,polarion12]+0 dice7899 rules:43b691a4 words:9eb7019e | tier hollow true; arbiter hollow:win
-T53 A @hollow coins530 merits5 [redwarden12†,stormhound13,polarion12]+0 dice12093 rules:84bdbf4c words:0c3df726 | tier hollow true; arbiter hollow:win
-T54 A @hollow coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice13857 rules:0d23689f words:f85a0526 | tier hollow true; arbiter hollow:lose (wiped)
-T55 A @hollow coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice13946 rules:91a0407f words:c291d428 | tier hollow true; arbiter hollow:lose (wiped)
-T51 A @thunder coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice3468 rules:c04d04f3 words:f429a93a | tier thunder true; arbiter thunder:win
-T52 A @thunder coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice5362 rules:ae05b33c words:99a5590a | tier thunder true; arbiter thunder:win
-T53 A @thunder coins530 merits5 [redwarden13,stormhound12,polarion12]+0 dice7596 rules:4ae57d20 words:9f06db2e | tier thunder true; arbiter thunder:win
-T54 A @thunder coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice13873 rules:890077f9 words:7ec1d0f4 | tier thunder true; arbiter thunder:lose (wiped)
-T55 A @thunder coins525 merits8 [redwarden12†,stormhound12†,polarion13]+0 dice19138 rules:b38fccbd words:863b6bc3 | tier thunder true; arbiter thunder:win; imprint electric true
-T51 A @firepit coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice2156 rules:84fbe2b7 words:3552ec7f | tier kilauea true; arbiter kilauea:win
-T52 A @firepit coins520 merits3 [redwarden12†,stormhound13†,polarion12]+0 dice8602 rules:073ceffa words:093ac7bd | tier kilauea true; arbiter kilauea:win
-T53 A @firepit coins530 merits5 [redwarden13,stormhound12,polarion12]+0 dice12301 rules:cfd8ffdd words:c294c66e | tier kilauea true; arbiter kilauea:win
-T54 A @firepit coins540 merits7 [redwarden12†,stormhound12†,polarion13]+0 dice13256 rules:26dfab23 words:72e6c434 | tier kilauea true; arbiter kilauea:win
-T55 A @firepit coins525 merits8 [redwarden12†,stormhound13,polarion12]+0 dice12970 rules:a235f71b words:e998d3a3 | tier kilauea true; arbiter kilauea:win; imprint fire true
-T51 A @forestfloor coins510 merits1 [redwarden12†,stormhound12,polarion12]+0 dice1277 rules:9abfc686 words:276bccbe | tier gloom true; arbiter gloom:win
-T52 A @forestfloor coins520 merits3 [redwarden12†,stormhound13,polarion12]+0 dice6649 rules:cbe20b2d words:0e84aa63 | tier gloom true; arbiter gloom:win
-T53 A @forestfloor coins530 merits5 [redwarden12†,stormhound13,polarion12]+0 dice8913 rules:97b1776e words:c59fe39f | tier gloom true; arbiter gloom:win
-T54 A @gloom coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice13421 rules:822c6e17 words:6e92aab2 | tier gloom true; arbiter gloom:lose (wiped)
-T55 A @gloom coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice12683 rules:b0770e92 words:2c00051b | tier gloom true; arbiter gloom:lose (wiped)
-T51 A @canyon coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice1353 rules:02cedb16 words:54567997 | tier canyon true; arbiter canyon:win
-T52 A @canyon coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice8149 rules:8faeffdd words:51d124bf | tier canyon true; arbiter canyon:win
-T53 A @canyon coins530 merits5 [redwarden12†,stormhound13,polarion12]+0 dice11484 rules:0176a94c words:8f431f18 | tier canyon true; arbiter canyon:win
-T54 A @canyon coins500 merits6 [redwarden12†,stormhound12,polarion12]+0 dice16104 rules:c8bef19c words:5c5266ba | tier canyon true; arbiter canyon:lose
-T55 A @canyon coins500 merits8 [redwarden12†,stormhound12,polarion12]+0 dice15736 rules:4f9428dd words:06482093 | tier canyon true; arbiter canyon:lose
-T51 A @iron coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice1191 rules:9c07b5bd words:f52e1873 | tier iron true; arbiter iron:win
-T52 A @iron coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice8363 rules:1083f6e8 words:547df82d | tier iron true; arbiter iron:win
-T53 A @iron coins530 merits5 [redwarden13,stormhound12,polarion12]+0 dice10029 rules:65f17b25 words:d10ead83 | tier iron true; arbiter iron:win
-T54 A @iron coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice14395 rules:b3828254 words:fd8bcc6a | tier iron true; arbiter iron:lose (wiped)
-T55 A @iron coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice10009 rules:b0fb58e7 words:8b8e1b70 | tier iron true; arbiter iron:lose (wiped)
-T51 A @mangrove coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice2048 rules:aa11883c words:76ecd56e | tier mangrove true; arbiter mangrove:win
-T52 A @mangrove coins520 merits3 [redwarden13†,stormhound12,polarion12]+0 dice6088 rules:100e7bbd words:416d1595 | tier mangrove true; arbiter mangrove:win
-T53 A @mangrove coins530 merits5 [redwarden13,stormhound12,polarion12]+0 dice7027 rules:541c70ee words:a29114dc | tier mangrove true; arbiter mangrove:win
-T54 A @mangrove coins250 merits6 [redwarden12,stormhound12,polarion13]+0 dice11438 rules:a7583d21 words:8066e8f0 | tier mangrove true; arbiter mangrove:lose (wiped)
-T55 A @mangrove coins525 merits8 [redwarden13†,stormhound13†,polarion13]+0 dice15434 rules:cdfe3e7f words:1a5bc12f | tier mangrove true; arbiter mangrove:win; imprint water true
-# arbiter 40, arbiter:aurora 5, arbiter:canyon 5, arbiter:gloom 5, arbiter:hollow 5, arbiter:iron 5, arbiter:kilauea 5, arbiter:lose 10, arbiter:mangrove 5, arbiter:thunder 5, arbiter:win 30, arena:crumble 5, arena:darkness 5, arena:flames 5, arena:fortress 5, arena:iceFloes 5, arena:illusion 5, arena:roots 5, arena:volts 5, imprint 4, tier 40, wiped 8
+T51 A @aurora coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice2654 rules:518997f8 words:6257792b | tier aurora true; arbiter aurora:win
+T52 A @aurora coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice7381 rules:27e8935f words:3a637041 | tier aurora true; arbiter aurora:win
+T53 A @aurora coins530 merits5 [redwarden12†,stormhound13†,polarion12]+0 dice9237 rules:01e534c5 words:5118bea3 | tier aurora true; arbiter aurora:win
+T54 A @aurora coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice14610 rules:5431d7dc words:7fff1a05 | tier aurora true; arbiter aurora:lose (wiped)
+T55 A @aurora coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice13425 rules:84ff614d words:c8336660 | tier aurora true; arbiter aurora:lose (wiped)
+T51 A @hollow coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice1123 rules:7d3e6b10 words:954f9e64 | tier hollow true; arbiter hollow:win
+T52 A @hollow coins520 merits3 [redwarden13†,stormhound12,polarion12]+0 dice7852 rules:5530c478 words:371437f4 | tier hollow true; arbiter hollow:win
+T53 A @hollow coins530 merits5 [redwarden13†,stormhound12,polarion12]+0 dice12091 rules:b4bb9e11 words:a5429e29 | tier hollow true; arbiter hollow:win
+T54 A @hollow coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice13857 rules:5196fb66 words:86fda893 | tier hollow true; arbiter hollow:lose (wiped)
+T55 A @hollow coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice13946 rules:bd230cc5 words:f54b516e | tier hollow true; arbiter hollow:lose (wiped)
+T51 A @thunder coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice3461 rules:bf6cc164 words:40cef833 | tier thunder true; arbiter thunder:win
+T52 A @thunder coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice5403 rules:8130d652 words:62ed54fc | tier thunder true; arbiter thunder:win
+T53 A @thunder coins530 merits5 [redwarden13,stormhound12,polarion12]+0 dice7578 rules:3728665b words:ae5cb14a | tier thunder true; arbiter thunder:win
+T54 A @thunder coins540 merits7 [redwarden13†,stormhound12†,polarion12]+0 dice13856 rules:24780d98 words:322424af | tier thunder true; arbiter thunder:win
+T55 A @thunder coins525 merits8 [redwarden12†,stormhound12†,polarion13]+0 dice19138 rules:7ce4e0f4 words:53c1dbf0 | tier thunder true; arbiter thunder:win; imprint electric true
+T51 A @firepit coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice2156 rules:61c86284 words:b62e8527 | tier kilauea true; arbiter kilauea:win
+T52 A @firepit coins520 merits3 [redwarden12†,stormhound12†,polarion12]+0 dice8608 rules:fad3fec4 words:bbcea436 | tier kilauea true; arbiter kilauea:win
+T53 A @firepit coins530 merits5 [redwarden13,stormhound12,polarion12]+0 dice12296 rules:84acd0a0 words:faa17afe | tier kilauea true; arbiter kilauea:win
+T54 A @kilauea coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice13245 rules:a3b5f7ad words:45ba7e2a | tier kilauea true; arbiter kilauea:lose (wiped)
+T55 A @kilauea coins250 merits8 [redwarden12,stormhound12,polarion13]+0 dice12985 rules:40e9cbb7 words:72bfe4ce | tier kilauea true; arbiter kilauea:lose (wiped)
+T51 A @forestfloor coins510 merits1 [redwarden12†,stormhound12,polarion12]+0 dice1292 rules:76adb756 words:950d1b86 | tier gloom true; arbiter gloom:win
+T52 A @forestfloor coins520 merits3 [redwarden12†,stormhound12†,polarion13]+0 dice6631 rules:f50bb081 words:b5dbca2c | tier gloom true; arbiter gloom:win
+T53 A @gloom coins250 merits4 [redwarden12,stormhound12,polarion12]+0 dice8906 rules:f9c9fe20 words:42595951 | tier gloom true; arbiter gloom:lose (wiped)
+T54 A @gloom coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice13421 rules:5e7c6408 words:33521a6d | tier gloom true; arbiter gloom:lose (wiped)
+T55 A @gloom coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice12683 rules:d77a6b4f words:1dc92fcb | tier gloom true; arbiter gloom:lose (wiped)
+T51 A @canyon coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice1350 rules:cb65650a words:aba0032f | tier canyon true; arbiter canyon:win
+T52 A @canyon coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice8138 rules:0819fe56 words:187715fd | tier canyon true; arbiter canyon:win
+T53 A @canyon coins500 merits4 [redwarden12†,stormhound13,polarion12]+0 dice11482 rules:bfadc7c3 words:502282e7 | tier canyon true; arbiter canyon:lose
+T54 A @canyon coins500 merits6 [redwarden12†,stormhound12†,polarion12]+0 dice16114 rules:7e935ae1 words:112451e3 | tier canyon true; arbiter canyon:lose
+T55 A @canyon coins500 merits8 [redwarden12†,stormhound13†,polarion12]+0 dice15736 rules:06f2ae9a words:44bc124b | tier canyon true; arbiter canyon:lose
+T51 A @iron coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice1191 rules:9ebb0293 words:2f8cbaf6 | tier iron true; arbiter iron:win
+T52 A @iron coins520 merits3 [redwarden13,stormhound12,polarion12]+0 dice8367 rules:dd0f650e words:03d2b230 | tier iron true; arbiter iron:win
+T53 A @iron coins530 merits5 [redwarden12†,stormhound13†,polarion12]+0 dice10028 rules:7086948e words:aebe116c | tier iron true; arbiter iron:win
+T54 A @iron coins250 merits6 [redwarden12,stormhound12,polarion12]+0 dice14419 rules:dcefae8d words:7a0f1553 | tier iron true; arbiter iron:lose (wiped)
+T55 A @iron coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice10000 rules:4d7d251a words:17a50a4f | tier iron true; arbiter iron:lose (wiped)
+T51 A @mangrove coins510 merits1 [redwarden13,stormhound12,polarion12]+0 dice2049 rules:a4ce6508 words:b7d9a185 | tier mangrove true; arbiter mangrove:win
+T52 A @mangrove coins520 merits3 [redwarden13†,stormhound12,polarion12]+0 dice6084 rules:d0552ea9 words:756ac89e | tier mangrove true; arbiter mangrove:win
+T53 A @mangrove coins530 merits5 [redwarden13†,stormhound12,polarion12]+0 dice7023 rules:bb3941d8 words:6608c631 | tier mangrove true; arbiter mangrove:win
+T54 A @mangrove coins540 merits7 [redwarden12†,stormhound13,polarion12]+0 dice11462 rules:fe78a7a1 words:6aad32cb | tier mangrove true; arbiter mangrove:win
+T55 A @mangrove coins250 merits8 [redwarden12,stormhound12,polarion12]+0 dice15439 rules:c667aff0 words:1f2b8a2e | tier mangrove true; arbiter mangrove:lose (wiped)
+# arbiter 40, arbiter:aurora 5, arbiter:canyon 5, arbiter:gloom 5, arbiter:hollow 5, arbiter:iron 5, arbiter:kilauea 5, arbiter:lose 15, arbiter:mangrove 5, arbiter:thunder 5, arbiter:win 25, arena:crumble 5, arena:darkness 5, arena:flames 5, arena:fortress 5, arena:iceFloes 5, arena:illusion 5, arena:roots 5, arena:volts 5, imprint 1, tier 40, wiped 12

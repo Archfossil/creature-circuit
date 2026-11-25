@@ -1,3 +1,4 @@
+import { MOVE_BY_ID } from '../src/data/moves';
 // Stadium Mode: every creature can be brought, teams are legal, and the AI opponents can be fought to a finish.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -23,6 +24,22 @@ describe('Stadium Mode', () => {
       expect(c.perks).toBe(NATURES[0].perks.length);
     }
   }, 60000);
+  it('random teams have their own moves: they fit, and few creatures share a set', () => {
+    const sets = new Map<string, number>(); let n = 0, rampage = 0;
+    for (let i = 0; i < 40; i++) {
+      const t = S.randomTeam();
+      for (const [k, c] of S.buildTeam(t).entries()) {
+        expect(c.playbook, c.species).toEqual(t.picks[k].playbook); // kept, so a team's the same each battle
+        expect(S.playbookFits(c, c.playbook), c.species).toBe(true);
+        expect(c.playbook.filter((m) => MOVE_BY_ID[m].kind === 'physical').length, c.species).toBeLessThan(3);
+        const key = [...c.playbook].sort().join('+');
+        sets.set(key, (sets.get(key) ?? 0) + 1); n++; rampage += Number(c.playbook.includes('rampage'));
+      }
+    }
+    expect(Math.max(...sets.values()) / n).toBeLessThan(0.08); // (17% had the same four physical moves)
+    expect(sets.size / n).toBeGreaterThan(0.75);
+    expect(rampage / n).toBeLessThan(0.5);
+  });
   it('builds the same team every time, with legal playbooks, and keeps edits', () => {
     const t = S.randomTeam();
     const a = S.buildTeam(t), b = S.buildTeam(t);

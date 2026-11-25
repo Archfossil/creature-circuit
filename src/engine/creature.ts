@@ -558,14 +558,17 @@ const testFoes = (level: number, vs?: ElementType) => (vs ? [vs] : TYPES).flatMa
  * its best moves do against foes of every type (so coverage, and having an answer to both Armor and Ward,
  * count for what they're worth), plus one useful support move, a quick move, and Purge moves the rest of
  * the set can set up. With `use`, it includes one or two moves that need that type's energy, if any fit.
+ * `varied` gives a good set rather than the best one: every move gets its own random appeal, and the set
+ * leans toward an attack of each of the creature's types and away from more than two physical ones.
  */
-export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: ElementType): string[] {
+export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: ElementType, varied = false): string[] {
   const e = energy(c), sp = speciesOf(c);
   const foes = testFoes(c.level, goal.kind === 'vs' ? goal.type : undefined);
   const spread = INSTINCT_BY_ID[instinctIdOf(c)]?.passive?.spread ? 1 : 0;
   const weight = (m: Move) => (goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4) : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1);
   const all = learnable(c).map((id) => MOVE_BY_ID[id]);
-  const rows = new Map(all.map((m) => [m.id, foes.map((f) => Math.max(0, moveWorth(c, m, f)) * (m.kind === 'support' ? 1 : weight(m)))]));
+  const appeal = new Map(varied ? all.map((m) => [m.id, 0.5 + Math.random()]) : []);
+  const rows = new Map(all.map((m) => [m.id, foes.map((f) => Math.max(0, moveWorth(c, m, f)) * (m.kind === 'support' ? 1 : weight(m)) * (appeal.get(m.id) ?? 1))]));
   const mean = (id: string) => rows.get(id)!.reduce((a, x) => a + x, 0) / foes.length;
   const top = (list: Move[], n: number, by = (m: Move) => mean(m.id)) => [...list].sort((a, b) => by(b) - by(a)).slice(0, n);
   const attacks = all.filter((m) => m.kind !== 'support'), supports = all.filter((m) => m.kind === 'support');
@@ -593,6 +596,7 @@ export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: Ele
     sc += (sup[0] ?? 0) * 0.3 + (sup[1] ?? 0) * 0.05;
     if (sup.length > 1) sc -= 1;
     if (atk.some((m) => m.speed > 0)) sc += 0.3;
+    if (varied) sc += sp.types.filter((t) => atk.some((m) => m.kind === 'elemental' && m.type === t)).length * 1.5 - Math.max(0, atk.filter((m) => m.kind === 'physical').length - 2) * 3;
     if (sp.balanced) sc += atk.filter((m) => evenCost(m, sp.types)).length * EVEN_PULL * 0.3;
     for (const m of atk) if (m.purge) {
       // how often something else in the set will have set it up

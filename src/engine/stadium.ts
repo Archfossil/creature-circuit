@@ -64,7 +64,11 @@ export function buildTeam(team: StadiumTeam, side = 'a'): CreatureInst[] {
   out.forEach((c, i) => { for (const [slot, move] of Object.entries(team.picks[i]?.swaps ?? {})) if (out[Number(slot)] && Number(slot) !== i) setSwapMove(c, out[Number(slot)], move); });
   return out;
 }
-const bestPlaybook = (c: CreatureInst, goal: PlaybookGoal = suggestGoal(c).goal) => { const m = recommendPlaybook(c, goal); return m.length ? m : autoPlaybook(c); };
+/** What a team's playbooks aim for. Not physical above all: a mix wins more, even for a creature with far more Power than Focus. */
+const teamGoal = (c: CreatureInst): PlaybookGoal => { const g = suggestGoal(c).goal; return g.kind === 'elemental' ? g : { kind: 'balanced' }; };
+const bestPlaybook = (c: CreatureInst, goal: PlaybookGoal = teamGoal(c)) => { const m = recommendPlaybook(c, goal); return m.length ? m : autoPlaybook(c); };
+/** A good playbook that isn't the same every time. */
+const variedPlaybook = (c: CreatureInst) => { const m = recommendPlaybook(c, teamGoal(c), undefined, true); return m.length ? m : autoPlaybook(c, true); };
 /** Read a built creature's choices back into its recipe (after its card was edited). */
 export function readPick(c: CreatureInst, team: CreatureInst[]): StadiumPick {
   const swaps: Record<number, string> = {};
@@ -80,7 +84,7 @@ export function teamProblem(t: StadiumTeam): string | null {
   if (t.picks.filter((p) => SPECIES_BY_ID[p.species].rarity === 'legendary').length > 1) return 'One Legendary at most.';
   return null;
 }
-/** A random legal team of three creatures of different types. */
+/** A random legal team of three creatures of different types, each with its own pick of moves. */
 export function randomTeam(name = 'Random team', legendary = false): StadiumTeam {
   const pool = stadiumSpecies().filter((s) => legendary || s.rarity !== 'legendary');
   for (;;) {
@@ -88,7 +92,8 @@ export function randomTeam(name = 'Random team', legendary = false): StadiumTeam
     while (picks.length < STADIUM_SIZE) {
       const sp = pick(pool);
       if (picks.some((p) => SPECIES_BY_ID[p.species].types[0] === sp.types[0])) continue;
-      picks.push({ species: sp.id, nature: pick(NATURES).id, instinct: sp.instinct });
+      const nature = pick(NATURES).id;
+      picks.push({ species: sp.id, nature, instinct: sp.instinct, playbook: variedPlaybook(trained(sp.id, nature, sp.instinct)) });
     }
     const t = { name, picks };
     if (!teamProblem(t)) return t;
