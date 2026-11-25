@@ -1,6 +1,6 @@
 # Region Packages: plan
 
-**Status: steps 1 to 8 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas), [gimmicks](#gimmicks-in-packages), [the 3D map](#the-3d-map) and [saves and online](#saves-and-online-as-built)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
+**Status: steps 1 to 9 are built ([the safety net](#the-safety-net), [Margos's data in its own package](#margoss-package-so-far), [the active region](#the-active-region), [the Codex](#the-codex), [arenas](#arenas), [gimmicks](#gimmicks-in-packages), [the 3D map](#the-3d-map), [saves and online](#saves-and-online-as-built) and [the season flow](#the-season-flow-as-built)).** It covers turning Margos into the first *region package*, so that later regions can be added beside it without changing the engine each time.
 
 ## The goal
 
@@ -208,7 +208,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 6 | **Gimmicks** as plug-ins, one at a time ✅ | **L** | Nothing |
 | 7 | **3D map** built for the active region, and rebuilt on a change ✅ built | M | A short load when changing region |
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 ✅ built | M | Region name on saves |
-| 9 | **Season flow:** region choice at the start, farewell, hall of records | M | Farewell and records; the region page once there are two |
+| 9 | **Season flow:** region choice at the start, farewell, hall of records ✅ built | M | Farewell and records; the region page once there are two |
 | 10 | **Balanced starters:** the rules above | S–M | Nothing until the Juudlands |
 | 11 | **Load on demand:** a region's data and art only when it's played. Can wait: an installed game doesn't need it ([18](./18-steam.md)) | S–M | Faster first load later on |
 
@@ -314,6 +314,22 @@ A region's `arenas` say what each arena does, and a city names one as its `arena
 - **One autosave per mode** ([decision 1](#decisions-needed)).
 - **The baseline** leaves `region` out, so it didn't have to change.
 
+### The season flow, as built
+
+- **Choosing a region** comes before a new solo journey, hotseat game or online room (the host chooses). It's skipped while there's only one, so players see no difference yet.
+- **The farewell:** one card for each creature on the active team, the starter and any Legendary, then one for everyone else. A region's `farewell` says where they go; a Legendary returns to its grounds. Nothing is changed by it: the save is only cleared once it's over, as before.
+- **Records** (`engine/hall.ts`) are kept on the device, outside every save: the last 60 seasons' region, trainers, results and active teams. A game is recorded once, when everyone in it has finished. Online, each player's own device records it.
+- **A finished game** waits on the title screen as "Season's end" until its farewell.
+- **Nothing in the rules reads the hall,** and a test keeps it that way.
+
+### Legacy (maybe, later)
+
+A past season leaves no mark on play (decision 2). This is a note that it could one day, not a plan.
+
+- **What's kept makes it possible:** each record has the region, who played, how far they got and their active team. Seasons from before any Legacy would count, though only what's listed above is kept.
+- **It would need an answer to:** equal terms in a match (off in online and hotseat games? the host's choice? never in a World Circuit?), where it lives (records are on one device and can be edited, so nothing that matters can rest on them alone), and what happens to a season that's forgotten.
+- **Safest first:** things that change nothing in play, such as titles, outfits, a past partner's statue or letter, or a retired creature seen living at the facility. Then solo-only choices at the start of a season. Anything stronger only where everyone has agreed to it.
+
 **If we stop early:** steps 1–6 are worth having alone, since they make Margos's own gimmicks easier to add to. Nothing is half-finished at any step boundary.
 
 ## After that: what a new region takes
@@ -352,7 +368,7 @@ None of these hold up steps 1–7.
 | # | Question | Recommendation | Needed by |
 |---|---|---|---|
 | 1 | One autosave per mode, or one per region and mode? | One per mode, as now. Saved copies already hold the rest, and it keeps storage small. | Step 8 |
-| 2 | Does a past season leave any mark on play? | No. Records, farewells and perhaps cosmetics only, so new players in a match are on equal terms. | Step 9 |
+| 2 | Does a past season leave any mark on play? | **Decided: no.** Records, farewells and perhaps cosmetics only, so new players in a match are on equal terms. Left open for later: [Legacy](#legacy-maybe-later) | Step 9 |
 | 3 | Can a Margos Rival or Champion visit another region? | Yes, as a guest or two, with their records starting fresh. | The Juudlands |
 | 4 | Do Margos's Legendaries appear elsewhere? | One or two as rare guests; the rest are the region's own. | The Juudlands |
 | 5 | Always 100 turns and 8 Merits? | Keep both at first. The package allows others. | The Juudlands |

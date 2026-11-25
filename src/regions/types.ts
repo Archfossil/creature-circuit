@@ -101,6 +101,10 @@ export interface Region {
   id: string;
   name: string;
   map: { scale: number; nodes: MapNode[]; edges: MapEdge[]; cities: Record<string, City>; towns: Record<string, Town>; places: Places; bounds: Bounds; /** Nodes across open water: no land joins them to the rest. */ offshore?: string[]; /** Colours for a city's houses, if not the usual. */ walls?: Record<string, string[]> };
+  /** A line or two, for choosing it. */
+  blurb: string;
+  /** Where trainers leave their creatures when their season ends. */
+  farewell: string;
   /** How long the season is, and the Merits that qualify for the Circuit. */
   season: { turns: number; merits: number };
   codex: Codex;

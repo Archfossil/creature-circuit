@@ -21,6 +21,8 @@ export const MARGOS: Region = {
     offshore: ['ironwake'],
     walls: { iron: ['#e85d5d', '#f2c14e', '#5da9e9', '#7bc47f'] },
   },
+  blurb: 'National-park wilds from icy peaks to volcanic shores, eight cities, and the first Creature Circuit.',
+  farewell: 'the Margos Research Facility in Quillhaven',
   season: { turns: 100, merits: 8 },
   codex: { species: 'all', starters: STARTERS },
   people: { npcs: NPCS, voices: VOICES, looks: NPC_OUTFITS },

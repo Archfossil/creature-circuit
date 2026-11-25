@@ -2,6 +2,8 @@ import { STAR_FACE } from '../data/icons';
 import { activeRegion, setRegion } from '../regions/active';
 import type { Region } from '../regions/types';
 import { tools } from '../engine/tools';
+import { everyone, farewellText, forgetSeason, hall, recordMatch, recordSeason, seasonOver, HALL_MAX, type HallResult } from '../engine/hall';
+import { REGIONS } from '../regions';
 import { screens } from '../regions/screens';
 import { h, $, toast, openSheet, closeAllSheets, confirmSheet, rollDice, coinFlip, floatText, wait, mirror, type DieSpec, setText, textOf, tile } from './dom';
 import { sfx, applyVolume } from './sound';
@@ -203,26 +205,46 @@ export class App {
           h('h1', null, 'Creature', h('br'), 'Circuit'),
           h('p', null, `Explore ${activeRegion().name} · Befriend creatures · Earn ${goal().merits} Merits · Win the Circuit`)),
         h('div', { class: 'title-actions' },
-          saved && saved.phase !== 'over' ? h('button', { class: 'btn primary big', onclick: () => this.start(saved) }, `Continue · ${saved.trainer.name}, Turn ${saved.turn}`) : null,
+          saved && !seasonOver([saved]) ? h('button', { class: 'btn primary big', onclick: () => this.start(saved) }, `Continue · ${saved.trainer.name}, Turn ${saved.turn}`) : null,
           matchLive ? h('button', { class: 'btn primary big', onclick: () => this.startMatch(match!) }, `Continue hotseat · ${match!.players.length} trainers, Turn ${match!.players[match!.current].turn}`) : null,
+          saved && seasonOver([saved]) ? h('button', { class: 'btn primary big', onclick: () => this.start(saved) }, `🌅 Season’s end · ${saved.trainer.name}`) : null,
+          match && !match.stadium && seasonOver(match.players) ? h('button', { class: 'btn primary big', onclick: () => void this.endOfMatch(match) }, '🌅 Season’s end · Hotseat') : null,
           held.length ? h('div', { class: 'small' }, h('p', null, `Your ${held.map((k) => (k === 'solo' ? 'solo journey' : 'hotseat game')).join(' and ')} ${held.length > 1 ? 'are' : 'is'} in a region this version of the game doesn’t have. Reload to get the latest version.`), h('button', { class: 'btn ghost', onclick: () => location.reload() }, '🔄 Reload')) : null,
           h('button', { class: `btn ${saved || matchLive ? 'ghost' : 'primary'} big`, onclick: async () => {
             if (held.includes('solo') && !(await confirmSheet('Start a new journey?', 'Your solo journey, in a region this version doesn’t have, will be replaced once the new one starts. Reload the page first to open it.', 'Start anyway'))) return;
-            if (saved && saved.phase !== 'over' && !(await confirmSheet('Start a new journey?', `Your solo journey with ${saved.trainer.name} (Turn ${saved.turn}) will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
-            setActiveMatch(null); this.newGameWizard();
+            if (saved && !seasonOver([saved]) && !(await confirmSheet('Start a new journey?', `Your solo journey with ${saved.trainer.name} (Turn ${saved.turn}) will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
+            await this.newSolo();
           } }, 'New Journey'),
           h('button', { class: 'btn ghost big', onclick: async () => {
             if (held.includes('hotseat') && !(await confirmSheet('Start a new hotseat game?', 'Your hotseat game, in a region this version doesn’t have, will be replaced once the new one starts. Reload the page first to open it.', 'Start anyway'))) return;
             if (matchLive && !(await confirmSheet('Start a new hotseat game?', `Your hotseat game with ${match!.players.map((p) => p.trainer.name).join(', ')} will be replaced once the new one starts. Save a copy from 💾 Saves first to keep it.`, 'Start anyway'))) return;
-            this.hotseatSetup();
+            await this.newHotseat();
           } }, `👥 Hotseat (2–${MAX_PLAYERS} trainers)`),
-          h('div', { class: 'row gap-s center' },
+          h('div', { class: 'row gap-s center wrap' },
             h('button', { class: 'btn ghost', onclick: () => this.onlineSheet() }, '🌐 Online'),
             h('button', { class: 'btn ghost', onclick: () => stadiumSheet(this) }, '🏟️ Stadium'),
             h('button', { class: 'btn ghost', onclick: () => this.savesSheet() }, '💾 Saves'),
+            h('button', { class: 'btn ghost', onclick: () => this.hallSheet() }, '🏛️ Records'),
             h('button', { class: 'btn ghost', onclick: () => this.howToPlay() }, 'How to Play'))),
         h('small', { class: 'muted' }, 'v0.1 · Prototype content — creatures, moves and map are examples'))));
   }
+
+  /** Choose the region for a new game, and go there. With only one there's nothing to choose. Resolves to false if it's called off. */
+  async pickRegion(): Promise<boolean> {
+    const all = Object.values(REGIONS);
+    const r = all.length < 2 ? all[0] : await new Promise<Region | null>((resolve) => {
+      let picked: Region | null = null;
+      const close = openSheet('Choose a Region', h('div', { class: 'wizard' },
+        h('p', { class: 'small' }, 'Each region is a season of its own, with its own map, Arbiters, Rivals and creatures. Everyone starts fresh.'),
+        h('div', { class: 'choice-grid' }, all.map((x) => h('button', { class: `choice ${x === activeRegion() ? 'sel' : ''}`, onclick: () => { picked = x; close(); } },
+          h('b', null, x.name), h('small', null, x.blurb), h('small', { class: 'muted' }, `${Object.keys(x.map.cities).length} cities · ${x.season.turns} turns · ${x.codex.starters.length} starters`))))), { onClose: () => resolve(picked) });
+    });
+    if (!r) return false;
+    await this.changeRegion(r);
+    return true;
+  }
+  async newSolo() { if (await this.pickRegion()) { setActiveMatch(null); this.newGameWizard(); } }
+  async newHotseat() { if (await this.pickRegion()) this.hotseatSetup(); }
 
   /**
    * Create a trainer: name, look, style, home city and starter. In hotseat setup, `seat` / `taken` /
@@ -337,6 +359,7 @@ export class App {
     this.circuitRun++;
     if (s.phase === 'endgame') { this.renderHud(); void this.circuitStep(); return; }
     if (s.phase === 'over') { this.gameOver(); return; }
+    if (s.phase === 'champion') { this.champion(); return; }
     this.renderHud();
     // (in hotseat, the waiting event opens once the trainer has taken the device: see startOfTurn)
     if (s.event && !activeMatchOf()) setTimeout(() => this.eventFlow(), 400);
@@ -581,7 +604,7 @@ export class App {
     const close = openSheet('🌐 Online', h('div', { class: 'online' },
       h('p', null, 'Play turn by turn with up to six trainers over the internet. Everyone watches the current trainer’s moves and battles live; when your turn comes up you’ll get a ping, even in another tab.'),
       h('div', { class: 'row gap-s wrap' },
-        h('button', { class: 'btn primary', onclick: async () => { void askForAlerts(); close(); if (await this.connectOnline()) this.online!.create(activeRegion().id); } }, '➕ Host a new room')),
+        h('button', { class: 'btn primary', onclick: async () => { void askForAlerts(); close(); if (!(await this.pickRegion())) { this.onlineSheet(); return; } if (await this.connectOnline()) this.online!.create(activeRegion().id); } }, '➕ Host a new room')),
       h('h4', null, 'Join a room'),
       h('div', { class: 'row gap-s' }, input,
         h('button', { class: 'btn primary', onclick: async () => { const c = input.value.trim().toUpperCase(); if (c.length !== 5) { toast('Room codes have 5 letters.', 'info'); return; } void askForAlerts(); close(); if (await this.connectOnline()) this.online!.join(c); } }, 'Join')),
@@ -1538,7 +1561,13 @@ export class App {
         h('b', null, p.trainer.name),
         h('span', null, p.phase === 'champion' ? ' 🏆 Champion of the Circuit' : p.endgame ? ` · out in the ${C.CIRCUIT_ROUNDS[p.endgame.round] ?? 'Circuit'}` : ' · missed the Circuit'),
         h('small', { class: 'muted' }, ` · ${p.merits.length}/${goal().merits} Merits · ${p.stats.battlesWon} wins · ${p.stats.recruited} recruited`)))),
-      h('button', { class: 'btn primary big', onclick: () => { if (this.online) { clearOnlineMatch(); this.leaveOnline(); } else { clearMatch(); this.title(); } } }, 'New Journey'))));
+      h('button', { class: 'btn primary big', onclick: () => {
+        const mine = this.online ? m.players.filter((_, i) => this.online!.mySeats.includes(i)) : m.players;
+        this.farewell(mine, (again) => {
+          if (this.online) { clearOnlineMatch(); this.leaveOnline(); if (again) this.onlineSheet(); } else { clearMatch(); this.title(); if (again) void this.newHotseat(); }
+        });
+      } }, 'Say farewell →'))));
+    if (!recordMatch(m, this.online ? 'online' : 'hotseat') && seasonOver(m.players)) toast('This device’s storage is full, so the season couldn’t be added to your Records.', 'bad', 6000);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -3757,7 +3786,71 @@ export class App {
         ? h('button', { class: 'btn primary big', onclick: () => this.handoff() }, 'Continue the season →')
         : h('button', { class: 'btn primary big', onclick: () => this.matchSummary() }, 'Final standings →');
     }
-    return h('button', { class: 'btn primary big', onclick: () => { clearSave(); this.title(); } }, 'New Journey');
+    if (!recordSeason([this.s], 'solo', this.s.circuit) && seasonOver([this.s])) toast('This device’s storage is full, so the season couldn’t be added to your Records.', 'bad', 6000);
+    return h('button', { class: 'btn primary big', onclick: () => this.farewell([this.s], (again) => { clearSave(); this.title(); if (again) void this.newSolo(); }) }, 'Say farewell →');
+  }
+
+  /** A finished hotseat game, opened again from the title screen. */
+  async endOfMatch(m: Match) {
+    if (!this.onRightMap(m) && !(await this.goToRegionOf(m))) return;
+    setActiveMatch(m);
+    this.matchSummary();
+  }
+
+  /**
+   * The season is over: each trainer leaves their creatures where they'll be looked after, one card at a time, and
+   * Legendaries go back to the wild. `done`: what next (`again`: straight into a new season).
+   */
+  farewell(players: GameState[], done: (again: boolean) => void) {
+    type Card = { who: GameState; c: CreatureInst } | { who: GameState; rest: CreatureInst[] };
+    const cards: Card[] = players.flatMap((who) => {
+      const own = everyone(who), shown = own.filter((c, i) => i < who.roster.length || c.bond || speciesOf(c).rarity === 'legendary'), rest = own.filter((c) => !shown.includes(c));
+      return [...shown.map((c) => ({ who, c })), ...(rest.length ? [{ who, rest }] : [])];
+    });
+    const show = (i: number) => {
+      const card = cards[i];
+      if (!card) { end(); return; }
+      const said = 'c' in card ? farewellText(card.who, card.c) : null;
+      this.ui.replaceChildren(h('div', { class: 'title-screen' }, h('div', { class: 'title-card farewell', style: `--tc:${card.who.trainer.color}` },
+        players.length > 1 ? h('small', { class: 'muted' }, `${card.who.trainer.name}’s farewells`) : null,
+        'c' in card
+          ? [h('img', { class: 'farewell-mon', src: portrait(card.c.species), alt: '' }), h('h2', null, nameOf(card.c)), h('small', { class: 'muted' }, `Lv ${card.c.level}${nameOf(card.c) === speciesOf(card.c).name ? '' : ` ${speciesOf(card.c).name}`} · ${said!.where}`), h('p', null, said!.text)]
+          : [h('h2', null, 'And everyone in their totems'), h('div', { class: 'farewell-rest' }, card.rest.map((c) => h('img', { src: portrait(c.species), alt: nameOf(c), title: `${nameOf(c)}, Lv ${c.level}` }))), h('p', null, `${card.rest.length === 1 ? 'One more goes' : `${card.rest.length} more go`} with them, to ${regionOf(card.who)?.farewell ?? 'a research facility'}.`)],
+        h('button', { class: 'btn primary big', onclick: () => show(i + 1) }, i + 1 < cards.length ? 'Farewell →' : 'Farewell'),
+        i + 1 < cards.length ? h('button', { class: 'link', onclick: end }, 'Skip the rest') : null)));
+    };
+    const end = () => {
+      this.ui.replaceChildren(h('div', { class: 'title-screen' }, h('div', { class: 'title-card' },
+        h('h1', null, 'Until next year'),
+        h('p', null, 'Creatures caught in one year don’t compete in the next. Yours are in good hands, and your season is in the Records.'),
+        h('button', { class: 'btn primary big', onclick: () => done(true) }, 'New season'),
+        h('button', { class: 'btn ghost', onclick: () => this.hallSheet() }, '🏛️ Records'),
+        h('button', { class: 'btn ghost', onclick: () => done(false) }, 'Title screen'))));
+    };
+    show(0);
+  }
+
+  /** Past seasons, newest first. They leave no mark on play. */
+  hallSheet() {
+    const body = h('div', { class: 'saves' });
+    const kinds: Record<SaveKind, string> = { solo: '🧭 Solo', hotseat: '👥 Hotseat', online: '🌐 Online' };
+    const said = (r: HallResult) => (r === 'champion' ? '🏆 Champion of the Circuit' : r === 'missed' ? 'Missed the Circuit' : `Out in the ${C.CIRCUIT_ROUNDS[r]}`);
+    const render = () => {
+      const list = hall();
+      body.replaceChildren(
+        h('p', { class: 'small muted' }, 'Every season finished on this device. They’re only for looking back on: everyone starts a new season on equal terms.'),
+        list.length ? h('div', { class: 'list' }, list.map((e) => h('div', { class: 'save-card' },
+          h('b', null, `${e.regionName} · ${new Date(e.at).toLocaleDateString([], { dateStyle: 'medium' })}`),
+          h('small', null, `${kinds[e.kind]}${e.champion ? ` · 🏆 ${e.champion} won the Circuit` : ''}`),
+          e.trainers.map((p) => h('div', { class: 'hall-trainer', style: `--tc:${p.color}` },
+            h('b', null, p.name), h('small', null, `${said(p.result)} · ${p.merits}/${e.meritsNeeded} Merits · ${p.wins} wins · ${p.recruited} recruited`),
+            h('div', { class: 'hall-team' }, p.team.map((c) => h('span', { title: `${c.name}, Lv ${c.level}${c.starter ? ' (starter)' : ''}` }, h('img', { src: portrait(c.species), alt: '' }), h('small', null, `${c.name} ${c.level}`)))))),
+          h('div', { class: 'row end' }, h('button', { class: 'btn ghost sm bad-text', onclick: async () => { if (await confirmSheet('Forget this season?', 'It will be removed from your Records for good.', 'Forget')) { forgetSeason(e.id); render(); } } }, '🗑 Forget')))))
+          : h('p', { class: 'small muted' }, 'No seasons finished yet. When one ends, its trainers, teams and result are kept here.'),
+        list.length >= HALL_MAX ? h('p', { class: 'small muted' }, `The last ${HALL_MAX} are kept.`) : '');
+    };
+    render();
+    openSheet('🏛️ Records', body, { wide: true });
   }
 
   gameOver() {

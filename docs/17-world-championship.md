@@ -244,7 +244,7 @@ Test the pace before building it: a few friends, **a chapter a week for four wee
 | 4 | Can a duel during the season be refused? | An AI-commanded one needs no answer and costs the absent player nothing, so no. A live one, yes | D |
 | 5 | Are entries the active team of 3, or 6 to choose from? | 3 at first | B |
 | 6 | Can one person play in two regions of a world? | No | B |
-| 7 | What does the World Champion win? | Cosmetics and a place in the hall of records. No advantage next season | D |
+| 7 | What does the World Champion win? | Cosmetics and a place in the hall of records. No advantage next season (see [Legacy](./16-region-packages.md#legacy-maybe-later)) | D |
 | 8 | Is trading allowed in a World Circuit? | Within a region, recorded in the feed, not in Winter (so nobody gifts a rival a team) | D |
 | 9 | Do beaten semifinalists play for third place? | If there's a spare evening | D |
 | 10 | Can everyone catch the same Legendary in a World Circuit? | Yes, their own. Casual games keep one of each | D |

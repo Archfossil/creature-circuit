@@ -1207,3 +1207,14 @@ button.seat:hover, button.seat:focus-visible { background: var(--tc); color: #ff
   45% { transform: translateY(-46px) rotateY(calc(var(--end) * 0.6)); }
   100% { transform: translateY(0) rotateY(var(--end)); }
 }
+
+/* ── Farewell and the hall of records ─────────────────────────── */
+.farewell { border-color: var(--tc, var(--ink)); }
+.farewell-mon { width: 180px; height: 180px; margin: 0 auto; animation: rise 0.6s; }
+.farewell-rest { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-height: 40vh; overflow: auto; }
+.farewell-rest img { width: 64px; height: 64px; }
+.hall-trainer { display: grid; gap: 2px; padding-left: 8px; border-left: 4px solid var(--tc, var(--line)); }
+.hall-team { display: flex; flex-wrap: wrap; gap: 8px; }
+.hall-team span { display: inline-flex; align-items: center; gap: 2px; }
+.hall-team img { width: 34px; height: 34px; }
+.farewell .link { justify-self: center; }
