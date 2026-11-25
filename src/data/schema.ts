@@ -95,6 +95,8 @@ export interface Move {
    * going while it rolls its highest face. `true` rolls the same die; a number rolls that die instead ("Cascade d10").
    */
   cascade?: true | number;
+  /** Blitz (elemental): adds Power instead of Focus. In everything else it's an elemental attack. */
+  blitz?: true;
   /** Purge (elemental): +n damage against a foe that has a status, or only `status` ("Purge: Burn"). The status stays on. */
   purge?: { n: number; status?: StatusId };
   /** Support effects */

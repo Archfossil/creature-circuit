@@ -50,6 +50,10 @@ export const PURGE_ANY = 2, PURGE_NAMED = 4;
 export const critFaces = (m: Move) => (m.accuracy === 'sure' ? 0 : m.kind === 'physical' ? Math.max(1, m.critRange ?? 1) : m.kind === 'elemental' ? m.critRange ?? 0 : 0);
 /** Crits more than its kind usually does: worth pointing out. */
 export const critsMore = (m: Move) => critFaces(m) > (m.kind === 'physical' ? 1 : 0);
+/** The attribute a move's damage adds: Power for physical moves and Blitzes, Focus for other elemental ones. */
+export const attackStat = (m: Pick<Move, 'kind' | 'blitz'>): 'power' | 'focus' => (m.kind === 'physical' || m.blitz ? 'power' : 'focus');
+/** "Power vs Armor" / "Focus vs Ward" / a Blitz's "Power vs Ward". */
+export const statsText = (m: Pick<Move, 'kind' | 'blitz'>) => `${attackStat(m) === 'power' ? 'Power' : 'Focus'} vs ${m.kind === 'physical' ? 'Armor' : 'Ward'}`;
 /** The accuracy rolls that crit: "6" / "5–6". */
 export const critText = (m: Move, die: number) => (critFrom(m, die) === die ? `${die}` : `${critFrom(m, die)}–${die}`);
 /** The lowest natural accuracy roll that crits on this die (never a 1), or 0 if the move can't crit. */
@@ -122,10 +126,10 @@ const HANDMADE: Move[] = [
   E('thunderclap', 'Thunderclap', 'electric', { cost: { electric: 4, neutral: 1 }, dmgDie: 8, dmgFlat: 1, effort: 3, speed: 1, critRange: 1 }, 'A deafening bolt from above.'),
 
   // ── Fire ───────────────────────────────────────────────────────
-  E('ember', 'Ember', 'fire', { cost: { fire: 1 }, dmgDie: 4 }, 'Hot cinders that can Burn.'),
-  E('fire-claw', 'Fire Claw', 'fire', { cost: { fire: 2, neutral: 1 }, dmgDie: 6 }, 'Talons wreathed in flame.'),
+  E('ember', 'Ember', 'fire', { cost: { fire: 1 }, dmgDie: 4, potency: 1 }, 'Hot cinders that can Burn.'),
+  E('fire-claw', 'Fire Claw', 'fire', { cost: { fire: 2, neutral: 1 }, dmgDie: 6, potency: 1 }, 'Talons wreathed in flame.'),
   E('heat-haze', 'Heat Haze', 'fire', { kind: 'support', cost: { fire: 2 }, dmgDie: 0, accuracy: 'sure', effect: { self: { evasion: 1, focus: 1 } } }, 'A shimmer of rising heat.'),
-  E('magma-surge', 'Magma Surge', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 2, effort: 3, speed: -2, potency: 2 }, 'A wave of molten rock.'),
+  E('magma-surge', 'Magma Surge', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 2, effort: 3, speed: -2, potency: 3 }, 'A wave of molten rock.'),
 
   // ── Grass ──────────────────────────────────────────────────────
   E('vine-snap', 'Vine Snap', 'grass', { cost: { grass: 1 }, dmgDie: 4 }, 'A whipping vine that can Snare.'),
@@ -155,7 +159,7 @@ const HANDMADE: Move[] = [
   E('starglimmer', 'Starglimmer', 'astral', { cost: { astral: 3 }, dmgDie: 6, effort: 2, potency: 2, cascade: 4 }, 'A haze of twinkling light that leaves the foe seeing stars.'),
   E('bewitching-waltz', 'Bewitching Waltz', 'charm', { cost: { charm: 3 }, dmgDie: 4, accuracy: 8, effort: 2, potency: 1 }, 'A twirling dance that’s hard to look away from.'),
   E('crackle-web', 'Crackle Web', 'electric', { cost: { electric: 3 }, dmgDie: 4, effort: 2, speed: 2, potency: 1 }, 'A net of sparks that clings and stings.'),
-  E('cinder-storm', 'Cinder Storm', 'fire', { cost: { fire: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A whirl of glowing ash that sets everything smoldering.'),
+  E('cinder-storm', 'Cinder Storm', 'fire', { cost: { fire: 3 }, dmgDie: 6, effort: 2, potency: 3 }, 'A whirl of glowing ash that sets everything smoldering.'),
   E('thicket-lash', 'Thicket Lash', 'grass', { cost: { grass: 3 }, dmgDie: 4, extraDice: [4], effort: 3, speed: -2, potency: 1 }, 'Thorny stems that whip and tangle.'),
   E('grit-squall', 'Grit Squall', 'rock', { cost: { rock: 3 }, dmgDie: 8, effort: 2, speed: -2, potency: 3 }, 'A blast of sand and gravel that rattles the senses.'),
   E('rust-rain', 'Rust Rain', 'steel', { cost: { steel: 3 }, dmgDie: 4, dmgFlat: 1, effort: 2, speed: -1, potency: 1 }, 'Flakes of corroding metal that eat into armor.'),
@@ -171,11 +175,16 @@ const HANDMADE: Move[] = [
   E('pile-driver', 'Pile Driver', 'steel', { cost: { steel: 2, rock: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'stagger' } }, 'Hammers a staggering foe into the ground.'),
   E('quench', 'Quench', 'water', { cost: { water: 2, fire: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'burn' } }, 'Cold water on hot wounds: a burst of scalding steam.'),
 
+  // ── Blitzes: elemental attacks thrown with Power (extras: they don't fill a grid slot) ──
+  E('kindle-blitz', 'Kindle Blitz', 'fire', { cost: { fire: 1, neutral: 1 }, dmgDie: 4, dmgFlat: 1, blitz: true }, 'A short, scorching charge.'),
+  E('firestorm-blitz', 'Firestorm Blitz', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 4, speed: -1, blitz: true }, 'Charges wrapped in a whirl of flame.'),
+  E('sig-backdraft', 'Backdraft Blitz', 'fire', { cost: { fire: 3, neutral: 1 }, dmgDie: 8, effort: 2, potency: 2, blitz: true }, 'Signature. Rushes in and drags the fire along behind it.'),
+
   // ── Signature moves (unlocked via progression trees) ──────────
   E('sig-borealis', 'Borealis Lance', 'astral', { cost: { astral: 3, neutral: 1 }, dmgDie: 6, dmgFlat: 4, speed: 1 }, 'Signature. A spear of aurora light.'),
   E('sig-moonveil', 'Moonveil Kiss', 'charm', { cost: { charm: 3, neutral: 1 }, dmgDie: 8, accuracy: 'sure' }, 'Signature. Never misses.'),
   E('sig-stormcall', 'Stormcall', 'electric', { cost: { electric: 3, neutral: 1 }, dmgDie: 8, speed: 2 }, 'Signature. Lightning before thunder.'),
-  E('sig-caldera', 'Caldera Roar', 'fire', { cost: { fire: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 2, effort: 2 }, 'Signature. Erupts from within.'),
+  E('sig-caldera', 'Caldera Roar', 'fire', { cost: { fire: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 2, effort: 2, potency: 1 }, 'Signature. Erupts from within.'),
   E('sig-overgrowth', 'Overgrowth', 'grass', { cost: { grass: 3, neutral: 1 }, dmgDie: 8, effect: { heal: 2 } }, 'Signature. Roots that drain and regrow.'),
   E('sig-mesa', 'Mesa Breaker', 'rock', { cost: { rock: 3, neutral: 1 }, dmgDie: 10, dmgFlat: 2, speed: -1 }, 'Signature. Shears a cliff face.'),
   E('sig-foundry', 'Foundry Hammer', 'steel', { cost: { steel: 3, neutral: 1 }, dmgDie: 8, effect: { foe: { armor: -1 } } }, 'Signature. Forge-hot strike.'),
@@ -246,8 +255,9 @@ function placeholderAttack({ cost, type }: AttackSlot): Move {
   };
 }
 
-/** Hand-made attacks that fill a grid slot (signature moves are unlocked separately, so they don't count). */
-const filled = new Set(HANDMADE.filter((m) => m.kind === 'elemental' && !m.id.startsWith('sig-')).map((m) => slotKey(m.cost, m.type)));
+/** Hand-made attacks that fill a grid slot (signature moves are unlocked separately and Blitzes are extras, so neither counts). */
+const gridMove = (m: Move) => m.kind === 'elemental' && !m.blitz && !m.id.startsWith('sig-');
+const filled = new Set(HANDMADE.filter(gridMove).map((m) => slotKey(m.cost, m.type)));
 
 export const MOVES: Move[] = [...HANDMADE, ...ATTACK_SLOTS.filter((sl) => !filled.has(slotKey(sl.cost, sl.type))).map(placeholderAttack)];
 
@@ -286,13 +296,14 @@ export function zeroInText(m: Move): string {
   return z === 0 ? 'All or nothing: a miss never zeroes in.' : `Pursuit: a miss zeroes in +${z} (not +${ZERO_IN}).`;
 }
 
-/** A move's keywords (Potency, Cascade, Purge) with what each does, e.g. { name: 'Potency 2', text: '…' }. */
+/** A move's keywords (Potency, Blitz, Cascade, Purge) with what each does, e.g. { name: 'Potency 2', text: '…' }. */
 export function moveKeywords(m: Move): { name: string; text: string }[] {
   const out: { name: string; text: string }[] = [];
   if (m.kind === 'elemental' && m.potency && m.status) out.push({
     name: `Potency ${m.potency}`,
     text: `inflicts ${STATUS_INFO[m.status].name} on a damage roll of ${statusRollText(m)}${m.extraDice?.length ? ' on any die' : ''}, not just a 1 (${Math.round(statusChance(m) * 100)}%).`,
   });
+  if (m.blitz) out.push({ name: 'Blitz', text: 'adds Power instead of Focus (against Ward, and the type chart, as usual).' });
   if (m.kind !== 'support' && m.cascade) {
     const d = m.cascade === true ? 0 : m.cascade;
     out.push({
@@ -333,7 +344,7 @@ export const MOVE_BY_ID: Record<string, Move> = Object.fromEntries(MOVES.map((m)
  */
 export const RETIRED_MOVES: Record<string, string> = Object.fromEntries(ATTACK_SLOTS
   .filter((sl) => filled.has(slotKey(sl.cost, sl.type)))
-  .map((sl) => [placeholderAttack(sl).id, HANDMADE.find((m) => m.kind === 'elemental' && !m.id.startsWith('sig-') && slotKey(m.cost, m.type) === slotKey(sl.cost, sl.type))!.id]));
+  .map((sl) => [placeholderAttack(sl).id, HANDMADE.find((m) => gridMove(m) && slotKey(m.cost, m.type) === slotKey(sl.cost, sl.type))!.id]));
 
 /** A stored move id as it is now: a retired placeholder becomes its replacement; unknown ids give undefined. */
 export function currentMoveId(id: string): string | undefined {

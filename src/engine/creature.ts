@@ -1,6 +1,6 @@
 import type { EnergyMap, ElementType, Species, StatKey, Stats, StatusId, EnergyKey, Move } from '../data/schema';
 import { SPECIES_BY_ID, leadTypes } from '../data/species';
-import { MOVES, MOVE_BY_ID, avgRoll, diceText, critFaces, statusChance, zeroInOf } from '../data/moves';
+import { attackStat, MOVES, MOVE_BY_ID, avgRoll, diceText, critFaces, statusChance, zeroInOf } from '../data/moves';
 import { INSTINCT_BY_ID, INSTINCT_POOL, type Instinct } from '../data/instincts';
 import { NATURES, NATURE_BY_ID } from '../data/content';
 import { TYPES, effectiveness } from '../data/types';
@@ -179,7 +179,7 @@ export function learnable(c: CreatureInst): string[] {
 function moveGain(c: CreatureInst, m: Move): number {
   if (m.kind === 'support') return avgRoll(m);
   const g = typicalGuard(c.level), foe = { armor: g, ward: g };
-  const bare: Move = { id: '', name: '', kind: m.kind, cost: {}, effort: 0, speed: 0, accuracy: 6, zeroIn: 0, dmgDie: 0, dmgFlat: 0, critRange: m.kind === 'physical' ? 1 : 0, text: '' };
+  const bare: Move = { id: '', name: '', kind: m.kind, cost: {}, effort: 0, speed: 0, accuracy: 6, zeroIn: 0, dmgDie: 0, dmgFlat: 0, critRange: m.kind === 'physical' ? 1 : 0, blitz: m.blitz, text: '' };
   return (moveWorth(c, m, foe) - moveWorth(c, bare, foe)) * 1.25 + (m.purge ? m.purge.n * 0.35 : 0);
 }
 /** Pick a sensible default playbook: depth-first search over affordable sets for a strong, varied mix. */
@@ -488,7 +488,7 @@ const TYPICAL_EVASION = 3;
 export function expectedDamage(c: CreatureInst, m: Move, vs?: ElementType): number {
   if (m.kind === 'support') return 0;
   const st = stats(c);
-  const base = Math.max(1, avgRoll(m) + (m.kind === 'physical' ? st.power : st.focus));
+  const base = Math.max(1, avgRoll(m) + st[attackStat(m)]);
   const hit = m.accuracy === 'sure' ? 1 : Math.max(0, Math.min(1, (m.accuracy - TYPICAL_EVASION + 1) / m.accuracy));
   const crit = critFaces(m) && typeof m.accuracy === 'number' ? 1 + Math.min(critFaces(m), m.accuracy - 1) / m.accuracy : 1;
   const mult = vs && m.kind === 'elemental' && m.type ? effectiveness(m.type, [vs]) : 1;
@@ -538,7 +538,7 @@ export function moveWorth(c: CreatureInst, m: Move, foe: { types?: ElementType[]
   const hit = sure ? 1 : Math.max(0, Math.min(1, ((m.accuracy as number) - ev + 1) / (m.accuracy as number)));
   const costs = (m.effort / Math.max(1, st.stamina)) * (1 + c.level * 0.1) - (m.speed > 0 ? m.speed * 0.2 : m.speed * 0.1);
   if (m.kind === 'support') return hit * (effectWorth(c, m.effect) + (m.status ? STATUS_WORTH[m.status] : 0)) - costs;
-  const raw = Math.max(1, avgRoll(m) + (m.kind === 'physical' ? st.power - foe.armor : st.focus - foe.ward));
+  const raw = Math.max(1, avgRoll(m) + st[attackStat(m)] - (m.kind === 'physical' ? foe.armor : foe.ward));
   const mult = m.kind === 'elemental' && m.type && foe.types ? effectiveness(m.type, foe.types) : 1;
   const faces = critFaces(m) ? Math.min(critFaces(m) + (p?.keen ?? 0), (m.accuracy as number) - 1) : 0;
   const crit = faces ? 1 + Math.min(1, faces / Math.max(1, hit * (m.accuracy as number))) : 1;
@@ -565,7 +565,7 @@ export function recommendPlaybook(c: CreatureInst, goal: PlaybookGoal, use?: Ele
   const e = energy(c), sp = speciesOf(c);
   const foes = testFoes(c.level, goal.kind === 'vs' ? goal.type : undefined);
   const spread = INSTINCT_BY_ID[instinctIdOf(c)]?.passive?.spread ? 1 : 0;
-  const weight = (m: Move) => (goal.kind === 'physical' ? (m.kind === 'physical' ? 1 : 0.4) : goal.kind === 'elemental' ? (m.kind === 'elemental' ? 1 : 0.4) : 1);
+  const weight = (m: Move) => (goal.kind === 'physical' ? (attackStat(m) === 'power' ? 1 : 0.4) : goal.kind === 'elemental' ? (attackStat(m) === 'focus' ? 1 : 0.4) : 1);
   const all = learnable(c).map((id) => MOVE_BY_ID[id]);
   const appeal = new Map(varied ? all.map((m) => [m.id, 0.5 + varied(m.id)]) : []);
   const rows = new Map(all.map((m) => [m.id, foes.map((f) => Math.max(0, moveWorth(c, m, f)) * (m.kind === 'support' ? 1 : weight(m)) * (appeal.get(m.id) ?? 1))]));

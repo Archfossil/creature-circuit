@@ -2,7 +2,7 @@ import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
-import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom, critText, critsMore } from '../data/moves';
+import { attackStat, MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom, critText, critsMore } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
 import { describeSwap, swapText } from '../data/swapMoves';
 import { setSwapMove, swapChoices, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
@@ -96,7 +96,7 @@ export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boole
       m.type ? typeIconImg(m.type, 16) : h('span', { class: 'phys-ico' }, m.kind === 'support' ? '✦' : '✊'),
       h('b', null, m.name),
       opts.hotkey ? h('kbd', { class: 'hotkey', 'aria-hidden': 'true' }, opts.hotkey) : null,
-      h('span', { class: 'mc-kind' }, m.kind === 'physical' ? 'Physical' : m.kind === 'support' ? 'Support' : 'Elemental')),
+      h('span', { class: 'mc-kind' }, m.kind === 'physical' ? 'Physical' : m.kind === 'support' ? 'Support' : m.blitz ? 'Blitz' : 'Elemental')),
     h('div', { class: 'mc-stats' },
       h('span', { title: 'Damage' }, '⚔ ', dmg),
       h('span', { title: 'Accuracy' }, '🎯 ', acc),
@@ -535,13 +535,12 @@ function playbookSidebar(c: CreatureInst, sel: string[], usage: Node, remove: (i
   const picks = sel.map((id) => MOVE_BY_ID[id]);
   const uses = new Set<string>();
   for (const m of picks) {
-    if (m.kind === 'physical') uses.add('power');
-    if (m.kind === 'elemental') uses.add('focus');
+    if (m.kind !== 'support') uses.add(attackStat(m));
     if (m.speed) uses.add('speed');
     if (m.effort) uses.add('stamina');
   }
   const effort = picks.reduce((a, m) => a + m.effort, 0);
-  const hint = h('p', { class: 'pb-hint small muted', 'aria-live': 'polite' }, 'Power boosts Physical moves, Focus boosts Elemental ones. Hover or tap a stat for more.');
+  const hint = h('p', { class: 'pb-hint small muted', 'aria-live': 'polite' }, 'Power boosts Physical moves and Blitzes, Focus boosts other Elemental ones. Hover or tap a stat for more.');
   return h('aside', { class: 'pb-side', style: tcOf(sp), 'aria-label': `${nameOf(c)}’s stats` },
     h('div', { class: 'pb-who' },
       h('img', { src: portrait(sp.id), alt: '' }),
@@ -565,7 +564,7 @@ function playbookSidebar(c: CreatureInst, sel: string[], usage: Node, remove: (i
         return h('div', { class: `pb-pick ${m.kind}`, style: `--tc:${m.type ? TYPE_COLOR[m.type] : '#8a8796'}` },
           m.type ? typeIconImg(m.type, 16) : h('span', { class: 'phys-ico' }, m.kind === 'support' ? '✦' : '✊'),
           h('b', null, m.name),
-          h('small', { class: 'muted', title: m.kind === 'support' ? 'Support move' : `About ${dmg.toFixed(1)} damage a use against a typical target, with this creature’s ${m.kind === 'physical' ? 'Power' : 'Focus'}` },
+          h('small', { class: 'muted', title: m.kind === 'support' ? 'Support move' : `About ${dmg.toFixed(1)} damage a use against a typical target, with this creature’s ${attackStat(m) === 'power' ? 'Power' : 'Focus'}` },
             m.kind === 'support' ? 'Support' : `≈${Math.round(dmg)} dmg`),
           h('button', { class: 'icon-btn tiny', type: 'button', 'aria-label': `Remove ${m.name}`, onclick: () => remove(m.id) }, '✕'));
       })));
@@ -578,8 +577,7 @@ function playbookSidebar(c: CreatureInst, sel: string[], usage: Node, remove: (i
  */
 function moveDetail(c: CreatureInst, m: Move, on: boolean, why: string | null, toggle: () => void) {
   const st = stats(c);
-  const stat = m.kind === 'physical' ? 'Power' : 'Focus';
-  const statVal = m.kind === 'physical' ? st.power : st.focus;
+  const stat = attackStat(m) === 'power' ? 'Power' : 'Focus', statVal = st[attackStat(m)];
   const lines: (Node | string)[][] = [];
   if (m.kind === 'support') lines.push(['✦ ', 'Support move: no damage.']);
   else lines.push(['⚔ ', h('b', null, `About ${Math.round(expectedDamage(c, m))} damage`), ` a use: ${dmgText(m)} + ${stat} ${statVal}, minus the target’s ${m.kind === 'physical' ? 'Armor' : 'Ward'}. `,

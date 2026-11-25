@@ -1,5 +1,5 @@
 import type { ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
-import { burnDamage, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
+import { attackStat, burnDamage, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
 import { SWAP_STATUS_ON, describeSwap, swapChart, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
@@ -380,7 +380,7 @@ const ACE_RELUCTANCE = 0.5;
 function bestHit(st: Stats, c: CreatureInst, vs: Stats, foe: CreatureInst): number {
   const types = speciesOf(foe).types;
   return Math.max(0.5, ...c.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m && m.kind !== 'support')
-    .map((m) => moveWorth(c, m, { types, armor: vs.armor - (st.power - stats(c).power), ward: vs.ward - (st.focus - stats(c).focus), evasion: vs.evasion })));
+    .map((m) => moveWorth(c, m, { types, armor: vs.armor - (st.power - stats(c).power), ward: vs.ward - (st[attackStat(m)] - stats(c)[attackStat(m)]), evasion: vs.evasion })));
 }
 /**
  * How well a creature (a team index) would fare against the foe's active one, as the log of how many of its
@@ -460,7 +460,7 @@ export function chooseAI(b: Battle, si: 0 | 1): Action {
       const st = m.status && !statusBlock(b, fi, m.status) ? STATUS_WORTH[m.status] ?? 2 : 0;
       score = hit * (effectValue(b, si, m.effect) + st) * SUPPORT_WEIGHT * (finishingBlow ? 0.35 : 1) * (desperate && !m.effect?.heal ? 0.4 : 1);
     } else {
-      const atk = (m.kind === 'physical' ? eff(b, si, 'power') - eff(b, fi, 'armor') : eff(b, si, 'focus') - eff(b, fi, 'ward')) + purgeBonus(m, b.status[foe.uid]?.id);
+      const atk = eff(b, si, attackStat(m)) - eff(b, fi, m.kind === 'physical' ? 'armor' : 'ward') + purgeBonus(m, b.status[foe.uid]?.id);
       const mult = m.kind === 'elemental' && m.type ? effectiveness(m.type, speciesOf(foe).types) : 1;
       score = hit * Math.max(1, avgRoll(m) + atk) * mult;
       // crits, the status it may leave, and the aim a miss would give the next attack
@@ -538,6 +538,8 @@ export function effectValue(b: Battle, si: 0 | 1, e: Move['effect']): number {
   const me = activeOf(b.sides[si]), foe = activeOf(b.sides[fi]);
   const attacks = (c: CreatureInst) => c.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m && m.kind !== 'support');
   const share = (c: CreatureInst, kind: Move['kind']) => { const a = attacks(c); return a.length ? a.filter((m) => m.kind === kind).length / a.length : 0; };
+  /** How many of its attacks add Power, or Focus (Blitzes are elemental but add Power). */
+  const swings = (c: CreatureInst, k: 'power' | 'focus') => { const a = attacks(c); return a.length ? a.filter((m) => attackStat(m) === k).length / a.length : 0; };
   const accuracyOf = (c: CreatureInst, vsEvasion: number) => {
     const a = attacks(c);
     return a.length ? a.reduce((t, m) => t + (m.accuracy === 'sure' ? 1 : hitChance(m.accuracy, vsEvasion)), 0) / a.length : 0.5;
@@ -548,7 +550,7 @@ export function effectValue(b: Battle, si: 0 | 1, e: Move['effect']): number {
     return a.length ? a.reduce((t, m) => t + (m.accuracy === 'sure' || hitChance(m.accuracy, vsEvasion) <= 0 ? 0 : 1 / m.accuracy), 0) / a.length : 0;
   };
   // how much the foe threatens us with each kind of attack (its stat edge, never below a little)
-  const threat = (kind: 'physical' | 'elemental') => share(foe, kind) * Math.max(0.5, kind === 'physical' ? eff(b, fi, 'power') - eff(b, si, 'armor') + 2 : eff(b, fi, 'focus') - eff(b, si, 'ward') + 2) / 3;
+  const threat = (kind: 'physical' | 'elemental') => share(foe, kind) * Math.max(0.5, kind === 'physical' ? eff(b, fi, 'power') - eff(b, si, 'armor') + 2 : Math.max(swings(foe, 'focus') ? eff(b, fi, 'focus') : 0, attacks(foe).some((m) => m.blitz) ? eff(b, fi, 'power') : 0) - eff(b, si, 'ward') + 2) / 3;
   const speedGap = eff(b, fi, 'speed') - eff(b, si, 'speed'); // > 0: the foe is faster
   const speedWorth = (n: number) => (speedGap >= 0 ? (speedGap - n < 0 ? 1.3 : 0.7) : 0.2);
   const foeLands = accuracyOf(foe, eff(b, si, 'evasion'));
@@ -556,8 +558,8 @@ export function effectValue(b: Battle, si: 0 | 1, e: Move['effect']): number {
   // value of one point of each stat on our side (a debuff on the foe mirrors its effect on us)
   const mine: Partial<Record<StatKey, (n: number) => number>> = {
     speed: speedWorth,
-    power: () => share(me, 'physical') * 0.9,
-    focus: () => share(me, 'elemental') * 0.9,
+    power: () => swings(me, 'power') * 0.9,
+    focus: () => swings(me, 'focus') * 0.9,
     armor: () => threat('physical') * guard,
     ward: () => threat('elemental') * guard,
     evasion: () => dodgeable(foe, eff(b, si, 'evasion')) * 6,
@@ -566,8 +568,8 @@ export function effectValue(b: Battle, si: 0 | 1, e: Move['effect']): number {
   };
   const theirs: Partial<Record<StatKey, (n: number) => number>> = {
     speed: speedWorth,
-    power: () => threat('physical') * 0.9,
-    focus: () => threat('elemental') * 0.9,
+    power: () => (threat('physical') + (attacks(foe).some((m) => m.blitz) ? threat('elemental') * 0.5 : 0)) * 0.9,
+    focus: () => (swings(foe, 'focus') ? threat('elemental') : 0) * 0.9,
     armor: () => share(me, 'physical') * 0.7,
     ward: () => share(me, 'elemental') * 0.7,
     evasion: () => dodgeable(me, eff(b, fi, 'evasion')) * 6,
@@ -875,7 +877,7 @@ function damageParts(b: Battle, si: 0 | 1, m: Move): Part[] {
   if (m.kind === 'physical') {
     parts.push({ label: 'Power', value: eff(b, si, 'power') }, { label: 'foe Armor', value: -eff(b, fi, 'armor') });
   } else {
-    parts.push({ label: 'Focus', value: eff(b, si, 'focus') }, { label: 'foe Ward', value: -eff(b, fi, 'ward') });
+    parts.push({ label: m.blitz ? 'Power' : 'Focus', value: eff(b, si, attackStat(m)) }, { label: 'foe Ward', value: -eff(b, fi, 'ward') });
     const wb = m.type ? b.weather.typeBoost?.[m.type] ?? 0 : 0;
     if (wb) parts.push({ label: b.weather.name, value: wb });
     const st = b.status[activeOf(b.sides[fi]).uid]?.id;
@@ -961,7 +963,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     const dt = dice.map((d) => `d${d}`).join(' + ');
     const multText = mult === 1 ? '' : ` × ${mult} (${mult === 0 ? 'immune' : mult > 1 ? 'super effective' : 'resisted'})`;
     const range = (a: number, z: number) => (a === z ? `${a}` : `${a}–${z}`);
-    const stat = m.kind === 'physical' ? 'add your Power and subtract the foe’s Armor (physical move)' : 'add your Focus and subtract the foe’s Ward (elemental move)';
+    const stat = m.kind === 'physical' ? 'add your Power and subtract the foe’s Armor (physical move)' : m.blitz ? 'add your Power and subtract the foe’s Ward (a Blitz)' : 'add your Focus and subtract the foe’s Ward (elemental move)';
     steps.push({
       icon: '💥', title: `Damage: ${[dt, partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
       tone: mult > 1 ? 'good' : mult < 1 ? 'bad' : undefined,

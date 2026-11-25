@@ -86,6 +86,8 @@ export function seasons(g: Game): Season[] {
           on = true;
           b.count(`dare:${kind}`);
           b.note(`dare ${n.id}/${kind} ${D.startDare(s, n, idea, 0)}`);
+          // one is all but done, so there's always one won, whatever the dice do
+          if (kind === 'craft' && s.npcs[n.id].dare) s.npcs[n.id].dare!.base = -99;
         }
         for (let i = 0; i < 3 && s.phase === 'map'; i++) b.wander(s);
         b.write(s);

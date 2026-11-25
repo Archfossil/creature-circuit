@@ -5,7 +5,7 @@ import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES, EXTRA_FAMILIES, extraId } from '../src/data/roster';
 import { attackWorth, targetWorth } from '../src/data/attackStyles';
-import { BURN_DAMAGE, BY_TOTAL, STATUS_INFO, cascadeDie, critFaces, MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
+import { BURN_DAMAGE, BY_TOTAL, RETIRED_MOVES, attackStat, STATUS_INFO, cascadeDie, critFaces, MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
@@ -20,7 +20,7 @@ import { landmassOf, landField } from '../src/render/land';
 import { WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
-import { speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { moveWorth, speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { onSaveStatus, retrySave, newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
@@ -307,7 +307,7 @@ describe('move readout', () => {
         if (m.kind !== 'support') {
           expect(dmg).toBeGreaterThan(acc);
           const dStep = steps[dmg];
-          expect(dStep.title).toContain(m.kind === 'physical' ? 'Power' : 'Focus');
+          expect(dStep.title).toContain(attackStat(m) === 'power' ? 'Power' : 'Focus');
           if (m.dmgDie) expect(dStep.title).toContain(`d${m.dmgDie}`);
           for (let i = 0; i < 40; i++) {
             // creatures roll their own stats, so preview the exact battle that then resolves
@@ -2461,7 +2461,7 @@ describe('signature move previews', () => {
 describe('attack grid', () => {
   it('has an elemental attack for every typed cost of 1–5 and every type that could lead it', () => {
     expect(ATTACK_SLOTS.length).toBe(8 * 5 + 28 * 12);
-    const attacks = MOVES.filter((m) => m.kind === 'elemental' && !m.id.startsWith('sig-'));
+    const attacks = MOVES.filter((m) => m.kind === 'elemental' && !m.blitz && !m.id.startsWith('sig-'));
     for (const slot of ATTACK_SLOTS) {
       const total = Object.values(slot.cost).reduce<number>((a, v) => a + (v ?? 0), 0);
       expect(total).toBeLessThanOrEqual(5);
@@ -2504,6 +2504,43 @@ describe('attack grid', () => {
       expect(m.zeroIn ?? 1, m.name).toBeLessThanOrEqual(3);
     }
   });
+  it('Blitzes are Fire attacks thrown with Power', () => {
+    const blitzes = MOVES.filter((m) => m.blitz);
+    expect(blitzes.map((m) => m.id)).toEqual(['kindle-blitz', 'firestorm-blitz', 'sig-backdraft']);
+    for (const m of blitzes) { expect([m.kind, m.type, m.status], m.id).toEqual(['elemental', 'fire', 'burn']); expect(m.text).toMatch(/Blitz: Adds Power instead of Focus/); expect(attackStat(m)).toBe('power'); }
+    expect(MOVE_BY_ID['sig-backdraft'].potency).toBe(2);
+    expect(attackStat(MOVE_BY_ID.ember)).toBe('focus'); expect(attackStat(MOVE_BY_ID.claw)).toBe('power');
+    expect(Object.values(RETIRED_MOVES).some((id) => MOVE_BY_ID[id].blitz)).toBe(false); // extras: the grid is as it was
+    const me = createCreature('cindercub', 9), foe = createCreature('sproutle', 9);
+    me.playbook = ['firestorm-blitz']; foe.playbook = ['tackle'];
+    const st = stats(me);
+    expect(st.power).not.toBe(st.focus);
+    let seen = false;
+    for (let i = 0; i < 60; i++) {
+      me.health = foe.health = 999; me.fatigue = 0; me.stamina = 99;
+      const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+      bt.sides[0].mods.power = 2; bt.sides[0].mods.focus = -1; bt.sides[0].mods.speed = 20;
+      const hit = resolveRound(bt, { kind: 'move', move: 'firestorm-blitz' }).find((e) => e.t === 'damage' && e.side === 1 && e.calc);
+      if (hit?.t !== 'damage' || !hit.calc) continue;
+      seen = true;
+      expect(hit.calc.parts.find((p) => p.label === 'Power')?.value).toBe(st.power + 2);
+      expect(hit.calc.parts.some((p) => p.label === 'Focus')).toBe(false);
+      expect(hit.calc.parts.find((p) => /Ward/.test(p.label))?.value).toBe(-stats(foe).ward); // still Ward
+      expect(hit.calc.mult).toBe(2); // and the type chart
+    }
+    expect(seen).toBe(true);
+    const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+    expect(movePreview(bt, 'firestorm-blitz').some((s) => /add your Power and subtract the foe’s Ward \(a Blitz\)/.test(s.text))).toBe(true);
+    // playbooks see it: a creature with far more Power than Focus rates it above the same attack thrown with Focus
+    const m = MOVE_BY_ID['firestorm-blitz'], f = { armor: 4, ward: 4 };
+    me.bonus.power = 6;
+    expect(moveWorth(me, m, f)).toBeGreaterThan(moveWorth(me, { ...m, blitz: undefined }, f) + 2);
+    expect(expectedDamage(me, m)).toBeGreaterThan(expectedDamage(me, { ...m, blitz: undefined }) + 2);
+    // signatures: some Fire families' own
+    expect(SPECIES_BY_ID['ph-fire-rock-common-1'].signature).toBe('sig-backdraft');
+    expect(SPECIES_BY_ID['ph-fire-water-common-1'].signature).toBe('sig-caldera');
+    expect(SPECIES_BY_ID.cindercub.signature).toBe('sig-caldera');
+  });
   it('lets elemental attacks crit and Cascade when they say so', () => {
     const sure = MOVES.filter((m) => m.kind === 'elemental' && m.accuracy === 'sure');
     expect(sure.length).toBeGreaterThan(3);
@@ -2534,7 +2571,7 @@ describe('attack grid', () => {
     expect(oneOne.map((m) => m.type).sort()).toEqual(['rock', 'water']);
   });
   it('every type leads the same number of attacks', () => {
-    const attacks = MOVES.filter((m) => m.kind === 'elemental' && !m.id.startsWith('sig-'));
+    const attacks = MOVES.filter((m) => m.kind === 'elemental' && !m.blitz && !m.id.startsWith('sig-'));
     for (const t of TYPES) expect(attacks.filter((m) => m.type === t).length, t).toBe(5 + 6 * 7);
   });
   it('move texts spell out every effect number and never say "Placeholder"', () => {
@@ -3344,7 +3381,7 @@ describe('extra damage dice and wide crits', () => {
     expect(avgRoll(tv)).toBe(5);
     expect(statusChance(tv)).toBeCloseTo(1 - 0.75 * 0.75);
     expect(diceText(MOVE_BY_ID.meteor)).toBe('d10+d4');
-    expect(statusChance(MOVE_BY_ID.meteor)).toBeGreaterThan(statusChance(MOVE_BY_ID['magma-surge']));
+    expect(statusChance(MOVE_BY_ID.meteor)).toBeGreaterThan(statusChance({ ...MOVE_BY_ID.meteor, extraDice: undefined }));
     expect(tv.text).toMatch(/a 1 on any die inflicts the status \(44%\)/);
   });
 
@@ -3977,14 +4014,14 @@ describe('Move keywords: Potency, Cascade, Purge, and status moves', () => {
     return { bt, me, foe };
   };
 
-  it('Potency widens the status roll: Potency 2 on a d6 inflicts on 1–3 (50%)', () => {
+  it('Potency widens the status roll: Potency 3 on a d6 inflicts on 1–4 (67%)', () => {
     const m = MOVE_BY_ID['cinder-storm'];
-    expect(m.potency).toBe(2);
-    expect(statusFaces(m)).toBe(3);
-    expect(statusChance(m)).toBeCloseTo(0.5);
-    expect(statusChance(MOVE_BY_ID['ember'])).toBeCloseTo(0.25);
-    expect(moveKeywords(m)[0].name).toBe('Potency 2');
-    expect(m.text).toMatch(/Potency 2: Inflicts Burn on a damage roll of 1–3/);
+    expect(m.potency).toBe(3);
+    expect(statusFaces(m)).toBe(4);
+    expect(statusChance(m)).toBeCloseTo(2 / 3);
+    expect(statusChance(MOVE_BY_ID['ember'])).toBeCloseTo(0.5); // Potency 1 on a d4;
+    expect(moveKeywords(m)[0].name).toBe('Potency 3');
+    expect(m.text).toMatch(/Potency 3: Inflicts Burn on a damage roll of 1–4/);
   });
 
   it('a Potency attack inflicts its status on a roll above 1', () => {
@@ -3995,7 +4032,7 @@ describe('Move keywords: Potency, Cascade, Purge, and status moves', () => {
       const hit = ev.find((e) => e.t === 'damage' && e.side === 1);
       if (hit && hit.t === 'damage' && hit.calc && hit.calc.rolls[0] > 1) {
         const burned = ev.some((e) => e.t === 'status' && e.side === 1 && e.status === 'burn');
-        expect(burned).toBe(hit.calc.rolls[0] <= 3);
+        expect(burned).toBe(hit.calc.rolls[0] <= 4);
         if (burned) seen = true;
       }
     }

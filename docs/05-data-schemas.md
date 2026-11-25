@@ -162,6 +162,7 @@ The match is kept in a separate local slot (`creature-circuit-online-v1`), so it
 | `status` | Elemental attacks: the type's status, inflicted when a damage die rolls a 1 (filled in from `STATUS_FOR` when left out). Support moves: a **status move**, inflicting it outright on a hit (no damage). |
 | `potency` | Potency N (elemental): the status lands on a damage roll of 1 to 1 + N. |
 | `cascade` | Cascade: `true` rerolls the damage die on its top face and adds it, chaining while it rolls its top face; a number (`10`) rolls that die for the chain instead ("Cascade d10"). |
+| `blitz` | Blitz (elemental): `true` adds Power instead of Focus. |
 | `purge` | Purge (elemental): `{ "n": 2 }` adds n damage against a foe with any status; `{ "n": 4, "status": "burn" }` only against that status ("Purge: Burn"). |
 | `effect` | `{ "self": {stat: n}, "foe": {stat: n}, "heal": n, "staminaGain": n }`. Stat changes last until that creature leaves the field, capped at ±3 per stat. Keep `text` to flavour only: `effectText` appends the exact numbers (e.g. "You get +2 Armor and +2 Ward.") when the game loads. |
 | `placeholder` | `true` on generated attacks that hold a grid slot until a real move replaces them. |

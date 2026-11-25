@@ -45,7 +45,7 @@ import { INSTINCTS, INSTINCT_BY_ID, INSTINCT_ICON, instinctRules } from '../data
 import { riseText, TEAMWORK_PER_BONUS, TEAMWORK_PER_SWAP, TEAMWORK_PER_TURN } from '../engine/teamwork';
 import { NODE_BY_ID, CITIES, TOWNS, isTown, BIOME_TYPES, neighbors, MAP_NODES } from '../data/map';
 import { leadTypes, SPECIES, SPECIES_BY_ID, isActive, STARTERS } from '../data/species';
-import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
+import { statsText, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { ABILITIES, NATURES, NATURE_BY_ID, BIOME_INFO, SEASON_INFO, WEATHER, RECIPES, itemInfo, isUnique, materialBiomes, seasonForTurn, timeOfDay, TIME_INFO, ACTIVITY_INFO } from '../data/content';
 import { TYPE_COLOR, TYPE_LABEL, TYPES, typeIcon } from '../data/types';
 import type { Biome, ElementType, Item, Rarity, Species } from '../data/schema';
@@ -1475,7 +1475,7 @@ export class App {
     return h('div', { class: 'readout' },
       h('div', { class: 'readout-head' },
         m.type ? typeIconImg(m.type, 18) : null, h('b', null, m.name),
-        h('span', { class: 'chip' }, m.kind === 'physical' ? 'Physical · Power vs Armor' : m.kind === 'elemental' ? 'Elemental · Focus vs Ward' : 'Support'),
+        h('span', { class: 'chip' }, m.kind === 'support' ? 'Support' : `${m.kind === 'physical' ? 'Physical' : m.blitz ? 'Blitz' : 'Elemental'} · ${statsText(m)}`),
         h('small', { class: 'muted' }, m.text)),
       h('ol', { class: 'readout-steps' }, movePreview(b, id, side).map((st) => h('li', { class: st.tone ?? '' },
         h('span', { class: 'ro-ico' }, st.icon), h('div', null, h('b', null, st.title), h('p', null, st.text))))),
@@ -2186,7 +2186,7 @@ export class App {
             const who = nameOf(b.sides[e.side].team.find((x) => x.uid === disp[e.side].uid)!);
             say(e.kind === 'swap' ? `${who} swaps in with ${e.name}!` : `${who} used ${e.name}!`);
             if (e.kind === 'elemental' || e.kind === 'swap') sfx.zap(); else if (e.kind === 'support') sfx.heal();
-            if (e.kind === 'physical') await bv.lunge(e.side);
+            if (e.kind === 'physical' || MOVE_BY_ID[e.move]?.blitz) await bv.lunge(e.side);
             else if (e.kind === 'elemental' && e.type) await bv.projectile(e.side, e.type);
             else if (e.kind === 'swap') { const hit = SWAP_MOVE_BY_ID[e.move]?.hit; await (!hit ? bv.support(e.side, e.type) : hit.kind === 'elemental' && e.type ? bv.projectile(e.side, e.type) : bv.lunge(e.side)); }
             else await bv.support(e.side, e.type);

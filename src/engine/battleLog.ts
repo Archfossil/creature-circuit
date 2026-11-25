@@ -1,6 +1,6 @@
 // The 📜 Battle Log: every battle event as a line, with the rolls and maths behind it, told from one
 // side's point of view. Each trainer's latest battle is kept in their save (GameState.lastBattle).
-import { STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
+import { MOVE_BY_ID, STATUS_INFO, ZERO_IN_MAX } from '../data/moves';
 import { TYPE_LABEL } from '../data/types';
 import { arenaTimer, partsText, type Battle, type BEvent } from './battle';
 import { maxHearts, maxTotal, nameOf, totalHealth } from './creature';
@@ -40,7 +40,7 @@ export function logBattleEvent(lg: BattleLog, b: Battle, e: BEvent, who: (side: 
     case 'say': note(e.text, { tone: toneFor(e.tone) }); break;
     case 'arena': note(e.text, { tone: 'bad' }); break;
     case 'ring': note(`${arenaTimer(b)?.name ?? 'Time'}: ${e.left} of ${e.total} rounds left.`, { tone: e.left <= 2 ? 'bad' : undefined }); break;
-    case 'use': note(e.kind === 'swap' ? `${who(e.side)} swaps in with ${e.name}!` : `${who(e.side)} used ${e.name}.`, { side: e.side, detail: [e.type ? TYPE_LABEL[e.type] : null, KIND_TEXT[e.kind]].filter(Boolean).join(' · ') }); break;
+    case 'use': note(e.kind === 'swap' ? `${who(e.side)} swaps in with ${e.name}!` : `${who(e.side)} used ${e.name}.`, { side: e.side, detail: [e.type ? TYPE_LABEL[e.type] : null, MOVE_BY_ID[e.move]?.blitz ? 'Blitz · Power vs Ward' : KIND_TEXT[e.kind]].filter(Boolean).join(' · ') }); break;
     case 'roll': {
       const rolled = e.natural ?? e.value;
       if (e.die === 20) { note(`${e.label}: rolled ${rolled}. ${e.hit ? 'It stays to fight.' : 'It loses interest…'}`, { side: e.side }); break; }

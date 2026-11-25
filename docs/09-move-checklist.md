@@ -8,8 +8,8 @@ Every move in the game with all its attributes. Use it to swap generated **place
 
 | | Count |
 |---|---|
-| Moves in the game | 412 |
-| Hand-made | 76 |
+| Moves in the game | 415 |
+| Hand-made | 79 |
 | **Placeholders to replace** | **336** |
 | Attack-grid slots | 376 (40 hand-made, 336 placeholders) |
 | Hand-made moves flagged for a balance look | 6 |
@@ -19,12 +19,12 @@ Every move in the game with all its attributes. Use it to swap generated **place
 
 - **Cost** is the energy a creature must generate to slot the move into its playbook. It isn’t spent per use. Neutral can be paid by any type.
 - **Hits as**: the type the attack uses on the type chart. Physical moves ignore the chart and use Power vs Armor.
-- **Damage** is the damage die (plus any extra dice, e.g. d10+d4, which are added up) and a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.
+- **Damage** is the damage die (plus any extra dice, e.g. d10+d4, which are added up) and a flat bonus, before stats. The attacker adds Power (physical, or a Blitz) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.
 - **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits). Elemental moves crit only if marked.
 - **⌖ Zeroing In**: a miss gives the creature's next accuracy roll +1, stacking over a streak of misses up to +3. The next accuracy roll uses it up, and leaving the field loses it. Moves that differ say so after their accuracy: **(⌖ +2)** is a pursuit move that zeroes in harder, **(⌖ ✕)** is all or nothing and never zeroes in.
 - **Speed** is added to the user’s Speed this round to decide who acts first. **Effort** is the Stamina it drains.
 - **Status** is inflicted when a damage die rolls a 1 (elemental attacks carry their type’s status). Moves with extra dice (e.g. d10+d4) inflict it if **any** die shows a 1, so the chance is shown next to the status.
-- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Cascade** rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn't count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).
+- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Blitz** adds Power instead of Focus. **Cascade** rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn't count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).
 - **Status moves** are support moves with a Status: they roll accuracy and, on a hit, inflict it outright with no damage.
 - **Balance note** compares a hand-made move’s average damage with a plain attack of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.
 - **Design ☐**: a designed name, flavour and numbers. Hand-made moves start ticked. **Balance ☐**: tick once someone has reviewed its numbers in play.
@@ -46,12 +46,12 @@ A plain attack of each total typed cost, with d6 accuracy (dual types get +1 fla
 
 - [Physical moves](#physical-moves) (10)
 - [Support moves](#support-moves) (19)
-- [Signature moves](#signature-moves) (8)
+- [Signature moves](#signature-moves) (9)
 - [Swap Moves](#swap-moves) (29)
 - [Astral attacks](#astral-attacks) (47, 42 placeholders)
 - [Charm attacks](#charm-attacks) (47, 42 placeholders)
 - [Electric attacks](#electric-attacks) (47, 42 placeholders)
-- [Fire attacks](#fire-attacks) (47, 42 placeholders)
+- [Fire attacks](#fire-attacks) (49, 42 placeholders)
 - [Grass attacks](#grass-attacks) (47, 42 placeholders)
 - [Rock attacks](#rock-attacks) (47, 42 placeholders)
 - [Steel attacks](#steel-attacks) (47, 42 placeholders)
@@ -109,10 +109,11 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 | Signature | Learned by |
 |---|---|
+| Backdraft Blitz | Pyrostoneboo, Pyrostoneshade, Pyrostonedjinn, Pyrogearnub, Pyrogearhulk, Pyrogeartitan, Coalgrub, Cinderbug, Furnarab |
 | Borealis Lance | Twinkit, Lumenox, Polarion, Stelbloomboo, Stelbloomshade, Stelbloomdjinn, Stelvolthop, Stelvolthare, Stelvoltjack, Stelflarechick, Stelflarewing, Stelflaregale, Stelleafkit, Stelleafpard, Stelleafox, Dawnhop, Halohare, Sunjack |
 | Moonveil Kiss | Mossprite, Fernixie, Glamorwyn, Pixivoltwisp, Pixivoltfae, Pixivoltnymph, Pixiflareworm, Pixiflarecoil, Pixiflarewyrm, Pixileafcub, Pixileafmane, Pixileafregal, Pixistonedrip, Pixistonegoo, Pixistonegloop, Ribbonchick, Trillwing, Serenadove |
 | Stormcall | Zapup, Voltusk, Stormhound, Zapflarekit, Zapflarepard, Zapflareox, Zapleafcub, Zapleafmane, Zapleafregal, Zapstonehop, Zapstonehare, Zapstonejack, Zapgearnewt, Zapgearsaur, Zapgeardrake, Glimnewt, Lampskink, Beacodrake |
-| Caldera Roar | Cindercub, Blazmane, Pyrothane, Emberfish, Cinderkoi, Pyroleafnewt, Pyroleafsaur, Pyroleafdrake, Pyrostoneboo, Pyrostoneshade, Pyrostonedjinn, Pyrogearnub, Pyrogearhulk, Pyrogeartitan, Pyrotidegrub, Pyrotidebug, Pyrotidescarab, Coalgrub, Cinderbug, Furnarab |
+| Caldera Roar | Cindercub, Blazmane, Pyrothane, Emberfish, Cinderkoi, Pyroleafnewt, Pyroleafsaur, Pyroleafdrake, Pyrotidegrub, Pyrotidebug, Pyrotidescarab |
 | Overgrowth | Sproutle, Thornback, Redwarden, Sprigstonetad, Sprigstonetoad, Sprigstonecroak, Spriggearchimp, Spriggeargrip, Spriggearbrute, Sprigtidenewt, Sprigtidesaur, Sprigtidedrake, Moontad, Bloomtoad, Lunacroak |
 | Mesa Breaker | Pebbark, Cragjaw, Mesahound, Cragstarchimp, Cragstargrip, Cragstarbrute, Craggearnewt, Craggearsaur, Craggeardrake, Cragtidekit, Cragtidepard, Cragtideox |
 | Foundry Hammer | Rivetail, Ferrocrab, Ironclawd, Ferrostarnub, Ferrostarhulk, Ferrostartitan, Ferrobloomnub, Ferrobloomhulk, Ferrobloomtitan, Ferrotidecub, Ferrotidemane, Ferrotideregal |
@@ -120,10 +121,11 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Backdraft Blitz** | `sig-backdraft` | 3 Fire + 1 Neutral | Fire | d8 | 4.5 | 1.13 | d6 | 0 | 2 | Burn (1–3, 38%) | Potency 2, Blitz | — | — | Hand-made | ☑ | ☐ |
 | **Borealis Lance** | `sig-borealis` | 3 Astral + 1 Neutral | Astral | d6+4 | 7.5 | 1.88 | d6 | +1 | 1 | Daze | — | — | ⬆ Strong for its cost (+2.3 vs baseline) | Hand-made | ☑ | ☐ |
 | **Moonveil Kiss** | `sig-moonveil` | 3 Charm + 1 Neutral | Charm | d8 | 4.5 | 1.13 | Sure-hit | 0 | 1 | Beguile | — | — | — | Hand-made | ☑ | ☐ |
 | **Stormcall** | `sig-stormcall` | 3 Electric + 1 Neutral | Electric | d8 | 4.5 | 1.13 | d6 | +2 | 1 | Shock | — | — | — | Hand-made | ☑ | ☐ |
-| **Caldera Roar** | `sig-caldera` | 3 Fire + 1 Neutral | Fire | d8+2 | 6.5 | 1.63 | d6 | 0 | 2 | Burn | — | — | — | Hand-made | ☑ | ☐ |
+| **Caldera Roar** | `sig-caldera` | 3 Fire + 1 Neutral | Fire | d8+2 | 6.5 | 1.63 | d6 | 0 | 2 | Burn (1–2, 25%) | Potency 1 | — | — | Hand-made | ☑ | ☐ |
 | **Overgrowth** | `sig-overgrowth` | 3 Grass + 1 Neutral | Grass | d8 | 4.5 | 1.13 | d6 | 0 | 1 | Snare | — | On a hit, you heal 2 Health. | — | Hand-made | ☑ | ☐ |
 | **Mesa Breaker** | `sig-mesa` | 3 Rock + 1 Neutral | Rock | d10+2 | 7.5 | 1.88 | d6 | -1 | 1 | Stagger | — | — | ⬆ Strong for its cost (+1.8 vs baseline) | Hand-made | ☑ | ☐ |
 | **Foundry Hammer** | `sig-foundry` | 3 Steel + 1 Neutral | Steel | d8 | 4.5 | 1.13 | d6 | 0 | 1 | Sunder | — | On a hit, the foe gets −1 Armor. | — | Hand-made | ☑ | ☐ |
@@ -363,17 +365,19 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 ## Fire attacks
 
-47 attacks that hit as Fire (42 placeholders). Status on a damage roll of 1: Burn.
+49 attacks that hit as Fire (42 placeholders). Status on a damage roll of 1: Burn.
 
 ### Fire: single-type
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Ember** | `ember` | 1 Fire | Fire | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Burn | — | — | — | Hand-made | ☑ | ☐ |
-| **Fire Claw** | `fire-claw` | 2 Fire + 1 Neutral | Fire | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Burn | — | — | — | Hand-made | ☑ | ☐ |
-| **Cinder Storm** | `cinder-storm` | 3 Fire | Fire | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Burn (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Magma Surge** | `magma-surge` | 4 Fire + 1 Neutral | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn (1–3, 30%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Flame Conflagration** | `atk-fire5` | 5 Fire | Fire | d12+2 | 8.5 | 1.70 | d6 | -2 | 5 | Burn (1–6, 50%) | Potency 5 | — | — | Placeholder | ☐ | ☐ |
+| **Ember** | `ember` | 1 Fire | Fire | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Burn (1–2, 50%) | Potency 1 | — | — | Hand-made | ☑ | ☐ |
+| **Kindle Blitz** | `kindle-blitz` | 1 Fire + 1 Neutral | Fire | d4+1 | 3.5 | 1.75 | d6 | 0 | 1 | Burn | Blitz | — | — | Hand-made | ☑ | ☐ |
+| **Fire Claw** | `fire-claw` | 2 Fire + 1 Neutral | Fire | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Burn (1–2, 33%) | Potency 1 | — | — | Hand-made | ☑ | ☐ |
+| **Cinder Storm** | `cinder-storm` | 3 Fire | Fire | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Burn (1–4, 67%) | Potency 3 | — | — | Hand-made | ☑ | ☐ |
+| **Magma Surge** | `magma-surge` | 4 Fire + 1 Neutral | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn (1–4, 40%) | Potency 3 | — | — | Hand-made | ☑ | ☐ |
+| **Firestorm Blitz** | `firestorm-blitz` | 4 Fire + 1 Neutral | Fire | d10+1 | 6.5 | 1.30 | d6 | -1 | 4 | Burn | Blitz | — | — | Hand-made | ☑ | ☐ |
+| **Flame Conflagration** | `atk-fire5` | 5 Fire | Fire | d12+2 | 8.5 | 1.70 | d6 | -2 | 5 | Burn (1–7, 58%) | Potency 6 | — | — | Placeholder | ☐ | ☐ |
 
 ### Fire: dual-type
 
@@ -388,41 +392,41 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 | **Flamegrit Flicker** | `atk-fire1-rock1-fire` | 1 Fire + 1 Rock | Fire | d8+1 | 5.5 | 2.75 | d6 | -2 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
 | **Flameforge Flicker** | `atk-fire1-steel1-fire` | 1 Fire + 1 Steel | Fire | d4+3 | 5.5 | 2.75 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
 | **Flamespray Flicker** | `atk-fire1-water1-fire` | 1 Fire + 1 Water | Fire | d6+1 | 4.5 | 2.25 | d6 (⌖ +2) | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Scorch** | `atk-astral1-fire2` | 1 Astral + 2 Fire | Fire | d8+1 | 5.9 | 1.97 | d6 | -1 | 2 | Burn (1–2, 25%) | Potency 1, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Scorch** | `atk-charm1-fire2` | 1 Charm + 2 Fire | Fire | d8 | 4.5 | 1.50 | d6 | -1 | 2 | Burn (1–2, 25%) | Potency 1, Purge | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Scorch** | `atk-electric1-fire2` | 1 Electric + 2 Fire | Fire | d8 | 4.5 | 1.50 | d6 | +1 | 2 | Burn (1–2, 25%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Scorch** | `atk-astral1-fire2` | 1 Astral + 2 Fire | Fire | d8 | 4.9 | 1.64 | d6 | -1 | 2 | Burn (1–3, 38%) | Potency 2, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Scorch** | `atk-charm1-fire2` | 1 Charm + 2 Fire | Fire | d8 | 4.5 | 1.50 | d6 | -1 | 2 | Burn (1–3, 38%) | Potency 2, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Scorch** | `atk-electric1-fire2` | 1 Electric + 2 Fire | Fire | d8 | 4.5 | 1.50 | d6 | +1 | 2 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
 | **Kindling Flare** | `kindling-flare` | 2 Fire + 1 Grass | Fire | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Burn | Purge: Snare | — | — | Hand-made | ☑ | ☐ |
-| **Flamegrit Scorch** | `atk-fire2-rock1` | 2 Fire + 1 Rock | Fire | d10 | 5.5 | 1.83 | d6 | -2 | 2 | Burn (1–2, 20%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Scorch** | `atk-fire2-steel1` | 2 Fire + 1 Steel | Fire | d6+2 | 5.5 | 1.83 | d6 | -1 | 2 | Burn (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Scorch** | `atk-fire2-water1` | 2 Fire + 1 Water | Fire | d8+1 | 5.5 | 1.83 | d6 (⌖ +2) | -1 | 2 | Burn (1–2, 25%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Wildfire** | `atk-astral1-fire3` | 1 Astral + 3 Fire | Fire | d8+2 | 6.9 | 1.73 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Flare** | `atk-astral2-fire2-fire` | 2 Astral + 2 Fire | Fire | d8+1 | 6.3 | 1.57 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Cascade d10 | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Wildfire** | `atk-charm1-fire3` | 1 Charm + 3 Fire | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Purge | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Flare** | `atk-charm2-fire2-fire` | 2 Charm + 2 Fire | Fire | d8 | 4.5 | 1.13 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Wildfire** | `atk-electric1-fire3` | 1 Electric + 3 Fire | Fire | d8+1 | 5.5 | 1.38 | d6 | +1 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Flare** | `atk-electric2-fire2-fire` | 2 Electric + 2 Fire | Fire | d8 | 4.5 | 1.13 | d6 (✸ 6) | 0 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Flare** | `atk-fire2-grass2-fire` | 2 Fire + 2 Grass | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2 | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Flare** | `atk-fire2-rock2-fire` | 2 Fire + 2 Rock | Fire | d12+1 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 3 | Burn (1–3, 25%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Flare** | `atk-fire2-steel2-fire` | 2 Fire + 2 Steel | Fire | d4+2 | 4.5 | 1.13 | d6 | -1 | 3 | Burn (1–3, 75%) | Potency 2 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
-| **Flamespray Flare** | `atk-fire2-water2-fire` | 2 Fire + 2 Water | Fire | d8+1 | 5.5 | 1.38 | d6 (⌖ +3) | -1 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Wildfire** | `atk-fire3-grass1` | 3 Fire + 1 Grass | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Wildfire** | `atk-fire3-rock1` | 3 Fire + 1 Rock | Fire | d10+1 | 6.5 | 1.63 | d6 | -2 | 3 | Burn (1–3, 30%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Wildfire** | `atk-fire3-steel1` | 3 Fire + 1 Steel | Fire | d6+3 | 6.5 | 1.63 | d6 | -1 | 3 | Burn (1–3, 50%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Wildfire** | `atk-fire3-water1` | 3 Fire + 1 Water | Fire | d8+1 | 5.5 | 1.38 | d6 (⌖ +2) | -1 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Eruption** | `atk-astral1-fire4` | 1 Astral + 4 Fire | Fire | d12+2 | 8.8 | 1.76 | d6 | -2 | 4 | Burn (1–4, 33%) | Potency 3, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Inferno** | `atk-astral2-fire3` | 2 Astral + 3 Fire | Fire | d8+3 | 8.3 | 1.65 | d6 | -1 | 4 | Burn (1–3, 38%) | Potency 2, Cascade d10 | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Eruption** | `atk-charm1-fire4` | 1 Charm + 4 Fire | Fire | d12+1 | 7.5 | 1.50 | d6 | -2 | 4 | Burn (1–4, 33%) | Potency 3, Purge | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Inferno** | `atk-charm2-fire3` | 2 Charm + 3 Fire | Fire | d8+2 | 6.5 | 1.30 | d6 | -1 | 4 | Burn (1–3, 38%) | Potency 2, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Eruption** | `atk-electric1-fire4` | 1 Electric + 4 Fire | Fire | d12+2 | 8.5 | 1.70 | d6 | 0 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Inferno** | `atk-electric2-fire3` | 2 Electric + 3 Fire | Fire | d8+1 | 5.5 | 1.10 | d6 (✸ 6) | 0 | 4 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Inferno** | `atk-fire3-grass2` | 3 Fire + 2 Grass | Fire | d8+3 | 7.5 | 1.50 | d6 | -1 | 4 | Burn (1–3, 38%) | Potency 2 | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Inferno** | `atk-fire3-rock2` | 3 Fire + 2 Rock | Fire | d12+3 | 9.5 | 1.90 | d6 (⌖ ✕) | -3 | 4 | Burn (1–3, 25%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Inferno** | `atk-fire3-steel2` | 3 Fire + 2 Steel | Fire | d4+4 | 6.5 | 1.30 | d6 | -1 | 4 | Burn (1–3, 75%) | Potency 2 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
-| **Flamespray Inferno** | `atk-fire3-water2` | 3 Fire + 2 Water | Fire | d8+2 | 6.5 | 1.30 | d6 (⌖ +3) | -1 | 4 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Eruption** | `atk-fire4-grass1` | 4 Fire + 1 Grass | Fire | d12+1 | 7.5 | 1.50 | d6 | -2 | 4 | Burn (1–4, 33%) | Potency 3 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Eruption** | `atk-fire4-rock1` | 4 Fire + 1 Rock | Fire | d12+2 | 8.5 | 1.70 | d6 | -3 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Eruption** | `atk-fire4-steel1` | 4 Fire + 1 Steel | Fire | d10+3 | 8.5 | 1.70 | d6 | -2 | 4 | Burn (1–4, 40%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Eruption** | `atk-fire4-water1` | 4 Fire + 1 Water | Fire | d12+1 | 7.5 | 1.50 | d6 (⌖ +2) | -2 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Scorch** | `atk-fire2-rock1` | 2 Fire + 1 Rock | Fire | d10 | 5.5 | 1.83 | d6 | -2 | 2 | Burn (1–3, 30%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Scorch** | `atk-fire2-steel1` | 2 Fire + 1 Steel | Fire | d6+1 | 4.5 | 1.50 | d6 | -1 | 2 | Burn (1–3, 50%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Scorch** | `atk-fire2-water1` | 2 Fire + 1 Water | Fire | d8 | 4.5 | 1.50 | d6 (⌖ +2) | -1 | 2 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Wildfire** | `atk-astral1-fire3` | 1 Astral + 3 Fire | Fire | d8+1 | 5.9 | 1.48 | d6 | -1 | 3 | Burn (1–4, 50%) | Potency 3, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Flare** | `atk-astral2-fire2-fire` | 2 Astral + 2 Fire | Fire | d8+1 | 6.3 | 1.57 | d6 | -1 | 3 | Burn (1–4, 50%) | Potency 3, Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Wildfire** | `atk-charm1-fire3` | 1 Charm + 3 Fire | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–4, 50%) | Potency 3, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Flare** | `atk-charm2-fire2-fire` | 2 Charm + 2 Fire | Fire | d8 | 4.5 | 1.13 | d6 | -1 | 3 | Burn (1–4, 50%) | Potency 3, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Wildfire** | `atk-electric1-fire3` | 1 Electric + 3 Fire | Fire | d8+1 | 5.5 | 1.38 | d6 | +1 | 3 | Burn (1–4, 50%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Flare** | `atk-electric2-fire2-fire` | 2 Electric + 2 Fire | Fire | d6 | 3.5 | 0.88 | d6 (✸ 6) | 0 | 3 | Burn (1–4, 67%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Flare** | `atk-fire2-grass2-fire` | 2 Fire + 2 Grass | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–4, 50%) | Potency 3 | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Flare** | `atk-fire2-rock2-fire` | 2 Fire + 2 Rock | Fire | d12+1 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 3 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Flare** | `atk-fire2-steel2-fire` | 2 Fire + 2 Steel | Fire | d4+2 | 4.5 | 1.13 | d6 | -1 | 3 | Burn (1–4, 100%) | Potency 3 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Flamespray Flare** | `atk-fire2-water2-fire` | 2 Fire + 2 Water | Fire | d8+1 | 5.5 | 1.38 | d6 (⌖ +3) | -1 | 3 | Burn (1–4, 50%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Wildfire** | `atk-fire3-grass1` | 3 Fire + 1 Grass | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–4, 50%) | Potency 3 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Wildfire** | `atk-fire3-rock1` | 3 Fire + 1 Rock | Fire | d10+1 | 6.5 | 1.63 | d6 | -2 | 3 | Burn (1–4, 40%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Wildfire** | `atk-fire3-steel1` | 3 Fire + 1 Steel | Fire | d6+2 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–4, 67%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Wildfire** | `atk-fire3-water1` | 3 Fire + 1 Water | Fire | d8+1 | 5.5 | 1.38 | d6 (⌖ +2) | -1 | 3 | Burn (1–4, 50%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Eruption** | `atk-astral1-fire4` | 1 Astral + 4 Fire | Fire | d12+1 | 7.8 | 1.56 | d6 | -2 | 4 | Burn (1–5, 42%) | Potency 4, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Inferno** | `atk-astral2-fire3` | 2 Astral + 3 Fire | Fire | d8+3 | 8.3 | 1.65 | d6 | -1 | 4 | Burn (1–4, 50%) | Potency 3, Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Eruption** | `atk-charm1-fire4` | 1 Charm + 4 Fire | Fire | d12+1 | 7.5 | 1.50 | d6 | -2 | 4 | Burn (1–5, 42%) | Potency 4, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Inferno** | `atk-charm2-fire3` | 2 Charm + 3 Fire | Fire | d8+2 | 6.5 | 1.30 | d6 | -1 | 4 | Burn (1–4, 50%) | Potency 3, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Eruption** | `atk-electric1-fire4` | 1 Electric + 4 Fire | Fire | d12+1 | 7.5 | 1.50 | d6 | 0 | 4 | Burn (1–5, 42%) | Potency 4 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Inferno** | `atk-electric2-fire3` | 2 Electric + 3 Fire | Fire | d8+1 | 5.5 | 1.10 | d6 (✸ 6) | 0 | 4 | Burn (1–4, 50%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Inferno** | `atk-fire3-grass2` | 3 Fire + 2 Grass | Fire | d8+2 | 6.5 | 1.30 | d6 | -1 | 4 | Burn (1–4, 50%) | Potency 3 | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Inferno** | `atk-fire3-rock2` | 3 Fire + 2 Rock | Fire | d12+3 | 9.5 | 1.90 | d6 (⌖ ✕) | -3 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Inferno** | `atk-fire3-steel2` | 3 Fire + 2 Steel | Fire | d4+3 | 5.5 | 1.10 | d6 | -1 | 4 | Burn (1–4, 100%) | Potency 3 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Flamespray Inferno** | `atk-fire3-water2` | 3 Fire + 2 Water | Fire | d8+2 | 6.5 | 1.30 | d6 (⌖ +3) | -1 | 4 | Burn (1–4, 50%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Eruption** | `atk-fire4-grass1` | 4 Fire + 1 Grass | Fire | d12+1 | 7.5 | 1.50 | d6 | -2 | 4 | Burn (1–5, 42%) | Potency 4 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Eruption** | `atk-fire4-rock1` | 4 Fire + 1 Rock | Fire | d12+2 | 8.5 | 1.70 | d6 | -3 | 4 | Burn (1–5, 42%) | Potency 4 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Eruption** | `atk-fire4-steel1` | 4 Fire + 1 Steel | Fire | d10+3 | 8.5 | 1.70 | d6 | -2 | 4 | Burn (1–5, 50%) | Potency 4 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Eruption** | `atk-fire4-water1` | 4 Fire + 1 Water | Fire | d12+1 | 7.5 | 1.50 | d6 (⌖ +2) | -2 | 4 | Burn (1–5, 42%) | Potency 4 | — | — | Placeholder | ☐ | ☐ |
 
 ## Grass attacks
 

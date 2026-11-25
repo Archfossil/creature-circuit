@@ -108,6 +108,9 @@ const SIG: Record<ElementType, string> = {
   astral: 'sig-borealis', charm: 'sig-moonveil', electric: 'sig-stormcall', fire: 'sig-caldera',
   grass: 'sig-overgrowth', rock: 'sig-mesa', steel: 'sig-foundry', water: 'sig-riptide',
 };
+/** Fire families that fight hand to hand learn the Blitz instead. */
+const BLITZ_SIG = (types: ElementType[]) => types[0] === 'fire' && (!types[1] || types[1] === 'rock' || types[1] === 'steel');
+const sigOf = (types: ElementType[]) => (BLITZ_SIG(types) ? 'sig-backdraft' : SIG[types[0]]);
 const ABILITIES = ['sweetScent', 'babyEyes', 'keenNose', 'starSeeker', 'trailblazer', 'forager', 'quickStep', 'luckyCharm'];
 /**
  * A generated family's Instinct (data/instincts.ts): from one of its types' pools (alternating between
@@ -163,7 +166,7 @@ function placeholderFamily(types: ElementType[], rarity: FamilyRarity, ci: numbe
     biomes: biomesFor(types),
     ability: ABILITIES[(TYPES.indexOf(t1) + ri * 3 + ci) % ABILITIES.length],
     instinct,
-    sig: rarity === 'common' ? SIG[t1] : undefined,
+    sig: rarity === 'common' ? sigOf(types) : undefined,
     dex: `Placeholder: the ${comboLabel(types)} ${cap(rarity)} family, stage ${stage} of 3. To be replaced with a real creature.`,
     placeholder: true,
   }));
@@ -185,7 +188,7 @@ function extraFamily(f: ExtraFamily): Def[] {
     biomes: f.biomes,
     ability: ABILITIES[(TYPES.indexOf(t) + 5) % ABILITIES.length],
     instinct,
-    sig: SIG[t],
+    sig: sigOf([t]),
     dex: `Placeholder: a second ${TYPE_LABEL[t]} Common family, stage ${stage} of 3, out by ${f.key === 'dusk' ? 'night' : 'day'}. Concept: ${f.concept}. To be replaced with a real creature.`,
     placeholder: true,
     activity: f.activity,

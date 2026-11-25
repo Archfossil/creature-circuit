@@ -582,6 +582,7 @@ button.dex-entry:hover { border-color: var(--ink); }
 .mc-kws { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 .mc-kw { font-size: 10.5px; font-weight: 800; border-radius: 999px; padding: 0 7px; border: 1.5px solid; cursor: help; white-space: nowrap; }
 .mc-kw.potency { background: #f3e6ff; border-color: #8a4fc4; color: #5d2d91; }
+.mc-kw.blitz { background: #ffe6d6; border-color: #d0541a; color: #8a2f06; }
 .mc-kw.cascade { background: #e2f6ec; border-color: #2f9a62; color: #1d6a42; }
 .mc-kw.purge { background: #ffe9e4; border-color: #c4553a; color: #8c321d; }
 .mc-kw.status { background: #ffe7c2; border-color: #d08a1a; color: #7a4a00; }

@@ -49,9 +49,9 @@ const lead: Record<ElementType, (c: Ctx) => Draft> = {
   ][levelOf(c)],
   fire: (c) => [
     { dmgDie: 6, effort: 2, speed: -1 },
-    { dmgDie: 8, effort: 2, speed: -1, potency: 1 },
-    { dmgDie: 8, effort: EFFORT[c.total] + 1, speed: -1, potency: 2 },
-    { dmgDie: 12, effort: 4, speed: -2, potency: 3 },
+    { dmgDie: 8, effort: 2, speed: -1, potency: 2 },
+    { dmgDie: 8, effort: EFFORT[c.total] + 1, speed: -1, potency: 3 },
+    { dmgDie: 12, effort: 4, speed: -2, potency: 4 },
   ][levelOf(c)],
   grass: (c) => [
     { dmgDie: 4, effort: 1, speed: 0, effect: { heal: 1 } },
