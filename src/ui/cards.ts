@@ -4,8 +4,8 @@ import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom, critText, critsMore } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
-import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
-import { setSwapMove, swapLock, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
+import { describeSwap, swapText } from '../data/swapMoves';
+import { setSwapMove, swapChoices, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
 import { INSTINCT_BY_ID, INSTINCT_ICON, instinctRules } from '../data/instincts';
 import { TYPE_COLOR, TYPE_LABEL, typeIcon, TYPES, effectiveness } from '../data/types';
 import type { Species, ElementType, EnergyKey, Move } from '../data/schema';
@@ -322,12 +322,11 @@ function sharedTypes(c: CreatureInst, partner: CreatureInst): string {
   return both ? `They’re both ${both}, so Boosted ${both} moves are open too, with enough Teamwork.` : 'Boosted moves need two creatures that share a type.';
 }
 
-/** Pick the Swap Move `c` uses when it swaps in for `partner`: every move, with why the locked ones are locked. */
+/** Pick the Swap Move `c` uses when it swaps in for `partner`: the ones their types allow, with those still needing Teamwork greyed out. */
 export function editSwapMove(c: CreatureInst, partner: CreatureInst, changed: () => void, onEdit?: (e: CreatureEdit) => void) {
   const cur = swapMoveOf(c, partner);
   const v = swapVals(c, partner);
-  const rows = SWAP_MOVES.map((m) => ({ m, lock: swapLock(c, partner, m) }))
-    .sort((a, b) => Number(!!a.lock) - Number(!!b.lock));
+  const rows = swapChoices(c, partner);
   const A = nameOf(c), P = nameOf(partner);
   const close = openSheet(`${A} swapping in for ${P}`, h('div', null,
     swapPair(c, partner),

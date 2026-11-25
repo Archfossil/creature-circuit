@@ -30,7 +30,7 @@ import * as I from '../src/engine/interactions';
 import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether, settleTeamwork } from '../src/engine/teamwork';
 import { swapPreview, boostsOf, snap } from '../src/engine/battle';
 import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
-import { swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
+import { swapChoices, swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts';
 import { Box3 } from 'three';
 import { npcLook, opponentLook, NPC_OUTFITS } from '../src/render/npcLooks';
@@ -3640,6 +3640,20 @@ describe('Swap Moves', () => {
     expect(swapMoveOf(a, b).id).toBe('rally');
     expect(swapMoveOf(a, c).id).toBe('siphon');
     expect(swapMoveOf(b, a)).toBe(defaultSwapMove(b, a)); // b's own slot for a is still its random default
+  });
+  it('the list leaves out what a pair’s types rule out, and keeps what Teamwork will open', () => {
+    const [a, b] = trio(); // Water, with an Electric partner
+    const ids = () => swapChoices(a, b);
+    expect(ids().length).toBe(7); // 5 neutral and Electric's two
+    expect(ids().every(({ m }) => !m.type || (m.type === 'electric' && !m.boosted))).toBe(true);
+    expect(ids().slice(5).map(({ m, lock }) => [m.teamwork, !!lock])).toEqual([[1, true], [2, true]]);
+    a.teamwork[b.uid] = 1;
+    expect(ids().filter(({ lock }) => lock).map(({ m }) => m.teamwork)).toEqual([2]);
+    const twin = createCreature('puddlit', 6); twin.loyalty = 6; // shares a type: its Boosted move is listed, greyed out until Teamwork 3
+    const boosted = swapChoices(a, twin).filter(({ m }) => m.boosted);
+    expect(boosted.map(({ m, lock }) => [m.type, lock])).toEqual([['water', 'Needs Teamwork 3 (has 0)']]);
+    // nothing set or settable is ever left out
+    for (const p of [b, twin]) { a.teamwork[p.uid] = 3; expect(SWAP_MOVES.filter((m) => !swapLock(a, p, m)).length).toBe(swapChoices(a, p).length); }
   });
   it('typed moves need a partner of that type (the Alpha’s own doesn’t count) and enough Teamwork', () => {
     const [a, b] = trio();

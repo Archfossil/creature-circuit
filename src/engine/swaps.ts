@@ -30,10 +30,17 @@ export function swapMoveSet(alpha: CreatureInst, partner: CreatureInst): boolean
   return !!picked && !swapLock(alpha, partner, picked);
 }
 
-/** Why `alpha` can't use `m` when swapping in for `partner`, or null if it can. */
-export function swapLock(alpha: CreatureInst, partner: CreatureInst, m: SwapMove): string | null {
+/** Why the pair's types rule `m` out (for good: evolving never changes them), or null if they don't. */
+function typeLock(alpha: CreatureInst, partner: CreatureInst, m: SwapMove): string | null {
   if (m.type && m.boosted && !(speciesOf(alpha).types.includes(m.type) && speciesOf(partner).types.includes(m.type))) return `Boosted: both creatures must be ${TYPE_LABEL[m.type]}`;
   if (m.type && !speciesOf(partner).types.includes(m.type)) return `Needs a ${TYPE_LABEL[m.type]} partner`; // the partner lends its types; the Alpha's own don't count
+  return null;
+}
+
+/** Why `alpha` can't use `m` when swapping in for `partner`, or null if it can. */
+export function swapLock(alpha: CreatureInst, partner: CreatureInst, m: SwapMove): string | null {
+  const types = typeLock(alpha, partner, m);
+  if (types) return types;
   const have = teamworkShown(teamworkOf(alpha, partner));
   if (have < m.teamwork) return `Needs Teamwork ${m.teamwork} (has ${have})`;
   return null;
@@ -41,6 +48,11 @@ export function swapLock(alpha: CreatureInst, partner: CreatureInst, m: SwapMove
 
 /** The Swap Moves `alpha` can set for swapping in for `partner`. */
 export const swapMovesFor = (alpha: CreatureInst, partner: CreatureInst) => SWAP_MOVES.filter((m) => !swapLock(alpha, partner, m));
+
+/** The Swap Moves to show for a pair: all its types allow, with why any are still locked (Teamwork). Open ones first, then the nearest to opening. */
+export const swapChoices = (alpha: CreatureInst, partner: CreatureInst) => SWAP_MOVES.filter((m) => !typeLock(alpha, partner, m))
+  .map((m) => ({ m, lock: swapLock(alpha, partner, m) }))
+  .sort((a, b) => Number(!!a.lock) - Number(!!b.lock) || (a.lock ? a.m.teamwork - b.m.teamwork : 0));
 
 /** The Swap Move `alpha` uses when it swaps in for `partner`: the trainer's pick, or the pair's random default. */
 export function swapMoveOf(alpha: CreatureInst, partner: CreatureInst): SwapMove {
