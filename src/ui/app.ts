@@ -1970,8 +1970,17 @@ export class App {
       h('span', { class: 'chip' }, `Round `, h('b', { class: 'rnd' }, '1')),
       h('button', { class: 'chip log-btn', title: 'Battle Log: every move, roll and hit so far (L)', onclick: () => this.battleLogSheet(blog) }, '📜 Log'),
       b.sides[0].buff && Object.keys(b.sides[0].buff).length ? h('span', { class: 'chip good', title: `Chanko Nabe: ${W.buffText(b.sides[0].buff)} for your team this battle` }, '🍲 ', W.buffText(b.sides[0].buff)) : null);
-    panel.append(header, plates[1], h('div', { class: 'battle-stack' }, plates[0], h('div', { class: 'battle-bottom' }, logLine, controls)));
+    const topPart = h('div', { class: 'battle-top' }, header, plates[1]);
+    const stack = h('div', { class: 'battle-stack' }, plates[0], h('div', { class: 'battle-bottom' }, logLine, controls));
+    panel.append(topPart, stack);
     this.ui.replaceChildren(panel);
+    // on a tall screen, the creatures stand between the panels, whatever size those are just now
+    const measure = new ResizeObserver(() => {
+      if (!panel.isConnected) { measure.disconnect(); return; }
+      bv.setClear({ top: plates[1].getBoundingClientRect().bottom, bottom: innerHeight - stack.getBoundingClientRect().top });
+    });
+    bv.setClear(null);
+    for (const x of [header, plates[1], stack]) measure.observe(x);
 
     const renderPlate = (side: 0 | 1) => {
       const sd = b.sides[side];
@@ -2208,10 +2217,10 @@ export class App {
             h('small', { class: 'muted' }, m.text)),
           h('ol', { class: 'readout-steps' }, movePreview(b, id).map((st) => h('li', { class: st.tone ?? '' },
             h('span', { class: 'ro-ico' }, st.icon), h('div', null, h('b', null, st.title), h('p', null, st.text))))),
-          h('p', { class: 'small muted' }, 'Then the foe acts (its move stays hidden until the round plays out). The faster creature goes first.'),
+          h('p', { class: 'small muted readout-after' }, 'Then the foe acts (its move stays hidden until the round plays out). The faster creature goes first.'),
           h('div', { class: 'row gap-s end' },
-            h('button', { class: 'btn ghost', onclick: () => { readoutFor = null; showControls(); } }, '← Back (Esc)'),
-            h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name} (Enter)`))));
+            h('button', { class: 'btn ghost', onclick: () => { readoutFor = null; showControls(); } }, '← Back', h('span', { class: 'key-hint' }, ' (Esc)')),
+            h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name}`, h('span', { class: 'key-hint' }, ' (Enter)')))));
         (controls.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
       };
       // the creatures on screen (a spectator's copy of the battle only tracks them through the events)
@@ -2284,7 +2293,7 @@ export class App {
         // watching someone else's battle: play their rounds as they arrive
         say(ctx.intro);
         controls.replaceChildren(h('div', { class: 'row gap-s center wrap' },
-          h('div', { class: 'waiting' }, `👀 Watching ${s.trainer.name}’s battle`),
+          h('div', { class: 'waiting' }, view === 1 ? `⚔️ Your battle with ${s.trainer.name}` : `👀 Watching ${s.trainer.name}’s battle`),
           h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
           ...watchTools()));
         this.watchPlaying = false;

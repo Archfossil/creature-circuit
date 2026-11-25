@@ -7,7 +7,7 @@
 | Question | Decision |
 |---|---|
 | Consoles? | Not a goal |
-| Phones? | No longer the plan. The browser version still works on them |
+| Phones? | Not the main plan, but not ruled out: the browser version keeps supporting them for now |
 | Budget | None to speak of |
 | Creature art | Built in code by Claude, from images provided |
 | The browser version | Kept and worked on for now; retired after the Steam release, with a way to bring saves across |
@@ -56,5 +56,5 @@ Keep today's code and put it on Steam with Electron, rather than rebuild it in a
 
 ## What it changes elsewhere
 
-- [16 · Region packages](./16-region-packages.md): step 11 (load on demand) can wait, and real-phone checks aren't needed.
+- [16 · Region packages](./16-region-packages.md): step 11 (load on demand) can wait, and phones stay supported for now.
 - [17 · World Championship](./17-world-championship.md): weekly chapters and Circuit Nights instead of daily play.

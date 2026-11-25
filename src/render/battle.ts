@@ -311,7 +311,32 @@ export class BattleView implements SceneView {
     return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
   }
 
+  /** How much of a tall screen the battle's panels leave clear, from its top and bottom (px); `shown` eases toward it. */
+  private clear: { top: number; bottom: number } | null = null;
+  private shown: { top: number; bottom: number } | null = null;
+  /** The panels have changed size. Null: nothing covers the view. */
+  setClear(c: { top: number; bottom: number } | null) {
+    this.clear = c;
+    if (!c || !this.shown) this.shown = c && { ...c };
+  }
+
+  /** Tall screens: slide and scale the picture so that both creatures stand in what the panels leave clear. */
+  private frameClear(w: number, h: number) {
+    const s = this.shown!;
+    const box = { l: Infinity, r: -Infinity, t: Infinity, b: -Infinity };
+    for (const side of [0, 1] as const) for (const dx of [-1.1, 1.1]) for (const y of [0, Math.max(1.3, this.rigs[side]?.height ?? 1.3)]) {
+      const p = POS[side].clone().add(new THREE.Vector3(dx, y, 0)).project(this.camera);
+      const x = (p.x * 0.5 + 0.5) * w, py = (-p.y * 0.5 + 0.5) * h;
+      box.l = Math.min(box.l, x); box.r = Math.max(box.r, x); box.t = Math.min(box.t, py); box.b = Math.max(box.b, py);
+    }
+    const room = { w: w - 16, h: Math.max(60, h - s.top - s.bottom - 12) };
+    const z = THREE.MathUtils.clamp(Math.min(room.w / (box.r - box.l), room.h / (box.b - box.t)), 0.4, 1.1);
+    const mid = s.top + (h - s.top - s.bottom) / 2;
+    this.camera.setViewOffset(w, h, (box.l + box.r) / 2 - w / 2 / z, (box.t + box.b) / 2 - mid / z, w / z, h / z);
+  }
+
   resize(w: number, h: number) {
+    this.camera.clearViewOffset();
     // keep both creatures in frame on tall phones
     const portrait = h > w;
     const shortLandscape = !portrait && h < 560; // phones held sideways: controls take the lower half
@@ -319,10 +344,17 @@ export class BattleView implements SceneView {
     this.camera.position.set(portrait ? -0.6 : -1.2, portrait ? 4.2 : shortLandscape ? 5.2 : 3.4, portrait ? 11.5 : shortLandscape ? 10.5 : 9.2);
     this.camera.lookAt(0.3, portrait ? 0.4 : shortLandscape ? -1.6 : 0.9, 0);
     this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld();
+    if (portrait && this.shown) this.frameClear(w, h);
   }
 
   update(dt: number, t: number) {
     this.time = t;
+    if (this.clear && this.shown) {
+      const k = Math.min(1, dt * 8);
+      this.shown.top += (this.clear.top - this.shown.top) * k;
+      this.shown.bottom += (this.clear.bottom - this.shown.bottom) * k;
+    }
     for (const r of this.rigs) r?.update(t);
     for (const r of this.trainers) r?.update(t);
     for (let i = this.tweens.length - 1; i >= 0; i--) {
