@@ -226,7 +226,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         'Tap 👥 Trainers on the action bar:',
         '- Gifts and coin or item trades reach anyone, anywhere (a courier carries them).',
         '- Creature trades and duel challenges need you both on the same spot.',
-        '- In a duel, each trainer picks their own moves and swaps every round, and who goes in after a knockout. If nobody is Following you, you also choose who leads.',
+        '- In a duel, each trainer picks their own moves and swaps every round, and who goes in after a knockout. If nobody is Following you, you also choose who leads. On one device, each of you has a panel of moves: yours opens when you tap it, and it’s hidden while the other trainer chooses.',
         '- Online, the other trainer has two minutes to answer an offer (you can call it off) and a minute for each duel choice. If either of you drops out for a moment, the duel picks up where it was.',
         'Notes about gifts, trades and duels wait for each trainer at the start of their turn.',
       ] },

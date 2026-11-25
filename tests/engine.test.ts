@@ -5,7 +5,7 @@ import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES, EXTRA_FAMILIES, extraId } from '../src/data/roster';
 import { attackWorth, targetWorth } from '../src/data/attackStyles';
-import { BY_TOTAL, cascadeDie, critFaces, MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
+import { BURN_DAMAGE, BY_TOTAL, STATUS_INFO, cascadeDie, critFaces, MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
@@ -3915,6 +3915,23 @@ describe('Overheal', () => {
     expect(ev.some((e) => e.t === 'heal' && e.side === 0 && (e.snap.over ?? 0) > 0)).toBe(true);
     expect(ev.some((e) => e.t === 'say' && /gains \+1 Overheal/.test(e.text))).toBe(true);
   });
+  it('Burn deals its damage at the end of the round, to the slower creature first', () => {
+    for (const fast of [0, 1] as const) for (const run of [false, true]) {
+      const me = createCreature('puddlit', 5), foe = createCreature('sproutle', 5); // (neither has an end-of-round Instinct)
+      const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+      bt.sides[fast].mods.speed = 15;
+      me.health = foe.health = 4; me.playbook = foe.playbook = ['brace'];
+      for (const c of [me, foe]) bt.status[c.uid] = { id: 'burn', turns: 3 };
+      if (run) { me.health = foe.health = 1; me.vitality = foe.vitality = 0; }
+      const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+      const burns = ev.filter((e) => e.t === 'damage').map((e) => (e.t === 'damage' ? [e.side, e.amount] : []));
+      const slow = fast === 0 ? 1 : 0;
+      // both about to fall: the slower one does, and the battle is over
+      if (run) { expect(burns[0][0]).toBe(slow); expect(bt.over).toBe(slow === 0 ? 'lose' : 'win'); }
+      else expect(burns).toEqual([[slow, BURN_DAMAGE], [fast, BURN_DAMAGE]]);
+    }
+    expect(STATUS_INFO.burn.text).toContain(`${BURN_DAMAGE} damage`);
+  });
   it('Overheal soaks up damage before Health does', () => {
     const me = createCreature('puddlit', 5), foe = createCreature('zapup', 5);
     const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
@@ -3924,15 +3941,15 @@ describe('Overheal', () => {
     const hp = foe.health;
     const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
     expect(foe.health).toBe(hp);
-    expect(overhealOf(bt, foe)).toBe(2);
-    expect(ev.some((e) => e.t === 'say' && /Overheal soaks up 1 damage/.test(e.text))).toBe(true);
+    expect(overhealOf(bt, foe)).toBe(3 - BURN_DAMAGE);
+    expect(ev.some((e) => e.t === 'say' && /Overheal soaks up 2 damage/.test(e.text))).toBe(true);
   });
   it('Heartmend after losing a heart (back at full Health) overheals instead of wasting the heal', () => {
     withInstinct('mossprite', 'heartmend', () => {
       const me = createCreature('puddlit', 5), foe = createCreature('mossprite', 5);
       const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
       bt.sides[0].mods.speed = 10; bt.sides[0].team[0].health = 999; // faster, and no knockout ending the battle early
-      foe.health = 1; foe.vitality = 2;
+      foe.health = BURN_DAMAGE; foe.vitality = 2; // (Burn takes exactly the heart)
       bt.status[foe.uid] = { id: 'burn', turns: 3 };
       resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id });
       expect(foe.health).toBe(maxHealth(foe));

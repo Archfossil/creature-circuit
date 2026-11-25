@@ -506,7 +506,7 @@ export function suggestGoal(c: CreatureInst): { goal: PlaybookGoal; reason: stri
 }
 
 /** What a status is worth once it lands, in damage-like points over its 3 rounds. */
-export const STATUS_WORTH: Record<StatusId, number> = { burn: 3, shock: 2.5, sunder: 2.5, stagger: 2.5, soak: 2, snare: 2, beguile: 2, daze: 2 };
+export const STATUS_WORTH: Record<StatusId, number> = { burn: 4.5, shock: 2.5, sunder: 2.5, stagger: 2.5, soak: 2, snare: 2, beguile: 2, daze: 2 };
 /** What a point of each stat is worth over a battle, for judging effects away from one. */
 const STAT_WORTH: Record<StatKey, number> = { vigor: 1, power: 0.9, armor: 0.9, focus: 0.9, ward: 0.9, speed: 0.5, evasion: 1.1, stamina: 0.2 };
 /** Armor or Ward on a typical foe of this level. */

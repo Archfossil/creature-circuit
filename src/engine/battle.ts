@@ -1,5 +1,5 @@
 import type { ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
-import { MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
+import { BURN_DAMAGE, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
 import { SWAP_STATUS_ON, describeSwap, swapChart, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
@@ -707,7 +707,7 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
     else if (act.kind === 'move') useMove(b, si, MOVE_BY_ID[act.move] ?? CATCH_BREATH, ev);
   }
 
-  if (!b.over) endOfRound(b, ev);
+  if (!b.over) endOfRound(b, ev, order[0] === 0 ? 1 : 0);
   // both plates end the round as things stand (statuses wear off, for one)
   if (!b.over) for (const si of [0, 1] as const) { const c = activeOf(b.sides[si]); if (!c.ko) ev.push({ t: 'stamina', side: si, snap: snap(b, c) }); }
   return ev;
@@ -1337,14 +1337,15 @@ export function sendIn(b: Battle, idx: number): BEvent[] {
   return ev;
 }
 
-function endOfRound(b: Battle, ev: BEvent[]) {
-  for (const si of [0, 1] as const) {
+/** Burn, end-of-round Instincts and statuses wearing off: the creature that moved slower this round goes first. */
+function endOfRound(b: Battle, ev: BEvent[], slower: 0 | 1) {
+  for (const si of slower ? [1, 0] as const : [0, 1] as const) {
     if (b.over) return;
     const c = activeOf(b.sides[si]);
     if (c.ko) continue;
     const st = b.status[c.uid];
     if (st?.id === 'burn') {
-      const hit = takeHit(b, si, 1);
+      const hit = takeHit(b, si, BURN_DAMAGE);
       ev.push({ t: 'say', text: `${nameOf(c)} is hurt by its Burn.`, tone: 'info' });
       ev.push({ t: 'damage', side: si, amount: hit.dmg, eff: 1, crit: false, snap: snap(b, c) });
       afterHit(b, si, hit, false, ev);

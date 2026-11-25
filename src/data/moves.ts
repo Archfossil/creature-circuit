@@ -61,8 +61,10 @@ export const STATUS_FOR: Record<ElementType, StatusId> = {
   grass: 'snare', rock: 'stagger', steel: 'sunder', water: 'soak',
 };
 
+/** What Burn deals at the end of each round (3 rounds). */
+export const BURN_DAMAGE = 2;
 export const STATUS_INFO: Record<StatusId, { name: string; icon: string; text: string }> = {
-  burn: { name: 'Burn', icon: '🔥', text: 'Takes 1 damage at the end of each round.' },
+  burn: { name: 'Burn', icon: '🔥', text: `Takes ${BURN_DAMAGE} damage at the end of each round.` },
   soak: { name: 'Soak', icon: '💧', text: '−2 Speed, so it is more likely to act second.' },
   shock: { name: 'Shock', icon: '⚡', text: 'Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent).' },
   snare: { name: 'Snare', icon: '🌿', text: '−1 Speed and −1 Evasion, so it is easier to hit.' },

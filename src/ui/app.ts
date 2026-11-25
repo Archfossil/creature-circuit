@@ -965,13 +965,15 @@ export class App {
     openSheet(nameOf(c), creatureCard(c, { editable: true, teammates: this.teammatesOf(c), onEdit: (edit) => net.send({ type: 'edit', seat, edit }) }), { wide: true, cls: 'card-sheet' });
   }
 
+  /** The challenged trainer of a duel on this device, while it's fought. */
+  private duelRival: GameState | null = null;
   /** The other creatures of whichever trainer owns `c` (for the Teamwork on its card). */
   /**
    * The creatures a card lists Swap Moves for: the owner's active team only (totems would bloat every
    * card as a collection grows). Null for a creature resting in a totem.
    */
   teammatesOf(c: CreatureInst): CreatureInst[] | null {
-    const owners = [this.s, ...(activeMatchOf()?.players ?? [])];
+    const owners = [this.s, ...(this.duelRival ? [this.duelRival] : []), ...(activeMatchOf()?.players ?? [])];
     const owner = owners.find((p) => p && [...p.roster, ...p.reserve].some((x) => x.uid === c.uid));
     if (!owner) return [];
     return owner.roster.some((x) => x.uid === c.uid) ? owner.roster : null;
@@ -1319,23 +1321,14 @@ export class App {
   }
 
   /**
-   * Two-player duels: the challenged trainer chooses their creature's action each round. Hotseat:
-   * the device is passed to them (choices stay secret) and back. Online: they pick in their own
-   * browser; if they don't answer within a minute, their creature acts on its own instincts.
+   * Online duels: the challenged trainer chooses their creature's action each round in their own browser;
+   * if they don't answer within a minute, it acts on its own instincts. (On one device both trainers
+   * choose on the battle screen: runBattle → `hot`.)
    */
   async duelPick(a: GameState, b: GameState, battle: Battle, wager: number, circuit: boolean | 'stadium' = false): Promise<Action | undefined> {
     const opts = { ...foeOptions(battle), stake: Math.min(wager, b.coins), circuit };
     const m = activeMatchOf();
-    if (this.online && m) {
-      return this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts });
-    }
-    const pickIt = await new Promise<Action>((resolve) => {
-      const close = openSheet(`⚔️ ${b.trainer.name}’s move`, h('div', { class: 'handoff', style: `--tc:${b.trainer.color}` },
-        h('p', { class: 'small muted' }, `Pass the device to ${b.trainer.name}. ${a.trainer.name}, no peeking: your move is locked in.`),
-        this.duelPicker(opts, battle.round + 1, (act) => { close(); resolve(act); })), { noClose: true, wide: true });
-    });
-    await this.backTo(a);
-    return pickIt;
+    return this.online && m ? this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts }) : undefined;
   }
 
   /**
@@ -1384,22 +1377,13 @@ export class App {
         h('div', { class: 'muted' }, grows)));
   }
 
-  /** Duels: after a KO, the challenged trainer picks their next creature (hotseat hand-off or their own browser). */
+  /** Duels: after a KO, the challenged trainer picks their next creature in their own browser (on one device: the battle screen). */
   async duelSendPick(a: GameState, b: GameState, battle: Battle): Promise<number | undefined> {
     const team = battle.sides[1].team;
     const options = foeReplacements(battle).map((i) => ({ i, c: JSON.parse(JSON.stringify(team[i])) as CreatureInst }));
     const vs = nameOf(activeOf(battle.sides[0]));
     const m = activeMatchOf();
-    if (this.online && m) {
-      return this.online.pick<number>(m.players.indexOf(b), a.trainer.name, { kind: 'duel-send', down: nameOf(activeOf(battle.sides[1])), vs, options });
-    }
-    const idx = await new Promise<number>((resolve) => {
-      const close = openSheet(`⚔️ ${b.trainer.name}’s next creature`, h('div', { class: 'handoff', style: `--tc:${b.trainer.color}` },
-        h('p', { class: 'small muted' }, `Pass the device to ${b.trainer.name}. ${a.trainer.name}, no peeking.`),
-        this.duelSendPicker(nameOf(activeOf(battle.sides[1])), vs, options, (i) => { close(); resolve(i); })), { noClose: true, wide: true });
-    });
-    await this.backTo(a);
-    return idx;
+    return this.online && m ? this.online.pick<number>(m.players.indexOf(b), a.trainer.name, { kind: 'duel-send', down: nameOf(activeOf(battle.sides[1])), vs, options }) : undefined;
   }
 
   /** The defender's healthy creatures to send in after a KO. */
@@ -1446,8 +1430,8 @@ export class App {
       h('ul', { class: 'small' }, h('li', null, h('b', null, `${c.name} isn’t knocked out`), ', and neither is anyone else still standing.'), keeps.map((t) => h('li', null, t))));
   }
   /** Warn about surrendering this battle, and ask. */
-  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gimmick?: string; stadium?: boolean }): Promise<boolean> {
-    const s = this.s, me = activeOf(b.sides[0]);
+  confirmSurrender(b: Battle, ctx: { kind: string; wager?: number; gimmick?: string; stadium?: boolean; rival?: GameState }, side: 0 | 1 = 0): Promise<boolean> {
+    const s = side === 0 ? this.s : ctx.rival!, me = activeOf(b.sides[side]);
     const at = NODE_BY_ID[s.location].name;
     const costs: string[] = [], keeps: string[] = [];
     if (ctx.kind === 'rival') {
@@ -1963,6 +1947,32 @@ export class App {
     const logLine = h('div', { class: 'battle-log' }, ctx.intro);
     const plates = [h('div', { class: 'plate me' }), h('div', { class: 'plate foe' })];
     const controls = h('div', { class: 'battle-controls' });
+    // a duel on one device: both trainers choose here, each on their own panel (the challenged trainer's on
+    // top). Whoever isn't choosing has theirs hidden, and a panel stays shut until its trainer opens it.
+    const hot = !!ctx.duel && !!ctx.rival && !ctx.watch && !this.online;
+    let who: 0 | 1 = 0, opened = !hot, locked: Action | null = null;
+    if (hot) { controls.classList.add('shared'); this.duelRival = ctx.rival!; }
+    const trainerOn = (si: 0 | 1) => (si === 0 ? s : ctx.rival!).trainer;
+    /** Show a trainer's controls: the whole of them, or (one device) their panel, with the other one hidden. `nobody`: both are. */
+    const put = (nodes: (HTMLElement | null)[], nobody = false) => {
+      const kids = nodes.filter((x): x is HTMLElement => !!x);
+      if (!hot) { controls.replaceChildren(...kids); return; }
+      controls.replaceChildren(...([1, 0] as const).map((si) => {
+        const on = si === who && !nobody;
+        return h('section', { class: `hs-panel ${on ? 'on' : 'off'}`, style: `--pc:${trainerOn(si).color}`, 'aria-label': `${trainerOn(si).name}’s moves` },
+          h('div', { class: 'hs-head' }, h('b', null, trainerOn(si).name), h('small', null, on ? 'choosing' : `🔒 Hidden${si === 0 && locked ? ' · move locked in' : ''}`)),
+          ...(on ? kids : []));
+      }), ...(nobody ? kids : []));
+    };
+    let showTurn = () => { /* set once the round loop begins */ };
+    /** One device: shut until its trainer says they're the one holding it. */
+    const gate = (what: string) => {
+      const name = trainerOn(who).name;
+      say(`${name}: ${what}`, 'info');
+      const open = h('button', { class: 'btn primary', onclick: () => { opened = true; showTurn(); } }, `I’m ${name}: show my choices`);
+      put([h('div', { class: 'hs-gate' }, h('small', { class: 'muted' }, `${trainerOn(who === 0 ? 1 : 0).name}, no peeking.`), open)]);
+      open.focus({ preventScroll: true });
+    };
     const header = h('div', { class: 'battle-head' },
       h('span', { class: 'chip' }, WEATHER[s.weather].icon, ' ', WEATHER[s.weather].name),
       b.arena ? h('span', { class: 'chip arena', style: `--tc:${TYPE_COLOR[arenaType!]}` }, '🏟 ', CITIES[ctx.city!].arena.name, ` · Tier ${b.arena.tier}`) : null,
@@ -2001,11 +2011,11 @@ export class App {
         h('div', { class: 'pl-vit' },
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: `${x.ko ? 'ko' : ''} ${x.ace ? 'ace' : ''}`, title: x.ace ? 'Their Ace: a tougher creature with a special bond' : '' })))),
         // the Health bar (notched into hearts) and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
-        h('div', { class: `pl-bars ${side === 0 ? 'mine' : 'foe'}` },
+        h('div', { class: `pl-bars ${side === 0 || hot ? 'mine' : 'foe'}` },
           healthBar(maxHearts(c), sn, { over: sn.over }),
           h('span', { class: 'num' }, sn.ko ? 'KO' : `${totalHealth(sn)}/${maxTotal(c)}`, sn.over && !sn.ko ? h('span', { class: 'over-num', title: 'Overheal: extra Health that soaks up damage first' }, ` +${sn.over}`) : null),
           fatigueBadge(sn.fatigue),
-          ...(side === 0 ? [
+          ...(side === 0 || hot ? [
             h('div', { class: 'bar sta-bar', title: `Stamina ${sn.stamina}/${maxStamina(c)}: each move's 💨 Effort comes out of it. Running out adds Fatigue.` },
               h('i', { style: `width:${Math.min(100, (sn.stamina / maxStamina(c)) * 100)}%` })),
             h('span', { class: 'num sta-num', title: 'Stamina' }, `💨 ${sn.stamina}/${maxStamina(c)}`)] : [])),
@@ -2185,48 +2195,50 @@ export class App {
       const showControls = () => {
         $('.rnd', header).textContent = String(b.round + 1);
         if (b.over) { finish(b.over); return; }
-        if (b.foeNeedSwap) { void foeReplace(); return; }
-        if (b.needSwap) { forcedSwap(); return; }
-        const me = activeOf(b.sides[0]);
+        if (b.foeNeedSwap) { if (hot && foeReplacements(b).length > 1) { who = 1; forcedSwap(); } else void foeReplace(); return; }
+        if (b.needSwap) { who = 0; forcedSwap(); return; }
+        const me = activeOf(b.sides[who]);
+        if (!opened) { gate(who === 0 ? 'your move.' : `your move. ${trainerOn(0).name}’s is locked in.`); return; }
         say(`What will ${nameOf(me)} do?`);
-        const canSwap = b.round >= 1 && b.sides[0].team.filter((c) => !c.ko).length > 1;
+        const canSwap = b.round >= 1 && b.sides[who].team.filter((c) => !c.ko).length > 1;
         const canRun = ctx.kind === 'wild' || ctx.kind === 'legendary';
-        const foeTypes = speciesOf(activeOf(b.sides[1])).types;
-        controls.replaceChildren(
+        const foeTypes = speciesOf(activeOf(b.sides[who === 0 ? 1 : 0])).types;
+        put([
           h('div', { class: 'move-grid', role: 'group', 'aria-label': 'Moves (keys 1–4)' }, me.playbook.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: String(i + 1), vs: foeTypes, onClick: () => choose(id) }))),
           h('div', { class: 'row gap-s sub-actions' },
             h('button', { class: 'btn ghost sm', onclick: () => choose(CATCH_BREATH.id) }, '😮‍💨 Catch Breath'),
             h('button', { class: 'btn ghost sm', disabled: !canSwap, title: canSwap ? '' : 'Swapping is allowed from round 2', onclick: () => swapPicker() }, '🔁 Swap'),
             canRun ? h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'run' }) }, '🏃 Run') : null,
-            canSurrender(b) ? h('button', { class: 'btn ghost sm', title: 'Give up this battle (you’re asked first)', onclick: async () => { if (await this.confirmSurrender(b, ctx) && panel.isConnected && controls.querySelector('.move-grid')) void act({ kind: 'surrender' }); } }, '🏳️ Surrender') : null,
+            canSurrender(b) ? h('button', { class: 'btn ghost sm', title: 'Give up this battle (you’re asked first)', onclick: async () => { if (await this.confirmSurrender(b, ctx, who) && panel.isConnected && controls.querySelector('.move-grid')) void act({ kind: 'surrender' }); } }, '🏳️ Surrender') : null,
             h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
-            h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card')));
+            h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card'))]);
       };
+      showTurn = showControls;
       // Picking a move: Fast battles act at once; otherwise show the step-by-step readout first
       let readoutFor: string | null = null;
       const choose = (id: string) => (slow() ? showReadout(id) : act({ kind: 'move', move: id }));
       const showReadout = (id: string) => {
         readoutFor = id;
         const m = MOVE_BY_ID[id] ?? CATCH_BREATH;
-        const me = activeOf(b.sides[0]);
+        const me = activeOf(b.sides[who]);
         say(`${nameOf(me)} · ${m.name}: here’s what will happen.`);
-        controls.replaceChildren(h('div', { class: 'readout' },
+        put([h('div', { class: 'readout' },
           h('div', { class: 'readout-head' },
             m.type ? typeIconImg(m.type, 18) : null, h('b', null, m.name),
             h('span', { class: 'chip' }, m.kind === 'physical' ? 'Physical · Power vs Armor' : m.kind === 'elemental' ? 'Elemental · Focus vs Ward' : 'Support'),
             h('small', { class: 'muted' }, m.text)),
-          h('ol', { class: 'readout-steps' }, movePreview(b, id).map((st) => h('li', { class: st.tone ?? '' },
+          h('ol', { class: 'readout-steps' }, movePreview(b, id, who).map((st) => h('li', { class: st.tone ?? '' },
             h('span', { class: 'ro-ico' }, st.icon), h('div', null, h('b', null, st.title), h('p', null, st.text))))),
           h('p', { class: 'small muted readout-after' }, 'Then the foe acts (its move stays hidden until the round plays out). The faster creature goes first.'),
           h('div', { class: 'row gap-s end' },
             h('button', { class: 'btn ghost', onclick: () => { readoutFor = null; showControls(); } }, '← Back', h('span', { class: 'key-hint' }, ' (Esc)')),
-            h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name}`, h('span', { class: 'key-hint' }, ' (Enter)')))));
+            h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name}`, h('span', { class: 'key-hint' }, ' (Enter)'))))]);
         (controls.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
       };
       // the creatures on screen (a spectator's copy of the battle only tracks them through the events)
       const shown = (si: 0 | 1) => b.sides[si].team.find((x) => x.uid === disp[si].uid) ?? activeOf(b.sides[si]);
       const showTypes = () => {
-        const me = shown(0), foe = shown(1);
+        const me = shown(who), foe = shown(who === 0 ? 1 : 0);
         const attack = [...new Set(me.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m.kind === 'elemental' && m.type).map((m) => m.type!))];
         typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe), attackerName: ctx.watch ? nameOf(me) : undefined });
       };
@@ -2241,17 +2253,18 @@ export class App {
         if (ctx.watch && ev.key === 'Escape') { this.leaveWatch?.(); return; }
         if (ctx.watch) { if (ev.key.toLowerCase() === 't') showTypes(); return; } // spectators: the type chart and log only
         if (!controls.querySelector('.move-grid')) return;
-        const me = activeOf(b.sides[0]);
+        const me = activeOf(b.sides[who]);
         const n = Number(ev.key);
         if (n >= 1 && n <= me.playbook.length) choose(me.playbook[n - 1]);
         else if (ev.key.toLowerCase() === 'b') choose(CATCH_BREATH.id);
         else if (ev.key.toLowerCase() === 'r' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) act({ kind: 'run' });
         else if (ev.key.toLowerCase() === 't') showTypes();
-        else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[0].team.filter((c) => !c.ko).length > 1) swapPicker();
+        else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[who].team.filter((c) => !c.ko).length > 1) swapPicker();
       };
       addEventListener('keydown', onKey);
       const finish = (r: Battle['over']) => {
         removeEventListener('keydown', onKey);
+        if (hot) this.duelRival = null;
         if (left.now) { resolve(r); return; }
         this.liveLog = null;
         // Teamwork earned from swaps this battle
@@ -2259,6 +2272,16 @@ export class App {
         resolve(r);
       };
       const act = async (a: Parameters<typeof resolveRound>[1]) => {
+        if (hot) {
+          // the challenger's choice is kept while the challenged trainer makes theirs
+          if (who === 0 && a.kind !== 'surrender') { locked = a; who = 1; opened = false; showControls(); return; }
+          const [mine, theirs]: [Action, Action | undefined] = who === 0 ? [a, undefined] : [locked!, a];
+          locked = null; who = 0; opened = false;
+          put([], true);
+          await play(resolveRound(b, mine, theirs));
+          showControls();
+          return;
+        }
         controls.replaceChildren(h('div', { class: 'waiting' }, ctx.duel ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
         // two-player duel: the other trainer picks their creature's action too
         const foe = ctx.duel && a.kind !== 'surrender' ? await ctx.duel(b) : undefined;
@@ -2267,27 +2290,35 @@ export class App {
         showControls();
       };
       const swapPicker = () => {
-        const cur = activeOf(b.sides[0]);
+        const cur = activeOf(b.sides[who]);
         const close = openSheet('Swap — choose the incoming Alpha', h('div', null,
           h('p', { class: 'small' }, `The incoming creature is the Alpha: it uses the Swap Move set for swapping in for ${nameOf(cur)} (change it here or on its card). The swap resolves at ${nameOf(cur)}'s speed.`),
           h('p', { class: 'small muted' }, `🤝 Teamwork: every ${TEAMWORK_PER_BONUS} Teamwork the Alpha has with ${nameOf(cur)} adds +1 to its Swap Move, and stronger Swap Moves unlock at Teamwork 1 and 2 (3 for Boosted ones, if the two share a type). A pair earns +${TEAMWORK_PER_SWAP} Teamwork the first time one swaps in for the other in a battle, and +${TEAMWORK_PER_TURN} each turn they travel together. A pair’s Teamwork is capped at half the lower Loyalty of the two.`),
-          h('div', { class: 'list' }, b.sides[0].team.map((c, i) => {
+          h('div', { class: 'list' }, b.sides[who].team.map((c, i) => {
             if (c.ko || c === cur) return null;
-            return this.swapRow(swapRowInfo(b, 0, i), () => { close(); act({ kind: 'swap', to: i }); }, () => { close(); editSwapMove(c, cur, () => swapPicker()); });
+            return this.swapRow(swapRowInfo(b, who, i), () => { close(); act({ kind: 'swap', to: i }); }, () => { close(); editSwapMove(c, cur, () => swapPicker()); });
           }))));
       };
       // two-player duel: the defender picks who replaces their knocked-out creature
       const foeReplace = async () => {
         const many = foeReplacements(b).length > 1;
         say(`${b.sides[1].name} is choosing their next creature…`, 'info');
-        controls.replaceChildren(h('div', { class: 'waiting' }, many ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
+        put([h('div', { class: 'waiting' }, many ? `Waiting for ${b.sides[1].name} to choose…` : '…')], true);
         const idx = many && ctx.duelSend ? await ctx.duelSend(b) : undefined;
         await play(foeSendIn(b, idx ?? -1));
         showControls();
       };
       const forcedSwap = () => {
+        if (!opened) { gate('choose your next creature.'); return; }
         say('Choose your next creature!', 'bad');
-        controls.replaceChildren(h('div', { class: 'list' }, b.sides[0].team.map((c, i) => c.ko ? null : miniCard(c, { onClick: async () => { controls.replaceChildren(); await play(sendIn(b, i)); showControls(); } }))));
+        const send = async (i: number) => {
+          const si = who;
+          who = 0; opened = !hot;
+          put([], true);
+          await play(si === 0 ? sendIn(b, i) : foeSendIn(b, i));
+          showControls();
+        };
+        put([h('div', { class: 'list' }, b.sides[who].team.map((c, i) => c.ko ? null : miniCard(c, { onClick: () => void send(i) })))]);
       };
       if (ctx.watch) {
         // watching someone else's battle: play their rounds as they arrive
