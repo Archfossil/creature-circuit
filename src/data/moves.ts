@@ -61,10 +61,11 @@ export const STATUS_FOR: Record<ElementType, StatusId> = {
   grass: 'snare', rock: 'stagger', steel: 'sunder', water: 'soak',
 };
 
-/** What Burn deals at the end of each round (3 rounds). */
-export const BURN_DAMAGE = 2;
+/** What Burn deals at the end of each round (3 rounds): more to a creature that has grown, as it has more Health. */
+export const BURN_DAMAGE = 2, BURN_BIG = 3, BURN_BIG_LEVEL = 8;
+export const burnDamage = (level: number) => (level >= BURN_BIG_LEVEL ? BURN_BIG : BURN_DAMAGE);
 export const STATUS_INFO: Record<StatusId, { name: string; icon: string; text: string }> = {
-  burn: { name: 'Burn', icon: '🔥', text: `Takes ${BURN_DAMAGE} damage at the end of each round.` },
+  burn: { name: 'Burn', icon: '🔥', text: `Takes ${BURN_DAMAGE} damage at the end of each round (${BURN_BIG} from Lv ${BURN_BIG_LEVEL}).` },
   soak: { name: 'Soak', icon: '💧', text: '−2 Speed, so it is more likely to act second.' },
   shock: { name: 'Shock', icon: '⚡', text: 'Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent).' },
   snare: { name: 'Snare', icon: '🌿', text: '−1 Speed and −1 Evasion, so it is easier to hit.' },

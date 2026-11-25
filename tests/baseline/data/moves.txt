@@ -375,6 +375,8 @@ ATTACK_SLOTS (376)
   {"cost":{"steel":3,"water":1},"type":"steel"}
   {"cost":{"steel":3,"water":2},"type":"steel"}
   {"cost":{"steel":4,"water":1},"type":"steel"}
+BURN_BIG: 3
+BURN_BIG_LEVEL: 8
 BURN_DAMAGE: 2
 BY_TOTAL (5)
   1: {"dmgDie":4,"dmgFlat":0,"effort":1,"speed":0}
@@ -1273,7 +1275,7 @@ STATUS_FOR (8)
   steel: "sunder"
   water: "soak"
 STATUS_INFO (8)
-  burn: {"name":"Burn","icon":"🔥","text":"Takes 2 damage at the end of each round."}
+  burn: {"name":"Burn","icon":"🔥","text":"Takes 2 damage at the end of each round (3 from Lv 8)."}
   soak: {"name":"Soak","icon":"💧","text":"−2 Speed, so it is more likely to act second."}
   shock: {"name":"Shock","icon":"⚡","text":"Each time it uses a move, a 1-in-3 chance to lock up and lose the action (no Stamina spent)."}
   snare: {"name":"Snare","icon":"🌿","text":"−1 Speed and −1 Evasion, so it is easier to hit."}

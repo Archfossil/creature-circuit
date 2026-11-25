@@ -3930,7 +3930,15 @@ describe('Overheal', () => {
       if (run) { expect(burns[0][0]).toBe(slow); expect(bt.over).toBe(slow === 0 ? 'lose' : 'win'); }
       else expect(burns).toEqual([[slow, BURN_DAMAGE], [fast, BURN_DAMAGE]]);
     }
-    expect(STATUS_INFO.burn.text).toContain(`${BURN_DAMAGE} damage`);
+    expect(STATUS_INFO.burn.text).toBe('Takes 2 damage at the end of each round (3 from Lv 8).');
+    for (const [level, n] of [[7, 2], [8, 3], [12, 3]] as const) {
+      const me = createCreature('puddlit', 5), foe = createCreature('sproutle', level);
+      const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+      bt.sides[0].mods.speed = 25;
+      bt.status[foe.uid] = { id: 'burn', turns: 3 };
+      const hit = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id }).find((e) => e.t === 'damage');
+      expect(hit?.t === 'damage' && hit.amount, `Lv ${level}`).toBe(n);
+    }
   });
   it('Overheal soaks up damage before Health does', () => {
     const me = createCreature('puddlit', 5), foe = createCreature('zapup', 5);

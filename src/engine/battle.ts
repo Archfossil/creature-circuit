@@ -1,5 +1,5 @@
 import type { ElementType, Move, StatKey, Stats, StatusId, WeatherDef } from '../data/schema';
-import { BURN_DAMAGE, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
+import { burnDamage, MOVE_BY_ID, CATCH_BREATH, STATUS_INFO, ZERO_IN_MAX, zeroInOf, damageDice, avgRoll, statusChance, statusFaces, statusRollText, purgeBonus, cascadeDie, critFrom, critFaces } from '../data/moves';
 import { SWAP_STATUS_ON, describeSwap, swapChart, swapStatus, type SwapEffect, type SwapHit, type SwapMove, type SwapVals } from '../data/swapMoves';
 import { effectiveness } from '../data/types';
 import { SPECIES_BY_ID } from '../data/species';
@@ -1345,7 +1345,7 @@ function endOfRound(b: Battle, ev: BEvent[], slower: 0 | 1) {
     if (c.ko) continue;
     const st = b.status[c.uid];
     if (st?.id === 'burn') {
-      const hit = takeHit(b, si, BURN_DAMAGE);
+      const hit = takeHit(b, si, burnDamage(c.level));
       ev.push({ t: 'say', text: `${nameOf(c)} is hurt by its Burn.`, tone: 'info' });
       ev.push({ t: 'damage', side: si, amount: hit.dmg, eff: 1, crit: false, snap: snap(b, c) });
       afterHit(b, si, hit, false, ev);

@@ -17,32 +17,32 @@ T52 P @valor coins494 merits5 [redwarden31,ph-astral-grass-prime-14]+4 dice1 rul
 T53 P @valor coins494 merits5 [redwarden31,ph-astral-grass-prime-14]+4 dice2 rules:a3086570 words:e0b19506 | end
 T54 P @valor coins494 merits5 [redwarden31,ph-astral-grass-prime-14]+4 dice3 rules:8538bd4a words:371d3d48 | end
 T54 P @valor coins500 merits5 [redwarden31,ph-astral-grass-prime-14,ph-astral-grass-prime-14]+4 dice0 rules:72bb3a08 words:7704c544 | pickup
-T55 P @depths coins503 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+4 dice4051 rules:3685b207 words:7d8c0039 | depths sea-glass; recruit ph-fire-water-apex-2 true; wild depths:win; depths pine-resin; recruit ph-electric-grass-apex-2 true; wild depths:win; depths volcanic-glass; recruit ph-fire-rock-apex-2 true; wild depths:win; depths marsh-lotus; recruit ph-fire-water-apex-2 true; wild depths:win; depths glacier-salt; recruit ph-steel-astral-apex-2 false; wild depths:win
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice4205 rules:d98bab53 words:4961343f | end; left 1; legendBack
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice4205 rules:cbc52a81 words:3d379045 | legend sunspire true false true
-T57 P @quillhaven coins545 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice2647 rules:af00813b words:f0b3fc4e | research; legend ironwake true false true
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice3960 rules:62df626c words:033976c6 | end; left 1; legendBack
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice3960 rules:ec566da5 words:11f4d511 | legend willowheart true false true
-T57 P @quillhaven coins545 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice4162 rules:dea82c3e words:ca93700f | research; legend dunecrown true false true
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice6369 rules:4beed375 words:c782394b | end; left 1; legendBack
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice6369 rules:fcc5f4f1 words:e2c0bf88 | legend boglight true false true
-T57 P @quillhaven coins545 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice2113 rules:067974e6 words:660f84e0 | research; legend calderaheart true false true
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice5798 rules:ab8731f5 words:0d053ab8 | end; left 1; legendBack
-T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice5798 rules:6856a75a words:c02c2cc7 | legend cloudeye true false true
-T61 P @iron coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:3212a7b7 words:7aca5df1 | sponsor ivo home true; rest 2
-T61 P @iron coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:e24aedb8 words:42ee7326 | sponsor ivo free true; rest 0
-T61 P @aurora coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:15e5ac37 words:0cf6a041 | sponsor selene home true; rest 2
-T61 P @aurora coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:46a9f813 words:21b2d5b8 | sponsor selene free true; rest 0
-T61 P @mangrove coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:2004ee73 words:f931c0e6 | sponsor marisol home true; rest 2
-T61 P @mangrove coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:d1c32b80 words:ba8cf46f | sponsor marisol free true; rest 0
-T61 P @thunder coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:083302fb words:f8eb0cfc | sponsor dez home true; rest 2
-T61 P @thunder coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:b419a4f1 words:94fcf8b5 | sponsor dez free true; rest 0
-T61 P @canyon coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:146dd50a words:22c26bc9 | sponsor okon home true; rest 2
-T61 P @canyon coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:417aa54e words:0958d621 | sponsor okon free true; rest 0
-T61 P @gloom coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:8eb8e87e words:a91d9249 | sponsor hale home true; rest 2
-T61 P @gloom coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:ab82891d words:e583f359 | sponsor hale free true; rest 0
-T61 P @hollow coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:720e8f1e words:f450b6aa | sponsor bram home true; rest 2
-T61 P @hollow coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:4d9537ba words:83515c47 | sponsor bram free true; rest 0
-T61 P @kilauea coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:fd6220ab words:09618cf2 | sponsor noor home true; rest 2
-T61 P @kilauea coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-15]+3 dice0 rules:44ac09ed words:232c3239 | sponsor noor free true; rest 0
-# biome:prism 64, chart 3, depths 5, end 12, floor 2, gauntlet 8, item 43, lap 11, left 4, legend 7, legendBack 4, met 22, nothing 24, pickup 3, plains 4, ran 3, recruit 27, research 3, reset 1, rest 16, retrain 1, satchel 2, school 2, signs 2, sponsor 16, sponsorRest 16, stella 1, trail 3, trainer 7, trainer:win 7, wild 27, wild:win 27, wisp 8, wispGone 4
+T55 P @depths coins503 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+5 dice4051 rules:3effca2f words:5eb1166e | depths sea-glass; recruit ph-fire-water-apex-2 true; wild depths:win; depths pine-resin; recruit ph-electric-grass-apex-2 true; wild depths:win; depths volcanic-glass; wild depths:lose (wiped); depths marsh-lotus; recruit ph-fire-water-apex-2 true; wild depths:win; depths glacier-salt; recruit ph-steel-astral-apex-2 true; wild depths:win
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice4205 rules:31098b32 words:166c5ecc | end; left 1; legendBack
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice4205 rules:cdcaada4 words:c9b0f082 | legend sunspire true false true
+T57 P @quillhaven coins545 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice2647 rules:6bd4594e words:8cfea6d3 | research; legend ironwake true false true
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice3960 rules:d41c16b2 words:45831f47 | end; left 1; legendBack
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice3960 rules:f5118eb5 words:07d99e90 | legend willowheart true false true
+T57 P @quillhaven coins545 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice4162 rules:3fbaafe5 words:87935fad | research; legend dunecrown true false true
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice6369 rules:b0a6b209 words:5167c67a | end; left 1; legendBack
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice6369 rules:5de1b713 words:07c114b0 | legend boglight true false true
+T57 P @quillhaven coins545 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice2113 rules:df5e3f6b words:a012d5ba | research; legend calderaheart true false true
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice5798 rules:b308ff92 words:e11a654d | end; left 1; legendBack
+T58 P @quillhaven coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice5798 rules:9ce0890d words:b330dbf6 | legend cloudeye true false true
+T61 P @iron coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:858ed86b words:9d583f42 | sponsor ivo home true; rest 2
+T61 P @iron coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:a6ddc32c words:a5d093ed | sponsor ivo free true; rest 0
+T61 P @aurora coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:7e4ee1dd words:02997c87 | sponsor selene home true; rest 2
+T61 P @aurora coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:e71b8553 words:adc812a5 | sponsor selene free true; rest 0
+T61 P @mangrove coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:d0996756 words:231bd9f6 | sponsor marisol home true; rest 2
+T61 P @mangrove coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:22ecc21f words:b16e5c9e | sponsor marisol free true; rest 0
+T61 P @thunder coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:e81d89fc words:9c652c0c | sponsor dez home true; rest 2
+T61 P @thunder coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:b3942cec words:22061ccf | sponsor dez free true; rest 0
+T61 P @canyon coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:34c3ec48 words:0c2b156f | sponsor okon home true; rest 2
+T61 P @canyon coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:269f01aa words:93ad1a65 | sponsor okon free true; rest 0
+T61 P @gloom coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:bfb7a7fa words:4578b20a | sponsor hale home true; rest 2
+T61 P @gloom coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:8ca31e82 words:8f4cf283 | sponsor hale free true; rest 0
+T61 P @hollow coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:e0c760d2 words:5a716139 | sponsor bram home true; rest 2
+T61 P @hollow coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:bbbb9644 words:26f7f294 | sponsor bram free true; rest 0
+T61 P @kilauea coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:92a3f39b words:da4649f6 | sponsor noor home true; rest 2
+T61 P @kilauea coins500 merits5 [redwarden33,ph-astral-grass-prime-16,ph-astral-grass-prime-14]+3 dice0 rules:f5a91a46 words:9684344a | sponsor noor free true; rest 0
+# biome:prism 64, chart 2, depths 5, end 12, floor 2, gauntlet 8, item 43, lap 11, left 4, legend 7, legendBack 4, met 22, nothing 24, pickup 3, plains 4, ran 3, recruit 26, research 3, reset 1, rest 16, retrain 1, satchel 2, school 2, signs 2, sponsor 16, sponsorRest 16, stella 1, trail 3, trainer 7, trainer:win 7, wild 27, wild:lose 1, wild:win 26, wiped 1, wisp 8, wispGone 4

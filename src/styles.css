@@ -1071,6 +1071,11 @@ div.perk { cursor: default; }
 /* Two-player duel picker */
 .duel-picker { display: grid; gap: 10px; width: 100%; }
 .duel-picker .move-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.hs-panel .duel-picker { gap: 6px; } .hs-panel .duel-picker > p { margin: 0; }
+.hs-panel .duel-picker .move-grid { grid-template-columns: 1fr 1fr; }
+.hs-panel > div > p { margin: 0 0 4px; font-size: 11.5px; line-height: 1.2; }
+.hs-panel .duel-line { display: none; } /* the battle screen says it already */
+@media (max-width: 520px) and (orientation: portrait) { .battle-controls.shared .readout-steps { max-height: clamp(78px, calc(100dvh - 575px), 220px); } .battle-controls.shared .hs-panel > div > p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; } }
 
 /* Finished progression chart: spare level-up points train stats */
 .mastery { border: 2px dashed var(--tc, #888); border-radius: 12px; padding: 8px 10px; display: grid; gap: 6px; text-align: center; }

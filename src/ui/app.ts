@@ -546,7 +546,7 @@ export class App {
   private isWatching = false;
   /** Online: the battle the trainer playing is in, with what has happened so far, so we can look in at any point. */
   /** Online: another trainer's prompt on this screen (a duel pick, or a trade or duel offer). */
-  private askOpen: { id: string; close: () => void } | null = null;
+  private askOpen: { id: string; close: () => void; place?: () => void } | null = null;
   /** Online: call off the trade or duel offer we're waiting on. */
   private cancelAsk: (() => void) | null = null;
   /** After a lost battle: settle the choice on screen the plain way (the turn is being ended for us). */
@@ -967,6 +967,8 @@ export class App {
 
   /** The challenged trainer of a duel on this device, while it's fought. */
   private duelRival: GameState | null = null;
+  /** Online: puts a duel choice in our panel on the battle screen, while we're on it. Returns how to take it down. */
+  private duelMount: ((body: HTMLElement) => () => void) | null = null;
   /** The other creatures of whichever trainer owns `c` (for the Teamwork on its card). */
   /**
    * The creatures a card lists Swap Moves for: the owner's active team only (totems would bloat every
@@ -984,7 +986,7 @@ export class App {
     const net = this.online!;
     if (this.askOpen?.id === m.id) return; // sent again after a reconnect: it's still up
     this.closeAsk(); // a newer prompt replaces one that's still up
-    const mine = { id: m.id, close: () => { /* not up yet */ } };
+    const mine: { id: string; close: () => void; place?: () => void } = { id: m.id, close: () => { /* not up yet */ } };
     this.askOpen = mine;
     // a duel pick waits (a while) for the last round to finish playing here, so it doesn't cover it
     if (m.pick) for (let i = 0; i < 100 && this.watchPlaying && this.askOpen === mine; i++) await wait(200);
@@ -993,18 +995,23 @@ export class App {
       const shut = openSheet(title, body, { noClose: true, wide });
       mine.close = shut;
     };
+    // a duel choice goes in our panel on the battle screen, or in a sheet if we've gone back to the map
+    const place = (title: string, body: HTMLElement) => {
+      mine.place = () => { if (this.duelMount) mine.close = this.duelMount(body); else open(title, body, true); };
+      mine.place();
+    };
     const answer = (msg: { yes: boolean; value?: unknown }) => {
       if (this.askOpen !== mine) return;
       this.closeAsk();
       net.send({ type: 'answer', id: m.id, ...msg });
     };
-    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number; circuit?: boolean | 'stadium' } & FoeOptions) | undefined;
+    const pick = m.pick as ({ kind: 'duel'; round: number; stake?: number; circuit?: boolean | 'stadium' } & FoeOptions & { battle?: Battle }) | undefined;
     const send = m.pick as { kind: 'duel-send'; down: string; vs: string; options: { i: number; c: CreatureInst }[] } | undefined;
     if (send?.kind === 'duel-send') {
       callFor('Choose your next creature!', `${m.from} is waiting for you.`);
-      open(`⚔️ Your next creature against ${m.from}`, h('div', null,
+      place(`⚔️ Your next creature against ${m.from}`, h('div', null,
         h('p', { class: 'small muted' }, 'Choose within a minute, or the next in line goes in.'),
-        this.duelSendPicker(send.down, send.vs, send.options, (i) => answer({ yes: true, value: i }))), true);
+        this.duelSendPicker(send.down, send.vs, send.options, (i) => answer({ yes: true, value: i }))));
       return;
     }
     const lead = m.pick as { kind: 'duel-lead'; vs: CreatureInst | null; options: { i: number; c: CreatureInst }[] } | undefined;
@@ -1017,9 +1024,9 @@ export class App {
     }
     if (pick?.kind === 'duel') {
       callFor('Your move!', `${m.from} is waiting for you.`);
-      open(`⚔️ Your move against ${m.from}`, h('div', null,
-        h('p', { class: 'small muted' }, 'Choose within a minute, or your creature acts on its own instincts.'),
-        this.duelPicker(pick, pick.round, (act) => answer({ yes: true, value: act }))), true);
+      place(`⚔️ Your move against ${m.from}`, h('div', null,
+        h('p', { class: 'small muted' }, 'Choose within a minute, or it acts on instinct.'),
+        this.duelPicker(pick, pick.round, (act) => answer({ yes: true, value: act }), pick.battle)));
       return;
     }
     callFor('An offer for you!', `${m.from} is waiting for you.`);
@@ -1328,7 +1335,7 @@ export class App {
   async duelPick(a: GameState, b: GameState, battle: Battle, wager: number, circuit: boolean | 'stadium' = false): Promise<Action | undefined> {
     const opts = { ...foeOptions(battle), stake: Math.min(wager, b.coins), circuit };
     const m = activeMatchOf();
-    return this.online && m ? this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts }) : undefined;
+    return this.online && m ? this.online.pick<Action>(m.players.indexOf(b), a.trainer.name, { kind: 'duel', round: battle.round + 1, ...opts, battle: JSON.parse(JSON.stringify(battle)) }) : undefined;
   }
 
   /**
@@ -1393,21 +1400,65 @@ export class App {
       h('div', { class: 'list' }, options.map((o) => miniCard(o.c, { onClick: () => done(o.i) }))));
   }
 
-  /** The defender's choices in a duel round: their moves, Catch Breath, and swaps. */
-  duelPicker(o: FoeOptions & { stake?: number; circuit?: boolean | 'stadium' }, round: number, done: (a: Action) => void): HTMLElement {
+  /**
+   * Online: the challenged trainer's choices in a duel round. `battle` is the challenger's battle as it stands,
+   * for the same readouts, swaps, type chart and card they have (missing from an older version's prompt).
+   */
+  duelPicker(o: FoeOptions & { stake?: number; circuit?: boolean | 'stadium' }, round: number, done: (a: Action) => void, battle?: Battle): HTMLElement {
     const body = h('div', { class: 'duel-picker' });
+    const me = battle && activeOf(battle.sides[1]);
+    let reading: string | null = null;
+    const choose = (id: string) => (battle && !settings().fastBattle ? readout(id) : done({ kind: 'move', move: id }));
+    const readout = (id: string) => {
+      reading = id;
+      body.replaceChildren(this.moveReadout(battle!, id, 1, () => moves(), () => done({ kind: 'move', move: id })));
+      (body.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
+    };
+    const change = (c: CreatureInst) => {
+      const net = this.online, seat = this.mySeat();
+      if (me && net && seat >= 0) editSwapMove(c, me, () => swaps(), (edit) => net.send({ type: 'edit', seat, edit }));
+    };
     const swaps = () => body.replaceChildren(
       h('p', null, 'Swap in for ', h('b', null, o.name), ': choose the incoming Alpha.'),
-      h('div', { class: 'list' }, o.swaps.map((sw) => this.swapRow(sw.row, () => done({ kind: 'swap', to: sw.i })))),
+      h('div', { class: 'list' }, o.swaps.map((sw) => this.swapRow(battle ? swapRowInfo(battle, 1, sw.i) : sw.row, () => done({ kind: 'swap', to: sw.i }), battle ? () => change(battle.sides[1].team[sw.i]) : undefined))),
       h('div', { class: 'row end' }, h('button', { class: 'btn ghost sm', onclick: () => moves() }, '← Back to moves')));
-    const moves = () => body.replaceChildren(
-      h('p', null, `Round ${round}: what will `, h('b', null, o.name), ' do?'),
-      h('p', { class: 'small muted' }, `Health ${o.health} · 💨 Stamina ${o.stamina}${o.fatigue ? ` · Fatigue ${o.fatigue}` : ''}`),
-      h('div', { class: 'move-grid' }, o.moves.map((id) => moveCard(MOVE_BY_ID[id], { compact: true, vs: o.vs, onClick: () => done({ kind: 'move', move: id }) }))),
-      h('div', { class: 'row gap-s wrap center' },
-        h('button', { class: 'btn ghost sm', onclick: () => done({ kind: 'move', move: CATCH_BREATH.id }) }, '😮‍💨 Catch Breath'),
-        h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight', onclick: swaps }, '🔁 Swap'),
-        h('button', { class: 'btn ghost sm', onclick: () => giveUp() }, '🏳️ Surrender')));
+    const types = () => {
+      const foe = activeOf(battle!.sides[0]);
+      const attack = [...new Set(me!.playbook.map((id) => MOVE_BY_ID[id]).filter((m) => m.kind === 'elemental' && m.type).map((m) => m.type!))];
+      typeChartSheet({ attack, defend: speciesOf(foe).types, foeName: nameOf(foe) });
+    };
+    const moves = () => {
+      reading = null;
+      body.replaceChildren(
+        h('p', { class: 'duel-line' }, `Round ${round}: what will `, h('b', null, o.name), ' do?'),
+        h('p', { class: 'small muted duel-line' }, `Health ${o.health} · 💨 Stamina ${o.stamina}${o.fatigue ? ` · Fatigue ${o.fatigue}` : ''}`),
+        h('div', { class: 'move-grid' }, o.moves.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: battle ? String(i + 1) : undefined, vs: o.vs, onClick: () => choose(id) }))),
+        h('div', { class: 'row gap-s wrap center sub-actions' },
+          h('button', { class: 'btn ghost sm', onclick: () => choose(CATCH_BREATH.id) }, '😮‍💨 Catch Breath'),
+          h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight', onclick: swaps }, '🔁 Swap'),
+          h('button', { class: 'btn ghost sm', onclick: () => giveUp() }, '🏳️ Surrender'),
+          battle ? h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: types }, '🔺 Types') : null,
+          me ? h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card') : null));
+    };
+    // the same keys as the challenger's
+    if (battle) {
+      const onKey = (e: KeyboardEvent) => {
+        if (!body.isConnected) { removeEventListener('keydown', onKey, true); return; }
+        const top = [...document.querySelectorAll('.sheet-wrap')].pop();
+        if (top && !top.contains(body)) return;
+        if (reading) {
+          if (e.key === 'Escape' || e.key === 'Backspace') { e.stopPropagation(); moves(); }
+          else if (e.key === 'Enter') { e.preventDefault(); done({ kind: 'move', move: reading }); }
+          return;
+        }
+        if (!body.querySelector('.move-grid')) return;
+        const n = Number(e.key), k = e.key.toLowerCase();
+        if (n >= 1 && n <= o.moves.length) choose(o.moves[n - 1]);
+        else if (k === 'b') choose(CATCH_BREATH.id);
+        else if (k === 's' && o.swaps.length) swaps();
+      };
+      addEventListener('keydown', onKey, true);
+    }
     // asked in place, so it goes when the prompt does (the round can time out)
     const giveUp = () => body.replaceChildren(
       this.surrenderTerms(o.lead, [o.circuit === 'stadium' ? 'You lose this battle.' : o.circuit ? 'You’re out of the Creature Circuit, and your season ends here.' : o.stake ? `You lose the 💰 ${o.stake} wager.` : 'You lose the duel (there’s no wager).'], o.circuit ? [] : ['You aren’t sent anywhere to rest: you stay where you are.']),
@@ -1416,6 +1467,22 @@ export class App {
         h('button', { class: 'btn primary', onclick: () => done({ kind: 'surrender' }) }, '🏳️ Surrender')));
     moves();
     return body;
+  }
+
+  /** What a move will do, step by step, before it's chosen. */
+  moveReadout(b: Battle, id: string, side: 0 | 1, back: () => void, use: () => void): HTMLElement {
+    const m = MOVE_BY_ID[id] ?? CATCH_BREATH;
+    return h('div', { class: 'readout' },
+      h('div', { class: 'readout-head' },
+        m.type ? typeIconImg(m.type, 18) : null, h('b', null, m.name),
+        h('span', { class: 'chip' }, m.kind === 'physical' ? 'Physical · Power vs Armor' : m.kind === 'elemental' ? 'Elemental · Focus vs Ward' : 'Support'),
+        h('small', { class: 'muted' }, m.text)),
+      h('ol', { class: 'readout-steps' }, movePreview(b, id, side).map((st) => h('li', { class: st.tone ?? '' },
+        h('span', { class: 'ro-ico' }, st.icon), h('div', null, h('b', null, st.title), h('p', null, st.text))))),
+      h('p', { class: 'small muted readout-after' }, 'Then the foe acts (its move stays hidden until the round plays out). The faster creature goes first.'),
+      h('div', { class: 'row gap-s end' },
+        h('button', { class: 'btn ghost', onclick: back }, '← Back', h('span', { class: 'key-hint' }, ' (Esc)')),
+        h('button', { class: 'btn primary', onclick: use }, `Use ${m.name}`, h('span', { class: 'key-hint' }, ' (Enter)'))));
   }
 
   /** What surrendering costs and what it saves. */
@@ -1950,13 +2017,18 @@ export class App {
     // a duel on one device: both trainers choose here, each on their own panel (the challenged trainer's on
     // top). Whoever isn't choosing has theirs hidden, and a panel stays shut until its trainer opens it.
     const hot = !!ctx.duel && !!ctx.rival && !ctx.watch && !this.online;
-    let who: 0 | 1 = 0, opened = !hot, locked: Action | null = null;
-    if (hot) { controls.classList.add('shared'); this.duelRival = ctx.rival!; }
-    const trainerOn = (si: 0 | 1) => (si === 0 ? s : ctx.rival!).trainer;
+    // online: the same two panels on each one's own screen, the other's always hidden
+    const duelist = !!ctx.watch && ctx.rivalSeat !== undefined && ctx.rivalSeat >= 0 && ctx.rivalSeat === this.mySeat();
+    const rival = ctx.rival ?? (duelist ? activeMatchOf()?.players[ctx.rivalSeat!] : undefined);
+    const stacked = !!rival && (duelist || (!!ctx.duel && !ctx.watch));
+    let who: 0 | 1 = duelist ? 1 : 0, opened = !hot, locked: Action | null = null;
+    if (stacked) controls.classList.add('shared');
+    if (hot) this.duelRival = ctx.rival!;
+    const trainerOn = (si: 0 | 1) => (si === 0 ? s : rival!).trainer;
     /** Show a trainer's controls: the whole of them, or (one device) their panel, with the other one hidden. `nobody`: both are. */
     const put = (nodes: (HTMLElement | null)[], nobody = false) => {
       const kids = nodes.filter((x): x is HTMLElement => !!x);
-      if (!hot) { controls.replaceChildren(...kids); return; }
+      if (!stacked) { controls.replaceChildren(...kids); return; }
       controls.replaceChildren(...([1, 0] as const).map((si) => {
         const on = si === who && !nobody;
         return h('section', { class: `hs-panel ${on ? 'on' : 'off'}`, style: `--pc:${trainerOn(si).color}`, 'aria-label': `${trainerOn(si).name}’s moves` },
@@ -2011,11 +2083,11 @@ export class App {
         h('div', { class: 'pl-vit' },
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: `${x.ko ? 'ko' : ''} ${x.ace ? 'ace' : ''}`, title: x.ace ? 'Their Ace: a tougher creature with a special bond' : '' })))),
         // the Health bar (notched into hearts) and the Fatigue warning diamond on both sides; your side also gets a thin Stamina bar under Health
-        h('div', { class: `pl-bars ${side === 0 || hot ? 'mine' : 'foe'}` },
+        h('div', { class: `pl-bars ${side === 0 || stacked ? 'mine' : 'foe'}` },
           healthBar(maxHearts(c), sn, { over: sn.over }),
           h('span', { class: 'num' }, sn.ko ? 'KO' : `${totalHealth(sn)}/${maxTotal(c)}`, sn.over && !sn.ko ? h('span', { class: 'over-num', title: 'Overheal: extra Health that soaks up damage first' }, ` +${sn.over}`) : null),
           fatigueBadge(sn.fatigue),
-          ...(side === 0 || hot ? [
+          ...(side === 0 || stacked ? [
             h('div', { class: 'bar sta-bar', title: `Stamina ${sn.stamina}/${maxStamina(c)}: each move's 💨 Effort comes out of it. Running out adds Fatigue.` },
               h('i', { style: `width:${Math.min(100, (sn.stamina / maxStamina(c)) * 100)}%` })),
             h('span', { class: 'num sta-num', title: 'Stamina' }, `💨 ${sn.stamina}/${maxStamina(c)}`)] : [])),
@@ -2033,7 +2105,7 @@ export class App {
     // Once the fight is under way it becomes each trainer's last battle, kept in their save (a duel: both
     // trainers, each from their own side). Spectators only keep it for this session.
     // (the challenged trainer, viewing their own duel, reads it from their side)
-    const view: 0 | 1 = ctx.watch && ctx.rivalSeat !== undefined && ctx.rivalSeat >= 0 && ctx.rivalSeat === this.mySeat() ? 1 : 0;
+    const view: 0 | 1 = duelist ? 1 : 0;
     const blog: BattleLog = { title: ctx.intro, turn: s.turn, entries: [] };
     const rivalLog: BattleLog | null = ctx.rival && !ctx.watch ? { title: ctx.kind === 'endgame' ? ctx.intro : `${s.trainer.name} challenged you to a duel!`, turn: ctx.rival.turn, entries: [] } : null;
     this.liveLog = blog;
@@ -2068,6 +2140,7 @@ export class App {
     if (ctx.watch) this.leaveWatch = () => {
       this.leaveWatch = null;
       left.now = true;
+      if (duelist) { this.duelMount = null; this.askOpen?.place?.(); } // a choice still waiting follows us to the map
       this.watchPlaying = false;
       this.watchQueue = null;
       ctx.watch!.push({ kind: 'battle-end' });
@@ -2222,17 +2295,7 @@ export class App {
         const m = MOVE_BY_ID[id] ?? CATCH_BREATH;
         const me = activeOf(b.sides[who]);
         say(`${nameOf(me)} · ${m.name}: here’s what will happen.`);
-        put([h('div', { class: 'readout' },
-          h('div', { class: 'readout-head' },
-            m.type ? typeIconImg(m.type, 18) : null, h('b', null, m.name),
-            h('span', { class: 'chip' }, m.kind === 'physical' ? 'Physical · Power vs Armor' : m.kind === 'elemental' ? 'Elemental · Focus vs Ward' : 'Support'),
-            h('small', { class: 'muted' }, m.text)),
-          h('ol', { class: 'readout-steps' }, movePreview(b, id, who).map((st) => h('li', { class: st.tone ?? '' },
-            h('span', { class: 'ro-ico' }, st.icon), h('div', null, h('b', null, st.title), h('p', null, st.text))))),
-          h('p', { class: 'small muted readout-after' }, 'Then the foe acts (its move stays hidden until the round plays out). The faster creature goes first.'),
-          h('div', { class: 'row gap-s end' },
-            h('button', { class: 'btn ghost', onclick: () => { readoutFor = null; showControls(); } }, '← Back', h('span', { class: 'key-hint' }, ' (Esc)')),
-            h('button', { class: 'btn primary', onclick: () => { readoutFor = null; act({ kind: 'move', move: id }); } }, `Use ${m.name}`, h('span', { class: 'key-hint' }, ' (Enter)'))))]);
+        put([this.moveReadout(b, id, who, () => { readoutFor = null; showControls(); }, () => { readoutFor = null; act({ kind: 'move', move: id }); })]);
         (controls.querySelector('.btn.primary') as HTMLElement | null)?.focus({ preventScroll: true });
       };
       // the creatures on screen (a spectator's copy of the battle only tracks them through the events)
@@ -2282,9 +2345,12 @@ export class App {
           showControls();
           return;
         }
-        controls.replaceChildren(h('div', { class: 'waiting' }, ctx.duel ? `Waiting for ${b.sides[1].name} to choose…` : '…'));
+        if (ctx.duel && a.kind !== 'surrender') locked = a;
+        put([h('div', { class: 'waiting' }, ctx.duel ? `Waiting for ${b.sides[1].name} to choose…` : '…')], true);
         // two-player duel: the other trainer picks their creature's action too
         const foe = ctx.duel && a.kind !== 'surrender' ? await ctx.duel(b) : undefined;
+        locked = null;
+        if (stacked) put([], true);
         const ev = resolveRound(b, a, foe);
         await play(ev);
         showControls();
@@ -2323,10 +2389,16 @@ export class App {
       if (ctx.watch) {
         // watching someone else's battle: play their rounds as they arrive
         say(ctx.intro);
-        controls.replaceChildren(h('div', { class: 'row gap-s center wrap' },
+        const resting = () => put([h('div', { class: 'row gap-s center wrap' },
           h('div', { class: 'waiting' }, view === 1 ? `⚔️ Your battle with ${s.trainer.name}` : `👀 Watching ${s.trainer.name}’s battle`),
           h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
-          ...watchTools()));
+          ...watchTools())], true);
+        resting();
+        if (duelist) this.duelMount = (body) => {
+          say('Your choice!', 'info');
+          put([body]);
+          return () => { if (body.isConnected) resting(); };
+        };
         this.watchPlaying = false;
         void (async () => {
           for (;;) {
@@ -2339,6 +2411,7 @@ export class App {
       } else showControls();
     });
     if (ctx.watch) {
+      if (duelist && !left.now) this.duelMount = null;
       if (!left.now) { this.leaveWatch = null; this.engine.setView(this.world); this.busy = false; }
       return result;
     }
