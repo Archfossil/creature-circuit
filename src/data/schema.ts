@@ -83,7 +83,7 @@ export interface Move {
   dmgDie: number;               // 0 = none
   /** More damage dice rolled with dmgDie and added up (e.g. [4] for "d6+d4"). Any of them showing a 1 inflicts the status. */
   extraDice?: number[];
-  /** Physical moves: crit on the top N faces of the accuracy die (default 1, the top face only). */
+  /** Crit on the top N faces of the accuracy die (physical moves: at least the top one; elemental moves: none unless set). */
   critRange?: number;
   dmgFlat: number;
   /** Elemental attacks: inflicted when any damage die shows a 1 (1 to 1 + Potency). Support moves: inflicted on a hit, no damage roll. */
@@ -91,7 +91,7 @@ export interface Move {
   /** Potency N (elemental): the status lands on a damage roll of 1 to 1 + N instead of just a 1. */
   potency?: number;
   /**
-   * Cascade (physical): a damage die that rolls its highest face rolls again and adds it, and keeps
+   * Cascade: a damage die that rolls its highest face rolls again and adds it, and keeps
    * going while it rolls its highest face. `true` rolls the same die; a number rolls that die instead ("Cascade d10").
    */
   cascade?: true | number;

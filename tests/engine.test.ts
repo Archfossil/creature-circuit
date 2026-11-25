@@ -4,7 +4,8 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { effectiveness, TYPES, STRONG } from '../src/data/types';
 import { SPECIES, SPECIES_BY_ID, STARTERS, activityFromTypes, isActive } from '../src/data/species';
 import { ROSTER, TYPE_COMBOS, FAMILY_RARITIES, HANDMADE_SLOTS, HANDMADE_LEGENDARIES, EXTRA_FAMILIES, extraId } from '../src/data/roster';
-import { MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
+import { attackWorth, targetWorth } from '../src/data/attackStyles';
+import { BY_TOTAL, cascadeDie, critFaces, MOVES, MOVE_BY_ID, CATCH_BREATH, ATTACK_SLOTS, costKey, slotKey, statusChance, statusFaces, avgRoll, purgeBonus, moveKeywords } from '../src/data/moves';
 import { MAP_NODES, MAP_EDGES, neighbors, CITIES, NODE_BY_ID, BIOME_TYPES, TOWNS, CLOUD_RING, CLOUD_EYE, KEY_ITEM_TOWNS, MAP_SCALE, isCloudNode, FOREST_FLOOR, LANTERN_GLADE, RAINBOW_PLAINS, WISP_SPOTS, WISP_REGION } from '../src/data/map';
 import type { MapNode } from '../src/data/schema';
 import { MARGOS } from '../src/regions';
@@ -2470,6 +2471,62 @@ describe('attack grid', () => {
       for (const [k, v] of Object.entries(slot.cost)) expect(slot.cost[slot.type]!, k).toBeGreaterThanOrEqual(v!);
     }
   });
+  it('gives late attacks an identity: no two of a cost are alike, and every type has its own style', () => {
+    const typed = (m: (typeof MOVES)[number]) => TYPES.reduce((a, x) => a + (m.cost[x] ?? 0), 0);
+    const numbers = (m: (typeof MOVES)[number]) => JSON.stringify([m.dmgDie, m.extraDice, m.dmgFlat, m.accuracy, m.speed, m.effort, m.critRange, m.cascade, m.potency, m.purge, m.zeroIn, m.effect]);
+    const made = MOVES.filter((m) => m.placeholder);
+    const of = (n: number) => made.filter((m) => typed(m) === n);
+    expect(of(5).length).toBe(120);
+    expect(new Set(of(5).map(numbers)).size).toBe(120);
+    expect(of(4).length - new Set(of(4).map(numbers)).size).toBeLessThan(3);
+    // a mirrored pair: lightning on steel, and steel on lightning
+    const find = (a: string, n: number, b: string, k: number) => MOVES.find((m) => m.type === a && m.cost[a as 'fire'] === n && m.cost[b as 'fire'] === k)!;
+    const volt = find('electric', 4, 'steel', 1), iron = find('steel', 4, 'electric', 1);
+    expect([critFaces(volt), critFaces(iron)]).toEqual([2, 0]);
+    expect(volt.speed).toBeGreaterThan(iron.speed);
+    expect(iron.dmgFlat).toBeGreaterThan(volt.dmgFlat);
+    expect(iron.effect?.foe?.ward).toBe(-1);
+    // each type's biggest attacks show its style
+    const big = (x: string) => of(5).filter((m) => m.type === x && m.cost[x as 'fire']! >= 4);
+    const style: Record<string, (m: (typeof MOVES)[number]) => unknown> = {
+      astral: (m) => m.cascade, charm: (m) => m.accuracy === 'sure', electric: (m) => critFaces(m) >= 2 && m.speed > 0, fire: (m) => (m.potency ?? 0) >= 3 && m.effort >= 4,
+      grass: (m) => (m.effect?.heal ?? 0) >= 3, rock: (m) => m.accuracy === 8 && m.speed <= -2, steel: (m) => (m.effect?.foe?.ward ?? 0) < 0 && m.dmgDie <= 6, water: (m) => m.zeroIn === 3,
+    };
+    for (const x of TYPES) { expect(big(x).length, x).toBe(8); for (const m of big(x)) expect(style[x](m) || (x === 'water' && m.zeroIn === 0), m.name).toBeTruthy(); }
+    // and they're fair: worth about the same for their cost
+    const sums = { avgRoll, statusChance };
+    const plain = (n: number) => attackWorth({ id: '', name: '', kind: 'elemental', cost: {}, accuracy: 6, ...BY_TOTAL[n], text: '' }, n, sums);
+    for (const n of [2, 3, 4]) expect(targetWorth(n, false, sums), `${n}`).toBeCloseTo(plain(n)); // the yardstick: a plain attack
+    expect(targetWorth(5, false, sums) / plain(5)).toBeLessThan(1.25);
+    for (const m of made.filter((x) => typed(x) > 1)) {
+      const r = attackWorth(m, typed(m), sums) / targetWorth(typed(m), TYPES.filter((x) => m.cost[x]).length > 1, sums);
+      expect(r, m.name).toBeGreaterThan(0.88); expect(r, m.name).toBeLessThan(1.16);
+      expect(m.zeroIn ?? 1, m.name).toBeLessThanOrEqual(3);
+    }
+  });
+  it('lets elemental attacks crit and Cascade when they say so', () => {
+    const sure = MOVES.filter((m) => m.kind === 'elemental' && m.accuracy === 'sure');
+    expect(sure.length).toBeGreaterThan(3);
+    for (const m of sure) expect(critFaces(m), m.name).toBe(0);
+    const c = MOVES.find((m) => m.placeholder && m.type === 'astral' && m.cascade === true && m.dmgDie === 8)!;
+    expect(cascadeDie(c, 8)).toBe(8);
+    expect(avgRoll(c)).toBeGreaterThan(4.5 + c.dmgFlat);
+    expect(c.text).toMatch(/Cascade/);
+    const v = MOVES.find((m) => m.kind === 'elemental' && critFaces(m) === 2)!;
+    expect(v.text).toMatch(/Wide crits: an accuracy roll of 5–6 crits/);
+    expect(MOVE_BY_ID.thunderclap.text).toMatch(/An accuracy roll of 6 crits/);
+    // in battle
+    const me = createCreature('zapup', 9), foe = createCreature('sproutle', 9);
+    me.playbook = ['thunderclap']; foe.playbook = ['tackle'];
+    let crits = 0;
+    for (let i = 0; i < 200; i++) {
+      me.health = foe.health = 999; me.ko = foe.ko = false; me.fatigue = 0; me.stamina = 99;
+      const bt = createBattle(side('player', [me]), side('wild', [foe]), WEATHER.clear);
+      const ev = resolveRound(bt, { kind: 'move', move: 'thunderclap' });
+      for (const e of ev) if (e.t === 'roll' && e.side === 0 && e.label === 'Accuracy') { expect(e.crit).toBe(e.hit && (e.natural ?? 0) >= 6); if (e.crit) crits++; }
+    }
+    expect(crits).toBeGreaterThan(8);
+  });
   it('even splits get one attack per type, so 2 Fire + 2 Grass hits as Fire and as Grass', () => {
     const twoTwo = MOVES.filter((m) => m.cost.fire === 2 && m.cost.grass === 2);
     expect(twoTwo.map((m) => m.type).sort()).toEqual(['fire', 'grass']);
@@ -3313,7 +3370,8 @@ describe('extra damage dice and wide crits', () => {
     expect(critFrom(MOVE_BY_ID.tackle, 6)).toBe(6);
     expect(critFrom(MOVE_BY_ID.rampage, 8)).toBe(6);
     expect(critFrom(MOVE_BY_ID.claw, 4)).toBe(3); // a Dazed d4 keeps the two-face range
-    expect(critFrom(MOVE_BY_ID['thorn-volley'], 6)).toBe(0); // elemental moves don't crit
+    expect(critFrom(MOVE_BY_ID['thorn-volley'], 6)).toBe(0); // most elemental moves don't crit
+    expect(critFrom(MOVE_BY_ID.thunderclap, 6)).toBe(6); // but some do
     for (const [move, crit] of [['claw', true], ['tackle', false]] as const) {
       const ev = queue([0.7], fight(move).go); // natural 5
       const dmg = ev.find((e) => e.t === 'damage' && e.side === 1);

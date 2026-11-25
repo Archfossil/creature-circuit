@@ -2,7 +2,7 @@ import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
 import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
-import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom } from '../data/moves';
+import { MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom, critText, critsMore } from '../data/moves';
 import { ABILITIES, NATURE_BY_ID } from '../data/content';
 import { SWAP_MOVES, describeSwap, swapText } from '../data/swapMoves';
 import { setSwapMove, swapLock, swapMoveOf, swapMoveSet, swapVals } from '../engine/swaps';
@@ -100,7 +100,7 @@ export function moveCard(m: Move, opts: { onClick?: () => void; disabled?: boole
     h('div', { class: 'mc-stats' },
       h('span', { title: 'Damage' }, '⚔ ', dmg),
       h('span', { title: 'Accuracy' }, '🎯 ', acc),
-      critFaces(m) > 1 && typeof m.accuracy === 'number' ? h('span', { class: 'mc-crit', title: `Wide crits: an accuracy roll of ${critFrom(m, m.accuracy)}–${m.accuracy} is a critical hit (double damage). Most physical moves crit only on a ${m.accuracy}.` }, '✸', `${critFrom(m, m.accuracy)}+`) : null,
+      critsMore(m) && typeof m.accuracy === 'number' ? h('span', { class: 'mc-crit', title: `${critFaces(m) > 1 ? 'Wide crits: an' : 'An'} accuracy roll of ${critText(m, m.accuracy)} is a critical hit (double damage). ${m.kind === 'physical' ? `Most physical moves crit only on a ${m.accuracy}` : 'Most elemental moves can’t crit'}.` }, '✸', `${critFrom(m, m.accuracy)}${critFaces(m) > 1 ? '+' : ''}`) : null,
       h('span', { title: 'Effort (stamina)' }, '💨 ', m.effort),
       m.speed ? h('span', { title: 'Speed modifier' }, '⚡', m.speed > 0 ? `+${m.speed}` : m.speed) : null,
       // Zeroing In, only when it isn't the usual +1 on a miss

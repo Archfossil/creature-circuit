@@ -12,7 +12,7 @@ Every move in the game with all its attributes. Use it to swap generated **place
 | Hand-made | 76 |
 | **Placeholders to replace** | **336** |
 | Attack-grid slots | 376 (40 hand-made, 336 placeholders) |
-| Hand-made moves flagged for a balance look | 4 |
+| Hand-made moves flagged for a balance look | 6 |
 | Swap Moves | 29 (5 neutral, 24 typed; **24 awaiting design sign-off**) |
 
 ## How to read this
@@ -20,19 +20,19 @@ Every move in the game with all its attributes. Use it to swap generated **place
 - **Cost** is the energy a creature must generate to slot the move into its playbook. It isn’t spent per use. Neutral can be paid by any type.
 - **Hits as**: the type the attack uses on the type chart. Physical moves ignore the chart and use Power vs Armor.
 - **Damage** is the damage die (plus any extra dice, e.g. d10+d4, which are added up) and a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.
-- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits).
+- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits). Elemental moves crit only if marked.
 - **⌖ Zeroing In**: a miss gives the creature's next accuracy roll +1, stacking over a streak of misses up to +3. The next accuracy roll uses it up, and leaving the field loses it. Moves that differ say so after their accuracy: **(⌖ +2)** is a pursuit move that zeroes in harder, **(⌖ ✕)** is all or nothing and never zeroes in.
 - **Speed** is added to the user’s Speed this round to decide who acts first. **Effort** is the Stamina it drains.
 - **Status** is inflicted when a damage die rolls a 1 (elemental attacks carry their type’s status). Moves with extra dice (e.g. d10+d4) inflict it if **any** die shows a 1, so the chance is shown next to the status.
-- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Cascade** (physical) rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn't count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).
+- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Cascade** rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn't count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).
 - **Status moves** are support moves with a Status: they roll accuracy and, on a hit, inflict it outright with no damage.
-- **Balance note** compares a hand-made move’s average damage with a generated placeholder of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.
+- **Balance note** compares a hand-made move’s average damage with a plain attack of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.
 - **Design ☐**: a designed name, flavour and numbers. Hand-made moves start ticked. **Balance ☐**: tick once someone has reviewed its numbers in play.
 - **Swapping a placeholder (developers):** add the move to `HANDMADE` in `src/data/moves.ts` with the same typed cost and hit type. It takes over that grid slot and the placeholder disappears. Then regenerate this file.
 
-## The placeholder formula (balance baseline)
+## The balance baseline
 
-Generated attacks use these numbers by total typed cost. Dual-type attacks get +1 flat damage for needing two energy types. All placeholders have d6 accuracy.
+A plain attack of each total typed cost, with d6 accuracy (dual types get +1 flat damage for needing two). No late attack is this plain: each generated one has its type’s style (`src/data/attackStyles.ts`, docs/03) and is worth about what the plain one is.
 
 | Total cost | Damage (single type) | Damage (dual type) | Avg (single / dual) | Speed | Effort |
 |---|---|---|---|---|---|
@@ -127,7 +127,7 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 | **Overgrowth** | `sig-overgrowth` | 3 Grass + 1 Neutral | Grass | d8 | 4.5 | 1.13 | d6 | 0 | 1 | Snare | — | On a hit, you heal 2 Health. | — | Hand-made | ☑ | ☐ |
 | **Mesa Breaker** | `sig-mesa` | 3 Rock + 1 Neutral | Rock | d10+2 | 7.5 | 1.88 | d6 | -1 | 1 | Stagger | — | — | ⬆ Strong for its cost (+1.8 vs baseline) | Hand-made | ☑ | ☐ |
 | **Foundry Hammer** | `sig-foundry` | 3 Steel + 1 Neutral | Steel | d8 | 4.5 | 1.13 | d6 | 0 | 1 | Sunder | — | On a hit, the foe gets −1 Armor. | — | Hand-made | ☑ | ☐ |
-| **Riptide** | `sig-riptide` | 3 Water + 1 Neutral | Water | d8 | 4.5 | 1.13 | d6 | +2 | 1 | Soak | — | — | — | Hand-made | ☑ | ☐ |
+| **Riptide** | `sig-riptide` | 3 Water + 1 Neutral | Water | d8 | 4.5 | 1.13 | d6 (⌖ +3) | +1 | 1 | Soak | — | — | — | Hand-made | ☑ | ☐ |
 
 ## Swap Moves
 
@@ -182,9 +182,9 @@ What a creature does when it swaps in during battle (it's the **Alpha**; the cre
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Stardust** | `stardust` | 1 Astral | Astral | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Daze | — | — | — | Hand-made | ☑ | ☐ |
 | **Comet Tail** | `comet-tail` | 2 Astral + 1 Neutral | Astral | d6 | 3.5 | 1.17 | d6 | +1 | 1 | Daze | — | — | — | Hand-made | ☑ | ☐ |
-| **Starglimmer** | `starglimmer` | 3 Astral | Astral | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Daze (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Meteor** | `meteor` | 4 Astral + 1 Neutral | Astral | d10+d4 | 8.0 | 1.60 | d6 | -2 | 3 | Daze (a 1, 32%) | — | — | — | Hand-made | ☑ | ☐ |
-| **Star Nova** | `atk-astral5` | 5 Astral | Astral | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
+| **Starglimmer** | `starglimmer` | 3 Astral | Astral | d6 | 4.1 | 1.35 | d6 | 0 | 2 | Daze (1–3, 50%) | Potency 2, Cascade d4 | — | — | Hand-made | ☑ | ☐ |
+| **Meteor** | `meteor` | 4 Astral + 1 Neutral | Astral | d10+d4 | 9.2 | 1.83 | d6 | -3 | 3 | Daze (a 1, 32%) | Cascade d4 | — | ⬆ Strong for its cost (+1.9 vs baseline) | Hand-made | ☑ | ☐ |
+| **Star Singularity** | `atk-astral5` | 5 Astral | Astral | d4+d4+1 | 8.1 | 1.62 | d6 | -1 | 3 | Daze (a 1, 44%) | Cascade d6 | — | — | Placeholder | ☐ | ☐ |
 
 ### Astral: dual-type
 
@@ -192,48 +192,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Starheart Pulse** | `atk-astral1-charm1-astral` | 1 Astral + 1 Charm | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspark Pulse** | `atk-astral1-electric1-astral` | 1 Astral + 1 Electric | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starblaze Pulse** | `atk-astral1-fire1-astral` | 1 Astral + 1 Fire | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starthorn Pulse** | `atk-astral1-grass1-astral` | 1 Astral + 1 Grass | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Stargrit Pulse** | `atk-astral1-rock1-astral` | 1 Astral + 1 Rock | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starforge Pulse** | `atk-astral1-steel1-astral` | 1 Astral + 1 Steel | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspray Pulse** | `atk-astral1-water1-astral` | 1 Astral + 1 Water | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
+| **Starheart Twinkle** | `atk-astral1-charm1-astral` | 1 Astral + 1 Charm | Astral | d6 | 3.5 | 1.75 | d6 | 0 | 1 | Daze | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Starspark Twinkle** | `atk-astral1-electric1-astral` | 1 Astral + 1 Electric | Astral | d6 | 3.5 | 1.75 | d6 | +2 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
+| **Starblaze Twinkle** | `atk-astral1-fire1-astral` | 1 Astral + 1 Fire | Astral | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Daze (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Starthorn Twinkle** | `atk-astral1-grass1-astral` | 1 Astral + 1 Grass | Astral | d6 | 3.5 | 1.75 | d6 | 0 | 1 | Daze | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stargrit Twinkle** | `atk-astral1-rock1-astral` | 1 Astral + 1 Rock | Astral | d8 | 4.5 | 2.25 | d6 | -1 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
+| **Starforge Twinkle** | `atk-astral1-steel1-astral` | 1 Astral + 1 Steel | Astral | d4+2 | 4.5 | 2.25 | d6 | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
+| **Starspray Twinkle** | `atk-astral1-water1-astral` | 1 Astral + 1 Water | Astral | d6+1 | 4.5 | 2.25 | d6 (⌖ +2) | 0 | 1 | Daze | — | — | — | Placeholder | ☐ | ☐ |
 | **Starstruck** | `starstruck` | 2 Astral + 1 Charm | Astral | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Daze | Purge: Beguile | — | — | Hand-made | ☑ | ☐ |
-| **Starspark Strike** | `atk-astral2-electric1` | 2 Astral + 1 Electric | Astral | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starblaze Strike** | `atk-astral2-fire1` | 2 Astral + 1 Fire | Astral | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starthorn Strike** | `atk-astral2-grass1` | 2 Astral + 1 Grass | Astral | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Stargrit Strike** | `atk-astral2-rock1` | 2 Astral + 1 Rock | Astral | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starforge Strike** | `atk-astral2-steel1` | 2 Astral + 1 Steel | Astral | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspray Strike** | `atk-astral2-water1` | 2 Astral + 1 Water | Astral | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starheart Wave** | `atk-astral2-charm2-astral` | 2 Astral + 2 Charm | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspark Wave** | `atk-astral2-electric2-astral` | 2 Astral + 2 Electric | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starblaze Wave** | `atk-astral2-fire2-astral` | 2 Astral + 2 Fire | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starthorn Wave** | `atk-astral2-grass2-astral` | 2 Astral + 2 Grass | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Stargrit Wave** | `atk-astral2-rock2-astral` | 2 Astral + 2 Rock | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starforge Wave** | `atk-astral2-steel2-astral` | 2 Astral + 2 Steel | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspray Wave** | `atk-astral2-water2-astral` | 2 Astral + 2 Water | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starheart Crash** | `atk-astral3-charm1` | 3 Astral + 1 Charm | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspark Crash** | `atk-astral3-electric1` | 3 Astral + 1 Electric | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starblaze Crash** | `atk-astral3-fire1` | 3 Astral + 1 Fire | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starthorn Crash** | `atk-astral3-grass1` | 3 Astral + 1 Grass | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Stargrit Crash** | `atk-astral3-rock1` | 3 Astral + 1 Rock | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starforge Crash** | `atk-astral3-steel1` | 3 Astral + 1 Steel | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspray Crash** | `atk-astral3-water1` | 3 Astral + 1 Water | Astral | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starheart Barrage** | `atk-astral3-charm2` | 3 Astral + 2 Charm | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspark Barrage** | `atk-astral3-electric2` | 3 Astral + 2 Electric | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starblaze Barrage** | `atk-astral3-fire2` | 3 Astral + 2 Fire | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starthorn Barrage** | `atk-astral3-grass2` | 3 Astral + 2 Grass | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Stargrit Barrage** | `atk-astral3-rock2` | 3 Astral + 2 Rock | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starforge Barrage** | `atk-astral3-steel2` | 3 Astral + 2 Steel | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspray Barrage** | `atk-astral3-water2` | 3 Astral + 2 Water | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starheart Cataclysm** | `atk-astral4-charm1` | 4 Astral + 1 Charm | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspark Cataclysm** | `atk-astral4-electric1` | 4 Astral + 1 Electric | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starblaze Cataclysm** | `atk-astral4-fire1` | 4 Astral + 1 Fire | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starthorn Cataclysm** | `atk-astral4-grass1` | 4 Astral + 1 Grass | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Stargrit Cataclysm** | `atk-astral4-rock1` | 4 Astral + 1 Rock | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starforge Cataclysm** | `atk-astral4-steel1` | 4 Astral + 1 Steel | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
-| **Starspray Cataclysm** | `atk-astral4-water1` | 4 Astral + 1 Water | Astral | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Daze | — | — | — | Placeholder | ☐ | ☐ |
+| **Starspark Gleam** | `atk-astral2-electric1` | 2 Astral + 1 Electric | Astral | d6+1 | 5.1 | 1.69 | d6 | +2 | 2 | Daze | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Starblaze Gleam** | `atk-astral2-fire1` | 2 Astral + 1 Fire | Astral | d6+1 | 5.1 | 1.69 | d6 | 0 | 2 | Daze (1–2, 33%) | Potency 1, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Starthorn Gleam** | `atk-astral2-grass1` | 2 Astral + 1 Grass | Astral | d6+1 | 5.1 | 1.69 | d6 | 0 | 2 | Daze | Cascade d4 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stargrit Gleam** | `atk-astral2-rock1` | 2 Astral + 1 Rock | Astral | d8+1 | 5.9 | 1.97 | d6 | -1 | 2 | Daze | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Starforge Gleam** | `atk-astral2-steel1` | 2 Astral + 1 Steel | Astral | d4+2 | 5.3 | 1.78 | d6 | 0 | 2 | Daze | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Starspray Gleam** | `atk-astral2-water1` | 2 Astral + 1 Water | Astral | d6+1 | 5.1 | 1.69 | d6 (⌖ +2) | 0 | 2 | Daze | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Starheart Shower** | `atk-astral2-charm2-astral` | 2 Astral + 2 Charm | Astral | d8 | 5.1 | 1.29 | d6 | 0 | 2 | Daze | Cascade, Purge: Daze | — | — | Placeholder | ☐ | ☐ |
+| **Starspark Shower** | `atk-astral2-electric2-astral` | 2 Astral + 2 Electric | Astral | d6 | 4.2 | 1.05 | d6 (✸ 6) | +1 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starblaze Shower** | `atk-astral2-fire2-astral` | 2 Astral + 2 Fire | Astral | d8+1 | 6.1 | 1.54 | d6 | 0 | 3 | Daze (1–3, 38%) | Potency 2, Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starthorn Shower** | `atk-astral2-grass2-astral` | 2 Astral + 2 Grass | Astral | d8 | 5.1 | 1.29 | d6 | 0 | 2 | Daze | Cascade | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Stargrit Shower** | `atk-astral2-rock2-astral` | 2 Astral + 2 Rock | Astral | d12 | 7.1 | 1.77 | d6 (⌖ ✕) | -2 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starforge Shower** | `atk-astral2-steel2-astral` | 2 Astral + 2 Steel | Astral | d4+2 | 5.3 | 1.33 | d6 | 0 | 2 | Daze | Cascade | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Starspray Shower** | `atk-astral2-water2-astral` | 2 Astral + 2 Water | Astral | d8 | 5.1 | 1.29 | d6 (⌖ +3) | 0 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starheart Starburst** | `atk-astral3-charm1` | 3 Astral + 1 Charm | Astral | d8 | 5.1 | 1.29 | d6 | 0 | 2 | Daze | Cascade, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Starspark Starburst** | `atk-astral3-electric1` | 3 Astral + 1 Electric | Astral | d8 | 5.1 | 1.29 | d6 | +2 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starblaze Starburst** | `atk-astral3-fire1` | 3 Astral + 1 Fire | Astral | d8+1 | 6.1 | 1.54 | d6 | 0 | 2 | Daze (1–2, 25%) | Potency 1, Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starthorn Starburst** | `atk-astral3-grass1` | 3 Astral + 1 Grass | Astral | d8+1 | 6.1 | 1.54 | d6 | 0 | 2 | Daze | Cascade | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stargrit Starburst** | `atk-astral3-rock1` | 3 Astral + 1 Rock | Astral | d10 | 6.1 | 1.53 | d6 | -1 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starforge Starburst** | `atk-astral3-steel1` | 3 Astral + 1 Steel | Astral | d6+2 | 6.2 | 1.55 | d6 | 0 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starspray Starburst** | `atk-astral3-water1` | 3 Astral + 1 Water | Astral | d8+1 | 6.1 | 1.54 | d6 (⌖ +2) | 0 | 2 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starheart Constellation** | `atk-astral3-charm2` | 3 Astral + 2 Charm | Astral | d8+1 | 6.1 | 1.23 | d6 | 0 | 3 | Daze | Cascade, Purge: Daze | — | — | Placeholder | ☐ | ☐ |
+| **Starspark Constellation** | `atk-astral3-electric2` | 3 Astral + 2 Electric | Astral | d8 | 5.1 | 1.03 | d6 (✸ 6) | +1 | 3 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starblaze Constellation** | `atk-astral3-fire2` | 3 Astral + 2 Fire | Astral | d8+3 | 8.1 | 1.63 | d6 | 0 | 4 | Daze (1–3, 38%) | Potency 2, Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starthorn Constellation** | `atk-astral3-grass2` | 3 Astral + 2 Grass | Astral | d8+2 | 7.1 | 1.43 | d6 | 0 | 3 | Daze | Cascade | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Stargrit Constellation** | `atk-astral3-rock2` | 3 Astral + 2 Rock | Astral | d12+2 | 9.1 | 1.82 | d6 (⌖ ✕) | -2 | 3 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starforge Constellation** | `atk-astral3-steel2` | 3 Astral + 2 Steel | Astral | d4+3 | 6.3 | 1.27 | d6 | 0 | 3 | Daze | Cascade | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Starspray Constellation** | `atk-astral3-water2` | 3 Astral + 2 Water | Astral | d8+2 | 7.1 | 1.43 | d6 (⌖ +3) | 0 | 3 | Daze | Cascade | — | — | Placeholder | ☐ | ☐ |
+| **Starheart Supernova** | `atk-astral4-charm1` | 4 Astral + 1 Charm | Astral | d6+3 | 7.4 | 1.47 | d6 | -1 | 3 | Daze | Cascade d8, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Starspark Supernova** | `atk-astral4-electric1` | 4 Astral + 1 Electric | Astral | d6+3 | 7.4 | 1.47 | d6 | +1 | 3 | Daze | Cascade d8 | — | — | Placeholder | ☐ | ☐ |
+| **Starblaze Supernova** | `atk-astral4-fire1` | 4 Astral + 1 Fire | Astral | d6+3 | 7.4 | 1.47 | d6 | -1 | 3 | Daze (1–2, 33%) | Potency 1, Cascade d8 | — | — | Placeholder | ☐ | ☐ |
+| **Starthorn Supernova** | `atk-astral4-grass1` | 4 Astral + 1 Grass | Astral | d6+3 | 7.4 | 1.47 | d6 | -1 | 3 | Daze | Cascade d8 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stargrit Supernova** | `atk-astral4-rock1` | 4 Astral + 1 Rock | Astral | d6+d4 | 8.1 | 1.63 | d6 | -2 | 3 | Daze (a 1, 38%) | Cascade d8 | — | — | Placeholder | ☐ | ☐ |
+| **Starforge Supernova** | `atk-astral4-steel1` | 4 Astral + 1 Steel | Astral | d4+d4 | 7.6 | 1.51 | d6 | -1 | 3 | Daze (a 1, 44%) | Cascade d8 | — | — | Placeholder | ☐ | ☐ |
+| **Starspray Supernova** | `atk-astral4-water1` | 4 Astral + 1 Water | Astral | d6+3 | 7.4 | 1.47 | d6 (⌖ +2) | -1 | 3 | Daze | Cascade d8 | — | — | Placeholder | ☐ | ☐ |
 
 ## Charm attacks
 
@@ -245,9 +245,9 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Pixie Glint** | `pixie-glint` | 1 Charm | Charm | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Beguile | — | — | — | Hand-made | ☑ | ☐ |
 | **Heartbreaker** | `heartbreaker` | 2 Charm + 1 Neutral | Charm | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Beguile | Purge | — | — | Hand-made | ☑ | ☐ |
-| **Bewitching Waltz** | `bewitching-waltz` | 3 Charm | Charm | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Beguile (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Glamour Burst** | `glamour-burst` | 4 Charm + 1 Neutral | Charm | d10 | 5.5 | 1.10 | d6 | -1 | 3 | Beguile | — | — | — | Hand-made | ☑ | ☐ |
-| **Glam Nova** | `atk-charm5` | 5 Charm | Charm | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Bewitching Waltz** | `bewitching-waltz` | 3 Charm | Charm | d4 | 2.5 | 0.83 | d8 | 0 | 2 | Beguile (1–2, 50%) | Potency 1 | — | ⬇ Weak for its cost (-2 vs baseline) | Hand-made | ☑ | ☐ |
+| **Glamour Burst** | `glamour-burst` | 4 Charm + 1 Neutral | Charm | d8+1 | 5.5 | 1.10 | d8 | +1 | 3 | Beguile | Purge | — | — | Hand-made | ☑ | ☐ |
+| **Glam Rapture** | `atk-charm5` | 5 Charm | Charm | d4 | 2.5 | 0.50 | Sure-hit | +1 | 3 | Beguile | Purge: Beguile | — | — | Placeholder | ☐ | ☐ |
 
 ### Charm: dual-type
 
@@ -255,48 +255,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Glamlight Pulse** | `atk-astral1-charm1-charm` | 1 Astral + 1 Charm | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspark Pulse** | `atk-charm1-electric1-charm` | 1 Charm + 1 Electric | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamblaze Pulse** | `atk-charm1-fire1-charm` | 1 Charm + 1 Fire | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamthorn Pulse** | `atk-charm1-grass1-charm` | 1 Charm + 1 Grass | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamgrit Pulse** | `atk-charm1-rock1-charm` | 1 Charm + 1 Rock | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamforge Pulse** | `atk-charm1-steel1-charm` | 1 Charm + 1 Steel | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspray Pulse** | `atk-charm1-water1-charm` | 1 Charm + 1 Water | Charm | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamlight Wink** | `atk-astral1-charm1-charm` | 1 Astral + 1 Charm | Charm | d6 | 4.1 | 2.03 | d6 | +1 | 1 | Beguile | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Glamspark Wink** | `atk-charm1-electric1-charm` | 1 Charm + 1 Electric | Charm | d6 | 3.5 | 1.75 | d6 | +3 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamblaze Wink** | `atk-charm1-fire1-charm` | 1 Charm + 1 Fire | Charm | d6 | 3.5 | 1.75 | d6 | +1 | 1 | Beguile (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Glamthorn Wink** | `atk-charm1-grass1-charm` | 1 Charm + 1 Grass | Charm | d6 | 3.5 | 1.75 | d6 | +1 | 1 | Beguile | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Glamgrit Wink** | `atk-charm1-rock1-charm` | 1 Charm + 1 Rock | Charm | d8 | 4.5 | 2.25 | d6 | 0 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamforge Wink** | `atk-charm1-steel1-charm` | 1 Charm + 1 Steel | Charm | d4+1 | 3.5 | 1.75 | d6 | +1 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamspray Wink** | `atk-charm1-water1-charm` | 1 Charm + 1 Water | Charm | d6 | 3.5 | 1.75 | d6 (⌖ +2) | +1 | 1 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
 | **Dream Kiss** | `dream-kiss` | 1 Astral + 2 Charm | Charm | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Beguile | Purge: Daze | — | — | Hand-made | ☑ | ☐ |
-| **Glamspark Strike** | `atk-charm2-electric1` | 2 Charm + 1 Electric | Charm | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamblaze Strike** | `atk-charm2-fire1` | 2 Charm + 1 Fire | Charm | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamthorn Strike** | `atk-charm2-grass1` | 2 Charm + 1 Grass | Charm | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamgrit Strike** | `atk-charm2-rock1` | 2 Charm + 1 Rock | Charm | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamforge Strike** | `atk-charm2-steel1` | 2 Charm + 1 Steel | Charm | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspray Strike** | `atk-charm2-water1` | 2 Charm + 1 Water | Charm | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamlight Crash** | `atk-astral1-charm3` | 1 Astral + 3 Charm | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamlight Wave** | `atk-astral2-charm2-charm` | 2 Astral + 2 Charm | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspark Wave** | `atk-charm2-electric2-charm` | 2 Charm + 2 Electric | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamblaze Wave** | `atk-charm2-fire2-charm` | 2 Charm + 2 Fire | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamthorn Wave** | `atk-charm2-grass2-charm` | 2 Charm + 2 Grass | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamgrit Wave** | `atk-charm2-rock2-charm` | 2 Charm + 2 Rock | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamforge Wave** | `atk-charm2-steel2-charm` | 2 Charm + 2 Steel | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspray Wave** | `atk-charm2-water2-charm` | 2 Charm + 2 Water | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspark Crash** | `atk-charm3-electric1` | 3 Charm + 1 Electric | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamblaze Crash** | `atk-charm3-fire1` | 3 Charm + 1 Fire | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamthorn Crash** | `atk-charm3-grass1` | 3 Charm + 1 Grass | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamgrit Crash** | `atk-charm3-rock1` | 3 Charm + 1 Rock | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamforge Crash** | `atk-charm3-steel1` | 3 Charm + 1 Steel | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspray Crash** | `atk-charm3-water1` | 3 Charm + 1 Water | Charm | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamlight Cataclysm** | `atk-astral1-charm4` | 1 Astral + 4 Charm | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamlight Barrage** | `atk-astral2-charm3` | 2 Astral + 3 Charm | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspark Barrage** | `atk-charm3-electric2` | 3 Charm + 2 Electric | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamblaze Barrage** | `atk-charm3-fire2` | 3 Charm + 2 Fire | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamthorn Barrage** | `atk-charm3-grass2` | 3 Charm + 2 Grass | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamgrit Barrage** | `atk-charm3-rock2` | 3 Charm + 2 Rock | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamforge Barrage** | `atk-charm3-steel2` | 3 Charm + 2 Steel | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspray Barrage** | `atk-charm3-water2` | 3 Charm + 2 Water | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspark Cataclysm** | `atk-charm4-electric1` | 4 Charm + 1 Electric | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamblaze Cataclysm** | `atk-charm4-fire1` | 4 Charm + 1 Fire | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamthorn Cataclysm** | `atk-charm4-grass1` | 4 Charm + 1 Grass | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamgrit Cataclysm** | `atk-charm4-rock1` | 4 Charm + 1 Rock | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamforge Cataclysm** | `atk-charm4-steel1` | 4 Charm + 1 Steel | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
-| **Glamspray Cataclysm** | `atk-charm4-water1` | 4 Charm + 1 Water | Charm | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamspark Whisper** | `atk-charm2-electric1` | 2 Charm + 1 Electric | Charm | d6 | 3.5 | 1.17 | d6 | +3 | 1 | Beguile | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Glamblaze Whisper** | `atk-charm2-fire1` | 2 Charm + 1 Fire | Charm | d6 | 3.5 | 1.17 | d6 | +1 | 1 | Beguile (1–2, 33%) | Potency 1, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Glamthorn Whisper** | `atk-charm2-grass1` | 2 Charm + 1 Grass | Charm | d6 | 3.5 | 1.17 | d6 | +1 | 1 | Beguile | Purge | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Glamgrit Whisper** | `atk-charm2-rock1` | 2 Charm + 1 Rock | Charm | d8 | 4.5 | 1.50 | d6 | 0 | 1 | Beguile | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Glamforge Whisper** | `atk-charm2-steel1` | 2 Charm + 1 Steel | Charm | d4+1 | 3.5 | 1.17 | d6 | +1 | 1 | Beguile | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Glamspray Whisper** | `atk-charm2-water1` | 2 Charm + 1 Water | Charm | d6 | 3.5 | 1.17 | d6 (⌖ +2) | +1 | 1 | Beguile | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Glamlight Enchantment** | `atk-astral1-charm3` | 1 Astral + 3 Charm | Charm | d6 | 4.1 | 1.01 | d8 | 0 | 2 | Beguile | Cascade d4, Purge: Daze | — | — | Placeholder | ☐ | ☐ |
+| **Glamlight Serenade** | `atk-astral2-charm2-charm` | 2 Astral + 2 Charm | Charm | d4 | 4.0 | 1.01 | d8 | 0 | 2 | Beguile | Cascade d10, Purge: Daze | — | — | Placeholder | ☐ | ☐ |
+| **Glamspark Serenade** | `atk-charm2-electric2-charm` | 2 Charm + 2 Electric | Charm | d4 | 2.5 | 0.63 | d8 (✸ 8) | +1 | 2 | Beguile | Purge: Shock | — | — | Placeholder | ☐ | ☐ |
+| **Glamblaze Serenade** | `atk-charm2-fire2-charm` | 2 Charm + 2 Fire | Charm | d6 | 3.5 | 0.88 | d8 | 0 | 3 | Beguile (1–3, 50%) | Potency 2, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Glamthorn Serenade** | `atk-charm2-grass2-charm` | 2 Charm + 2 Grass | Charm | d4 | 2.5 | 0.63 | d8 | 0 | 2 | Beguile | Purge: Snare | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Glamgrit Serenade** | `atk-charm2-rock2-charm` | 2 Charm + 2 Rock | Charm | d8 | 4.5 | 1.13 | d8 (⌖ ✕) | -2 | 2 | Beguile | Purge: Stagger | — | — | Placeholder | ☐ | ☐ |
+| **Glamforge Serenade** | `atk-charm2-steel2-charm` | 2 Charm + 2 Steel | Charm | d4 | 2.5 | 0.63 | d8 | 0 | 2 | Beguile | Purge: Sunder | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Glamspray Serenade** | `atk-charm2-water2-charm` | 2 Charm + 2 Water | Charm | d6 | 3.5 | 0.88 | d8 (⌖ +3) | 0 | 2 | Beguile | Purge: Soak | — | — | Placeholder | ☐ | ☐ |
+| **Glamspark Enchantment** | `atk-charm3-electric1` | 3 Charm + 1 Electric | Charm | d4 | 2.5 | 0.63 | d8 | +2 | 2 | Beguile | Purge: Shock | — | — | Placeholder | ☐ | ☐ |
+| **Glamblaze Enchantment** | `atk-charm3-fire1` | 3 Charm + 1 Fire | Charm | d6 | 3.5 | 0.88 | d8 | 0 | 2 | Beguile (1–2, 33%) | Potency 1, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Glamthorn Enchantment** | `atk-charm3-grass1` | 3 Charm + 1 Grass | Charm | d6 | 3.5 | 0.88 | d8 | 0 | 2 | Beguile | Purge: Snare | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Glamgrit Enchantment** | `atk-charm3-rock1` | 3 Charm + 1 Rock | Charm | d6 | 3.5 | 0.88 | d8 | -1 | 2 | Beguile | Purge: Stagger | — | — | Placeholder | ☐ | ☐ |
+| **Glamforge Enchantment** | `atk-charm3-steel1` | 3 Charm + 1 Steel | Charm | d4+1 | 3.5 | 0.88 | d8 | 0 | 2 | Beguile | Purge: Sunder | — | — | Placeholder | ☐ | ☐ |
+| **Glamspray Enchantment** | `atk-charm3-water1` | 3 Charm + 1 Water | Charm | d6 | 3.5 | 0.88 | d8 (⌖ +2) | 0 | 2 | Beguile | Purge: Soak | — | — | Placeholder | ☐ | ☐ |
+| **Glamlight Heartstopper** | `atk-astral1-charm4` | 1 Astral + 4 Charm | Charm | d4 | 3.3 | 0.67 | Sure-hit | +1 | 3 | Beguile | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Glamlight Spellbind** | `atk-astral2-charm3` | 2 Astral + 3 Charm | Charm | d6 | 4.5 | 0.90 | d8 | 0 | 2 | Beguile | Cascade d10, Purge: Daze | — | — | Placeholder | ☐ | ☐ |
+| **Glamspark Spellbind** | `atk-charm3-electric2` | 3 Charm + 2 Electric | Charm | d4 | 2.5 | 0.50 | d8 (✸ 8) | +1 | 2 | Beguile | Purge: Shock | — | — | Placeholder | ☐ | ☐ |
+| **Glamblaze Spellbind** | `atk-charm3-fire2` | 3 Charm + 2 Fire | Charm | d6+1 | 4.5 | 0.90 | d8 | 0 | 3 | Beguile (1–3, 50%) | Potency 2, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Glamthorn Spellbind** | `atk-charm3-grass2` | 3 Charm + 2 Grass | Charm | d6 | 3.5 | 0.70 | d8 | 0 | 2 | Beguile | Purge: Snare | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Glamgrit Spellbind** | `atk-charm3-rock2` | 3 Charm + 2 Rock | Charm | d10 | 5.5 | 1.10 | d8 (⌖ ✕) | -2 | 2 | Beguile | Purge: Stagger | — | — | Placeholder | ☐ | ☐ |
+| **Glamforge Spellbind** | `atk-charm3-steel2` | 3 Charm + 2 Steel | Charm | d4+1 | 3.5 | 0.70 | d8 | 0 | 2 | Beguile | Purge: Sunder | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Glamspray Spellbind** | `atk-charm3-water2` | 3 Charm + 2 Water | Charm | d6 | 3.5 | 0.70 | d8 (⌖ +3) | 0 | 2 | Beguile | Purge: Soak | — | — | Placeholder | ☐ | ☐ |
+| **Glamspark Heartstopper** | `atk-charm4-electric1` | 4 Charm + 1 Electric | Charm | d4 | 2.5 | 0.50 | Sure-hit | +3 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamblaze Heartstopper** | `atk-charm4-fire1` | 4 Charm + 1 Fire | Charm | d4 | 2.5 | 0.50 | Sure-hit | +1 | 3 | Beguile (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Glamthorn Heartstopper** | `atk-charm4-grass1` | 4 Charm + 1 Grass | Charm | d4 | 2.5 | 0.50 | Sure-hit | +1 | 3 | Beguile | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Glamgrit Heartstopper** | `atk-charm4-rock1` | 4 Charm + 1 Rock | Charm | d6 | 3.5 | 0.70 | Sure-hit | 0 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamforge Heartstopper** | `atk-charm4-steel1` | 4 Charm + 1 Steel | Charm | d4+1 | 3.5 | 0.70 | Sure-hit | +1 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
+| **Glamspray Heartstopper** | `atk-charm4-water1` | 4 Charm + 1 Water | Charm | d4 | 2.5 | 0.50 | Sure-hit | +2 | 3 | Beguile | — | — | — | Placeholder | ☐ | ☐ |
 
 ## Electric attacks
 
@@ -308,9 +308,9 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Spark** | `spark` | 1 Electric | Electric | d4 | 2.5 | 2.50 | d6 | +1 | 1 | Shock | — | — | — | Hand-made | ☑ | ☐ |
 | **Volt Fang** | `volt-fang` | 2 Electric + 1 Neutral | Electric | d6 | 3.5 | 1.17 | d6 | +1 | 1 | Shock | — | — | — | Hand-made | ☑ | ☐ |
-| **Crackle Web** | `crackle-web` | 3 Electric | Electric | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Shock (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Thunderclap** | `thunderclap` | 4 Electric + 1 Neutral | Electric | d10 | 5.5 | 1.10 | d6 | 0 | 3 | Shock | — | — | — | Hand-made | ☑ | ☐ |
-| **Volt Nova** | `atk-electric5` | 5 Electric | Electric | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Crackle Web** | `crackle-web` | 3 Electric | Electric | d4 | 2.5 | 0.83 | d6 | +2 | 2 | Shock (1–2, 50%) | Potency 1 | — | ⬇ Weak for its cost (-1.5 vs baseline) | Hand-made | ☑ | ☐ |
+| **Thunderclap** | `thunderclap` | 4 Electric + 1 Neutral | Electric | d8+1 | 5.5 | 1.10 | d6 (✸ 6) | +1 | 3 | Shock | — | — | — | Hand-made | ☑ | ☐ |
+| **Volt Judgment** | `atk-electric5` | 5 Electric | Electric | d4 | 2.5 | 0.50 | d6 (✸ 4+) | +4 | 4 | Shock | — | — | — | Placeholder | ☐ | ☐ |
 
 ### Electric: dual-type
 
@@ -318,48 +318,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Voltlight Pulse** | `atk-astral1-electric1-electric` | 1 Astral + 1 Electric | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltheart Pulse** | `atk-charm1-electric1-electric` | 1 Charm + 1 Electric | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltblaze Pulse** | `atk-electric1-fire1-electric` | 1 Electric + 1 Fire | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltthorn Pulse** | `atk-electric1-grass1-electric` | 1 Electric + 1 Grass | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltgrit Pulse** | `atk-electric1-rock1-electric` | 1 Electric + 1 Rock | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltforge Pulse** | `atk-electric1-steel1-electric` | 1 Electric + 1 Steel | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltspray Pulse** | `atk-electric1-water1-electric` | 1 Electric + 1 Water | Electric | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltlight Strike** | `atk-astral1-electric2` | 1 Astral + 2 Electric | Electric | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltheart Strike** | `atk-charm1-electric2` | 1 Charm + 2 Electric | Electric | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltblaze Strike** | `atk-electric2-fire1` | 2 Electric + 1 Fire | Electric | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltthorn Strike** | `atk-electric2-grass1` | 2 Electric + 1 Grass | Electric | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltgrit Strike** | `atk-electric2-rock1` | 2 Electric + 1 Rock | Electric | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltforge Strike** | `atk-electric2-steel1` | 2 Electric + 1 Steel | Electric | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltlight Zap** | `atk-astral1-electric1-electric` | 1 Astral + 1 Electric | Electric | d4 | 3.3 | 1.67 | d6 | +3 | 1 | Shock | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Voltheart Zap** | `atk-charm1-electric1-electric` | 1 Charm + 1 Electric | Electric | d4 | 2.5 | 1.25 | d6 | +3 | 1 | Shock | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Voltblaze Zap** | `atk-electric1-fire1-electric` | 1 Electric + 1 Fire | Electric | d4 | 2.5 | 1.25 | d6 | +3 | 1 | Shock (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Voltthorn Zap** | `atk-electric1-grass1-electric` | 1 Electric + 1 Grass | Electric | d4 | 2.5 | 1.25 | d6 | +3 | 1 | Shock | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Voltgrit Zap** | `atk-electric1-rock1-electric` | 1 Electric + 1 Rock | Electric | d6 | 3.5 | 1.75 | d6 | +2 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltforge Zap** | `atk-electric1-steel1-electric` | 1 Electric + 1 Steel | Electric | d4+1 | 3.5 | 1.75 | d6 | +3 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltspray Zap** | `atk-electric1-water1-electric` | 1 Electric + 1 Water | Electric | d4+1 | 3.5 | 1.75 | d6 (⌖ +2) | +3 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltlight Jolt** | `atk-astral1-electric2` | 1 Astral + 2 Electric | Electric | d6 | 4.1 | 1.35 | d6 | +2 | 1 | Shock | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Voltheart Jolt** | `atk-charm1-electric2` | 1 Charm + 2 Electric | Electric | d6 | 3.5 | 1.17 | d6 | +2 | 1 | Shock | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Voltblaze Jolt** | `atk-electric2-fire1` | 2 Electric + 1 Fire | Electric | d6 | 3.5 | 1.17 | d6 | +2 | 1 | Shock (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Voltthorn Jolt** | `atk-electric2-grass1` | 2 Electric + 1 Grass | Electric | d6 | 3.5 | 1.17 | d6 | +2 | 1 | Shock | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Voltgrit Jolt** | `atk-electric2-rock1` | 2 Electric + 1 Rock | Electric | d8 | 4.5 | 1.50 | d6 | +1 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltforge Jolt** | `atk-electric2-steel1` | 2 Electric + 1 Steel | Electric | d4+2 | 4.5 | 1.50 | d6 | +2 | 1 | Shock | — | — | — | Placeholder | ☐ | ☐ |
 | **Conductive Arc** | `conductive-arc` | 2 Electric + 1 Water | Electric | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Shock | Purge: Soak | — | — | Hand-made | ☑ | ☐ |
-| **Voltlight Crash** | `atk-astral1-electric3` | 1 Astral + 3 Electric | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltlight Wave** | `atk-astral2-electric2-electric` | 2 Astral + 2 Electric | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltheart Crash** | `atk-charm1-electric3` | 1 Charm + 3 Electric | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltheart Wave** | `atk-charm2-electric2-electric` | 2 Charm + 2 Electric | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltblaze Wave** | `atk-electric2-fire2-electric` | 2 Electric + 2 Fire | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltthorn Wave** | `atk-electric2-grass2-electric` | 2 Electric + 2 Grass | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltgrit Wave** | `atk-electric2-rock2-electric` | 2 Electric + 2 Rock | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltforge Wave** | `atk-electric2-steel2-electric` | 2 Electric + 2 Steel | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltspray Wave** | `atk-electric2-water2-electric` | 2 Electric + 2 Water | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltblaze Crash** | `atk-electric3-fire1` | 3 Electric + 1 Fire | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltthorn Crash** | `atk-electric3-grass1` | 3 Electric + 1 Grass | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltgrit Crash** | `atk-electric3-rock1` | 3 Electric + 1 Rock | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltforge Crash** | `atk-electric3-steel1` | 3 Electric + 1 Steel | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltspray Crash** | `atk-electric3-water1` | 3 Electric + 1 Water | Electric | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltlight Cataclysm** | `atk-astral1-electric4` | 1 Astral + 4 Electric | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltlight Barrage** | `atk-astral2-electric3` | 2 Astral + 3 Electric | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltheart Cataclysm** | `atk-charm1-electric4` | 1 Charm + 4 Electric | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltheart Barrage** | `atk-charm2-electric3` | 2 Charm + 3 Electric | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltblaze Barrage** | `atk-electric3-fire2` | 3 Electric + 2 Fire | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltthorn Barrage** | `atk-electric3-grass2` | 3 Electric + 2 Grass | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltgrit Barrage** | `atk-electric3-rock2` | 3 Electric + 2 Rock | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltforge Barrage** | `atk-electric3-steel2` | 3 Electric + 2 Steel | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltspray Barrage** | `atk-electric3-water2` | 3 Electric + 2 Water | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltblaze Cataclysm** | `atk-electric4-fire1` | 4 Electric + 1 Fire | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltthorn Cataclysm** | `atk-electric4-grass1` | 4 Electric + 1 Grass | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltgrit Cataclysm** | `atk-electric4-rock1` | 4 Electric + 1 Rock | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltforge Cataclysm** | `atk-electric4-steel1` | 4 Electric + 1 Steel | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
-| **Voltspray Cataclysm** | `atk-electric4-water1` | 4 Electric + 1 Water | Electric | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltlight Bolt** | `atk-astral1-electric3` | 1 Astral + 3 Electric | Electric | d6 | 4.1 | 1.01 | d6 (✸ 6) | +1 | 2 | Shock | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Voltlight Surge** | `atk-astral2-electric2-electric` | 2 Astral + 2 Electric | Electric | d4 | 4.0 | 1.01 | d6 (✸ 6) | +1 | 2 | Shock | Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Voltheart Bolt** | `atk-charm1-electric3` | 1 Charm + 3 Electric | Electric | d4 | 2.5 | 0.63 | d6 (✸ 6) | +1 | 2 | Shock | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Voltheart Surge** | `atk-charm2-electric2-electric` | 2 Charm + 2 Electric | Electric | d4 | 2.5 | 0.63 | d6 (✸ 6) | +1 | 2 | Shock | Purge: Shock | — | — | Placeholder | ☐ | ☐ |
+| **Voltblaze Surge** | `atk-electric2-fire2-electric` | 2 Electric + 2 Fire | Electric | d6 | 3.5 | 0.88 | d6 (✸ 6) | +1 | 3 | Shock (1–3, 50%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Voltthorn Surge** | `atk-electric2-grass2-electric` | 2 Electric + 2 Grass | Electric | d4 | 2.5 | 0.63 | d6 (✸ 6) | +1 | 2 | Shock | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Voltgrit Surge** | `atk-electric2-rock2-electric` | 2 Electric + 2 Rock | Electric | d8 | 4.5 | 1.13 | d6 (✸ 6) (⌖ ✕) | -1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltforge Surge** | `atk-electric2-steel2-electric` | 2 Electric + 2 Steel | Electric | d4 | 2.5 | 0.63 | d6 (✸ 6) | +1 | 2 | Shock | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Voltspray Surge** | `atk-electric2-water2-electric` | 2 Electric + 2 Water | Electric | d6 | 3.5 | 0.88 | d6 (✸ 6) (⌖ +3) | +1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltblaze Bolt** | `atk-electric3-fire1` | 3 Electric + 1 Fire | Electric | d6 | 3.5 | 0.88 | d6 (✸ 6) | +1 | 2 | Shock (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Voltthorn Bolt** | `atk-electric3-grass1` | 3 Electric + 1 Grass | Electric | d6 | 3.5 | 0.88 | d6 (✸ 6) | +1 | 2 | Shock | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Voltgrit Bolt** | `atk-electric3-rock1` | 3 Electric + 1 Rock | Electric | d8 | 4.5 | 1.13 | d6 (✸ 6) | 0 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltforge Bolt** | `atk-electric3-steel1` | 3 Electric + 1 Steel | Electric | d4+1 | 3.5 | 0.88 | d6 (✸ 6) | +1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltspray Bolt** | `atk-electric3-water1` | 3 Electric + 1 Water | Electric | d6 | 3.5 | 0.88 | d6 (✸ 6) (⌖ +2) | +1 | 2 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltlight Thunderstroke** | `atk-astral1-electric4` | 1 Astral + 4 Electric | Electric | d4 | 3.3 | 0.67 | d6 (✸ 5+) | +3 | 3 | Shock | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Voltlight Overload** | `atk-astral2-electric3` | 2 Astral + 3 Electric | Electric | d6 | 4.5 | 0.90 | d6 (✸ 6) | +1 | 3 | Shock | Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Voltheart Thunderstroke** | `atk-charm1-electric4` | 1 Charm + 4 Electric | Electric | d4 | 2.5 | 0.50 | d6 (✸ 5+) | +3 | 3 | Shock | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Voltheart Overload** | `atk-charm2-electric3` | 2 Charm + 3 Electric | Electric | d6 | 3.5 | 0.70 | d6 (✸ 6) | +1 | 3 | Shock | Purge: Shock | — | — | Placeholder | ☐ | ☐ |
+| **Voltblaze Overload** | `atk-electric3-fire2` | 3 Electric + 2 Fire | Electric | d6+1 | 4.5 | 0.90 | d6 (✸ 6) | +1 | 4 | Shock (1–3, 50%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Voltthorn Overload** | `atk-electric3-grass2` | 3 Electric + 2 Grass | Electric | d6+1 | 4.5 | 0.90 | d6 (✸ 6) | +1 | 3 | Shock | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Voltgrit Overload** | `atk-electric3-rock2` | 3 Electric + 2 Rock | Electric | d10 | 5.5 | 1.10 | d6 (✸ 6) (⌖ ✕) | -1 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltforge Overload** | `atk-electric3-steel2` | 3 Electric + 2 Steel | Electric | d4+1 | 3.5 | 0.70 | d6 (✸ 6) | +1 | 3 | Shock | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Voltspray Overload** | `atk-electric3-water2` | 3 Electric + 2 Water | Electric | d6+1 | 4.5 | 0.90 | d6 (✸ 6) (⌖ +3) | +1 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltblaze Thunderstroke** | `atk-electric4-fire1` | 4 Electric + 1 Fire | Electric | d4 | 2.5 | 0.50 | d6 (✸ 5+) | +3 | 3 | Shock (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Voltthorn Thunderstroke** | `atk-electric4-grass1` | 4 Electric + 1 Grass | Electric | d4 | 2.5 | 0.50 | d6 (✸ 5+) | +3 | 3 | Shock | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Voltgrit Thunderstroke** | `atk-electric4-rock1` | 4 Electric + 1 Rock | Electric | d4 | 2.5 | 0.50 | d6 (✸ 5+) | +2 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltforge Thunderstroke** | `atk-electric4-steel1` | 4 Electric + 1 Steel | Electric | d4 | 2.5 | 0.50 | d6 (✸ 5+) | +3 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
+| **Voltspray Thunderstroke** | `atk-electric4-water1` | 4 Electric + 1 Water | Electric | d4 | 2.5 | 0.50 | d6 (✸ 5+) (⌖ +2) | +3 | 3 | Shock | — | — | — | Placeholder | ☐ | ☐ |
 
 ## Fire attacks
 
@@ -372,8 +372,8 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 | **Ember** | `ember` | 1 Fire | Fire | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Burn | — | — | — | Hand-made | ☑ | ☐ |
 | **Fire Claw** | `fire-claw` | 2 Fire + 1 Neutral | Fire | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Burn | — | — | — | Hand-made | ☑ | ☐ |
 | **Cinder Storm** | `cinder-storm` | 3 Fire | Fire | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Burn (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Magma Surge** | `magma-surge` | 4 Fire + 1 Neutral | Fire | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Burn (1–2, 20%) | Potency 1 | — | — | Hand-made | ☑ | ☐ |
-| **Flame Nova** | `atk-fire5` | 5 Fire | Fire | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Magma Surge** | `magma-surge` | 4 Fire + 1 Neutral | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn (1–3, 30%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
+| **Flame Conflagration** | `atk-fire5` | 5 Fire | Fire | d12+2 | 8.5 | 1.70 | d6 | -2 | 5 | Burn (1–6, 50%) | Potency 5 | — | — | Placeholder | ☐ | ☐ |
 
 ### Fire: dual-type
 
@@ -381,48 +381,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Flamelight Pulse** | `atk-astral1-fire1-fire` | 1 Astral + 1 Fire | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Pulse** | `atk-charm1-fire1-fire` | 1 Charm + 1 Fire | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Pulse** | `atk-electric1-fire1-fire` | 1 Electric + 1 Fire | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Pulse** | `atk-fire1-grass1-fire` | 1 Fire + 1 Grass | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Pulse** | `atk-fire1-rock1-fire` | 1 Fire + 1 Rock | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Pulse** | `atk-fire1-steel1-fire` | 1 Fire + 1 Steel | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Pulse** | `atk-fire1-water1-fire` | 1 Fire + 1 Water | Fire | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Strike** | `atk-astral1-fire2` | 1 Astral + 2 Fire | Fire | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Strike** | `atk-charm1-fire2` | 1 Charm + 2 Fire | Fire | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Strike** | `atk-electric1-fire2` | 1 Electric + 2 Fire | Fire | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Flicker** | `atk-astral1-fire1-fire` | 1 Astral + 1 Fire | Fire | d6+1 | 5.1 | 2.53 | d6 | -1 | 2 | Burn | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Flicker** | `atk-charm1-fire1-fire` | 1 Charm + 1 Fire | Fire | d6+1 | 4.5 | 2.25 | d6 | -1 | 2 | Burn | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Flicker** | `atk-electric1-fire1-fire` | 1 Electric + 1 Fire | Fire | d6+1 | 4.5 | 2.25 | d6 | +1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Flicker** | `atk-fire1-grass1-fire` | 1 Fire + 1 Grass | Fire | d6+1 | 4.5 | 2.25 | d6 | -1 | 2 | Burn | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Flicker** | `atk-fire1-rock1-fire` | 1 Fire + 1 Rock | Fire | d8+1 | 5.5 | 2.75 | d6 | -2 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Flicker** | `atk-fire1-steel1-fire` | 1 Fire + 1 Steel | Fire | d4+3 | 5.5 | 2.75 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Flicker** | `atk-fire1-water1-fire` | 1 Fire + 1 Water | Fire | d6+1 | 4.5 | 2.25 | d6 (⌖ +2) | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Scorch** | `atk-astral1-fire2` | 1 Astral + 2 Fire | Fire | d8+1 | 5.9 | 1.97 | d6 | -1 | 2 | Burn (1–2, 25%) | Potency 1, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Scorch** | `atk-charm1-fire2` | 1 Charm + 2 Fire | Fire | d8 | 4.5 | 1.50 | d6 | -1 | 2 | Burn (1–2, 25%) | Potency 1, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Scorch** | `atk-electric1-fire2` | 1 Electric + 2 Fire | Fire | d8 | 4.5 | 1.50 | d6 | +1 | 2 | Burn (1–2, 25%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
 | **Kindling Flare** | `kindling-flare` | 2 Fire + 1 Grass | Fire | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Burn | Purge: Snare | — | — | Hand-made | ☑ | ☐ |
-| **Flamegrit Strike** | `atk-fire2-rock1` | 2 Fire + 1 Rock | Fire | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Strike** | `atk-fire2-steel1` | 2 Fire + 1 Steel | Fire | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Strike** | `atk-fire2-water1` | 2 Fire + 1 Water | Fire | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Crash** | `atk-astral1-fire3` | 1 Astral + 3 Fire | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Wave** | `atk-astral2-fire2-fire` | 2 Astral + 2 Fire | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Crash** | `atk-charm1-fire3` | 1 Charm + 3 Fire | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Wave** | `atk-charm2-fire2-fire` | 2 Charm + 2 Fire | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Crash** | `atk-electric1-fire3` | 1 Electric + 3 Fire | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Wave** | `atk-electric2-fire2-fire` | 2 Electric + 2 Fire | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Wave** | `atk-fire2-grass2-fire` | 2 Fire + 2 Grass | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Wave** | `atk-fire2-rock2-fire` | 2 Fire + 2 Rock | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Wave** | `atk-fire2-steel2-fire` | 2 Fire + 2 Steel | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Wave** | `atk-fire2-water2-fire` | 2 Fire + 2 Water | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Crash** | `atk-fire3-grass1` | 3 Fire + 1 Grass | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Crash** | `atk-fire3-rock1` | 3 Fire + 1 Rock | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Crash** | `atk-fire3-steel1` | 3 Fire + 1 Steel | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Crash** | `atk-fire3-water1` | 3 Fire + 1 Water | Fire | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Cataclysm** | `atk-astral1-fire4` | 1 Astral + 4 Fire | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamelight Barrage** | `atk-astral2-fire3` | 2 Astral + 3 Fire | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Cataclysm** | `atk-charm1-fire4` | 1 Charm + 4 Fire | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameheart Barrage** | `atk-charm2-fire3` | 2 Charm + 3 Fire | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Cataclysm** | `atk-electric1-fire4` | 1 Electric + 4 Fire | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespark Barrage** | `atk-electric2-fire3` | 2 Electric + 3 Fire | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Barrage** | `atk-fire3-grass2` | 3 Fire + 2 Grass | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Barrage** | `atk-fire3-rock2` | 3 Fire + 2 Rock | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Barrage** | `atk-fire3-steel2` | 3 Fire + 2 Steel | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Barrage** | `atk-fire3-water2` | 3 Fire + 2 Water | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamethorn Cataclysm** | `atk-fire4-grass1` | 4 Fire + 1 Grass | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamegrit Cataclysm** | `atk-fire4-rock1` | 4 Fire + 1 Rock | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flameforge Cataclysm** | `atk-fire4-steel1` | 4 Fire + 1 Steel | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
-| **Flamespray Cataclysm** | `atk-fire4-water1` | 4 Fire + 1 Water | Fire | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Burn | — | — | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Scorch** | `atk-fire2-rock1` | 2 Fire + 1 Rock | Fire | d10 | 5.5 | 1.83 | d6 | -2 | 2 | Burn (1–2, 20%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Scorch** | `atk-fire2-steel1` | 2 Fire + 1 Steel | Fire | d6+2 | 5.5 | 1.83 | d6 | -1 | 2 | Burn (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Scorch** | `atk-fire2-water1` | 2 Fire + 1 Water | Fire | d8+1 | 5.5 | 1.83 | d6 (⌖ +2) | -1 | 2 | Burn (1–2, 25%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Wildfire** | `atk-astral1-fire3` | 1 Astral + 3 Fire | Fire | d8+2 | 6.9 | 1.73 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Flare** | `atk-astral2-fire2-fire` | 2 Astral + 2 Fire | Fire | d8+1 | 6.3 | 1.57 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Wildfire** | `atk-charm1-fire3` | 1 Charm + 3 Fire | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Flare** | `atk-charm2-fire2-fire` | 2 Charm + 2 Fire | Fire | d8 | 4.5 | 1.13 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Wildfire** | `atk-electric1-fire3` | 1 Electric + 3 Fire | Fire | d8+1 | 5.5 | 1.38 | d6 | +1 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Flare** | `atk-electric2-fire2-fire` | 2 Electric + 2 Fire | Fire | d8 | 4.5 | 1.13 | d6 (✸ 6) | 0 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Flare** | `atk-fire2-grass2-fire` | 2 Fire + 2 Grass | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2 | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Flare** | `atk-fire2-rock2-fire` | 2 Fire + 2 Rock | Fire | d12+1 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 3 | Burn (1–3, 25%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Flare** | `atk-fire2-steel2-fire` | 2 Fire + 2 Steel | Fire | d4+2 | 4.5 | 1.13 | d6 | -1 | 3 | Burn (1–3, 75%) | Potency 2 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Flamespray Flare** | `atk-fire2-water2-fire` | 2 Fire + 2 Water | Fire | d8+1 | 5.5 | 1.38 | d6 (⌖ +3) | -1 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Wildfire** | `atk-fire3-grass1` | 3 Fire + 1 Grass | Fire | d8+1 | 5.5 | 1.38 | d6 | -1 | 3 | Burn (1–3, 38%) | Potency 2 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Wildfire** | `atk-fire3-rock1` | 3 Fire + 1 Rock | Fire | d10+1 | 6.5 | 1.63 | d6 | -2 | 3 | Burn (1–3, 30%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Wildfire** | `atk-fire3-steel1` | 3 Fire + 1 Steel | Fire | d6+3 | 6.5 | 1.63 | d6 | -1 | 3 | Burn (1–3, 50%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Wildfire** | `atk-fire3-water1` | 3 Fire + 1 Water | Fire | d8+1 | 5.5 | 1.38 | d6 (⌖ +2) | -1 | 3 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Eruption** | `atk-astral1-fire4` | 1 Astral + 4 Fire | Fire | d12+2 | 8.8 | 1.76 | d6 | -2 | 4 | Burn (1–4, 33%) | Potency 3, Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Flamelight Inferno** | `atk-astral2-fire3` | 2 Astral + 3 Fire | Fire | d8+3 | 8.3 | 1.65 | d6 | -1 | 4 | Burn (1–3, 38%) | Potency 2, Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Eruption** | `atk-charm1-fire4` | 1 Charm + 4 Fire | Fire | d12+1 | 7.5 | 1.50 | d6 | -2 | 4 | Burn (1–4, 33%) | Potency 3, Purge | — | — | Placeholder | ☐ | ☐ |
+| **Flameheart Inferno** | `atk-charm2-fire3` | 2 Charm + 3 Fire | Fire | d8+2 | 6.5 | 1.30 | d6 | -1 | 4 | Burn (1–3, 38%) | Potency 2, Purge: Burn | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Eruption** | `atk-electric1-fire4` | 1 Electric + 4 Fire | Fire | d12+2 | 8.5 | 1.70 | d6 | 0 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespark Inferno** | `atk-electric2-fire3` | 2 Electric + 3 Fire | Fire | d8+1 | 5.5 | 1.10 | d6 (✸ 6) | 0 | 4 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Inferno** | `atk-fire3-grass2` | 3 Fire + 2 Grass | Fire | d8+3 | 7.5 | 1.50 | d6 | -1 | 4 | Burn (1–3, 38%) | Potency 2 | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Inferno** | `atk-fire3-rock2` | 3 Fire + 2 Rock | Fire | d12+3 | 9.5 | 1.90 | d6 (⌖ ✕) | -3 | 4 | Burn (1–3, 25%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Inferno** | `atk-fire3-steel2` | 3 Fire + 2 Steel | Fire | d4+4 | 6.5 | 1.30 | d6 | -1 | 4 | Burn (1–3, 75%) | Potency 2 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Flamespray Inferno** | `atk-fire3-water2` | 3 Fire + 2 Water | Fire | d8+2 | 6.5 | 1.30 | d6 (⌖ +3) | -1 | 4 | Burn (1–3, 38%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Flamethorn Eruption** | `atk-fire4-grass1` | 4 Fire + 1 Grass | Fire | d12+1 | 7.5 | 1.50 | d6 | -2 | 4 | Burn (1–4, 33%) | Potency 3 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Flamegrit Eruption** | `atk-fire4-rock1` | 4 Fire + 1 Rock | Fire | d12+2 | 8.5 | 1.70 | d6 | -3 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flameforge Eruption** | `atk-fire4-steel1` | 4 Fire + 1 Steel | Fire | d10+3 | 8.5 | 1.70 | d6 | -2 | 4 | Burn (1–4, 40%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
+| **Flamespray Eruption** | `atk-fire4-water1` | 4 Fire + 1 Water | Fire | d12+1 | 7.5 | 1.50 | d6 (⌖ +2) | -2 | 4 | Burn (1–4, 33%) | Potency 3 | — | — | Placeholder | ☐ | ☐ |
 
 ## Grass attacks
 
@@ -434,9 +434,9 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Vine Snap** | `vine-snap` | 1 Grass | Grass | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Snare | — | — | — | Hand-made | ☑ | ☐ |
 | **Thorn Volley** | `thorn-volley` | 2 Grass + 1 Neutral | Grass | d4+d4 | 5.0 | 1.67 | d6 | 0 | 1 | Snare (a 1, 44%) | — | — | — | Hand-made | ☑ | ☐ |
-| **Thicket Lash** | `thicket-lash` | 3 Grass | Grass | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Snare (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Redwood Crush** | `redwood-crush` | 4 Grass + 1 Neutral | Grass | d10 | 5.5 | 1.10 | d6 | -2 | 3 | Snare | — | — | ⬇ Weak for its cost (-1.5 vs baseline) | Hand-made | ☑ | ☐ |
-| **Bramble Nova** | `atk-grass5` | 5 Grass | Grass | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
+| **Thicket Lash** | `thicket-lash` | 3 Grass | Grass | d4+d4 | 5.0 | 1.67 | d6 | -2 | 3 | Snare (1–2, 75%) | Potency 1 | — | — | Hand-made | ☑ | ☐ |
+| **Redwood Crush** | `redwood-crush` | 4 Grass + 1 Neutral | Grass | d6+d6 | 7.0 | 1.40 | d6 | -2 | 3 | Snare (a 1, 31%) | — | On a hit, you heal 2 Health. | — | Hand-made | ☑ | ☐ |
+| **Bramble Worldroot** | `atk-grass5` | 5 Grass | Grass | d4+d4+1 | 6.0 | 1.20 | d6 | -2 | 4 | Snare (a 1, 44%) | — | On a hit, you heal 5 Health. | — | Placeholder | ☐ | ☐ |
 
 ### Grass: dual-type
 
@@ -444,48 +444,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Bramblelight Pulse** | `atk-astral1-grass1-grass` | 1 Astral + 1 Grass | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleheart Pulse** | `atk-charm1-grass1-grass` | 1 Charm + 1 Grass | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespark Pulse** | `atk-electric1-grass1-grass` | 1 Electric + 1 Grass | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleblaze Pulse** | `atk-fire1-grass1-grass` | 1 Fire + 1 Grass | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblegrit Pulse** | `atk-grass1-rock1-grass` | 1 Grass + 1 Rock | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleforge Pulse** | `atk-grass1-steel1-grass` | 1 Grass + 1 Steel | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespray Pulse** | `atk-grass1-water1-grass` | 1 Grass + 1 Water | Grass | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblelight Strike** | `atk-astral1-grass2` | 1 Astral + 2 Grass | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleheart Strike** | `atk-charm1-grass2` | 1 Charm + 2 Grass | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
+| **Bramblelight Sprout** | `atk-astral1-grass1-grass` | 1 Astral + 1 Grass | Grass | d4 | 3.3 | 1.67 | d6 | 0 | 1 | Snare | Cascade d4 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleheart Sprout** | `atk-charm1-grass1-grass` | 1 Charm + 1 Grass | Grass | d4 | 2.5 | 1.25 | d6 | 0 | 1 | Snare | Purge | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespark Sprout** | `atk-electric1-grass1-grass` | 1 Electric + 1 Grass | Grass | d4+1 | 3.5 | 1.75 | d6 | +2 | 1 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleblaze Sprout** | `atk-fire1-grass1-grass` | 1 Fire + 1 Grass | Grass | d4+1 | 3.5 | 1.75 | d6 | 0 | 1 | Snare (1–2, 50%) | Potency 1 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblegrit Sprout** | `atk-grass1-rock1-grass` | 1 Grass + 1 Rock | Grass | d6+1 | 4.5 | 2.25 | d6 | -1 | 1 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleforge Sprout** | `atk-grass1-steel1-grass` | 1 Grass + 1 Steel | Grass | d4+1 | 3.5 | 1.75 | d6 | 0 | 1 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespray Sprout** | `atk-grass1-water1-grass` | 1 Grass + 1 Water | Grass | d4+1 | 3.5 | 1.75 | d6 (⌖ +2) | 0 | 1 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblelight Bloom** | `atk-astral1-grass2` | 1 Astral + 2 Grass | Grass | d6+1 | 5.1 | 1.69 | d6 | 0 | 2 | Snare | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Brambleheart Bloom** | `atk-charm1-grass2` | 1 Charm + 2 Grass | Grass | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Snare | Purge | — | — | Placeholder | ☐ | ☐ |
 | **Grounding Roots** | `grounding-roots` | 1 Electric + 2 Grass | Grass | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Snare | Purge: Shock | — | — | Hand-made | ☑ | ☐ |
-| **Brambleblaze Strike** | `atk-fire1-grass2` | 1 Fire + 2 Grass | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblegrit Strike** | `atk-grass2-rock1` | 2 Grass + 1 Rock | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleforge Strike** | `atk-grass2-steel1` | 2 Grass + 1 Steel | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespray Strike** | `atk-grass2-water1` | 2 Grass + 1 Water | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblelight Crash** | `atk-astral1-grass3` | 1 Astral + 3 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblelight Wave** | `atk-astral2-grass2-grass` | 2 Astral + 2 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleheart Crash** | `atk-charm1-grass3` | 1 Charm + 3 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleheart Wave** | `atk-charm2-grass2-grass` | 2 Charm + 2 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespark Crash** | `atk-electric1-grass3` | 1 Electric + 3 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespark Wave** | `atk-electric2-grass2-grass` | 2 Electric + 2 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleblaze Crash** | `atk-fire1-grass3` | 1 Fire + 3 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleblaze Wave** | `atk-fire2-grass2-grass` | 2 Fire + 2 Grass | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblegrit Wave** | `atk-grass2-rock2-grass` | 2 Grass + 2 Rock | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleforge Wave** | `atk-grass2-steel2-grass` | 2 Grass + 2 Steel | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespray Wave** | `atk-grass2-water2-grass` | 2 Grass + 2 Water | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblegrit Crash** | `atk-grass3-rock1` | 3 Grass + 1 Rock | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleforge Crash** | `atk-grass3-steel1` | 3 Grass + 1 Steel | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespray Crash** | `atk-grass3-water1` | 3 Grass + 1 Water | Grass | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblelight Cataclysm** | `atk-astral1-grass4` | 1 Astral + 4 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblelight Barrage** | `atk-astral2-grass3` | 2 Astral + 3 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleheart Cataclysm** | `atk-charm1-grass4` | 1 Charm + 4 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleheart Barrage** | `atk-charm2-grass3` | 2 Charm + 3 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespark Cataclysm** | `atk-electric1-grass4` | 1 Electric + 4 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespark Barrage** | `atk-electric2-grass3` | 2 Electric + 3 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleblaze Cataclysm** | `atk-fire1-grass4` | 1 Fire + 4 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleblaze Barrage** | `atk-fire2-grass3` | 2 Fire + 3 Grass | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblegrit Barrage** | `atk-grass3-rock2` | 3 Grass + 2 Rock | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleforge Barrage** | `atk-grass3-steel2` | 3 Grass + 2 Steel | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespray Barrage** | `atk-grass3-water2` | 3 Grass + 2 Water | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblegrit Cataclysm** | `atk-grass4-rock1` | 4 Grass + 1 Rock | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Brambleforge Cataclysm** | `atk-grass4-steel1` | 4 Grass + 1 Steel | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
-| **Bramblespray Cataclysm** | `atk-grass4-water1` | 4 Grass + 1 Water | Grass | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Snare | — | — | — | Placeholder | ☐ | ☐ |
+| **Brambleblaze Bloom** | `atk-fire1-grass2` | 1 Fire + 2 Grass | Grass | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Snare (1–2, 33%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Bramblegrit Bloom** | `atk-grass2-rock1` | 2 Grass + 1 Rock | Grass | d4+d4 | 5.0 | 1.67 | d6 | -1 | 2 | Snare (a 1, 44%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Brambleforge Bloom** | `atk-grass2-steel1` | 2 Grass + 1 Steel | Grass | d4+d4 | 5.0 | 1.67 | d6 | 0 | 2 | Snare (a 1, 44%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Bramblespray Bloom** | `atk-grass2-water1` | 2 Grass + 1 Water | Grass | d4+d4 | 5.0 | 1.67 | d6 (⌖ +2) | 0 | 2 | Snare (a 1, 44%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Bramblelight Siphon** | `atk-astral1-grass3` | 1 Astral + 3 Grass | Grass | d6+2 | 6.1 | 1.51 | d6 | -1 | 2 | Snare | Cascade d4 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblelight Tangle** | `atk-astral2-grass2-grass` | 2 Astral + 2 Grass | Grass | d6+2 | 6.2 | 1.55 | d6 | -1 | 2 | Snare | Cascade d6 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleheart Siphon** | `atk-charm1-grass3` | 1 Charm + 3 Grass | Grass | d6+1 | 4.5 | 1.13 | d6 | -1 | 2 | Snare | Purge | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleheart Tangle** | `atk-charm2-grass2-grass` | 2 Charm + 2 Grass | Grass | d6+1 | 4.5 | 1.13 | d6 | -1 | 2 | Snare | Purge: Snare | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespark Siphon** | `atk-electric1-grass3` | 1 Electric + 3 Grass | Grass | d4+d4 | 5.0 | 1.25 | d6 | +1 | 2 | Snare (a 1, 44%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespark Tangle** | `atk-electric2-grass2-grass` | 2 Electric + 2 Grass | Grass | d6 | 3.5 | 0.88 | d6 (✸ 6) | 0 | 2 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleblaze Siphon** | `atk-fire1-grass3` | 1 Fire + 3 Grass | Grass | d4+d4 | 5.0 | 1.25 | d6 | -1 | 2 | Snare (1–2, 75%) | Potency 1 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleblaze Tangle** | `atk-fire2-grass2-grass` | 2 Fire + 2 Grass | Grass | d4+d4 | 5.0 | 1.25 | d6 | -1 | 3 | Snare (1–3, 94%) | Potency 2 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblegrit Tangle** | `atk-grass2-rock2-grass` | 2 Grass + 2 Rock | Grass | d8+d4 | 7.0 | 1.75 | d6 (⌖ ✕) | -3 | 2 | Snare (a 1, 34%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleforge Tangle** | `atk-grass2-steel2-grass` | 2 Grass + 2 Steel | Grass | d4+2 | 4.5 | 1.13 | d6 | -1 | 2 | Snare | — | On a hit, the foe gets −1 Ward and you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespray Tangle** | `atk-grass2-water2-grass` | 2 Grass + 2 Water | Grass | d6+1 | 4.5 | 1.13 | d6 (⌖ +3) | -1 | 2 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblegrit Siphon** | `atk-grass3-rock1` | 3 Grass + 1 Rock | Grass | d6+d4 | 6.0 | 1.50 | d6 | -2 | 2 | Snare (a 1, 38%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleforge Siphon** | `atk-grass3-steel1` | 3 Grass + 1 Steel | Grass | d4+d4 | 5.0 | 1.25 | d6 | -1 | 2 | Snare (a 1, 44%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespray Siphon** | `atk-grass3-water1` | 3 Grass + 1 Water | Grass | d4+d4 | 5.0 | 1.25 | d6 (⌖ +2) | -1 | 2 | Snare (a 1, 44%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblelight Harvest** | `atk-astral1-grass4` | 1 Astral + 4 Grass | Grass | d4+d4 | 6.7 | 1.33 | d6 | -2 | 4 | Snare (a 1, 44%) | Cascade d4 | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblelight Overrun** | `atk-astral2-grass3` | 2 Astral + 3 Grass | Grass | d4+d4 | 7.1 | 1.42 | d6 | -1 | 3 | Snare (a 1, 44%) | Cascade d6 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleheart Harvest** | `atk-charm1-grass4` | 1 Charm + 4 Grass | Grass | d4+d4+1 | 6.0 | 1.20 | d6 | -2 | 4 | Snare (a 1, 44%) | Purge | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleheart Overrun** | `atk-charm2-grass3` | 2 Charm + 3 Grass | Grass | d4+d4 | 5.0 | 1.00 | d6 | -1 | 3 | Snare (a 1, 44%) | Purge: Snare | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespark Harvest** | `atk-electric1-grass4` | 1 Electric + 4 Grass | Grass | d4+d4+1 | 6.0 | 1.20 | d6 | 0 | 4 | Snare (a 1, 44%) | — | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespark Overrun** | `atk-electric2-grass3` | 2 Electric + 3 Grass | Grass | d6+1 | 4.5 | 0.90 | d6 (✸ 6) | 0 | 3 | Snare | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleblaze Harvest** | `atk-fire1-grass4` | 1 Fire + 4 Grass | Grass | d4+d4+1 | 6.0 | 1.20 | d6 | -2 | 4 | Snare (1–2, 75%) | Potency 1 | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleblaze Overrun** | `atk-fire2-grass3` | 2 Fire + 3 Grass | Grass | d4+d4+1 | 6.0 | 1.20 | d6 | -1 | 4 | Snare (1–3, 94%) | Potency 2 | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblegrit Overrun** | `atk-grass3-rock2` | 3 Grass + 2 Rock | Grass | d8+d4+1 | 8.0 | 1.60 | d6 (⌖ ✕) | -3 | 3 | Snare (a 1, 34%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleforge Overrun** | `atk-grass3-steel2` | 3 Grass + 2 Steel | Grass | d4+4 | 6.5 | 1.30 | d6 | -1 | 3 | Snare | — | On a hit, the foe gets −1 Ward and you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespray Overrun** | `atk-grass3-water2` | 3 Grass + 2 Water | Grass | d4+d4+1 | 6.0 | 1.20 | d6 (⌖ +3) | -1 | 3 | Snare (a 1, 44%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblegrit Harvest** | `atk-grass4-rock1` | 4 Grass + 1 Rock | Grass | d6+d4+1 | 7.0 | 1.40 | d6 | -3 | 4 | Snare (a 1, 38%) | — | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
+| **Brambleforge Harvest** | `atk-grass4-steel1` | 4 Grass + 1 Steel | Grass | d4+d4+2 | 7.0 | 1.40 | d6 | -2 | 4 | Snare (a 1, 44%) | — | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
+| **Bramblespray Harvest** | `atk-grass4-water1` | 4 Grass + 1 Water | Grass | d4+d4+1 | 6.0 | 1.20 | d6 (⌖ +2) | -2 | 4 | Snare (a 1, 44%) | — | On a hit, you heal 3 Health. | — | Placeholder | ☐ | ☐ |
 
 ## Rock attacks
 
@@ -497,9 +497,9 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Pebble Shot** | `pebble-shot` | 1 Rock | Rock | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Stagger | — | — | — | Hand-made | ☑ | ☐ |
 | **Rockslide** | `rockslide` | 2 Rock + 1 Neutral | Rock | d4+d4 | 5.0 | 1.67 | d6 | -1 | 1 | Stagger (a 1, 44%) | — | — | — | Hand-made | ☑ | ☐ |
-| **Grit Squall** | `grit-squall` | 3 Rock | Rock | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Stagger (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Canyon Quake** | `canyon-quake` | 4 Rock + 1 Neutral | Rock | d10+1 | 6.5 | 1.30 | d6 | -3 | 3 | Stagger | — | — | — | Hand-made | ☑ | ☐ |
-| **Stone Nova** | `atk-rock5` | 5 Rock | Rock | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Grit Squall** | `grit-squall` | 3 Rock | Rock | d8 | 4.5 | 1.50 | d6 | -2 | 2 | Stagger (1–4, 50%) | Potency 3 | — | — | Hand-made | ☑ | ☐ |
+| **Canyon Quake** | `canyon-quake` | 4 Rock + 1 Neutral | Rock | d12+3 | 9.5 | 1.90 | d6 (⌖ ✕) | -4 | 3 | Stagger | — | — | ⬆ Strong for its cost (+2 vs baseline) | Hand-made | ☑ | ☐ |
+| **Stone Worldbreaker** | `atk-rock5` | 5 Rock | Rock | d12+2 | 8.5 | 1.70 | d8 (⌖ ✕) | -6 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
 
 ### Rock: dual-type
 
@@ -507,48 +507,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Stonelight Pulse** | `atk-astral1-rock1-rock` | 1 Astral + 1 Rock | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneheart Pulse** | `atk-charm1-rock1-rock` | 1 Charm + 1 Rock | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespark Pulse** | `atk-electric1-rock1-rock` | 1 Electric + 1 Rock | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneblaze Pulse** | `atk-fire1-rock1-rock` | 1 Fire + 1 Rock | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonethorn Pulse** | `atk-grass1-rock1-rock` | 1 Grass + 1 Rock | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneforge Pulse** | `atk-rock1-steel1-rock` | 1 Rock + 1 Steel | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespray Pulse** | `atk-rock1-water1-rock` | 1 Rock + 1 Water | Rock | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonelight Strike** | `atk-astral1-rock2` | 1 Astral + 2 Rock | Rock | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneheart Strike** | `atk-charm1-rock2` | 1 Charm + 2 Rock | Rock | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespark Strike** | `atk-electric1-rock2` | 1 Electric + 2 Rock | Rock | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneblaze Strike** | `atk-fire1-rock2` | 1 Fire + 2 Rock | Rock | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonethorn Strike** | `atk-grass1-rock2` | 1 Grass + 2 Rock | Rock | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonelight Chip** | `atk-astral1-rock1-rock` | 1 Astral + 1 Rock | Rock | d8 | 4.9 | 2.46 | d6 | -1 | 1 | Stagger | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Stoneheart Chip** | `atk-charm1-rock1-rock` | 1 Charm + 1 Rock | Rock | d6 | 3.5 | 1.75 | d6 | -1 | 1 | Stagger | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Stonespark Chip** | `atk-electric1-rock1-rock` | 1 Electric + 1 Rock | Rock | d8 | 4.5 | 2.25 | d6 | +1 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stoneblaze Chip** | `atk-fire1-rock1-rock` | 1 Fire + 1 Rock | Rock | d8 | 4.5 | 2.25 | d6 | -1 | 1 | Stagger (1–2, 25%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Stonethorn Chip** | `atk-grass1-rock1-rock` | 1 Grass + 1 Rock | Rock | d8 | 4.5 | 2.25 | d6 | -1 | 1 | Stagger | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stoneforge Chip** | `atk-rock1-steel1-rock` | 1 Rock + 1 Steel | Rock | d6+1 | 4.5 | 2.25 | d6 | -1 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonespray Chip** | `atk-rock1-water1-rock` | 1 Rock + 1 Water | Rock | d8 | 4.5 | 2.25 | d6 (⌖ +2) | -1 | 1 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonelight Crack** | `atk-astral1-rock2` | 1 Astral + 2 Rock | Rock | d8+1 | 5.9 | 1.97 | d6 | -2 | 2 | Stagger | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Stoneheart Crack** | `atk-charm1-rock2` | 1 Charm + 2 Rock | Rock | d8+1 | 5.5 | 1.83 | d6 | -2 | 2 | Stagger | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Stonespark Crack** | `atk-electric1-rock2` | 1 Electric + 2 Rock | Rock | d8+1 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stoneblaze Crack** | `atk-fire1-rock2` | 1 Fire + 2 Rock | Rock | d8+1 | 5.5 | 1.83 | d6 | -2 | 2 | Stagger (1–2, 25%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Stonethorn Crack** | `atk-grass1-rock2` | 1 Grass + 2 Rock | Rock | d8+1 | 5.5 | 1.83 | d6 | -2 | 2 | Stagger | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
 | **Shatterpoint** | `shatterpoint` | 2 Rock + 1 Steel | Rock | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Stagger | Purge: Sunder | — | — | Hand-made | ☑ | ☐ |
-| **Stonespray Strike** | `atk-rock2-water1` | 2 Rock + 1 Water | Rock | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonelight Crash** | `atk-astral1-rock3` | 1 Astral + 3 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonelight Wave** | `atk-astral2-rock2-rock` | 2 Astral + 2 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneheart Crash** | `atk-charm1-rock3` | 1 Charm + 3 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneheart Wave** | `atk-charm2-rock2-rock` | 2 Charm + 2 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespark Crash** | `atk-electric1-rock3` | 1 Electric + 3 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespark Wave** | `atk-electric2-rock2-rock` | 2 Electric + 2 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneblaze Crash** | `atk-fire1-rock3` | 1 Fire + 3 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneblaze Wave** | `atk-fire2-rock2-rock` | 2 Fire + 2 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonethorn Crash** | `atk-grass1-rock3` | 1 Grass + 3 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonethorn Wave** | `atk-grass2-rock2-rock` | 2 Grass + 2 Rock | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneforge Wave** | `atk-rock2-steel2-rock` | 2 Rock + 2 Steel | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespray Wave** | `atk-rock2-water2-rock` | 2 Rock + 2 Water | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneforge Crash** | `atk-rock3-steel1` | 3 Rock + 1 Steel | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespray Crash** | `atk-rock3-water1` | 3 Rock + 1 Water | Rock | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonelight Cataclysm** | `atk-astral1-rock4` | 1 Astral + 4 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonelight Barrage** | `atk-astral2-rock3` | 2 Astral + 3 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneheart Cataclysm** | `atk-charm1-rock4` | 1 Charm + 4 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneheart Barrage** | `atk-charm2-rock3` | 2 Charm + 3 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespark Cataclysm** | `atk-electric1-rock4` | 1 Electric + 4 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespark Barrage** | `atk-electric2-rock3` | 2 Electric + 3 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneblaze Cataclysm** | `atk-fire1-rock4` | 1 Fire + 4 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneblaze Barrage** | `atk-fire2-rock3` | 2 Fire + 3 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonethorn Cataclysm** | `atk-grass1-rock4` | 1 Grass + 4 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonethorn Barrage** | `atk-grass2-rock3` | 2 Grass + 3 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneforge Barrage** | `atk-rock3-steel2` | 3 Rock + 2 Steel | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespray Barrage** | `atk-rock3-water2` | 3 Rock + 2 Water | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stoneforge Cataclysm** | `atk-rock4-steel1` | 4 Rock + 1 Steel | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
-| **Stonespray Cataclysm** | `atk-rock4-water1` | 4 Rock + 1 Water | Rock | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonespray Crack** | `atk-rock2-water1` | 2 Rock + 1 Water | Rock | d8+1 | 5.5 | 1.83 | d6 (⌖ +2) | -2 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonelight Crush** | `atk-astral1-rock3` | 1 Astral + 3 Rock | Rock | d10+2 | 7.8 | 1.96 | d6 (⌖ ✕) | -3 | 2 | Stagger | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Stonelight Tremor** | `atk-astral2-rock2-rock` | 2 Astral + 2 Rock | Rock | d10+1 | 7.1 | 1.78 | d6 (⌖ ✕) | -3 | 2 | Stagger | Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Stoneheart Crush** | `atk-charm1-rock3` | 1 Charm + 3 Rock | Rock | d10+1 | 6.5 | 1.63 | d6 (⌖ ✕) | -3 | 2 | Stagger | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Stoneheart Tremor** | `atk-charm2-rock2-rock` | 2 Charm + 2 Rock | Rock | d10 | 5.5 | 1.38 | d6 (⌖ ✕) | -3 | 2 | Stagger | Purge: Stagger | — | — | Placeholder | ☐ | ☐ |
+| **Stonespark Crush** | `atk-electric1-rock3` | 1 Electric + 3 Rock | Rock | d10+2 | 7.5 | 1.88 | d6 (⌖ ✕) | -1 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonespark Tremor** | `atk-electric2-rock2-rock` | 2 Electric + 2 Rock | Rock | d8 | 4.5 | 1.13 | d6 (✸ 6) (⌖ ✕) | -2 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stoneblaze Crush** | `atk-fire1-rock3` | 1 Fire + 3 Rock | Rock | d10+2 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 2 | Stagger (1–2, 20%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Stoneblaze Tremor** | `atk-fire2-rock2-rock` | 2 Fire + 2 Rock | Rock | d10+2 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 3 | Stagger (1–3, 30%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Stonethorn Crush** | `atk-grass1-rock3` | 1 Grass + 3 Rock | Rock | d10+2 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 2 | Stagger | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stonethorn Tremor** | `atk-grass2-rock2-rock` | 2 Grass + 2 Rock | Rock | d10+1 | 6.5 | 1.63 | d6 (⌖ ✕) | -3 | 2 | Stagger | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Stoneforge Tremor** | `atk-rock2-steel2-rock` | 2 Rock + 2 Steel | Rock | d6+3 | 6.5 | 1.63 | d6 (⌖ ✕) | -3 | 2 | Stagger | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Stonespray Tremor** | `atk-rock2-water2-rock` | 2 Rock + 2 Water | Rock | d10 | 5.5 | 1.38 | d6 (⌖ +3) | -3 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stoneforge Crush** | `atk-rock3-steel1` | 3 Rock + 1 Steel | Rock | d8+3 | 7.5 | 1.88 | d6 (⌖ ✕) | -3 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonespray Crush** | `atk-rock3-water1` | 3 Rock + 1 Water | Rock | d10+1 | 6.5 | 1.63 | d6 (⌖ +2) | -3 | 2 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonelight Monolith** | `atk-astral1-rock4` | 1 Astral + 4 Rock | Rock | d12+1 | 7.8 | 1.56 | d8 (⌖ ✕) | -4 | 3 | Stagger | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Stonelight Landslide** | `atk-astral2-rock3` | 2 Astral + 3 Rock | Rock | d10+3 | 9.1 | 1.82 | d6 (⌖ ✕) | -3 | 3 | Stagger | Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Stoneheart Monolith** | `atk-charm1-rock4` | 1 Charm + 4 Rock | Rock | d12 | 6.5 | 1.30 | d8 (⌖ ✕) | -4 | 3 | Stagger | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Stoneheart Landslide** | `atk-charm2-rock3` | 2 Charm + 3 Rock | Rock | d10+2 | 7.5 | 1.50 | d6 (⌖ ✕) | -3 | 3 | Stagger | Purge: Stagger | — | — | Placeholder | ☐ | ☐ |
+| **Stonespark Monolith** | `atk-electric1-rock4` | 1 Electric + 4 Rock | Rock | d12+1 | 7.5 | 1.50 | d8 (⌖ ✕) | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonespark Landslide** | `atk-electric2-rock3` | 2 Electric + 3 Rock | Rock | d10+1 | 6.5 | 1.30 | d6 (✸ 6) (⌖ ✕) | -2 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stoneblaze Monolith** | `atk-fire1-rock4` | 1 Fire + 4 Rock | Rock | d12+1 | 7.5 | 1.50 | d8 (⌖ ✕) | -4 | 3 | Stagger (1–2, 17%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Stoneblaze Landslide** | `atk-fire2-rock3` | 2 Fire + 3 Rock | Rock | d10+4 | 9.5 | 1.90 | d6 (⌖ ✕) | -3 | 4 | Stagger (1–3, 30%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Stonethorn Monolith** | `atk-grass1-rock4` | 1 Grass + 4 Rock | Rock | d12+1 | 7.5 | 1.50 | d8 (⌖ ✕) | -4 | 3 | Stagger | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Stonethorn Landslide** | `atk-grass2-rock3` | 2 Grass + 3 Rock | Rock | d10+3 | 8.5 | 1.70 | d6 (⌖ ✕) | -3 | 3 | Stagger | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Stoneforge Landslide** | `atk-rock3-steel2` | 3 Rock + 2 Steel | Rock | d6+5 | 8.5 | 1.70 | d6 (⌖ ✕) | -3 | 3 | Stagger | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Stonespray Landslide** | `atk-rock3-water2` | 3 Rock + 2 Water | Rock | d10+2 | 7.5 | 1.50 | d6 (⌖ +3) | -3 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stoneforge Monolith** | `atk-rock4-steel1` | 4 Rock + 1 Steel | Rock | d10+2 | 7.5 | 1.50 | d8 (⌖ ✕) | -4 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
+| **Stonespray Monolith** | `atk-rock4-water1` | 4 Rock + 1 Water | Rock | d12+1 | 7.5 | 1.50 | d8 (⌖ +2) | -4 | 3 | Stagger | — | — | — | Placeholder | ☐ | ☐ |
 
 ## Steel attacks
 
@@ -560,9 +560,9 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Rivet** | `rivet` | 1 Steel | Steel | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Sunder | — | — | — | Hand-made | ☑ | ☐ |
 | **Iron Tide** | `iron-tide` | 2 Steel + 1 Neutral | Steel | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Sunder | — | — | — | Hand-made | ☑ | ☐ |
-| **Rust Rain** | `rust-rain` | 3 Steel | Steel | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Sunder (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Anchor Drop** | `anchor-drop` | 4 Steel + 1 Neutral | Steel | d10 | 5.5 | 1.10 | d6 | -2 | 3 | Sunder | — | — | ⬇ Weak for its cost (-1.5 vs baseline) | Hand-made | ☑ | ☐ |
-| **Iron Nova** | `atk-steel5` | 5 Steel | Steel | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Rust Rain** | `rust-rain` | 3 Steel | Steel | d4+1 | 3.5 | 1.17 | d6 | -1 | 2 | Sunder (1–2, 50%) | Potency 1 | — | — | Hand-made | ☑ | ☐ |
+| **Anchor Drop** | `anchor-drop` | 4 Steel + 1 Neutral | Steel | d4+4 | 6.5 | 1.30 | d6 | -2 | 3 | Sunder | — | On a hit, the foe gets −1 Ward. | — | Hand-made | ☑ | ☐ |
+| **Iron Colossus** | `atk-steel5` | 5 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | -2 | 3 | Sunder | — | On a hit, the foe gets −2 Ward. | — | Placeholder | ☐ | ☐ |
 
 ### Steel: dual-type
 
@@ -570,48 +570,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Ironlight Pulse** | `atk-astral1-steel1-steel` | 1 Astral + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironheart Pulse** | `atk-charm1-steel1-steel` | 1 Charm + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspark Pulse** | `atk-electric1-steel1-steel` | 1 Electric + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironblaze Pulse** | `atk-fire1-steel1-steel` | 1 Fire + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironthorn Pulse** | `atk-grass1-steel1-steel` | 1 Grass + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Irongrit Pulse** | `atk-rock1-steel1-steel` | 1 Rock + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspray Pulse** | `atk-steel1-water1-steel` | 1 Steel + 1 Water | Steel | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironlight Strike** | `atk-astral1-steel2` | 1 Astral + 2 Steel | Steel | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironheart Strike** | `atk-charm1-steel2` | 1 Charm + 2 Steel | Steel | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspark Strike** | `atk-electric1-steel2` | 1 Electric + 2 Steel | Steel | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironblaze Strike** | `atk-fire1-steel2` | 1 Fire + 2 Steel | Steel | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironthorn Strike** | `atk-grass1-steel2` | 1 Grass + 2 Steel | Steel | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironlight Nick** | `atk-astral1-steel1-steel` | 1 Astral + 1 Steel | Steel | d4+1 | 4.3 | 2.17 | d6 | -1 | 1 | Sunder | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Ironheart Nick** | `atk-charm1-steel1-steel` | 1 Charm + 1 Steel | Steel | d4+1 | 3.5 | 1.75 | d6 | -1 | 1 | Sunder | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Ironspark Nick** | `atk-electric1-steel1-steel` | 1 Electric + 1 Steel | Steel | d4+1 | 3.5 | 1.75 | d6 | +1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironblaze Nick** | `atk-fire1-steel1-steel` | 1 Fire + 1 Steel | Steel | d4+1 | 3.5 | 1.75 | d6 | -1 | 1 | Sunder (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Ironthorn Nick** | `atk-grass1-steel1-steel` | 1 Grass + 1 Steel | Steel | d4+2 | 4.5 | 2.25 | d6 | -1 | 1 | Sunder | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Irongrit Nick** | `atk-rock1-steel1-steel` | 1 Rock + 1 Steel | Steel | d6+1 | 4.5 | 2.25 | d6 | -2 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspray Nick** | `atk-steel1-water1-steel` | 1 Steel + 1 Water | Steel | d4+2 | 4.5 | 2.25 | d6 (⌖ +2) | -1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironlight Shear** | `atk-astral1-steel2` | 1 Astral + 2 Steel | Steel | d4+2 | 5.3 | 1.78 | d6 | -1 | 1 | Sunder | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Ironheart Shear** | `atk-charm1-steel2` | 1 Charm + 2 Steel | Steel | d4+2 | 4.5 | 1.50 | d6 | -1 | 1 | Sunder | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Ironspark Shear** | `atk-electric1-steel2` | 1 Electric + 2 Steel | Steel | d4+2 | 4.5 | 1.50 | d6 | +1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironblaze Shear** | `atk-fire1-steel2` | 1 Fire + 2 Steel | Steel | d4+2 | 4.5 | 1.50 | d6 | -1 | 1 | Sunder (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Ironthorn Shear** | `atk-grass1-steel2` | 1 Grass + 2 Steel | Steel | d4+2 | 4.5 | 1.50 | d6 | -1 | 1 | Sunder | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
 | **Pile Driver** | `pile-driver` | 1 Rock + 2 Steel | Steel | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Sunder | Purge: Stagger | — | — | Hand-made | ☑ | ☐ |
-| **Ironspray Strike** | `atk-steel2-water1` | 2 Steel + 1 Water | Steel | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironlight Crash** | `atk-astral1-steel3` | 1 Astral + 3 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironlight Wave** | `atk-astral2-steel2-steel` | 2 Astral + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironheart Crash** | `atk-charm1-steel3` | 1 Charm + 3 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironheart Wave** | `atk-charm2-steel2-steel` | 2 Charm + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspark Crash** | `atk-electric1-steel3` | 1 Electric + 3 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspark Wave** | `atk-electric2-steel2-steel` | 2 Electric + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironblaze Crash** | `atk-fire1-steel3` | 1 Fire + 3 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironblaze Wave** | `atk-fire2-steel2-steel` | 2 Fire + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironthorn Crash** | `atk-grass1-steel3` | 1 Grass + 3 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironthorn Wave** | `atk-grass2-steel2-steel` | 2 Grass + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Irongrit Crash** | `atk-rock1-steel3` | 1 Rock + 3 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Irongrit Wave** | `atk-rock2-steel2-steel` | 2 Rock + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspray Wave** | `atk-steel2-water2-steel` | 2 Steel + 2 Water | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspray Crash** | `atk-steel3-water1` | 3 Steel + 1 Water | Steel | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironlight Cataclysm** | `atk-astral1-steel4` | 1 Astral + 4 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironlight Barrage** | `atk-astral2-steel3` | 2 Astral + 3 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironheart Cataclysm** | `atk-charm1-steel4` | 1 Charm + 4 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironheart Barrage** | `atk-charm2-steel3` | 2 Charm + 3 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspark Cataclysm** | `atk-electric1-steel4` | 1 Electric + 4 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspark Barrage** | `atk-electric2-steel3` | 2 Electric + 3 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironblaze Cataclysm** | `atk-fire1-steel4` | 1 Fire + 4 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironblaze Barrage** | `atk-fire2-steel3` | 2 Fire + 3 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironthorn Cataclysm** | `atk-grass1-steel4` | 1 Grass + 4 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironthorn Barrage** | `atk-grass2-steel3` | 2 Grass + 3 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Irongrit Cataclysm** | `atk-rock1-steel4` | 1 Rock + 4 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Irongrit Barrage** | `atk-rock2-steel3` | 2 Rock + 3 Steel | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspray Barrage** | `atk-steel3-water2` | 3 Steel + 2 Water | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
-| **Ironspray Cataclysm** | `atk-steel4-water1` | 4 Steel + 1 Water | Steel | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspray Shear** | `atk-steel2-water1` | 2 Steel + 1 Water | Steel | d4+2 | 4.5 | 1.50 | d6 (⌖ +2) | -1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironlight Hammerfall** | `atk-astral1-steel3` | 1 Astral + 3 Steel | Steel | d4+2 | 5.3 | 1.33 | d6 | -1 | 1 | Sunder | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Ironlight Press** | `atk-astral2-steel2-steel` | 2 Astral + 2 Steel | Steel | d4+2 | 6.0 | 1.51 | d6 | -1 | 1 | Sunder | Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Ironheart Hammerfall** | `atk-charm1-steel3` | 1 Charm + 3 Steel | Steel | d4+2 | 4.5 | 1.13 | d6 | -1 | 1 | Sunder | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Ironheart Press** | `atk-charm2-steel2-steel` | 2 Charm + 2 Steel | Steel | d4+2 | 4.5 | 1.13 | d6 | -1 | 1 | Sunder | Purge: Sunder | — | — | Placeholder | ☐ | ☐ |
+| **Ironspark Hammerfall** | `atk-electric1-steel3` | 1 Electric + 3 Steel | Steel | d4+3 | 5.5 | 1.38 | d6 | +1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspark Press** | `atk-electric2-steel2-steel` | 2 Electric + 2 Steel | Steel | d4+1 | 3.5 | 0.88 | d6 (✸ 6) | 0 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironblaze Hammerfall** | `atk-fire1-steel3` | 1 Fire + 3 Steel | Steel | d4+3 | 5.5 | 1.38 | d6 | -1 | 1 | Sunder (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Ironblaze Press** | `atk-fire2-steel2-steel` | 2 Fire + 2 Steel | Steel | d4+3 | 5.5 | 1.38 | d6 | -1 | 2 | Sunder (1–3, 75%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Ironthorn Hammerfall** | `atk-grass1-steel3` | 1 Grass + 3 Steel | Steel | d4+3 | 5.5 | 1.38 | d6 | -1 | 1 | Sunder | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Ironthorn Press** | `atk-grass2-steel2-steel` | 2 Grass + 2 Steel | Steel | d4+2 | 4.5 | 1.13 | d6 | -1 | 1 | Sunder | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Irongrit Hammerfall** | `atk-rock1-steel3` | 1 Rock + 3 Steel | Steel | d6+3 | 6.5 | 1.63 | d6 | -2 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Irongrit Press** | `atk-rock2-steel2-steel` | 2 Rock + 2 Steel | Steel | d8+2 | 6.5 | 1.63 | d6 (⌖ ✕) | -3 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspray Press** | `atk-steel2-water2-steel` | 2 Steel + 2 Water | Steel | d4+2 | 4.5 | 1.13 | d6 (⌖ +3) | -1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspray Hammerfall** | `atk-steel3-water1` | 3 Steel + 1 Water | Steel | d4+3 | 5.5 | 1.38 | d6 (⌖ +2) | -1 | 1 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironlight Guillotine** | `atk-astral1-steel4` | 1 Astral + 4 Steel | Steel | d4+4 | 7.3 | 1.47 | d6 | -2 | 3 | Sunder | Cascade d4 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Ironlight Dismantle** | `atk-astral2-steel3` | 2 Astral + 3 Steel | Steel | d4+3 | 7.0 | 1.41 | d6 | -1 | 2 | Sunder | Cascade d10 | — | — | Placeholder | ☐ | ☐ |
+| **Ironheart Guillotine** | `atk-charm1-steel4` | 1 Charm + 4 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | -2 | 3 | Sunder | Purge | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Ironheart Dismantle** | `atk-charm2-steel3` | 2 Charm + 3 Steel | Steel | d4+3 | 5.5 | 1.10 | d6 | -1 | 2 | Sunder | Purge: Sunder | — | — | Placeholder | ☐ | ☐ |
+| **Ironspark Guillotine** | `atk-electric1-steel4` | 1 Electric + 4 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | 0 | 3 | Sunder | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Ironspark Dismantle** | `atk-electric2-steel3` | 2 Electric + 3 Steel | Steel | d4+2 | 4.5 | 0.90 | d6 (✸ 6) | 0 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironblaze Guillotine** | `atk-fire1-steel4` | 1 Fire + 4 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | -2 | 3 | Sunder (1–2, 50%) | Potency 1 | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Ironblaze Dismantle** | `atk-fire2-steel3` | 2 Fire + 3 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | -1 | 3 | Sunder (1–3, 75%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Ironthorn Guillotine** | `atk-grass1-steel4` | 1 Grass + 4 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | -2 | 3 | Sunder | — | On a hit, the foe gets −1 Ward and you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Ironthorn Dismantle** | `atk-grass2-steel3` | 2 Grass + 3 Steel | Steel | d4+4 | 6.5 | 1.30 | d6 | -1 | 2 | Sunder | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Irongrit Guillotine** | `atk-rock1-steel4` | 1 Rock + 4 Steel | Steel | d6+4 | 7.5 | 1.50 | d6 | -3 | 3 | Sunder | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Irongrit Dismantle** | `atk-rock2-steel3` | 2 Rock + 3 Steel | Steel | d8+4 | 8.5 | 1.70 | d6 (⌖ ✕) | -3 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspray Dismantle** | `atk-steel3-water2` | 3 Steel + 2 Water | Steel | d4+4 | 6.5 | 1.30 | d6 (⌖ +3) | -1 | 2 | Sunder | — | — | — | Placeholder | ☐ | ☐ |
+| **Ironspray Guillotine** | `atk-steel4-water1` | 4 Steel + 1 Water | Steel | d4+4 | 6.5 | 1.30 | d6 (⌖ +2) | -2 | 3 | Sunder | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
 
 ## Water attacks
 
@@ -623,9 +623,9 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Splash Jet** | `splash-jet` | 1 Water | Water | d4 | 2.5 | 2.50 | d6 | 0 | 1 | Soak | — | — | — | Hand-made | ☑ | ☐ |
 | **Tide Crash** | `tide-crash` | 2 Water + 1 Neutral | Water | d6 | 3.5 | 1.17 | d6 | 0 | 1 | Soak | — | — | — | Hand-made | ☑ | ☐ |
-| **Undertow** | `undertow` | 3 Water | Water | d6 | 3.5 | 1.17 | d6 | 0 | 2 | Soak (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
-| **Maelstrom** | `maelstrom` | 4 Water + 1 Neutral | Water | d10+d4 | 8.0 | 1.60 | d6 | -2 | 3 | Soak (a 1, 32%) | Purge | — | — | Hand-made | ☑ | ☐ |
-| **Tide Nova** | `atk-water5` | 5 Water | Water | d10+1 | 6.5 | 1.30 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Undertow** | `undertow` | 3 Water | Water | d6 | 3.5 | 1.17 | d6 (⌖ +2) | 0 | 2 | Soak (1–3, 50%) | Potency 2 | — | — | Hand-made | ☑ | ☐ |
+| **Maelstrom** | `maelstrom` | 4 Water + 1 Neutral | Water | d10+d4 | 8.0 | 1.60 | d6 (⌖ +2) | -3 | 3 | Soak (a 1, 32%) | Purge | — | — | Hand-made | ☑ | ☐ |
+| **Tide Leviathan** | `atk-water5` | 5 Water | Water | d4+d6 | 6.0 | 1.20 | d6 (⌖ +3) | +2 | 3 | Soak (a 1, 38%) | — | — | — | Placeholder | ☐ | ☐ |
 
 ### Water: dual-type
 
@@ -633,48 +633,48 @@ Sorted by total cost. An even split (e.g. 2 + 2) has one attack for each of its 
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Tidelight Pulse** | `atk-astral1-water1-water` | 1 Astral + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideheart Pulse** | `atk-charm1-water1-water` | 1 Charm + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidespark Pulse** | `atk-electric1-water1-water` | 1 Electric + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideblaze Pulse** | `atk-fire1-water1-water` | 1 Fire + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidethorn Pulse** | `atk-grass1-water1-water` | 1 Grass + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidegrit Pulse** | `atk-rock1-water1-water` | 1 Rock + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideforge Pulse** | `atk-steel1-water1-water` | 1 Steel + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidelight Strike** | `atk-astral1-water2` | 1 Astral + 2 Water | Water | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideheart Strike** | `atk-charm1-water2` | 1 Charm + 2 Water | Water | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidespark Strike** | `atk-electric1-water2` | 1 Electric + 2 Water | Water | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidelight Ripple** | `atk-astral1-water1-water` | 1 Astral + 1 Water | Water | d4+1 | 4.3 | 2.17 | d6 | +1 | 1 | Soak | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Tideheart Ripple** | `atk-charm1-water1-water` | 1 Charm + 1 Water | Water | d4 | 2.5 | 1.25 | d6 | +1 | 1 | Soak | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Tidespark Ripple** | `atk-electric1-water1-water` | 1 Electric + 1 Water | Water | d4+1 | 3.5 | 1.75 | d6 | +3 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideblaze Ripple** | `atk-fire1-water1-water` | 1 Fire + 1 Water | Water | d4+1 | 3.5 | 1.75 | d6 | +1 | 1 | Soak (1–2, 50%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Tidethorn Ripple** | `atk-grass1-water1-water` | 1 Grass + 1 Water | Water | d4+1 | 3.5 | 1.75 | d6 | +1 | 1 | Soak | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Tidegrit Ripple** | `atk-rock1-water1-water` | 1 Rock + 1 Water | Water | d6+1 | 4.5 | 2.25 | d6 | 0 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideforge Ripple** | `atk-steel1-water1-water` | 1 Steel + 1 Water | Water | d4+1 | 3.5 | 1.75 | d6 | +1 | 1 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidelight Current** | `atk-astral1-water2` | 1 Astral + 2 Water | Water | d6+1 | 5.1 | 1.69 | d6 (⌖ +2) | 0 | 2 | Soak | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Tideheart Current** | `atk-charm1-water2` | 1 Charm + 2 Water | Water | d6+1 | 4.5 | 1.50 | d6 (⌖ +2) | 0 | 2 | Soak | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Tidespark Current** | `atk-electric1-water2` | 1 Electric + 2 Water | Water | d6+1 | 4.5 | 1.50 | d6 (⌖ +2) | +2 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
 | **Quench** | `quench` | 1 Fire + 2 Water | Water | d6+1 | 4.5 | 1.50 | d6 | 0 | 2 | Soak | Purge: Burn | — | — | Hand-made | ☑ | ☐ |
-| **Tidethorn Strike** | `atk-grass1-water2` | 1 Grass + 2 Water | Water | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidegrit Strike** | `atk-rock1-water2` | 1 Rock + 2 Water | Water | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideforge Strike** | `atk-steel1-water2` | 1 Steel + 2 Water | Water | d6+2 | 5.5 | 1.83 | d6 | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidelight Crash** | `atk-astral1-water3` | 1 Astral + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidelight Wave** | `atk-astral2-water2-water` | 2 Astral + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideheart Crash** | `atk-charm1-water3` | 1 Charm + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideheart Wave** | `atk-charm2-water2-water` | 2 Charm + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidespark Crash** | `atk-electric1-water3` | 1 Electric + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidespark Wave** | `atk-electric2-water2-water` | 2 Electric + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideblaze Crash** | `atk-fire1-water3` | 1 Fire + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideblaze Wave** | `atk-fire2-water2-water` | 2 Fire + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidethorn Crash** | `atk-grass1-water3` | 1 Grass + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidethorn Wave** | `atk-grass2-water2-water` | 2 Grass + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidegrit Crash** | `atk-rock1-water3` | 1 Rock + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidegrit Wave** | `atk-rock2-water2-water` | 2 Rock + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideforge Crash** | `atk-steel1-water3` | 1 Steel + 3 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideforge Wave** | `atk-steel2-water2-water` | 2 Steel + 2 Water | Water | d8+2 | 6.5 | 1.63 | d6 | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidelight Cataclysm** | `atk-astral1-water4` | 1 Astral + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidelight Barrage** | `atk-astral2-water3` | 2 Astral + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideheart Cataclysm** | `atk-charm1-water4` | 1 Charm + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideheart Barrage** | `atk-charm2-water3` | 2 Charm + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidespark Cataclysm** | `atk-electric1-water4` | 1 Electric + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidespark Barrage** | `atk-electric2-water3` | 2 Electric + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideblaze Cataclysm** | `atk-fire1-water4` | 1 Fire + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideblaze Barrage** | `atk-fire2-water3` | 2 Fire + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidethorn Cataclysm** | `atk-grass1-water4` | 1 Grass + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidethorn Barrage** | `atk-grass2-water3` | 2 Grass + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidegrit Cataclysm** | `atk-rock1-water4` | 1 Rock + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tidegrit Barrage** | `atk-rock2-water3` | 2 Rock + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideforge Cataclysm** | `atk-steel1-water4` | 1 Steel + 4 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
-| **Tideforge Barrage** | `atk-steel2-water3` | 2 Steel + 3 Water | Water | d10+2 | 7.5 | 1.50 | d6 | -2 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidethorn Current** | `atk-grass1-water2` | 1 Grass + 2 Water | Water | d6+1 | 4.5 | 1.50 | d6 (⌖ +2) | 0 | 2 | Soak | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Tidegrit Current** | `atk-rock1-water2` | 1 Rock + 2 Water | Water | d8+1 | 5.5 | 1.83 | d6 (⌖ +2) | -1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideforge Current** | `atk-steel1-water2` | 1 Steel + 2 Water | Water | d4+2 | 4.5 | 1.50 | d6 (⌖ +2) | 0 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidelight Breaker** | `atk-astral1-water3` | 1 Astral + 3 Water | Water | d6+2 | 6.1 | 1.51 | d6 (⌖ +2) | 0 | 2 | Soak | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Tidelight Swell** | `atk-astral2-water2-water` | 2 Astral + 2 Water | Water | d6+1 | 5.2 | 1.30 | d6 (⌖ +2) | 0 | 2 | Soak | Cascade d6 | — | — | Placeholder | ☐ | ☐ |
+| **Tideheart Breaker** | `atk-charm1-water3` | 1 Charm + 3 Water | Water | d6+1 | 4.5 | 1.13 | d6 (⌖ +2) | 0 | 2 | Soak | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Tideheart Swell** | `atk-charm2-water2-water` | 2 Charm + 2 Water | Water | d6+1 | 4.5 | 1.13 | d6 (⌖ +2) | 0 | 2 | Soak | Purge: Soak | — | — | Placeholder | ☐ | ☐ |
+| **Tidespark Breaker** | `atk-electric1-water3` | 1 Electric + 3 Water | Water | d6+2 | 5.5 | 1.38 | d6 (⌖ +2) | +2 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidespark Swell** | `atk-electric2-water2-water` | 2 Electric + 2 Water | Water | d6 | 3.5 | 0.88 | d6 (✸ 6) (⌖ +2) | +1 | 2 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideblaze Breaker** | `atk-fire1-water3` | 1 Fire + 3 Water | Water | d4+d4 | 5.0 | 1.25 | d6 (⌖ +2) | 0 | 2 | Soak (1–2, 75%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Tideblaze Swell** | `atk-fire2-water2-water` | 2 Fire + 2 Water | Water | d4+d4 | 5.0 | 1.25 | d6 (⌖ +2) | 0 | 3 | Soak (1–3, 94%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Tidethorn Breaker** | `atk-grass1-water3` | 1 Grass + 3 Water | Water | d4+d4 | 5.0 | 1.25 | d6 (⌖ +2) | 0 | 2 | Soak (a 1, 44%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Tidethorn Swell** | `atk-grass2-water2-water` | 2 Grass + 2 Water | Water | d6+1 | 4.5 | 1.13 | d6 (⌖ +2) | 0 | 2 | Soak | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Tidegrit Breaker** | `atk-rock1-water3` | 1 Rock + 3 Water | Water | d6+d4 | 6.0 | 1.50 | d6 (⌖ +2) | -1 | 2 | Soak (a 1, 38%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidegrit Swell** | `atk-rock2-water2-water` | 2 Rock + 2 Water | Water | d8+d4 | 7.0 | 1.75 | d6 (⌖ ✕) | -2 | 2 | Soak (a 1, 34%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideforge Breaker** | `atk-steel1-water3` | 1 Steel + 3 Water | Water | d4+d4 | 5.0 | 1.25 | d6 (⌖ +2) | 0 | 2 | Soak (a 1, 44%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideforge Swell** | `atk-steel2-water2-water` | 2 Steel + 2 Water | Water | d4+2 | 4.5 | 1.13 | d6 (⌖ +2) | 0 | 2 | Soak | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
+| **Tidelight Abyss** | `atk-astral1-water4` | 1 Astral + 4 Water | Water | d6+3 | 7.1 | 1.41 | d6 (⌖ +3) | -1 | 3 | Soak | Cascade d4 | — | — | Placeholder | ☐ | ☐ |
+| **Tidelight Deluge** | `atk-astral2-water3` | 2 Astral + 3 Water | Water | d4+d4 | 7.1 | 1.42 | d6 (⌖ +2) | 0 | 3 | Soak (a 1, 44%) | Cascade d6 | — | — | Placeholder | ☐ | ☐ |
+| **Tideheart Abyss** | `atk-charm1-water4` | 1 Charm + 4 Water | Water | d6+2 | 5.5 | 1.10 | d6 (⌖ +3) | -1 | 3 | Soak | Purge | — | — | Placeholder | ☐ | ☐ |
+| **Tideheart Deluge** | `atk-charm2-water3` | 2 Charm + 3 Water | Water | d4+d4 | 5.0 | 1.00 | d6 (⌖ +2) | 0 | 3 | Soak (a 1, 44%) | Purge: Soak | — | — | Placeholder | ☐ | ☐ |
+| **Tidespark Abyss** | `atk-electric1-water4` | 1 Electric + 4 Water | Water | d4+d6 | 6.0 | 1.20 | d6 (⌖ +3) | +1 | 3 | Soak (a 1, 38%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidespark Deluge** | `atk-electric2-water3` | 2 Electric + 3 Water | Water | d6+1 | 4.5 | 0.90 | d6 (✸ 6) (⌖ +2) | +1 | 3 | Soak | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideblaze Abyss** | `atk-fire1-water4` | 1 Fire + 4 Water | Water | d4+d6 | 6.0 | 1.20 | d6 (⌖ +3) | -1 | 3 | Soak (1–2, 67%) | Potency 1 | — | — | Placeholder | ☐ | ☐ |
+| **Tideblaze Deluge** | `atk-fire2-water3` | 2 Fire + 3 Water | Water | d6+d4 | 6.0 | 1.20 | d6 (⌖ +2) | 0 | 4 | Soak (1–3, 88%) | Potency 2 | — | — | Placeholder | ☐ | ☐ |
+| **Tidethorn Abyss** | `atk-grass1-water4` | 1 Grass + 4 Water | Water | d4+d6 | 6.0 | 1.20 | d6 (⌖ +3) | -1 | 3 | Soak (a 1, 38%) | — | On a hit, you heal 1 Health. | — | Placeholder | ☐ | ☐ |
+| **Tidethorn Deluge** | `atk-grass2-water3` | 2 Grass + 3 Water | Water | d6+d4 | 6.0 | 1.20 | d6 (⌖ +2) | 0 | 3 | Soak (a 1, 38%) | — | On a hit, you heal 2 Health. | — | Placeholder | ☐ | ☐ |
+| **Tidegrit Abyss** | `atk-rock1-water4` | 1 Rock + 4 Water | Water | d6+d6 | 7.0 | 1.40 | d6 (⌖ +3) | -2 | 3 | Soak (a 1, 31%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tidegrit Deluge** | `atk-rock2-water3` | 2 Rock + 3 Water | Water | d10+d4+1 | 9.0 | 1.80 | d6 (⌖ ✕) | -2 | 3 | Soak (a 1, 32%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideforge Abyss** | `atk-steel1-water4` | 1 Steel + 4 Water | Water | d6+d4 | 6.0 | 1.20 | d6 (⌖ +3) | -1 | 3 | Soak (a 1, 38%) | — | — | — | Placeholder | ☐ | ☐ |
+| **Tideforge Deluge** | `atk-steel2-water3` | 2 Steel + 3 Water | Water | d4+4 | 6.5 | 1.30 | d6 (⌖ +2) | 0 | 3 | Soak | — | On a hit, the foe gets −1 Ward. | — | Placeholder | ☐ | ☐ |
 
 ---
 
@@ -684,7 +684,9 @@ Hand-made moves whose damage stands out from the placeholder baseline for their 
 
 | Move | Cost | Damage | Accuracy | Speed | Note |
 |---|---|---|---|---|---|
-| Redwood Crush | 4 Grass + 1 Neutral | d10 | d6 | -2 | ⬇ Weak for its cost (-1.5 vs baseline) |
-| Anchor Drop | 4 Steel + 1 Neutral | d10 | d6 | -2 | ⬇ Weak for its cost (-1.5 vs baseline) |
+| Meteor | 4 Astral + 1 Neutral | d10+d4 | d6 | -3 | ⬆ Strong for its cost (+1.9 vs baseline) |
+| Canyon Quake | 4 Rock + 1 Neutral | d12+3 | d6 (⌖ ✕) | -4 | ⬆ Strong for its cost (+2 vs baseline) |
+| Bewitching Waltz | 3 Charm | d4 | d8 | 0 | ⬇ Weak for its cost (-2 vs baseline) |
+| Crackle Web | 3 Electric | d4 | d6 | +2 | ⬇ Weak for its cost (-1.5 vs baseline) |
 | Borealis Lance | 3 Astral + 1 Neutral | d6+4 | d6 | +1 | ⬆ Strong for its cost (+2.3 vs baseline) |
 | Mesa Breaker | 3 Rock + 1 Neutral | d10+2 | d6 | -1 | ⬆ Strong for its cost (+1.8 vs baseline) |

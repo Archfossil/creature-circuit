@@ -2,7 +2,7 @@
 // accuracy, speed, effort, status, effects), marking generated placeholders to replace and flagging
 // moves that stand out from the attack-grid baseline for a balance check. Run: npm run docs:moves
 import { writeFileSync } from 'node:fs';
-import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, statusRollText, moveKeywords, critFaces, critFrom } from '../src/data/moves';
+import { MOVES, ATTACK_SLOTS, STATUS_INFO, effectText, slotKey, CATCH_BREATH, BY_TOTAL, ZERO_IN, ZERO_IN_MAX, zeroInOf, avgRoll, diceText, statusChance, statusRollText, moveKeywords, critFaces, critFrom, critsMore } from '../src/data/moves';
 import { SPECIES_BY_ID } from '../src/data/species';
 import { TYPES, TYPE_LABEL } from '../src/data/types';
 import type { ElementType, Move, Stats } from '../src/data/schema';
@@ -23,7 +23,7 @@ const costText = (m: Move) => {
 };
 const avgDmg = avgRoll;
 const dmgText = (m: Move) => (m.kind === 'support' ? '—' : diceText(m) || '0');
-const accText = (m: Move) => (m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}${critFaces(m) > 1 ? ` (✸ ${critFrom(m, m.accuracy)}+)` : ''}${zeroInOf(m) === ZERO_IN ? '' : zeroInOf(m) ? ` (⌖ +${zeroInOf(m)})` : ' (⌖ ✕)'}`);
+const accText = (m: Move) => (m.accuracy === 'sure' ? 'Sure-hit' : `d${m.accuracy}${critsMore(m) ? ` (✸ ${critFrom(m, m.accuracy)}${critFaces(m) > 1 ? "+" : ""})` : ''}${zeroInOf(m) === ZERO_IN ? '' : zeroInOf(m) ? ` (⌖ +${zeroInOf(m)})` : ' (⌖ ✕)'}`);
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const fx = (m: Move) => effectText(m).replace(/ Stat changes last until.*$/, '') || '—';
 const statusText = (m: Move) => (!m.status ? '—'
@@ -47,7 +47,7 @@ function balanceNote(m: Move): string {
   let d = avgDmg(m) - ref;
   // sure-hit moves and fast moves are worth a little more, slow ones a little less
   // wider crits: each extra crit face adds a 1-in-die chance of doubling the damage
-  const wideCrit = critFaces(m) > 1 && typeof m.accuracy === 'number' ? ((critFaces(m) - 1) / m.accuracy) * avgDmg(m) : 0;
+  const wideCrit = critsMore(m) && typeof m.accuracy === 'number' ? ((critFaces(m) - (m.kind === 'physical' ? 1 : 0)) / m.accuracy) * avgDmg(m) : 0;
   const perks = (m.accuracy === 'sure' ? 1 : 0) + Math.max(0, m.speed) * 0.25 + Math.min(0, m.speed) * 0.25 + wideCrit;
   d += perks;
   if (d >= 1.5) return `⬆ Strong for its cost (${signed(+d.toFixed(1))} vs baseline)`;
@@ -120,19 +120,19 @@ lines.push(
   '- **Cost** is the energy a creature must generate to slot the move into its playbook. It isn’t spent per use. Neutral can be paid by any type.',
   '- **Hits as**: the type the attack uses on the type chart. Physical moves ignore the chart and use Power vs Armor.',
   '- **Damage** is the damage die (plus any extra dice, e.g. d10+d4, which are added up) and a flat bonus, before stats. The attacker adds Power (physical) or Focus (elemental) and subtracts the target’s Armor or Ward. **Avg** is the average before stats. **Avg / energy** divides it by the total cost.',
-  '- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits).',
+  '- **Accuracy** is the die rolled against the target’s Evasion (roll ≥ Evasion hits). Sure-hit moves never miss. Physical moves crit (double damage) on the die’s top face; **(✸ 5+)** marks a wider crit range (a roll of 5 or more crits). Elemental moves crit only if marked.',
   `- **⌖ Zeroing In**: a miss gives the creature's next accuracy roll +${ZERO_IN}, stacking over a streak of misses up to +${ZERO_IN_MAX}. The next accuracy roll uses it up, and leaving the field loses it. Moves that differ say so after their accuracy: **(⌖ +2)** is a pursuit move that zeroes in harder, **(⌖ ✕)** is all or nothing and never zeroes in.`,
   '- **Speed** is added to the user’s Speed this round to decide who acts first. **Effort** is the Stamina it drains.',
   '- **Status** is inflicted when a damage die rolls a 1 (elemental attacks carry their type’s status). Moves with extra dice (e.g. d10+d4) inflict it if **any** die shows a 1, so the chance is shown next to the status.',
-  '- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Cascade** (physical) rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn\'t count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).',
+  '- **Keywords**: **Potency N** (elemental) inflicts the status on a damage roll of 1 to 1 + N. **Cascade** rerolls a damage die that shows its top face and adds it, chaining while it keeps rolling its top face (**Cascade d10** chains with d10s); the Avg column counts the chains. **Purge** (elemental) adds damage against a foe with any status, **Purge: Burn** (and so on) a bigger bonus against that one status; Avg doesn\'t count it. Rules: [03 · Combat Rules](./03-combat-rules.md#attack-resolution).',
   '- **Status moves** are support moves with a Status: they roll accuracy and, on a hit, inflict it outright with no damage.',
-  '- **Balance note** compares a hand-made move’s average damage with a generated placeholder of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.',
+  '- **Balance note** compares a hand-made move’s average damage with a plain attack of the same total cost (Neutral included), giving sure-hit and speed a small allowance. It’s a prompt to look, not a verdict: support effects and statuses aren’t counted.',
   '- **Design ☐**: a designed name, flavour and numbers. Hand-made moves start ticked. **Balance ☐**: tick once someone has reviewed its numbers in play.',
   '- **Swapping a placeholder (developers):** add the move to `HANDMADE` in `src/data/moves.ts` with the same typed cost and hit type. It takes over that grid slot and the placeholder disappears. Then regenerate this file.',
   '',
-  '## The placeholder formula (balance baseline)',
+  '## The balance baseline',
   '',
-  'Generated attacks use these numbers by total typed cost. Dual-type attacks get +1 flat damage for needing two energy types. All placeholders have d6 accuracy.',
+  'A plain attack of each total typed cost, with d6 accuracy (dual types get +1 flat damage for needing two). No late attack is this plain: each generated one has its type’s style (`src/data/attackStyles.ts`, docs/03) and is worth about what the plain one is.',
   '',
   '| Total cost | Damage (single type) | Damage (dual type) | Avg (single / dual) | Speed | Effort |',
   '|---|---|---|---|---|---|',

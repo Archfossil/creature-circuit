@@ -161,7 +161,7 @@ The match is kept in a separate local slot (`creature-circuit-online-v1`), so it
 | `accuracy` | The die rolled against the target's Evasion, or `"sure"` for a move that always hits. |
 | `status` | Elemental attacks: the type's status, inflicted when a damage die rolls a 1 (filled in from `STATUS_FOR` when left out). Support moves: a **status move**, inflicting it outright on a hit (no damage). |
 | `potency` | Potency N (elemental): the status lands on a damage roll of 1 to 1 + N. |
-| `cascade` | Cascade (physical): `true` rerolls the damage die on its top face and adds it, chaining while it rolls its top face; a number (`10`) rolls that die for the chain instead ("Cascade d10"). |
+| `cascade` | Cascade: `true` rerolls the damage die on its top face and adds it, chaining while it rolls its top face; a number (`10`) rolls that die for the chain instead ("Cascade d10"). |
 | `purge` | Purge (elemental): `{ "n": 2 }` adds n damage against a foe with any status; `{ "n": 4, "status": "burn" }` only against that status ("Purge: Burn"). |
 | `effect` | `{ "self": {stat: n}, "foe": {stat: n}, "heal": n, "staminaGain": n }`. Stat changes last until that creature leaves the field, capped at ±3 per stat. Keep `text` to flavour only: `effectText` appends the exact numbers (e.g. "You get +2 Armor and +2 Ward.") when the game loads. |
 | `placeholder` | `true` on generated attacks that hold a grid slot until a real move replaces them. |
@@ -182,8 +182,8 @@ There is one elemental attack for every **typed energy cost** that totals 1–5,
 
 **Hand-made and placeholder attacks:** hand-made attacks fill their own slots, and every other slot gets a generated placeholder:
 - **Ids:** `atk-<type><n>[-<type><n>]`. Even splits add the hit type, e.g. `atk-fire2-grass2-grass`.
-- **Names:** built from the types, e.g. Flamethorn Wave (Fire) and Brambleblaze Wave (Grass).
-- **Numbers:** set by total cost: d4 at 1, up to d10 + 1 at 5, with more Effort and a slower Speed as the cost rises. Dual attacks get +1 flat damage for needing two energy types.
+- **Names:** built from the types, with nouns that belong to the leading type (`STYLE_NOUNS`), e.g. Voltforge Thunderstroke (Electric) and Ironspark Guillotine (Steel).
+- **Numbers:** in the style of the type it leads with, with a twist from its other type (`src/data/attackStyles.ts`, see docs/03). Its flat damage is picked so it is worth about what a plain attack of its cost is (`BY_TOTAL`: d4 at 1, up to d10 + 1 at 5, plus 1 for dual types).
 
 Dual attacks are only learnable by creatures that generate both energy types.
 

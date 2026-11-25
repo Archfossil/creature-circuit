@@ -957,7 +957,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
     const dmgFor = (r: number) => (mult === 0 ? 0 : Math.max(1, Math.floor(Math.max(1, r + add) * mult)));
     const dice = damageDice(m);
     const lo = dmgFor(dice.length), hi = dmgFor(dice.reduce((a, d) => a + d, 0));
-    const chain = m.kind === 'physical' && m.cascade ? cascadeDie(m, dice[0] ?? 0) : 0;
+    const chain = cascadeDie(m, dice[0] ?? 0);
     const dt = dice.map((d) => `d${d}`).join(' + ');
     const multText = mult === 1 ? '' : ` × ${mult} (${mult === 0 ? 'immune' : mult > 1 ? 'super effective' : 'resisted'})`;
     const range = (a: number, z: number) => (a === z ? `${a}` : `${a}–${z}`);
@@ -966,7 +966,7 @@ export function movePreview(b: Battle, moveId: string, si: 0 | 1 = 0): PreviewSt
       icon: '💥', title: `Damage: ${[dt, partsText(parts)].join(' ').trim().replace(/^\+ /, '')}${multText}`,
       tone: mult > 1 ? 'good' : mult < 1 ? 'bad' : undefined,
       text: `${dice.length ? `Roll ${dice.length > 1 ? `${dt} and add them up` : `a ${dt}`}, then ` : ''}${stat}${multText ? `, then apply the type chart${multText}` : ''}. ` +
-        `Deals ${range(lo, hi)}${chain ? '+' : ''} damage${m.kind === 'physical' && m.accuracy !== 'sure' && hi > 0 ? `, or ${range(lo * 2, hi * 2)}${chain ? '+' : ''} on a crit` : ''}. ${foeName} has ${totalHealth(foe)}/${maxTotal(foe)} Health left.` +
+        `Deals ${range(lo, hi)}${chain ? '+' : ''} damage${critFaces(m) && hi > 0 ? `, or ${range(lo * 2, hi * 2)}${chain ? '+' : ''} on a crit` : ''}. ${foeName} has ${totalHealth(foe)}/${maxTotal(foe)} Health left.` +
         (chain ? ` Cascade: a top-face damage roll ${chain === dice[0] ? 'rolls again' : `rolls a d${chain}`} and adds it, and keeps going while that rolls its top face (no upper limit).` : ''),
     });
     if (m.kind === 'elemental' && m.status && m.dmgDie > 0) {

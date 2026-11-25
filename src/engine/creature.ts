@@ -175,6 +175,13 @@ export function learnable(c: CreatureInst): string[] {
   }).map((m) => m.id);
 }
 
+/** What a move's own numbers add to a bare hit (no dice, d6 to hit) against a typical foe: its dice, aim, crits, status, riders, Speed and Effort. */
+function moveGain(c: CreatureInst, m: Move): number {
+  if (m.kind === 'support') return avgRoll(m);
+  const g = typicalGuard(c.level), foe = { armor: g, ward: g };
+  const bare: Move = { id: '', name: '', kind: m.kind, cost: {}, effort: 0, speed: 0, accuracy: 6, zeroIn: 0, dmgDie: 0, dmgFlat: 0, critRange: m.kind === 'physical' ? 1 : 0, text: '' };
+  return (moveWorth(c, m, foe) - moveWorth(c, bare, foe)) * 1.25 + (m.purge ? m.purge.n * 0.35 : 0);
+}
 /** Pick a sensible default playbook: depth-first search over affordable sets for a strong, varied mix. */
 /**
  * Pick a playbook that fits the creature's energy. `varied` (wild and NPC creatures) shakes up the
@@ -188,10 +195,12 @@ const evenCost = (m: Move, types: readonly ElementType[]) => !!types[1] && !!m.c
 export function autoPlaybook(c: CreatureInst, varied = false): string[] {
   const e = energy(c);
   const sp = speciesOf(c), own = leadTypes(sp);
-  const val = (id: string) => {
+  const worth = new Map<string, number>();
+  const val = (id: string) => { let v = worth.get(id); if (v === undefined) { v = valOf(id); worth.set(id, v); } return v; };
+  const valOf = (id: string) => {
     const m = MOVE_BY_ID[id];
     const typed = Object.keys(m.cost).some((k) => k !== 'neutral');
-    return avgRoll(m) + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2 + (sp.balanced && evenCost(m, sp.types) ? EVEN_PULL : 0);
+    return moveGain(c, m) + (typed ? 1 : 0) + (m.kind === 'support' ? 1 : 0) + (id.startsWith('sig-') ? 2 : 0) + Math.max(0, m.speed) * 0.2 + (sp.balanced && evenCost(m, sp.types) ? EVEN_PULL : 0);
   };
   // The attack grid makes the learnable list long (dozens for dual types), so search a shortlist:
   // the strongest moves, the best value per energy, and the best of each kind and of the main type.

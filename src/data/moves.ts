@@ -1,6 +1,7 @@
 import { STAGGER } from './icons';
 import type { Move, ElementType, StatusId, EnergyMap } from './schema';
 import { TYPES, TYPE_LABEL } from './types';
+import { STYLE_NOUNS, styledAttack } from './attackStyles';
 
 // Example Master Move List. Costs are playbook requirements (not spent per use).
 // accuracy: die rolled vs target Evasion ('sure' always hits). Physical max roll = critical (x2).
@@ -25,7 +26,7 @@ export const zeroInOf = (m: Move) => (m.accuracy === 'sure' ? 0 : m.zeroIn ?? ZE
 /** Every damage die a move rolls: its main die plus any extra dice (empty for none). */
 export const damageDice = (m: Move): number[] => (m.dmgDie ? [m.dmgDie, ...(m.extraDice ?? [])] : []);
 /** The die a Cascade move chains with when a damage die rolls its top face (0: no Cascade). */
-export const cascadeDie = (m: Move, die: number) => (m.kind === 'physical' && m.cascade ? (m.cascade === true ? die : m.cascade) : 0);
+export const cascadeDie = (m: Move, die: number) => (m.kind !== 'support' && m.cascade ? (m.cascade === true ? die : m.cascade) : 0);
 /** Average total of a die that keeps rolling and adding while it shows its top face. */
 const explodingAvg = (d: number) => (d < 2 ? 1 : (d * (d + 1)) / (2 * (d - 1)));
 /** Average of one damage die, Cascade included. */
@@ -45,8 +46,12 @@ export const statusRollText = (m: Move, extra = 0) => (statusFaces(m, extra) ===
 export const purgeBonus = (m: Move, st?: StatusId) => (m.kind === 'elemental' && m.purge && st && (!m.purge.status || m.purge.status === st) ? m.purge.n : 0);
 /** Purge's default sizes: any status, and a named one (a bigger payoff for setting it up). */
 export const PURGE_ANY = 2, PURGE_NAMED = 4;
-/** How many top faces of the accuracy die crit (physical, non-sure-hit moves only). */
-export const critFaces = (m: Move) => (m.kind === 'physical' && m.accuracy !== 'sure' ? Math.max(1, m.critRange ?? 1) : 0);
+/** How many top faces of the accuracy die crit: 1 for a physical move, none for an elemental one, unless it says more. Sure-hit moves never crit. */
+export const critFaces = (m: Move) => (m.accuracy === 'sure' ? 0 : m.kind === 'physical' ? Math.max(1, m.critRange ?? 1) : m.kind === 'elemental' ? m.critRange ?? 0 : 0);
+/** Crits more than its kind usually does: worth pointing out. */
+export const critsMore = (m: Move) => critFaces(m) > (m.kind === 'physical' ? 1 : 0);
+/** The accuracy rolls that crit: "6" / "5–6". */
+export const critText = (m: Move, die: number) => (critFrom(m, die) === die ? `${die}` : `${critFrom(m, die)}–${die}`);
 /** The lowest natural accuracy roll that crits on this die (never a 1), or 0 if the move can't crit. */
 export const critFrom = (m: Move, die: number) => (critFaces(m) ? Math.max(2, die - critFaces(m) + 1) : 0);
 
@@ -99,59 +104,59 @@ const HANDMADE: Move[] = [
   E('stardust', 'Stardust', 'astral', { cost: { astral: 1 }, dmgDie: 4 }, 'Glittering motes that can Daze.'),
   E('comet-tail', 'Comet Tail', 'astral', { cost: { astral: 2, neutral: 1 }, dmgDie: 6, speed: 1 }, 'A streaking blow of starlight.'),
   E('aurora-veil', 'Aurora Veil', 'astral', { kind: 'support', cost: { astral: 2 }, dmgDie: 0, speed: 3, accuracy: 'sure', effect: { self: { ward: 2, evasion: 1 } } }, 'A shimmering curtain of aurora light.'),
-  E('meteor', 'Meteor', 'astral', { cost: { astral: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -2 }, 'Calls down a falling star and its shower of fragments.'),
+  E('meteor', 'Meteor', 'astral', { cost: { astral: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -3, cascade: 4 }, 'Calls down a falling star and its shower of fragments.'),
 
   // ── Charm ──────────────────────────────────────────────────────
   E('pixie-glint', 'Pixie Glint', 'charm', { cost: { charm: 1 }, dmgDie: 4 }, 'A dazzling wink that can Beguile.'),
   E('heartbreaker', 'Heartbreaker', 'charm', { cost: { charm: 2, neutral: 1 }, dmgDie: 6, purge: { n: PURGE_ANY } }, 'Wounds the pride as much as the body, and hurts most when the foe is already suffering.'),
   E('lullaby', 'Lullaby', 'charm', { kind: 'support', cost: { charm: 2 }, dmgDie: 0, accuracy: 6, effect: { foe: { speed: -2, focus: -1 } } }, 'A drowsy melody.'),
-  E('glamour-burst', 'Glamour Burst', 'charm', { cost: { charm: 4, neutral: 1 }, dmgDie: 10, effort: 3, speed: -1 }, 'An overwhelming flash of fey light.'),
+  E('glamour-burst', 'Glamour Burst', 'charm', { cost: { charm: 4, neutral: 1 }, dmgDie: 8, dmgFlat: 1, accuracy: 8, effort: 3, speed: 1, purge: { n: PURGE_ANY } }, 'An overwhelming flash of fey light.'),
 
   // ── Electric ───────────────────────────────────────────────────
   E('spark', 'Spark', 'electric', { cost: { electric: 1 }, dmgDie: 4, speed: 1 }, 'A quick zap that can Shock.'),
   E('volt-fang', 'Volt Fang', 'electric', { cost: { electric: 2, neutral: 1 }, dmgDie: 6, speed: 1 }, 'Crackling bite.'),
   E('static-field', 'Static Field', 'electric', { kind: 'support', cost: { electric: 2 }, dmgDie: 0, effect: { self: { speed: 3 }, foe: { evasion: -1 } } }, 'Charges the air with static.'),
-  E('thunderclap', 'Thunderclap', 'electric', { cost: { electric: 4, neutral: 1 }, dmgDie: 10, effort: 3 }, 'A deafening bolt from above.'),
+  E('thunderclap', 'Thunderclap', 'electric', { cost: { electric: 4, neutral: 1 }, dmgDie: 8, dmgFlat: 1, effort: 3, speed: 1, critRange: 1 }, 'A deafening bolt from above.'),
 
   // ── Fire ───────────────────────────────────────────────────────
   E('ember', 'Ember', 'fire', { cost: { fire: 1 }, dmgDie: 4 }, 'Hot cinders that can Burn.'),
   E('fire-claw', 'Fire Claw', 'fire', { cost: { fire: 2, neutral: 1 }, dmgDie: 6 }, 'Talons wreathed in flame.'),
   E('heat-haze', 'Heat Haze', 'fire', { kind: 'support', cost: { fire: 2 }, dmgDie: 0, accuracy: 'sure', effect: { self: { evasion: 1, focus: 1 } } }, 'A shimmer of rising heat.'),
-  E('magma-surge', 'Magma Surge', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 3, speed: -2, potency: 1 }, 'A wave of molten rock.'),
+  E('magma-surge', 'Magma Surge', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 2, effort: 3, speed: -2, potency: 2 }, 'A wave of molten rock.'),
 
   // ── Grass ──────────────────────────────────────────────────────
   E('vine-snap', 'Vine Snap', 'grass', { cost: { grass: 1 }, dmgDie: 4 }, 'A whipping vine that can Snare.'),
   E('thorn-volley', 'Thorn Volley', 'grass', { cost: { grass: 2, neutral: 1 }, dmgDie: 4, extraDice: [4] }, 'A spray of needle-sharp thorns.'),
   E('photosynth', 'Photosynth', 'grass', { kind: 'support', cost: { grass: 2 }, dmgDie: 0, accuracy: 'sure', effect: { heal: 3, staminaGain: 2 } }, 'Drinks in the light.'),
-  E('redwood-crush', 'Redwood Crush', 'grass', { cost: { grass: 4, neutral: 1 }, dmgDie: 10, effort: 3, speed: -2 }, 'Topples an ancient trunk onto the foe.'),
+  E('redwood-crush', 'Redwood Crush', 'grass', { cost: { grass: 4, neutral: 1 }, dmgDie: 6, extraDice: [6], effort: 3, speed: -2, effect: { heal: 2 } }, 'Topples an ancient trunk onto the foe.'),
 
   // ── Rock ───────────────────────────────────────────────────────
   E('pebble-shot', 'Pebble Shot', 'rock', { cost: { rock: 1 }, dmgDie: 4 }, 'Flung grit that can Stagger.'),
   E('rockslide', 'Rockslide', 'rock', { cost: { rock: 2, neutral: 1 }, dmgDie: 4, extraDice: [4], speed: -1 }, 'A tumble of loose boulders.'),
   E('stone-skin', 'Stone Skin', 'rock', { kind: 'support', cost: { rock: 2 }, dmgDie: 0, accuracy: 'sure', speed: 3, effect: { self: { armor: 2, ward: 1 } } }, 'Hardens the hide.'),
-  E('canyon-quake', 'Canyon Quake', 'rock', { cost: { rock: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 3, speed: -3 }, 'Splits the ground beneath the foe.'),
+  E('canyon-quake', 'Canyon Quake', 'rock', { cost: { rock: 4, neutral: 1 }, dmgDie: 12, dmgFlat: 3, effort: 3, speed: -4, zeroIn: 0 }, 'Splits the ground beneath the foe.'),
 
   // ── Steel ──────────────────────────────────────────────────────
   E('rivet', 'Rivet', 'steel', { cost: { steel: 1 }, dmgDie: 4 }, 'A hammered bolt that can Sunder.'),
   E('iron-tide', 'Iron Tide', 'steel', { cost: { steel: 2, neutral: 1 }, dmgDie: 6 }, 'A wave of liquid ore.'),
   E('bulwark', 'Bulwark', 'steel', { kind: 'support', cost: { steel: 2 }, dmgDie: 0, accuracy: 'sure', speed: 4, effect: { self: { armor: 3 } } }, 'Locks into a fortress stance.'),
-  E('anchor-drop', 'Anchor Drop', 'steel', { cost: { steel: 4, neutral: 1 }, dmgDie: 10, effort: 3, speed: -2 }, 'Drops a ship\'s anchor from on high.'),
+  E('anchor-drop', 'Anchor Drop', 'steel', { cost: { steel: 4, neutral: 1 }, dmgDie: 4, dmgFlat: 4, effort: 3, speed: -2, effect: { foe: { ward: -1 } } }, 'Drops a ship\'s anchor from on high.'),
 
   // ── Water ──────────────────────────────────────────────────────
   E('splash-jet', 'Splash Jet', 'water', { cost: { water: 1 }, dmgDie: 4 }, 'A pressurized squirt that can Soak.'),
   E('tide-crash', 'Tide Crash', 'water', { cost: { water: 2, neutral: 1 }, dmgDie: 6 }, 'Rolling breaker.'),
   E('mist-cloak', 'Mist Cloak', 'water', { kind: 'support', cost: { water: 2 }, dmgDie: 0, accuracy: 'sure', speed: 3, effect: { self: { evasion: 2 } } }, 'Wraps itself in mist.'),
-  E('maelstrom', 'Maelstrom', 'water', { cost: { water: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -2, purge: { n: PURGE_ANY } }, 'A whirlpool that drags the foe under, worst of all for a foe already struggling.'),
+  E('maelstrom', 'Maelstrom', 'water', { cost: { water: 4, neutral: 1 }, dmgDie: 10, extraDice: [4], effort: 3, speed: -3, zeroIn: 2, purge: { n: PURGE_ANY } }, 'A whirlpool that drags the foe under, worst of all for a foe already struggling.'),
 
-  // ── Potency: status hitters (3 of one type; status on a damage roll of 1–3) ──
-  E('starglimmer', 'Starglimmer', 'astral', { cost: { astral: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A haze of twinkling light that leaves the foe seeing stars.'),
-  E('bewitching-waltz', 'Bewitching Waltz', 'charm', { cost: { charm: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A twirling dance that’s hard to look away from.'),
-  E('crackle-web', 'Crackle Web', 'electric', { cost: { electric: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A net of sparks that clings and stings.'),
+  // ── Potency: status hitters (3 of one type: each in its type's style) ──
+  E('starglimmer', 'Starglimmer', 'astral', { cost: { astral: 3 }, dmgDie: 6, effort: 2, potency: 2, cascade: 4 }, 'A haze of twinkling light that leaves the foe seeing stars.'),
+  E('bewitching-waltz', 'Bewitching Waltz', 'charm', { cost: { charm: 3 }, dmgDie: 4, accuracy: 8, effort: 2, potency: 1 }, 'A twirling dance that’s hard to look away from.'),
+  E('crackle-web', 'Crackle Web', 'electric', { cost: { electric: 3 }, dmgDie: 4, effort: 2, speed: 2, potency: 1 }, 'A net of sparks that clings and stings.'),
   E('cinder-storm', 'Cinder Storm', 'fire', { cost: { fire: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A whirl of glowing ash that sets everything smoldering.'),
-  E('thicket-lash', 'Thicket Lash', 'grass', { cost: { grass: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'Thorny stems that whip and tangle.'),
-  E('grit-squall', 'Grit Squall', 'rock', { cost: { rock: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A blast of sand and gravel that rattles the senses.'),
-  E('rust-rain', 'Rust Rain', 'steel', { cost: { steel: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'Flakes of corroding metal that eat into armor.'),
-  E('undertow', 'Undertow', 'water', { cost: { water: 3 }, dmgDie: 6, effort: 2, potency: 2 }, 'A heavy drag of water that clings and soaks.'),
+  E('thicket-lash', 'Thicket Lash', 'grass', { cost: { grass: 3 }, dmgDie: 4, extraDice: [4], effort: 3, speed: -2, potency: 1 }, 'Thorny stems that whip and tangle.'),
+  E('grit-squall', 'Grit Squall', 'rock', { cost: { rock: 3 }, dmgDie: 8, effort: 2, speed: -2, potency: 3 }, 'A blast of sand and gravel that rattles the senses.'),
+  E('rust-rain', 'Rust Rain', 'steel', { cost: { steel: 3 }, dmgDie: 4, dmgFlat: 1, effort: 2, speed: -1, potency: 1 }, 'Flakes of corroding metal that eat into armor.'),
+  E('undertow', 'Undertow', 'water', { cost: { water: 3 }, dmgDie: 6, effort: 2, potency: 2, zeroIn: 2 }, 'A heavy drag of water that clings and soaks.'),
 
   // ── Purge: payoffs against a status (2 of the lead type + 1 of the type that inflicts it) ──
   E('starstruck', 'Starstruck', 'astral', { cost: { astral: 2, charm: 1 }, dmgDie: 6, dmgFlat: 1, effort: 2, purge: { n: PURGE_NAMED, status: 'beguile' } }, 'Strikes a smitten foe while its guard is down.'),
@@ -171,7 +176,7 @@ const HANDMADE: Move[] = [
   E('sig-overgrowth', 'Overgrowth', 'grass', { cost: { grass: 3, neutral: 1 }, dmgDie: 8, effect: { heal: 2 } }, 'Signature. Roots that drain and regrow.'),
   E('sig-mesa', 'Mesa Breaker', 'rock', { cost: { rock: 3, neutral: 1 }, dmgDie: 10, dmgFlat: 2, speed: -1 }, 'Signature. Shears a cliff face.'),
   E('sig-foundry', 'Foundry Hammer', 'steel', { cost: { steel: 3, neutral: 1 }, dmgDie: 8, effect: { foe: { armor: -1 } } }, 'Signature. Forge-hot strike.'),
-  E('sig-riptide', 'Riptide', 'water', { cost: { water: 3, neutral: 1 }, dmgDie: 8, speed: 2 }, 'Signature. Pulls the foe off balance.'),
+  E('sig-riptide', 'Riptide', 'water', { cost: { water: 3, neutral: 1 }, dmgDie: 8, speed: 1, zeroIn: 3 }, 'Signature. Pulls the foe off balance.'),
 ];
 
 // ── The attack grid ─────────────────────────────────────────────
@@ -214,12 +219,7 @@ export const ATTACK_SLOTS: AttackSlot[] = (() => {
 
 const STEM: Record<ElementType, string> = { astral: 'Star', charm: 'Glam', electric: 'Volt', fire: 'Flame', grass: 'Bramble', rock: 'Stone', steel: 'Iron', water: 'Tide' };
 const TAIL: Record<ElementType, string> = { astral: 'light', charm: 'heart', electric: 'spark', fire: 'blaze', grass: 'thorn', rock: 'grit', steel: 'forge', water: 'spray' };
-const SINGLE_NOUN = ['', 'Flick', 'Shot', 'Lance', 'Storm', 'Nova'];
-/** Dual names by split: ties and lopsided splits get their own nouns so every name is unique. */
-const DUAL_NOUN = (major: number, minor: number) =>
-  ({ '1-1': 'Pulse', '2-1': 'Strike', '2-2': 'Wave', '3-1': 'Crash', '3-2': 'Barrage', '4-1': 'Cataclysm' } as Record<string, string>)[`${major}-${minor}`];
-
-/** Attack numbers by total cost: bigger costs hit harder, tire more and act later (the placeholder formula, also the balance baseline). */
+/** A plain attack of each cost: bigger costs hit harder, tire more and act later. What every attack is balanced against. */
 export const BY_TOTAL: Record<number, Pick<Move, 'dmgDie' | 'dmgFlat' | 'effort' | 'speed'>> = {
   1: { dmgDie: 4, dmgFlat: 0, effort: 1, speed: 0 },
   2: { dmgDie: 6, dmgFlat: 0, effort: 1, speed: 0 },
@@ -228,23 +228,18 @@ export const BY_TOTAL: Record<number, Pick<Move, 'dmgDie' | 'dmgFlat' | 'effort'
   5: { dmgDie: 10, dmgFlat: 1, effort: 3, speed: -2 },
 };
 
+/** A generated attack, in its type's style (attackStyles.ts). */
 function placeholderAttack({ cost, type }: AttackSlot): Move {
   const types = TYPES.filter((t) => (cost[t] ?? 0) > 0);
-  const total = types.reduce((a, t) => a + cost[t]!, 0);
   const even = types.length === 2 && cost[types[0]] === cost[types[1]];
   const id = `atk-${types.map((t) => `${t}${cost[t]}`).join('-')}${even ? `-${type}` : ''}`;
-  if (types.length === 1) {
-    return {
-      id, name: `${STEM[type]} ${SINGLE_NOUN[total]}`, kind: 'elemental', type, cost: { ...cost }, accuracy: 6, ...BY_TOTAL[total],
-      text: `A focused burst of ${TYPE_LABEL[type]} energy.`, placeholder: true,
-    };
-  }
-  const major = type, minor = types.find((t) => t !== type)!;
-  const s = BY_TOTAL[total];
+  const other = types.find((t) => t !== type), major = cost[type]!, minor = other ? cost[other]! : 0;
+  const plain = major + minor < 2 || (!other && major < 5); // (hand-made attacks fill these slots)
+  const numbers = plain ? { accuracy: 6, ...BY_TOTAL[major] } : styledAttack(type, major, other, minor, STATUS_FOR, { avgRoll, statusChance });
+  const noun = STYLE_NOUNS[type][other ? `${major}-${minor}` : '5'];
   return {
-    id, name: `${STEM[major]}${TAIL[minor]} ${DUAL_NOUN(cost[major]!, cost[minor]!)}`, kind: 'elemental', type: major, cost: { ...cost }, accuracy: 6,
-    ...s, dmgFlat: s.dmgFlat + 1, // needing two energy types earns a little extra punch
-    text: `Fuses ${TYPE_LABEL[major]} and ${TYPE_LABEL[minor]} energy. Hits as ${TYPE_LABEL[major]}.`, placeholder: true,
+    id, name: other ? `${STEM[type]}${TAIL[other]} ${noun}` : major === 5 ? `${STEM[type]} ${noun}` : `${STEM[type]} ${major}`, kind: 'elemental', type, cost: { ...cost }, ...numbers,
+    text: other ? `Fuses ${TYPE_LABEL[type]} and ${TYPE_LABEL[other]} energy. Hits as ${TYPE_LABEL[type]}.` : `All ${TYPE_LABEL[type]}, all at once.`, placeholder: true,
   };
 }
 
@@ -295,7 +290,7 @@ export function moveKeywords(m: Move): { name: string; text: string }[] {
     name: `Potency ${m.potency}`,
     text: `inflicts ${STATUS_INFO[m.status].name} on a damage roll of ${statusRollText(m)}${m.extraDice?.length ? ' on any die' : ''}, not just a 1 (${Math.round(statusChance(m) * 100)}%).`,
   });
-  if (m.kind === 'physical' && m.cascade) {
+  if (m.kind !== 'support' && m.cascade) {
     const d = m.cascade === true ? 0 : m.cascade;
     out.push({
       name: d ? `Cascade d${d}` : 'Cascade',
@@ -320,7 +315,7 @@ export function diceRulesText(m: Move): string {
   if (m.extraDice?.length && m.kind === 'elemental' && m.status && !m.potency) out.push(`Rolls ${diceText(m)}: a 1 on any die inflicts the status (${Math.round(statusChance(m) * 100)}%).`);
   else if (m.extraDice?.length) out.push(`Rolls ${diceText(m)}.`);
   for (const k of moveKeywords(m)) out.push(`${k.name}: ${k.text[0].toUpperCase()}${k.text.slice(1)}`);
-  if (critFaces(m) > 1 && typeof m.accuracy === 'number') out.push(`Wide crits: an accuracy roll of ${critFrom(m, m.accuracy)}–${m.accuracy} crits.`);
+  if (critsMore(m) && typeof m.accuracy === 'number') out.push(`${critFaces(m) > 1 ? 'Wide crits: an' : 'An'} accuracy roll of ${critText(m, m.accuracy)} crits (double damage).`);
   return out.join(' ');
 }
 
