@@ -210,7 +210,7 @@ Each step is finished, tested and pushed on its own, and the game is playable af
 | 8 | **Saves and online** record the region; wording stops assuming Margos, 8 and 100 | M | Region name on saves |
 | 9 | **Season flow:** region choice at the start, farewell, hall of records | M | Farewell and records; the region page once there are two |
 | 10 | **Balanced starters:** the rules above | S–M | Nothing until the Juudlands |
-| 11 | **Load on demand:** a region's data and art only when it's played | S–M | Faster first load later on |
+| 11 | **Load on demand:** a region's data and art only when it's played. Can wait: an installed game doesn't need it ([18](./18-steam.md)) | S–M | Faster first load later on |
 
 **What each step needs to be called done**
 

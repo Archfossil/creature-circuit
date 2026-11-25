@@ -279,7 +279,8 @@ To build out this game, please review the core design documents located in the `
 14. **[Instinct Checklist (`/docs/14-instinct-checklist.md`)](./docs/14-instinct-checklist.md):** Every Instinct (the battle passive each species has): when it fires, its in-game text, its exact rules, how many species have it and which families, with Design and Balance checkboxes, plus the design space still open for new ones. All 48 are first drafts for redesign. Generated from the game data: regenerate with `npm run docs:instincts`.
 15. **[Rivals & Champions (`/docs/15-rivals-and-champions.md`)](./docs/15-rivals-and-champions.md):** The 12 Rivals and 8 Champions, how their teams grow, where to meet them, rematches, Revenge and the Circuit Standings, with balance notes.
 16. **[Region Packages (`/docs/16-region-packages.md`)](./docs/16-region-packages.md):** A proposal, not built yet: turning Margos into the first region package so whole new regions can be added. What moves, the steps, the risks and the decisions needed.
-17. **[World Championship (`/docs/17-world-championship.md`)](./docs/17-world-championship.md):** A proposal for after Margos: eight linked regions, a shared feed, one game day per real day, chess-clock battles, bots, and one World Champion. Casual games stay turn-based.
+17. **[World Championship (`/docs/17-world-championship.md`)](./docs/17-world-championship.md):** A proposal for after Margos: up to eight regions each play their own season, a chapter a week, and their Champions meet in one bracket on live Circuit Nights.
+18. **[Steam (`/docs/18-steam.md`)](./docs/18-steam.md):** The long-term direction: the same game on Steam in a desktop wrapper, what that needs, and how creatures get made.
 ---
 
 ## 🚀 Development Roadmap & Scope
