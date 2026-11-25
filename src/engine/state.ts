@@ -95,6 +95,7 @@ export interface GameState {
     lure: boolean;
     /** Hush Smoke: exploring can't turn up a creature or trainer this turn. */
     repel?: boolean;
+    /** Lucky stars (Star Charm, Fortune Teller): wild encounters roll an extra rarity die this turn. */
     starCharm: boolean;
     beaten: string[];       // legendary node ids already resolved
     salemNight: boolean;    // waited for aurora this turn

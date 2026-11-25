@@ -98,7 +98,7 @@ export function activeEffects(s: GameState): ActiveEffect[] {
     const ci = CITIES[s.hotpot.city];
     out.push({ id: 'hotpot', icon: '🍲', name: ci?.hotpot.name ?? 'Chanko Nabe', text: `${buffText(s.hotpot.buff)} for your team in your next battle${ci ? ` (from ${ci.name})` : ''}.` });
   }
-  if (s.flags.starCharm) out.push({ id: 'starCharm', icon: '⭐', name: 'Lucky stars', text: 'Your next wild encounter rolls an extra rarity die (a Star Charm or the Fortune Teller).' });
+  if (s.flags.starCharm) out.push({ id: 'starCharm', icon: '⭐', name: 'Lucky stars', text: 'Every wild encounter rolls an extra rarity die until the end of your turn (a Star Charm or the Fortune Teller).' });
   if (s.flags.lure) out.push({ id: 'lure', icon: '🕯️', name: 'Lure Incense', text: 'Every explore is a wild encounter until the end of your turn.' });
   if (s.flags.repel) out.push({ id: 'repel', icon: '💨', name: 'Hush Smoke', text: 'Exploring can’t turn up a creature or trainer until the end of your turn: a 3 finds Nothing and a 4 finds an item.' });
   for (const g of activeRegion().gimmicks) out.push(...(g.effects?.(s, tools) ?? []));
@@ -412,7 +412,6 @@ export function trainerRarity(tier: number): Rarity {
 export function rollRarity(s: GameState, node: MapNode): { stars: { face: number; star: Star }[]; rarity: Rarity } {
   const tier = tierOf(s);
   const nDice = 2 + tierRarityDice(tier) + (ability(s) === 'starSeeker' ? 1 : 0) + (s.flags.starCharm ? 1 : 0);
-  s.flags.starCharm = false;
   const stars = Array.from({ length: nDice }, () => starDie());
   const full = stars.filter((x) => x.star === 'full').length;
   const half = stars.filter((x) => x.star === 'half').length;
@@ -1290,7 +1289,7 @@ export function useItem(s: GameState, id: string, uid: string, type?: ElementTyp
   }
   else if (id === 'lure-incense') { s.flags.lure = true; s.flags.repel = false; msg = 'You light the incense. Wild creatures will come to you until the end of your turn.'; }
   else if (id === 'hush-smoke') { s.flags.repel = true; s.flags.lure = false; msg = 'You wave the smoke around. Nothing will come near until the end of your turn.'; }
-  else if (id === 'star-charm') { s.flags.starCharm = true; msg = 'The Star Charm glimmers. Your next encounter rolls an extra star die.'; }
+  else if (id === 'star-charm') { s.flags.starCharm = true; msg = 'The Star Charm glimmers. Every wild encounter rolls an extra star die until the end of your turn.'; }
   else return 'That can\'t be used here.';
   addItem(s, id, -1);
   return msg;
@@ -1502,7 +1501,7 @@ export function endTurn(s: GameState, camping: boolean | string[] = false, weath
   s.flags.rangerRefunds = 0;
   s.flags.bikeUsed = false; s.flags.bikeRoll = 0; s.flags.trailMix = false;
   s.flags.firstMoveUsed = false;
-  s.flags.lure = s.flags.repel = false; // the smoke clears
+  s.flags.lure = s.flags.repel = s.flags.starCharm = false; // the smoke clears, the stars fade
   s.flags.salemNight = false;
   s.flags.sparred = [];
   s.flags.paid = [];

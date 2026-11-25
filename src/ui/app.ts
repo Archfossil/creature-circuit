@@ -3390,7 +3390,7 @@ export class App {
     openSheet('Active effects', h('div', null,
       list.length ? h('div', { class: 'list' }, list.map((e) => h('div', { class: 'effect-row' }, h('span', { class: 'effect-ico' }, e.icon), h('div', null, h('b', null, e.name), h('small', null, e.text)))))
         : h('p', { class: 'muted' }, 'Nothing active right now.'),
-      h('p', { class: 'small muted' }, 'A Chanko Nabe lasts until your next battle. Lucky stars are used up by your next encounter. Lure Incense and Hush Smoke last until the end of your turn.')));
+      h('p', { class: 'small muted' }, 'A Chanko Nabe lasts until your next battle. Lucky stars, Lure Incense and Hush Smoke last until the end of your turn.')));
   }
 
   stadiumSheet() {
@@ -3473,7 +3473,7 @@ export class App {
       for (const id of Object.keys(s.inventory)) groups[itemInfo(id).kind]?.push(id);
       const labels: Record<string, string> = { restore: 'Restoratives', treat: 'Treats', charm: 'Charms', travel: 'Travel', totem: 'Totems', material: 'Offering & Carving Materials', key: 'Key Items' };
       body.replaceChildren(
-        h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure until end of turn') : null, s.flags.repel ? h('span', { class: 'chip good' }, '💨 Hush Smoke until end of turn') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Star Charm active') : null),
+        h('div', { class: 'row gap-s' }, h('span', { class: 'chip' }, '💰 ', h('b', null, s.coins)), s.flags.lure ? h('span', { class: 'chip good' }, '🕯️ Lure until end of turn') : null, s.flags.repel ? h('span', { class: 'chip good' }, '💨 Hush Smoke until end of turn') : null, s.flags.starCharm ? h('span', { class: 'chip good' }, '⭐ Lucky stars until end of turn') : null),
         s.imprints?.length ? h('section', null, h('h4', null, 'Energy Imprints'), h('div', { class: 'bag-grid' }, TYPES.filter((t) => s.imprints!.includes(t)).map((t) =>
           h('div', { class: 'bag-item' }, h('span', { class: 'bi-ico' }, typeIconImg(t, 24)), h('div', null, h('b', null, `${TYPE_LABEL[t]} Imprint ×${s.imprints!.filter((x) => x === t).length}`), h('small', null, `Replaces 1 energy a creature generates with 1 ${TYPE_LABEL[t]}.`)),
             readOnly ? null : h('button', { class: 'btn sm', onclick: () => this.imprintSheet(t, render) }, 'Use'))))) : '',

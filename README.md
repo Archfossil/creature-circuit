@@ -209,7 +209,7 @@ The docs leave a few points open. The prototype makes these calls:
   | 🐫 Merchant Caravan | An Elixir, Moonberry, Star Charm, Lure Incense or Hush Smoke at half price |
   | ⛈️ Sudden Storm | Must choose: −1 Initiative, or −1 heart for each active creature |
   | 🥋 Sparring Master | 5 coins: +10 XP for one creature |
-  | 🔮 Fortune Teller | 3 coins: +1 rarity die on the next encounter |
+  | 🔮 Fortune Teller | 3 coins: +1 rarity die on every wild encounter that turn |
   | 🧺 Windfall | Two free offering materials from the local biome |
   | 🤺 Rival Challenge | Optional battle against one of the Rivals about (docs/15) |
   | 📜 Wise Hermit | 8 coins: one free progression point |

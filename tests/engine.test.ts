@@ -3491,6 +3491,18 @@ describe('Hush Smoke', () => {
       expect(s.flags.repel).toBe(false);
     }
   });
+  it('lucky stars add a rarity die to every wild encounter of the turn, then fade', () => {
+    const dice = (s: ReturnType<typeof meadow>) => { s.initiative = 5; s.flags.lure = true; const o = W.reexplore(s)!; return o.t === 'encounter' ? o.stars!.length : 0; };
+    for (const how of ['charm', 'fortune'] as const) {
+      const s = meadow(), plain = dice(s);
+      if (how === 'charm') { s.inventory['star-charm'] = 1; W.useItem(s, 'star-charm', s.roster[0].uid); }
+      else { s.coins = 10; E.rollEvent(s, 'fortune'); E.resolveEvent(s, 'pay'); }
+      for (let i = 0; i < 5; i++) expect(dice(s), how).toBe(plain + 1);
+      W.endTurn(s);
+      expect(s.flags.starCharm).toBe(false);
+      expect(dice(s), how).toBe(plain);
+    }
+  });
   it('Lure Incense makes every explore of the turn a wild encounter, never a trainer, and then burns out', () => {
     for (const biome of ['meadow', 'road', 'deepwood'] as const) {
       const at = MAP_NODES.find((n) => n.kind === 'wild' && n.biome === biome);

@@ -167,7 +167,7 @@ A caravan sells one item at **half price** (rounded down, at least 💰 1): a Ho
 | Service | 2 | Any | No Star Charm effect is already active | No |
 
 **Choices**
-- **Hear your fortune · 💰 3:** your next wild encounter rolls +1 rarity die (the same effect as a Star Charm).
+- **Hear your fortune · 💰 3:** every wild encounter that turn rolls +1 rarity die (the same effect as a Star Charm).
 - **No thanks:** nothing happens.
 
 ### 9. 🧺 Windfall · `windfall`

@@ -317,14 +317,14 @@ const SHARED: EventDef[] = [
     create: () => ({ price: 3 }),
     view: (s, d) => ({
       title: 'Fortune Teller', icon: '🔮',
-      text: 'A fortune teller peers into a cracked crystal. "Rare things await you…" Pay, and your next wild encounter rolls an extra rarity die.',
+      text: 'A fortune teller peers into a cracked crystal. "Rare things await you…" Pay, and every wild encounter this turn rolls an extra rarity die.',
       choices: [{ id: 'pay', label: `Hear your fortune · 💰 ${d.price}`, disabled: afford(s, d.price as number) }, DECLINE],
     }),
     resolve: (s, d, choice) => {
       if (choice !== 'pay') return { text: '"Suit yourself," she says, already shuffling.', tone: 'info' };
       s.coins -= d.price as number;
       s.flags.starCharm = true;
-      return { text: 'The stars align. Your next encounter rolls +1 rarity die.', tone: 'good' };
+      return { text: 'The stars align. Every wild encounter this turn rolls +1 rarity die.', tone: 'good' };
     },
   },
   {
@@ -636,7 +636,7 @@ const SHARED: EventDef[] = [
       title: 'Shooting Star', icon: '🌠',
       text: 'A star streaks across the sky. Your team looks at you expectantly. Make a wish!',
       choices: [
-        { id: 'luck', label: 'Wish for luck', detail: 'Receive a Star Charm (+1 rarity die on an encounter).' },
+        { id: 'luck', label: 'Wish for luck', detail: 'Receive a Star Charm (+1 rarity die on every encounter of a turn).' },
         { id: 'team', label: 'Wish for your team', detail: 'All your partner creatures (in totems too) gain +1 Morale.' },
       ],
     }),
