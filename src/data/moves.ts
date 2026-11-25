@@ -178,7 +178,7 @@ const HANDMADE: Move[] = [
   // ── Blitzes: elemental attacks thrown with Power (extras: they don't fill a grid slot) ──
   E('kindle-blitz', 'Kindle Blitz', 'fire', { cost: { fire: 1, neutral: 1 }, dmgDie: 4, dmgFlat: 1, blitz: true }, 'A short, scorching charge.'),
   E('firestorm-blitz', 'Firestorm Blitz', 'fire', { cost: { fire: 4, neutral: 1 }, dmgDie: 10, dmgFlat: 1, effort: 4, speed: -1, blitz: true }, 'Charges wrapped in a whirl of flame.'),
-  E('sig-backdraft', 'Backdraft Blitz', 'fire', { cost: { fire: 3, neutral: 1 }, dmgDie: 8, effort: 2, potency: 2, blitz: true }, 'Signature. Rushes in and drags the fire along behind it.'),
+  E('sig-backdraft', 'Backdraft Blitz', 'fire', { cost: { fire: 3, neutral: 1 }, dmgDie: 8, dmgFlat: 1, effort: 2, potency: 2, blitz: true }, 'Signature. Rushes in and drags the fire along behind it.'),
 
   // ── Signature moves (unlocked via progression trees) ──────────
   E('sig-borealis', 'Borealis Lance', 'astral', { cost: { astral: 3, neutral: 1 }, dmgDie: 6, dmgFlat: 4, speed: 1 }, 'Signature. A spear of aurora light.'),

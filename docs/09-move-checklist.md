@@ -121,7 +121,7 @@ Unlocked from a creature’s progression chart (★ node). They don’t fill att
 
 | Name | ID | Cost | Hits as | Damage | Avg | Avg / energy | Accuracy | Speed | Effort | Status | Keywords | Effect | Balance note | Source | Design | Balance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Backdraft Blitz** | `sig-backdraft` | 3 Fire + 1 Neutral | Fire | d8 | 4.5 | 1.13 | d6 | 0 | 2 | Burn (1–3, 38%) | Potency 2, Blitz | — | — | Hand-made | ☑ | ☐ |
+| **Backdraft Blitz** | `sig-backdraft` | 3 Fire + 1 Neutral | Fire | d8+1 | 5.5 | 1.38 | d6 | 0 | 2 | Burn (1–3, 38%) | Potency 2, Blitz | — | — | Hand-made | ☑ | ☐ |
 | **Borealis Lance** | `sig-borealis` | 3 Astral + 1 Neutral | Astral | d6+4 | 7.5 | 1.88 | d6 | +1 | 1 | Daze | — | — | ⬆ Strong for its cost (+2.3 vs baseline) | Hand-made | ☑ | ☐ |
 | **Moonveil Kiss** | `sig-moonveil` | 3 Charm + 1 Neutral | Charm | d8 | 4.5 | 1.13 | Sure-hit | 0 | 1 | Beguile | — | — | — | Hand-made | ☑ | ☐ |
 | **Stormcall** | `sig-stormcall` | 3 Electric + 1 Neutral | Electric | d8 | 4.5 | 1.13 | d6 | +2 | 1 | Shock | — | — | — | Hand-made | ☑ | ☐ |
