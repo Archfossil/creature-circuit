@@ -34,6 +34,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         '- 3–4: a wild creature (or a roaming trainer) wants to battle.',
         '- 5–6: you find items or coins.',
         '- 🕯️ Lure Incense makes every explore a wild encounter until the end of your turn. 💨 Hush Smoke does the opposite: until the end of your turn, a 3 is Nothing and a 4 is a find, so nothing can battle you. Lighting one puts the other out.',
+        '- ⭐ A Star Charm (or the Fortune Teller) rolls an extra rarity die for every wild encounter until the end of your turn. Lit with Lure Incense, it makes for a hunt.',
         'For creatures, rarity star dice decide Common, Prime or Apex. Rare areas and higher Tiers roll more stars.',
       ] },
       { id: 'travel', title: 'Getting around faster', body: [
@@ -84,10 +85,10 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
       ] },
       { id: 'playbook', title: 'Playbooks & energy', body: [
         'Each creature knows up to 4 moves. Energy is a requirement, not spent per use: a move fits if the creature generates enough of each type it needs.',
-        '- The playbook editor crosses out the energy each move takes and counts what’s left. Its side panel shows the creature’s stats and your picks so far, with rough damage for each. The stats your picks use (Power for Physical moves, Focus for Elemental ones) light up.',
+        '- The playbook editor crosses out the energy each move takes and counts what’s left. Its side panel shows the creature’s stats and your picks so far, with rough damage for each. The stats your picks use (Power for Physical moves and Blitzes, Focus for other Elemental ones) light up.',
         '- On a phone, tap a move to see what it does with this creature (damage, accuracy, Effort, speed) and why it might not fit, then ➕ Add move?. Double-tap a move to add or remove it straight away. Tap a stat to see what it does.',
         '- Filter by type or by Physical / Support, sort by cost, damage or speed, and tick “Only moves that still fit”.',
-        '- ✨ Recommend moves? suggests a set for physical power, elemental power, a balanced spread, or against a type. It weighs everything a move does: damage dice, crits, Cascade, statuses, Purge, Zeroing In, Speed and Effort.',
+        '- ✨ Recommend moves? suggests a set for physical power, elemental power, a balanced spread, or against a type. It weighs everything a move does: damage dice, crits, Cascade, statuses, Potency, Purge, Zeroing In, Speed and Effort.',
       ] },
       { id: 'morale', title: 'Morale & Loyalty', body: [
         'Happy creatures (Morale 7+) earn Loyalty every turn, and Loyalty unlocks their Nature perks for good.',
@@ -111,8 +112,8 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
       { id: 'combat', title: 'How a round works', body: [
         'Both sides pick an action. The faster creature acts first (a tie is a Clash: both roll, and the lower roll takes the difference as damage and goes second; equal rolls flip a coin for who goes first).',
         '- Accuracy: roll the move’s die against the foe’s Evasion.',
-        '- ⌖ Zeroing In: a miss gives that creature +1 on its next accuracy roll, stacking up to +3 over several misses. The next roll uses it up, and swapping out loses it. Some moves zero in harder (Pounce: +2); all-or-nothing moves (Rampage) never do.',
-        '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll. Some (Claw, Rampage) have wide crits marked ✸ on their card, e.g. ✸5+ crits on a 5 or 6. Elemental moves crit only if their card says ✸ (mostly Electric ones).',
+        '- ⌖ Zeroing In: a miss gives that creature +1 on its next accuracy roll, stacking up to +3 over several misses. The next roll uses it up, and swapping out loses it. Some moves zero in harder (their cards say Pursuit; Pounce gives +2); all-or-nothing moves (Rampage) never do.',
+        '- Physical moves use Power vs Armor and crit (double damage) on a max accuracy roll. Some (Claw, Rampage) have wide crits marked ✸ on their card, e.g. Claw’s ✸5+ crits on a 5 or 6. Elemental moves crit only if their card says ✸ (mostly Electric ones).',
         '- Elemental moves use Focus (Blitzes: Power) vs Ward and the type chart, and inflict a status when the damage die shows a 1. Some roll an extra die (Meteor: d10+d4); then a 1 on either die inflicts it.',
         '- Bigger elemental attacks have their type’s style. Astral: Cascade. Charm: never misses, and Purge. Electric: fast, and crits. Fire: Potency. Grass: several small dice, and healing. Rock: huge, slow, and all or nothing. Steel: steady flat damage that wears down Ward. Water: Pursuit, so a miss sets up the next hit. An attack of two types takes its style from the one it hits as and a twist from the other.',
         '- Move keywords (hover a keyword on a move card for its rules): Potency N widens the status roll to 1 through 1 + N (Potency 2 on a d6: 1–3, 50%). Cascade: a damage die that rolls its highest face rolls again and adds it, chaining as long as it keeps rolling its highest face; Cascade d10 chains with d10s instead. Blitz (some Fire moves): adds Power instead of Focus. Purge: extra damage against a foe that already has a status (Purge: Burn only against Burn, for a bigger bonus).',
@@ -134,7 +135,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         'Each move costs Effort from Stamina. At 0 Stamina a creature gains Fatigue, and a fatigued creature rolls a d10 before acting and may lose its turn.',
         'In battle, the thin blue bar under your Health is Stamina. The diamond beside it is Fatigue: grey at 0, a red number when fatigued. The opponent’s nameplate shows its Fatigue diamond too. Hover or tap one to see the odds of losing a turn.',
         'Overheal: when a move, a Swap Move or an Instinct heals a creature past a full heart, the extra becomes Overheal, a gold stripe on its Health bar. It soaks up damage before Health does, up to half a heart (3), and lasts the rest of the battle.',
-        'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle.',
+        'Catch Breath (or B) restores Stamina. Status effects are explained in ☰ Menu → Status Effects, or tap a status tag in battle. Burn hurts at the end of each round, the slower creature first: 2 damage, or 3 from Lv 8.',
       ] },
       { id: 'teamwork', title: 'Swap Moves & Teamwork', body: [
         'From round 2 you can swap (S). The creature coming in is the Alpha, and it uses a 🔁 Swap Move at once, often borrowing from the partner it replaces. The swap screen shows what each swap will do right now.',
@@ -159,7 +160,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         'Hover an Instinct on a card for its exact rules.',
       ] },
       { id: 'readouts', title: 'Move readouts', body: [
-        'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion (plus any ⌖ Zeroing In, and what a miss would add), then the damage die plus Power or Focus minus Armor or Ward. Confirm to use it.',
+        'Tap a move to see what it will roll, in order: turn order, Stamina, the accuracy die against the foe’s Evasion (plus any ⌖ Zeroing In, and what a miss would add), then the damage die plus Power or Focus (Blitzes: Power) minus Armor or Ward. Confirm to use it.',
         'Every roll is explained as it happens. Turn on Fast battles in Settings to skip all this.',
         'Keys: 1–4 pick a move (Enter confirms, Esc goes back), B catch breath, S swap, R run, T type chart.',
       ] },
@@ -226,7 +227,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         'Tap 👥 Trainers on the action bar:',
         '- Gifts and coin or item trades reach anyone, anywhere (a courier carries them).',
         '- Creature trades and duel challenges need you both on the same spot.',
-        '- In a duel, each trainer picks their own moves and swaps every round, and who goes in after a knockout. If nobody is Following you, you also choose who leads. On one device, each of you has a panel of moves: yours opens when you tap it, and it’s hidden while the other trainer chooses.',
+        '- In a duel, each trainer picks their own moves and swaps every round, and who goes in after a knockout. If nobody is Following you, you also choose who leads. On one device, each of you has a panel of moves, with everything you’d normally see: yours opens when you tap it, and it’s hidden while the other trainer chooses. Online, your panel opens on your own screen when it’s your turn to choose.',
         '- Online, the other trainer has two minutes to answer an offer (you can call it off) and a minute for each duel choice. If either of you drops out for a moment, the duel picks up where it was.',
         'Notes about gifts, trades and duels wait for each trainer at the start of their turn.',
       ] },
@@ -257,7 +258,7 @@ const SHARED: (Omit<GuideCategory, 'topics'> & { topics: SharedTopic[] })[] = [
         'Your main colour always goes on the top and the hat, and on hair ties and streaks unless you pick another colour. That mini is your token on the map and stands behind you in trainer battles.',
       ] },
       { id: 'stadium', title: 'Stadium', body: [
-        '🏟️ Stadium (title screen): battles without a journey. Build teams of three fully trained creatures, choosing each one’s Nature, Instinct, playbook and Swap Moves. No two alike, and one Legendary at most.',
+        '🏟️ Stadium (title screen): battles without a journey. Build teams of three fully trained creatures, choosing each one’s Nature, Instinct, playbook and Swap Moves. No two alike, and one Legendary at most. 🎲 Random team deals you three with their own pick of moves.',
         'Battle a friend on this device or online, or the AI at its best: Champions, Rivals, a random challenger, or Arbiters with their arenas at full strength. Nothing here touches your saves. Copy a team’s code to share it.',
       ] },
       { id: 'saving', title: 'Saving', body: [

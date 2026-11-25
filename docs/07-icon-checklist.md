@@ -45,7 +45,7 @@ The game has no logo yet. The title screen spells out "Creature Circuit" in plai
 - [ ] `level-up`: ▲: Badge on a creature with unspent level-up points (team strip, cards).
 - [ ] `unhappy-warning`: ⚠️: Low-Morale warning on the team strip and cards.
 - [ ] `here`: 📍: "Here with you" (another trainer on the same spot).
-- [ ] `locked`: 🔒: Locked route, or the locked Signature Move preview.
+- [ ] `locked`: 🔒: Locked route, the locked Signature Move preview, or the other trainer’s hidden panel in a duel.
 - [ ] `rare-area`: ★: Rare-area marker on map node previews.
 - [ ] `home`: 🏠: Your home city tag.
 
@@ -163,9 +163,9 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `item-moonberry`: 🍇 Moonberry
 
 **Charms**
-- [ ] `item-lure-incense`: 🕯️ Lure Incense (also the "Lure active" chip)
-- [ ] `item-hush-smoke`: 💨 Hush Smoke (also the "Hush Smoke active" chip, the Hushed dice labels and its active-effect entry)
-- [ ] `item-star-charm`: ⭐ Star Charm (also the "Star Charm active" chip)
+- [ ] `item-lure-incense`: 🕯️ Lure Incense (also the "Lure until end of turn" chip)
+- [ ] `item-hush-smoke`: 💨 Hush Smoke (also the "Hush Smoke until end of turn" chip, the Hushed dice labels and its active-effect entry)
+- [ ] `item-star-charm`: ⭐ Star Charm (also the "Lucky stars until end of turn" chip)
 
 **Travel**
 - [ ] `item-bike`: 🚲 Bike (also the action-bar button)
@@ -216,7 +216,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 
 **Controls**
 - [ ] `battle-catch-breath`: 😮‍💨 Catch Breath
-- [ ] `battle-swap`: 🔁 Swap (also in the duel picker)
+- [ ] `battle-swap`: 🔁 Swap (also in the challenged trainer's panel)
 - [ ] `battle-run`: 🏃 Run
 - [ ] `battle-types`: 🔺 Types (matchup chart; also the Type Chart menu tile)
 - [ ] `battle-card`: 📇 View the creature's card

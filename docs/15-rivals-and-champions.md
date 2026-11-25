@@ -139,6 +139,6 @@ Menu → 🥇 Rival Trainers → 🎯 Challenges (`src/engine/dares.ts`). Set on
 
 ## Balance notes
 
-- [ ] **Win rates** with smart playbooks and swaps (the challenger: an AI with a random team that knows recommended playbooks but never swaps). Rivals are beaten about 85% of the time to turn 25 and 45% after, Champions 50–75% to turn 25 and 20–35% after. A person who swaps and builds a team should do better; watch the late Champions.
+- [ ] **Win rates** with smart playbooks and swaps (the challenger: an AI with a random team that knows recommended playbooks but never swaps). Rivals are beaten about 85% of the time to turn 25 and 45% after, Champions 50–75% to turn 25 and 20–35% after. A person who swaps and builds a team should do better; watch the late Champions. (Measured before trainers had their own taste in moves and attacks their styles; one of their creatures now wins 47–49% against itself with the recommended set.)
 - [ ] **Losing on purpose for Revenge:** each loss costs coins, Morale and a 3-turn rest, but an Energy Tonic (💰 30) after three is worth watching.
 - [ ] **Contenders** who lost to you 5 times still qualify (they're who you've met most). Check that feels earned.

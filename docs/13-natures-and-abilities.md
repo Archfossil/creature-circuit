@@ -190,7 +190,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 - [ ] **Two Abilities copy a trainer style:** Trailblazer (Pathfinder) and Lucky Charm (Beast Whisperer). Trailblazer doesn't stack with Pathfinder, but Lucky Charm does stack with Beast Whisperer. Make these consistent?
 - [ ] **Sweet Scent trades items for encounters:** it turns a 5 (an item find) into an encounter, so it's a downside for item-hunting.
 - [ ] **Keen Nose and Forager overlap** (both improve item finds), and both are useless with Sweet Scent's extra encounters.
-- [ ] **Quick Step** was situational (it only mattered when leaving a wild battle). It now also refunds 1 Initiative per escape, which makes it a strong pick for hunting a specific creature: run from everything else for nearly free. Watch for abuse with Lure Incense or Sweet Scent.
+- [ ] **Quick Step** was situational (it only mattered when leaving a wild battle). It now also refunds 1 Initiative per escape, which makes it a strong pick for hunting a specific creature: run from everything else for nearly free. Watch for abuse with Sweet Scent, and with Lure Incense and the Star Charm now that they last a whole turn.
 - [ ] **Most Abilities are economy or exploration;** none affects battle. Deliberate, so the follower choice is about the map, not fights.
 - [ ] **Distribution is fairly even** (42–55 species each). Trailblazer and Keen Nose are the rarest.
 

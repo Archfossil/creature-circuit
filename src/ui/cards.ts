@@ -719,7 +719,7 @@ function recommendSheet(c: CreatureInst, confirm: (ids: string[]) => void) {
   const same = (a: PlaybookGoal, b: PlaybookGoal) => a.kind === b.kind && (a.kind !== 'vs' || (b.kind === 'vs' && a.type === b.type));
   let goal: PlaybookGoal = suggested.goal;
   const GOALS: { goal: PlaybookGoal; icon: string; label: string; text: string }[] = [
-    { goal: { kind: 'physical' }, icon: '👊', label: 'Optimize physical power', text: `Physical attacks add Power (${st.power}) and can crit. They ignore the type chart.` },
+    { goal: { kind: 'physical' }, icon: '👊', label: 'Optimize physical power', text: `Physical attacks add Power (${st.power}), can crit and ignore the type chart. Fire’s Blitzes add it too.` },
     { goal: { kind: 'elemental' }, icon: '🔮', label: 'Optimize elemental power', text: `Elemental attacks add Focus (${st.focus}), use the type chart and can inflict statuses.` },
     { goal: { kind: 'balanced' }, icon: '⚖️', label: 'Optimize balanced spread', text: 'A mix of physical and elemental attacks across types, plus a support move.' },
   ];

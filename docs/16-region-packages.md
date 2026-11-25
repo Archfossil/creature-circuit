@@ -34,7 +34,7 @@ Counted in the code in November 2026.
 | Creatures | 401: 53 hand-made, **348 generated placeholders** |
 | Legendaries | 36 in the roster, **7 on the map** |
 | Rivals and Champions | 12 and 8 |
-| Moves | 412 |
+| Moves | 415 |
 
 How much of the code assumes there's only one region:
 
@@ -351,7 +351,7 @@ A past season leaves no mark on play (decision 2). This is a note that it could 
 | Starters | 4 balanced families (12 creatures), counted in its own half |
 | Legendaries | 7, with how to reach each |
 | Gimmicks | 3–5 map gimmicks of its own |
-| Moves | Optional: the 412 already cover every typed cost |
+| Moves | Optional: the 415 already cover every typed cost |
 | Key items, events, icons | A handful, 5–10, and 20–50 |
 
 **Creatures are by far the most work,** and the placeholders matter here: 348 of Margos's 401 are still generated. Every hand-made creature that replaces one can be *shared*, so finishing Margos's roster also fills about half of the next region's.

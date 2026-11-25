@@ -535,9 +535,9 @@ Spawns in: Desert, Volcanic, Canyon.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Pyrostoneboo** | `ph-fire-rock-common-1` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 2 | **Pyrostoneshade** | `ph-fire-rock-common-2` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 3 | **Pyrostonedjinn** | `ph-fire-rock-common-3` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 1 | **Pyrostoneboo** | `ph-fire-rock-common-1` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pyrostoneshade** | `ph-fire-rock-common-2` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pyrostonedjinn** | `ph-fire-rock-common-3` | Fire / Rock | Day & night | Quick Step | Ember Hide | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
 | Prime | 1 | **Pyrostonegrub** | `ph-fire-rock-prime-1` | Fire / Rock | Day & night | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Pyrostonebug** | `ph-fire-rock-prime-2` | Fire / Rock | Day & night | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Pyrostonescarab** | `ph-fire-rock-prime-3` | Fire / Rock | Day & night | Baby-Doll Eyes | Menace | — | Placeholder | ☐ | ☐ |
@@ -552,9 +552,9 @@ Spawns in: Desert, Volcanic, Canyon.
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Pyrogearnub** | `ph-fire-steel-common-1` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 2 | **Pyrogearhulk** | `ph-fire-steel-common-2` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 3 | **Pyrogeartitan** | `ph-fire-steel-common-3` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 1 | **Pyrogearnub** | `ph-fire-steel-common-1` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
+| Common | 2 | **Pyrogearhulk** | `ph-fire-steel-common-2` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
+| Common | 3 | **Pyrogeartitan** | `ph-fire-steel-common-3` | Fire / Steel | Day & night | Lucky Charm | Sunbather | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
 | Prime | 1 | **Pyrogearcub** | `ph-fire-steel-prime-1` | Fire / Steel | Day & night | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
 | Prime | 2 | **Pyrogearmane** | `ph-fire-steel-prime-2` | Fire / Steel | Day & night | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
 | Prime | 3 | **Pyrogearregal** | `ph-fire-steel-prime-3` | Fire / Steel | Day & night | Keen Nose | Steel Coat | — | Placeholder | ☐ | ☐ |
@@ -700,9 +700,9 @@ Placeholder families beside the roster table (`EXTRA_FAMILIES` in `src/data/rost
 
 | Family | Stage | Name | ID | Types | Out by | Ability | Instinct | Notes | Status | Design | Art |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Common | 1 | **Coalgrub** | `ph-fire-dusk-common-1` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 2 | **Cinderbug** | `ph-fire-dusk-common-2` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
-| Common | 3 | **Furnarab** | `ph-fire-dusk-common-3` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Caldera Roar | Placeholder | ☐ | ☐ |
+| Common | 1 | **Coalgrub** | `ph-fire-dusk-common-1` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
+| Common | 2 | **Cinderbug** | `ph-fire-dusk-common-2` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
+| Common | 3 | **Furnarab** | `ph-fire-dusk-common-3` | Fire | Nocturnal | Sweet Scent | Ember Hide | Sig: Backdraft Blitz | Placeholder | ☐ | ☐ |
 
 **Grass** · spawns in River, Swamp, Forest · concept: a moonflower toad that blooms in the dark
 
