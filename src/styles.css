@@ -115,7 +115,8 @@ p { margin: 0.4em 0; line-height: 1.45; }
 .hud-pill { font-family: var(--font-head); display: inline-flex; align-items: center; gap: 5px; background: rgba(255,250,240,0.94); border: 2px solid var(--ink); border-radius: 999px; padding: 5px 11px; box-shadow: 0 2px 0 var(--ink); font-size: 14px; color: var(--ink); cursor: pointer; min-height: 38px; backdrop-filter: blur(6px); }
 .hud-pill small { color: var(--muted); font-weight: 600; }
 .hud-pill.coins { cursor: default; }
-.hud-pill.menu { margin-left: auto; width: 40px; justify-content: center; font-size: 18px; padding: 0; }
+.hud-end { margin-left: auto; display: flex; gap: 6px; }
+.hud-pill.menu, .hud-pill.chats { width: 40px; justify-content: center; font-size: 18px; padding: 0; }
 .hud-pill.merits { gap: 2px; padding: 4px 8px; }
 .hud-pill.effects { gap: 2px; background: #fff3c4; }
 .effect-row { display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: center; padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
@@ -625,7 +626,8 @@ button.dex-entry:hover { border-color: var(--ink); }
 .team-balls i.ace { width: 15px; height: 15px; margin: -3px -1px; border: 0; border-radius: 0; background: #e0a400; clip-path: polygon(50% 0, 62% 35%, 98% 35%, 69% 57%, 79% 92%, 50% 71%, 21% 92%, 31% 57%, 2% 35%, 38% 35%); }
 .team-balls i.ace.ko { background: #999; }
 .ace-tag { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: #ffd84a; border: 1.5px solid var(--ink); color: var(--ink); white-space: nowrap; }
-.hud-pill.menu { position: relative; }
+.hud-pill.chats { position: relative; }
+@media (max-width: 400px) { .hud-pill.hide-xs { display: none; } } /* (both are in the ☰ menu) */
 .hud-dot { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; background: var(--accent); color: #fff; border: 1.5px solid var(--ink); font: 800 11px/15px inherit; font-size: 11px; line-height: 15px; font-style: normal; text-align: center; }
 .chat-row { font: inherit; color: var(--ink); text-align: left; display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; background: var(--paper); border: 2px solid var(--ink); border-left: 8px solid var(--tc); border-radius: 12px; padding: 6px 10px; cursor: pointer; }
 .chat-row img { width: 44px; height: 44px; object-fit: contain; }

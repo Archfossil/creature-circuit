@@ -1677,7 +1677,9 @@ export class App {
       this.circuitGame().circuit ? h('button', { class: 'hud-pill icon', onclick: () => this.bracketSheet(), 'aria-label': 'Circuit bracket', title: 'The Creature Circuit’s bracket' }, '🏆') : null,
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.worldLogSheet(), 'aria-label': 'World Log', title: 'World Log: what every trainer has been doing' }, '🗞️'),
       h('button', { class: 'hud-pill icon hide-xs', onclick: () => this.trainerId(), 'aria-label': 'Trainer ID', title: 'Trainer ID: your home town, style and records' }, '📇'),
-      h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': unread ? `Menu (${unread} unread message${unread === 1 ? '' : 's'})` : 'Menu' }, '☰', unread ? h('i', { class: 'hud-dot' }, String(unread)) : null));
+      h('div', { class: 'hud-end' },
+        h('button', { class: 'hud-pill icon chats', onclick: () => this.messagesSheet(), 'aria-label': unread ? `Messages (${unread} unread)` : 'Messages', title: 'Messages: texts with the Rivals and Champions you’ve met' }, '💬', unread ? h('i', { class: 'hud-dot' }, String(unread)) : null),
+        h('button', { class: 'hud-pill icon menu', onclick: () => this.menu(), 'aria-label': 'Menu' }, '☰')));
     const loc = h('div', { class: 'loc-card', style: node.cityType ? `--tc:${TYPE_COLOR[node.cityType]}` : '' },
       h('div', { class: 'loc-title' },
         h('span', { class: 'loc-ico' }, node.kind === 'city' ? h('img', { src: typeIcon(node.cityType!), alt: '' }) : BIOME_INFO[node.biome].icon),
@@ -2624,17 +2626,27 @@ export class App {
       } }, 'Accept sponsorship'));
   }
 
+  /** 💬 on the HUD: every conversation. */
+  messagesSheet() {
+    const s = this.idOwner();
+    const mine = s === this.s && !this.watching && s.phase === 'map';
+    const body = h('div');
+    const render = () => body.replaceChildren(this.chatsBody(s, mine, render));
+    render();
+    openSheet('💬 Messages', body, { wide: true });
+  }
+
   /** Menu → Rival Trainers: everyone met, with records, the creatures they've shown and rematches; and the Circuit Standings. */
   rivalsSheet() {
     const s = this.idOwner();
     const mine = s === this.s && !this.watching && s.phase === 'map';
     const body = h('div');
-    let tab: 'rivals' | 'chats' | 'dares' | 'standings' = mine && T.unreadTexts(s) ? 'chats' : 'rivals';
+    let tab: 'rivals' | 'dares' | 'standings' = 'rivals';
     const render = () => {
       const met = [...N.RIVALS, ...N.CHAMPIONS].filter((x) => N.recordWith(s, x)).sort((a, b) => (N.recordWith(s, b)!.last?.turn ?? 0) - (N.recordWith(s, a)!.last?.turn ?? 0));
       body.replaceChildren(
-        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'chats', 'dares', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : t === 'chats' ? `💬 Messages${T.unreadTexts(s) ? ` (${T.unreadTexts(s)})` : ''}` : t === 'dares' ? `🎯 Challenges${D.activeDares(s).length ? ` (${D.activeDares(s).length})` : ''}` : '🏆 Circuit Standings'))),
-        tab === 'standings' ? this.standingsBody(s) : tab === 'chats' ? this.chatsBody(s, mine, render) : tab === 'dares' ? this.daresBody(s, mine, render) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
+        h('div', { class: 'row gap-s wrap npc-tabs', role: 'group', 'aria-label': 'View' }, (['rivals', 'dares', 'standings'] as const).map((t) => h('button', { class: `pick ${t === tab ? 'sel' : ''}`, 'aria-pressed': String(t === tab), onclick: () => { tab = t; render(); } }, t === 'rivals' ? '🤺 Rivals & Champions' : t === 'dares' ? `🎯 Challenges${D.activeDares(s).length ? ` (${D.activeDares(s).length})` : ''}` : '🏆 Circuit Standings'))),
+        tab === 'standings' ? this.standingsBody(s) : tab === 'dares' ? this.daresBody(s, mine, render) : met.length ? h('div', { class: 'list' }, met.map((npc) => this.npcCard(s, npc, mine, render)))
           : h('p', { class: 'muted' }, 'You haven’t met anyone yet. Rivals turn up on roads and meadows, in Trainer Halls and in the morning; Champions tour the cities and towns.'),
         tab === 'rivals' ? h('p', { class: 'small muted' }, `Met ${met.filter((x) => x.kind === 'rival').length} of ${N.RIVALS.length} Rivals and ${met.filter((x) => x.kind === 'champion').length} of ${N.CHAMPIONS.length} Champions.`) : '');
     };
@@ -2727,7 +2739,7 @@ export class App {
           bar(npc.name.split(' ').pop()!, they.at, they.of, 'var(--accent)', d.kind === 'race' ? `${they.of - they.at} steps to go` : d.n > 1 ? `${they.at}/${they.of}` : 'on the way'),
           mine ? h('div', { class: 'row gap-s wrap' }, d.target && NODE_BY_ID[d.target] ? h('button', { class: 'btn ghost sm', onclick: () => this.markNextStop(d.target!) }, '📍 Mark it') : null,
             h('button', { class: 'btn ghost sm', onclick: async () => { if (!(await confirmSheet('Give up the challenge?', `${npc.name} wins${d.wager ? ` the 💰 ${d.wager} wager` : ''}.`, 'Give up'))) return; const x = D.giveUp(s, npc); if (x) toast(x.text, 'info', 4000); save(s); this.renderHud(); changed(); } }, 'Give up')) : null)));
-    })) : h('p', { class: 'muted' }, 'No challenges under way. Set one from a conversation (💬 Messages), or wait for someone to dare you.'),
+    })) : h('p', { class: 'muted' }, 'No challenges under way. Set one from a conversation (the 💬 button), or wait for someone to dare you.'),
     h('p', { class: 'small muted' }, `Up to ${D.DARES_MAX} at once, one with each person. First to finish wins.`));
   }
 
@@ -4164,7 +4176,7 @@ export class App {
     const mine = this.logOwner();
     const close = openSheet('Menu', h('div', null, this.soundControls(), h('div', { class: 'tiles' },
       tile('📇', 'Trainer ID', `${this.idOwner().trainer.name} of ${NODE_BY_ID[this.idOwner().trainer.home]?.name ?? 'nowhere'}: style, Merits and battle records.`, '', () => { close(); this.trainerId(); }),
-      tile('🥇', 'Rival Trainers', (() => { const n = N.RIVALS.concat(N.CHAMPIONS).filter((x) => N.recordWith(this.idOwner(), x)).length; return `${n} met. Records, rematches, messages and the Circuit Standings.`; })(), T.unreadTexts(this.idOwner()) ? `💬 ${T.unreadTexts(this.idOwner())}` : '', () => { close(); this.rivalsSheet(); }),
+      tile('🥇', 'Rival Trainers', (() => { const n = N.RIVALS.concat(N.CHAMPIONS).filter((x) => N.recordWith(this.idOwner(), x)).length; return `${n} met. Records, rematches, challenges and the Circuit Standings.`; })(), '', () => { close(); this.rivalsSheet(); }),
       tile('📖', 'Creature Codex', `${this.idOwner().dex.caught.length} recruited · ${this.idOwner().dex.seen.length} seen`, '', () => { close(); this.codex(); }),
       tile('🌀', 'Status Effects', 'What Burn, Sunder, Daze and the rest do.', '', () => { close(); openSheet('Status Effects', statusGuide()); }),
       tile('🔺', 'Type Chart', 'Strengths and weaknesses.', '', () => { close(); typeChartSheet(); }),

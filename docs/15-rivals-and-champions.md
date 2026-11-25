@@ -104,7 +104,7 @@ Beating someone you've lost to since you last beat them, outside the Finals, on 
 
 ## Messenger
 
-Menu → 🥇 Rival Trainers → 💬 Messages. The ☰ button shows how many are unread. Voices are in `src/regions/margos/voices.ts` (fifteen lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
+The 💬 button at the top right of the map, by ☰, shows how many are unread and opens every conversation. (Each trainer's card in Menu → 🥇 Rival Trainers opens theirs.) Voices are in `src/regions/margos/voices.ts` (fifteen lines each; `{you}`, `{merit}`, `{place}`, `{thing}` and `{creature}` are filled in) and the rules in `src/engine/messenger.ts`.
 
 - **They write first:** only people you've met, at most one text every 3 turns from anyone, and every 8 from the same person. It's a rematch offer after a battle, congratulations on a Merit (as soon as there's a free moment), news of their own, a hello, or a treat by courier from someone friendly. Being stood up always gets a text.
 - **Answers:** a kind reply warms them to you. A cheeky one only costs goodwill with a firm friend. Accepting a rematch sets it at the nearest city or town. A question lapses after 6 turns.
