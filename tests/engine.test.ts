@@ -22,14 +22,14 @@ import { moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
 import { syncPerks, moveWorth, speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
-import { afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
+import { aiSwap, pinOf, swapBlocked, snap, type Battle, afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { onSaveStatus, retrySave, newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
 import * as W from '../src/engine/world';
 import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
 import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether, settleTeamwork } from '../src/engine/teamwork';
 import { swapPreview, boostsOf, snap } from '../src/engine/battle';
-import { SWAP_MOVE_BY_ID, ADVISE_ZERO, SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
+import { SWAP_MOVE_BY_ID, ADVISE_ZERO, REVENGE_MAX, SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapChoices, swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts';
 import { Box3 } from 'three';
@@ -3727,11 +3727,11 @@ describe('Swap Moves', () => {
   it('the list leaves out what a pair’s types rule out, and keeps what Teamwork will open', () => {
     const [a, b] = trio(); // Water, with an Electric partner
     const ids = () => swapChoices(a, b);
-    expect(ids().length).toBe(8); // 6 neutral and Electric's two
+    expect(ids().length).toBe(10); // 7 neutral and Electric's three
     expect(ids().every(({ m }) => !m.type || (m.type === 'electric' && !m.boosted))).toBe(true);
-    expect(ids().slice(6).map(({ m, lock }) => [m.teamwork, !!lock])).toEqual([[1, true], [2, true]]);
+    expect(ids().filter(({ lock }) => lock).map(({ m }) => [m.id, m.teamwork])).toEqual([['revenge', 1], ['live-wire', 1], ['static-warning', 2], ['arc-bridge', 2]]);
     a.teamwork[b.uid] = 1;
-    expect(ids().filter(({ lock }) => lock).map(({ m }) => m.teamwork)).toEqual([2]);
+    expect(ids().filter(({ lock }) => lock).map(({ m }) => m.teamwork)).toEqual([2, 2]);
     const twin = createCreature('puddlit', 6); twin.loyalty = 6; // shares a type: its Boosted move is listed, greyed out until Teamwork 3
     const boosted = swapChoices(a, twin).filter(({ m }) => m.boosted);
     expect(boosted.map(({ m, lock }) => [m.type, lock])).toEqual([['water', 'Needs Teamwork 3 (has 0)']]);
@@ -3775,7 +3775,125 @@ describe('Swap Moves', () => {
     a.teamwork[d.uid] = 3;
     expect(swapLock(a, d, boost)).toBe(null);
     const other = SWAP_MOVES.filter((m) => m.type === sp.types.find((t) => t !== 'water'));
-    expect(other.map((m) => !swapLock(a, d, m))).toEqual([true, true, false]);
+    expect(other.map((m) => !swapLock(a, d, m))).toEqual([true, true, true, false]);
+  });
+  it('Revenge hits back with the Alpha’s Power and half the partner’s wounds this battle', () => {
+    const a = createCreature('cindercub', 6), p = createCreature('sproutle', 6);
+    a.loyalty = p.loyalty = 6; a.teamwork[p.uid] = 1;
+    expect(setSwapMove(a, p, 'revenge')).toBe(true);
+    const foe = createCreature('pebbark', 6);
+    foe.playbook = ['brace'];
+    const bt = createBattle(side('player', [p, a]), side('trainer', [foe]), WEATHER.clear);
+    for (const c of [a, p, foe]) c.health = 999;
+    resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+    bt.hurt = { [p.uid]: 13 };
+    bt.sides[0].mods.speed = 30; // (no Clash: nothing hurts the partner before it leaves)
+    let seen = 0;
+    for (let i = 0; i < 30 && !seen; i++) {
+      const b2: Battle = JSON.parse(JSON.stringify(bt));
+      const ev = resolveRound(b2, { kind: 'swap', to: 1 }, { kind: 'move', move: CATCH_BREATH.id });
+      const hit = ev.find((e) => e.t === 'damage' && e.side === 1 && e.calc);
+      if (hit?.t !== 'damage') continue;
+      seen++;
+      expect(hit.calc!.parts.find((x) => /wounds/.test(x.label))?.value).toBe(7); // 13 ÷ 2, rounded up
+      expect(hit.calc!.parts.find((x) => /Power/.test(x.label))?.value).toBe(stats(a).power);
+    }
+    expect(seen).toBe(1);
+    // the wounds come from this battle's hits, and cap at +10
+    const vals = swapVals(a, p, { hurt: 40 });
+    expect(SWAP_MOVE_BY_ID.revenge.hit!.parts(vals).find((x) => /wounds/.test(x.label))?.value).toBe(REVENGE_MAX);
+    const fight = createBattle(side('player', [createCreature('puddlit', 6)]), side('wild', [createCreature('zapup', 6)]), WEATHER.clear);
+    for (let i = 0; i < 6 && !fight.over; i++) resolveRound(fight, { kind: 'move', move: 'tackle' });
+    const me = fight.sides[0].team[0];
+    expect(fight.hurt?.[me.uid] ?? 0).toBeGreaterThanOrEqual(maxTotal(me) - totalHealth(me)); // (less any healing)
+    expect(fight.hurt?.[me.uid] ?? 0).toBeGreaterThan(0);
+  });
+  it('traps hold the foe while it faces the Alpha that set them; warnings scare off wild foes and punish a trainer’s swap', () => {
+    const setup = (move: string, foeKind: 'wild' | 'trainer', legendary = false) => {
+      const sp = SPECIES.find((x) => x.rarity !== 'legendary' && x.types.includes(SWAP_MOVE_BY_ID[move].type!))!;
+      const a = createCreature('cindercub', 6), p = createCreature(sp.id, 6);
+      a.loyalty = p.loyalty = 6; a.teamwork[p.uid] = 2;
+      expect(setSwapMove(a, p, move), move).toBe(true);
+      const foes = foeKind === 'wild' ? [createCreature('zapup', 6)] : [createCreature('zapup', 6), createCreature('sproutle', 6)];
+      for (const f of foes) f.playbook = ['brace'];
+      const bt = createBattle(side('player', [p, a]), side(foeKind, foes), WEATHER.clear);
+      for (const c of [a, p, ...foes]) c.health = 999;
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+      bt.legendary = legendary; bt.fleeWarned = false; // (from here: before the swap it can't have fled yet)
+      const ev = resolveRound(bt, { kind: 'swap', to: 1 }, { kind: 'move', move: CATCH_BREATH.id });
+      return { bt, ev, a, p, foes };
+    };
+    // traps: the foe can't swap out (an AI or a person), and a trapped player can't run or swap
+    let swapsTested = 0;
+    for (const move of ['bubble-net', 'ring-of-fire', 'event-horizon', 'stone-tomb']) {
+      const { bt, foes } = setup(move, 'trainer');
+      expect(pinOf(bt, 1)?.kind, move).toBe('trap');
+      expect(swapBlocked(bt, 1), move).toMatch(/can’t swap out or run/);
+      expect(foeOptions(bt).swaps, move).toEqual([]);
+      const ev = resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'swap', to: 1 });
+      expect(activeOf(bt.sides[1]), move).toBe(foes[0]); // (not allowed: the AI acts instead)
+      expect(ev.some((e) => e.t === 'send' && e.side === 1), move).toBe(false);
+      if (move === 'event-horizon') expect(movePreview(bt, 'tackle').find((x) => x.title.startsWith('Damage'))!.title).toContain('Event Horizon 2');
+      if (move === 'stone-tomb') expect(foes[0].fatigue).toBe(2);
+      if (move === 'ring-of-fire') expect(bt.status[foes[0].uid]?.id).toBe('burn');
+      if (move === 'bubble-net') { expect(bt.status[foes[0].uid]?.id).toBe('soak'); expect(bt.sides[1].mods.speed).toBeLessThanOrEqual(-1); expect(bt.sides[1].mods.evasion).toBeLessThanOrEqual(-1); }
+      // an AI that would gladly swap out can't: a Champion's creature, nearly down, up against a far stronger foe
+      bt.sides[1].kind = 'champion'; bt.round = 5;
+      const was = bt.sides[1].active, ally = bt.sides[1].team[1];
+      ally.level = 30; ally.bonus = { vigor: 9, power: 9, focus: 9, armor: 9, ward: 9, speed: 9 }; ally.health = 999;
+      activeOf(bt.sides[0]).bonus = { power: 9, focus: 9 };
+      const pins = bt.pins;
+      bt.pins = {};
+      let wouldSwap = false;
+      for (let i = 0; i < 20 && !wouldSwap; i++) wouldSwap = aiSwap(bt, 1) !== null;
+      bt.pins = pins;
+      if (wouldSwap) for (let i = 0; i < 20; i++) expect(aiSwap(bt, 1), move).toBe(null);
+      if (wouldSwap) swapsTested++;
+      expect(bt.sides[1].active).toBe(was);
+      // it ends when the Alpha leaves
+      resolveRound(bt, { kind: 'swap', to: 0 }, { kind: 'move', move: CATCH_BREATH.id });
+      expect(pinOf(bt, 1), move).toBe(null);
+    }
+    expect(swapsTested).toBeGreaterThan(0);
+    const { bt: wild } = setup('bubble-net', 'wild');
+    expect(snap(wild, activeOf(wild.sides[1])).pin?.kind).toBe('trap');
+    // a legendary can't flee while trapped
+    const { bt: legend } = setup('ring-of-fire', 'wild', true);
+    legend.fleeWarned = true;
+    resolveRound(legend, { kind: 'move', move: CATCH_BREATH.id });
+    expect(legend.over).toBe(null);
+    // the player, trapped: no swap, no running
+    const me = createCreature('puddlit', 6), mate = createCreature('zapup', 6), foe = createCreature('sproutle', 6);
+    for (const c of [me, mate, foe]) c.health = 999;
+    const held = createBattle(side('player', [me, mate]), side('wild', [foe]), WEATHER.clear);
+    held.round = 2;
+    held.pins = { 0: { kind: 'trap', uid: me.uid, by: foe.uid, move: 'Bubble Net', extra: 0 } };
+    expect(swapBlocked(held, 0)).toMatch(/Bubble Net/);
+    held.sides[0].mods.speed = 20; // (free to go, it would always get away)
+    for (let i = 0; i < 10; i++) { resolveRound(held, { kind: 'run' }); expect(held.over).toBe(null); }
+    const free: Battle = JSON.parse(JSON.stringify(held)); free.pins = {};
+    resolveRound(free, { kind: 'run' });
+    expect(free.over).toBe('escaped');
+    resolveRound(held, { kind: 'swap', to: 1 });
+    expect(activeOf(held.sides[0])).toBe(me);
+    // warnings: a wild foe runs off (not a Legendary)
+    for (const move of ['cold-shoulder', 'static-warning', 'thorn-fence', 'iron-ultimatum']) {
+      const { bt, ev } = setup(move, 'wild');
+      expect(bt.over, move).toBe('fled');
+      expect(ev.some((e) => e.t === 'end' && e.result === 'fled'), move).toBe(true);
+      const { bt: l } = setup(move, 'wild', true);
+      expect(l.over, move).toBe(null);
+    }
+    // a trainer's: more damage if it stays, its type's status on whoever swaps in for it
+    for (const [move, st] of [['cold-shoulder', 'beguile'], ['static-warning', 'shock'], ['thorn-fence', 'snare'], ['iron-ultimatum', 'sunder']] as const) {
+      const { bt, foes } = setup(move, 'trainer');
+      expect(pinOf(bt, 1)?.kind, move).toBe('warn');
+      expect(movePreview(bt, 'tackle').find((x) => x.title.startsWith('Damage'))!.title, move).toContain(`${SWAP_MOVE_BY_ID[move].name} 2`);
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'swap', to: 1 });
+      expect(activeOf(bt.sides[1]), move).toBe(foes[1]);
+      expect(bt.status[foes[1].uid]?.id, move).toBe(st);
+      expect(pinOf(bt, 1), move).toBe(null); // the newcomer isn't warned itself
+    }
   });
   it('Advise: the Alpha comes in Zeroing In, and its next attack adds half the partner’s Power or Focus', () => {
     const go = (move: string, missFirst = false) => {

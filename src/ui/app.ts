@@ -37,7 +37,7 @@ import * as I from '../engine/interactions';
 import { Online, lastRoom, rememberRoom, rememberSession, sessionRoom, type FeedItem, type ServerMsg, type AskResult } from '../net/online';
 import type { Battle, BEvent, Snap } from '../engine/battle';
 import { addLine, logBattleEvent, type BattleLog, type BattleLogEntry } from '../engine/battleLog';
-import { resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, arenaTimer, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, snap as battleSnap, type Boost, type Action, type FoeOptions } from '../engine/battle';
+import { swapBlocked, resolveRound, sendIn, activeOf, movePreview, swapRowInfo, type SwapRowInfo, arenaTimer, ringRounds, ringLeft, partsText, chooseLead, foeOptions, foeReplacements, foeSendIn, statusGuard, canSurrender, SURRENDER_MORALE, snap as battleSnap, type Boost, type Action, type FoeOptions } from '../engine/battle';
 import type { CreatureInst } from '../engine/creature';
 import { starterInstincts, createCreature, energy, learnable, stats, STAT_KEYS, STAT_LABEL, nameOf, speciesOf, abilityOf, instinctIdOf, HEART, healthFraction, maxHearts, maxTotal, totalHealth, maxStamina, MORALE_LOW, TRAINER_BATTLE_XP_BONUS } from '../engine/creature';
 import { SWAP_MOVE_BY_ID, swapText } from '../data/swapMoves';
@@ -1437,7 +1437,7 @@ export class App {
         h('div', { class: 'move-grid' }, o.moves.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: battle ? String(i + 1) : undefined, vs: o.vs, onClick: () => choose(id) }))),
         h('div', { class: 'row gap-s wrap center sub-actions' },
           h('button', { class: 'btn ghost sm', onclick: () => choose(CATCH_BREATH.id) }, '😮‍💨 Catch Breath'),
-          h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight', onclick: swaps }, '🔁 Swap'),
+          h('button', { class: 'btn ghost sm', disabled: !o.swaps.length, title: o.swaps.length ? '' : o.trapped ?? (round < 2 ? 'Swapping is allowed from round 2' : 'Nobody else can fight'), onclick: swaps }, '🔁 Swap'),
           h('button', { class: 'btn ghost sm', onclick: () => giveUp() }, '🏳️ Surrender'),
           battle ? h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: types }, '🔺 Types') : null,
           me ? h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card') : null));
@@ -2083,6 +2083,7 @@ export class App {
           recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
           sn.zero ? h('span', { class: 'zero-tag', title: `Zeroing In: +${sn.zero} to its next accuracy roll, from missing. Misses stack it up to +${ZERO_IN_MAX}; leaving the field loses it.` }, h('i', { class: 'zi' }, '⌖'), ` +${sn.zero}`) : null,
           guard && !sn.ko ? h('span', { class: 'guard-tag', title: `${guard.text} Its Instinct protects it from status effects.`, 'aria-label': `Status protection: ${guard.text}` }, '🛡', guard.label === '🛡' ? '' : ` ${guard.label}`) : null,
+          sn.pin && !sn.ko ? h('span', { class: `pin-tag ${sn.pin.kind}`, title: sn.pin.text, 'aria-label': sn.pin.text }, sn.pin.kind === 'trap' ? '⛓️' : '⚠️', ` ${sn.pin.move}`) : null,
           sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
         h('div', { class: 'pl-vit' },
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: `${x.ko ? 'ko' : ''} ${x.ace ? 'ace' : ''}`, title: x.ace ? 'Their Ace: a tougher creature with a special bond' : '' })))),
@@ -2277,15 +2278,16 @@ export class App {
         const me = activeOf(b.sides[who]);
         if (!opened) { gate(who === 0 ? 'your move.' : `your move. ${trainerOn(0).name}’s is locked in.`); return; }
         say(`What will ${nameOf(me)} do?`);
-        const canSwap = b.round >= 1 && b.sides[who].team.filter((c) => !c.ko).length > 1;
+        const held = swapBlocked(b, who);
+        const canSwap = b.round >= 1 && b.sides[who].team.filter((c) => !c.ko).length > 1 && !held;
         const canRun = ctx.kind === 'wild' || ctx.kind === 'legendary';
         const foeTypes = speciesOf(activeOf(b.sides[who === 0 ? 1 : 0])).types;
         put([
           h('div', { class: 'move-grid', role: 'group', 'aria-label': 'Moves (keys 1–4)' }, me.playbook.map((id, i) => moveCard(MOVE_BY_ID[id], { compact: true, hotkey: String(i + 1), vs: foeTypes, onClick: () => choose(id) }))),
           h('div', { class: 'row gap-s sub-actions' },
             h('button', { class: 'btn ghost sm', onclick: () => choose(CATCH_BREATH.id) }, '😮‍💨 Catch Breath'),
-            h('button', { class: 'btn ghost sm', disabled: !canSwap, title: canSwap ? '' : 'Swapping is allowed from round 2', onclick: () => swapPicker() }, '🔁 Swap'),
-            canRun ? h('button', { class: 'btn ghost sm', onclick: () => act({ kind: 'run' }) }, '🏃 Run') : null,
+            h('button', { class: 'btn ghost sm', disabled: !canSwap, title: canSwap ? '' : held ?? 'Swapping is allowed from round 2', onclick: () => swapPicker() }, '🔁 Swap'),
+            canRun ? h('button', { class: 'btn ghost sm', disabled: !!held, title: held ?? '', onclick: () => act({ kind: 'run' }) }, '🏃 Run') : null,
             canSurrender(b) ? h('button', { class: 'btn ghost sm', title: 'Give up this battle (you’re asked first)', onclick: async () => { if (await this.confirmSurrender(b, ctx, who) && panel.isConnected && controls.querySelector('.move-grid')) void act({ kind: 'surrender' }); } }, '🏳️ Surrender') : null,
             h('button', { class: 'btn ghost sm', title: 'Type chart for this matchup (T)', onclick: () => showTypes() }, '🔺 Types'),
             h('button', { class: 'btn ghost sm', onclick: () => this.showCreature(me, true) }, '📇 Card'))]);
@@ -2324,9 +2326,9 @@ export class App {
         const n = Number(ev.key);
         if (n >= 1 && n <= me.playbook.length) choose(me.playbook[n - 1]);
         else if (ev.key.toLowerCase() === 'b') choose(CATCH_BREATH.id);
-        else if (ev.key.toLowerCase() === 'r' && (ctx.kind === 'wild' || ctx.kind === 'legendary')) act({ kind: 'run' });
+        else if (ev.key.toLowerCase() === 'r' && (ctx.kind === 'wild' || ctx.kind === 'legendary') && !swapBlocked(b, who)) act({ kind: 'run' });
         else if (ev.key.toLowerCase() === 't') showTypes();
-        else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[who].team.filter((c) => !c.ko).length > 1) swapPicker();
+        else if (ev.key.toLowerCase() === 's' && b.round >= 1 && b.sides[who].team.filter((c) => !c.ko).length > 1 && !swapBlocked(b, who)) swapPicker();
       };
       addEventListener('keydown', onKey);
       const finish = (r: Battle['over']) => {

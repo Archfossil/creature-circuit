@@ -231,6 +231,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 | 4 | Siphon | `siphon` | 0 | "The Alpha drains the foe with an attack of its own type, then heals using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. |
 | 5 | Rally | `rally` | 0 | "The partner cheers the Alpha on: both restore Stamina and shake off some Fatigue, and the Alpha gains Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). |
 | 6 | Advise | `advise` | 0 | "The partner talks the Alpha through the fight on the way out: the Alpha zeroes in, and its next attack lands where the partner would have hit." | No hit of its own. The Alpha comes in Zeroing In +2 (up to +3 with any it had). Its next attack adds the partner's Power ÷ 2 (physical attacks and Blitzes) or Focus ÷ 2 (other elemental attacks), rounded up, at least 1, + bonus. Used up by that attack, hit or miss; lost if the Alpha leaves the field. Never a pair's random default. |
+| 7 | Revenge | `revenge` | 1 | "The Alpha storms in to pay the foe back for everything it did to the partner." | d8 to hit vs the foe's Evasion. On a hit: d6 + the Alpha's Power + half the damage the partner has taken this battle (rounded up, up to +10) + bonus − foe's Armor (physical). Never a pair's random default. |
 
 ### Typed Swap Moves
 
@@ -240,20 +241,32 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 |---|---|---|---|---|---|
 | Astral | Starfall Relay | `starfall-relay` | 1 | "As the Alpha swaps in, the partner's Focus falls on the foe as starlight." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
 | Astral | Twin Orbit | `twin-orbit` | 2 | "The Alpha and the partner circle each other: the Alpha slips out of reach, the foe loses track, and the Alpha strikes." | +1 Evasion; foe −1 Evasion. Then a sure hit: d6 + Focus + bonus − Ward. Status on a 1–2. |
+| Astral | Event Horizon | `event-horizon` | 2 | "The partner bends the sky as it leaves: the foe is caught in the Alpha's pull, and everything hits it harder." | **Trap**, and the foe takes +2 damage from attacks while held. |
 | Charm | Sweet Handoff | `sweet-handoff` | 1 | "The partner charms the foe on its way out: the foe is beguiled, and the Alpha lands a light hit and steadies itself." | Beguile on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
 | Charm | Heartlink | `heartlink` | 2 | "The Alpha and the partner mend each other, and the foe's heart goes out of its attacks." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; the partner (benched) heals (Alpha's Vigor ÷ 2, up) + bonus; foe −1 Power. No damage. |
+| Charm | Cold Shoulder | `cold-shoulder` | 2 | "The Alpha gives the foe a look that says leave, now: a wild one runs off; a trainer's stays at its peril, and whoever replaces it is beguiled." | **Warning** (Beguile). |
 | Electric | Live Wire | `live-wire` | 1 | "The partner charges the Alpha up, and the Alpha jumps in crackling to strike before the foe can react." | +2 Speed for turn order. d8 to hit. d6 + Focus + bonus − Ward. Status on a 1–2. |
 | Electric | Arc Bridge | `arc-bridge` | 2 | "A current arcs from the partner through the Alpha into the foe, powered by both." | A sure hit: d6 + Focus + (partner's Focus ÷ 2, down) + bonus − Ward. Status on a 1–2. |
+| Electric | Static Warning | `static-warning` | 2 | "The Alpha crackles a warning: a wild foe bolts; a trainer's stays at its peril, and whoever replaces it is shocked." | **Warning** (Shock). |
 | Fire | Kindle Swap | `kindle-swap` | 1 | "The partner leaves embers behind as it goes: the foe burns and the Alpha is fired up." | Burn on the foe (if it has no status). +1 Power (+2 with a Teamwork bonus). No damage. |
 | Fire | Phoenix Handoff | `phoenix-handoff` | 2 | "The Alpha rises from the partner's flames in a blazing strike." | d8 to hit. **d8** + Focus + bonus − Ward. Status on a 1–2. |
+| Fire | Ring of Fire | `ring-of-fire` | 2 | "The partner leaves a ring of fire round the foe: it burns, and it can't get out while the Alpha holds it there." | **Trap**, and Burn on the foe (if it has no status). |
 | Grass | Root Relay | `root-relay` | 1 | "Roots pass from the partner to the Alpha: they snare the foe, the Alpha strikes, and the roots feed it." | Snare on the foe (if it has no status). A sure hit: d4 + Focus − Ward. Then the Alpha heals 1 + bonus. |
 | Grass | Overgrowth | `overgrowth` | 2 | "The partner's strength grows into the Alpha as bark and leaf, healing and toughening it before it strikes." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; +1 Armor, +1 Ward. Then a sure hit: d4 + Focus − Ward. |
+| Grass | Thorn Fence | `thorn-fence` | 2 | "The Alpha grows a fence of thorns with one way out: a wild foe takes it; a trainer's stays at its peril, and whoever replaces it is snared." | **Warning** (Snare). |
 | Rock | Landslide Tag | `landslide-tag` | 1 | "The Alpha rides the partner's weight down onto the foe." | d8 to hit. Physical: d6 + Power + (partner's Armor ÷ 2, up) + bonus − Armor. Status on a 1–2. |
 | Rock | Bulwark Swap | `bulwark-swap` | 2 | "The partner raises stone walls as it leaves, and the Alpha hits back from behind them." | +(2 + bonus) Armor, +1 Ward. Then a sure physical hit: d6 + Power − Armor. |
+| Rock | Stone Tomb | `stone-tomb` | 2 | "The partner walls the foe in with stone: it's worn out at once, and it can't get out while the Alpha stands guard." | **Trap**, and +2 Fatigue on the foe. |
 | Steel | Iron Relay | `iron-relay` | 1 | "The partner shoes the Alpha in steel, and the Alpha charges in to dent the foe's defences." | A sure physical hit: d6 + Power + bonus − Armor. Status on a 1–2. |
 | Steel | Alloy Guard | `alloy-guard` | 2 | "The partner plates the Alpha in metal and strips the foe's, then the Alpha strikes." | +(partner's Armor ÷ 2, up, at least 1, + bonus) Armor; foe −1 Armor. Then a sure physical hit: d6 + Power − Armor. |
+| Steel | Iron Ultimatum | `iron-ultimatum` | 2 | "The Alpha plants itself and gives the foe an ultimatum: a wild one backs off; a trainer's stays at its peril, and whoever replaces it is sundered." | **Warning** (Sunder). |
 | Water | Tide Relay | `tide-relay` | 1 | "The Alpha swaps in on a wave of the partner's Focus." | d8 to hit. d6 + partner's Focus + bonus − Ward. Status on a 1–2. |
 | Water | Wellspring | `wellspring` | 2 | "The Alpha drinks from the partner's spring: the Alpha heals, both refill Stamina, and the foe is drenched." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; both refill Stamina; Soak on the foe (if it has no status). No damage. |
+| Water | Bubble Net | `bubble-net` | 2 | "The partner spins a net of bubbles round the foe on its way out: it's soaked, slowed and easy to hit, and it can't get out while the Alpha holds the net." | **Trap**, Soak on the foe (if it has no status), and the foe gets −1 Speed and −1 Evasion. |
+
+**Traps and warnings** (`trap`, `warn`; `battle.ts` → `pinOf`, `swapBlocked`). Each holds only while the foe faces the Alpha that set it: it ends when either leaves the field or is knocked out. A creature's nameplate shows it (⛓️ or ⚠️ and the move's name).
+- **Trap:** the foe can't swap out, and a wild one can't run (a Legendary can't flee). If it's the player who's held, Swap and Run are greyed out with the reason.
+- **Warning:** a wild foe runs off at once (the battle ends as if it fled, with the usual XP; a Legendary won't be warned off). A trainer's creature takes +2 damage from the warning side's attacks while it stays, and whoever swaps in for it gets the move's type status. The AI weighs both when deciding whether to swap.
 
 ### Boosted Swap Moves
 
@@ -279,7 +292,9 @@ For two creatures that share the type. Each draws on both of them.
 - [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may out-damage a creature's own moves at Lv 1–3.
 - [ ] **Status on a 1–2 is twice as likely** as a regular elemental move's 1. Watch whether typed Swap Moves become the main way to inflict statuses.
 - [ ] **No-damage moves** (Rally, Advise, Heartlink, Kindle Swap, Wellspring) trade a hit for setup. Check they're picked at all once the typed hits unlock.
-- [ ] **Partners set the typed choices:** a single-type partner offers two typed moves, a dual-type one four. Dual types make more flexible partners; worth watching. A shared type adds its Boosted move, which makes up for a mono-type team's narrower choice.
+- [ ] **Partners set the typed choices:** a single-type partner offers three typed moves, a dual-type one six. Dual types make more flexible partners; worth watching. A shared type adds its Boosted move, which makes up for a mono-type team's narrower choice.
+- [ ] **Traps and warnings** are first drafts: no hit of their own. Check they're chosen, and that a trapped player never feels stuck (a trap ends as soon as the Alpha that set it leaves or falls).
+- [ ] **Revenge** grows with the partner's wounds (up to +10): strongest late in a long battle, and worthless on a fresh partner. Is Teamwork 1 right?
 - [ ] **Boosted moves:** first drafts. Check Twin Monolith and Conjunction (two hits, each cut by Ward) against ordinary attacks, whether Teamwork 3 is reached soon enough, and whether each is worth more than its type's Teamwork 2 move.
 
 ---

@@ -15,7 +15,7 @@ import { STATUS_FOR, STATUS_INFO } from './moves';
 import { TYPE_LABEL } from './types';
 
 /** The numbers a Swap Move works from: the Alpha's (a), partner's (p) and foe's (f, unknown off the battlefield) stats. */
-export interface SwapVals { a: Stats; p: Stats; f?: Stats; bonus: number; A: string; P: string; aType: ElementType; pType: ElementType; /** Balanced creatures', while the foe isn't known: whichever of both is better against it. */ aEither?: ElementType[]; pEither?: ElementType[] }
+export interface SwapVals { a: Stats; p: Stats; f?: Stats; bonus: number; /** In battle: the damage the partner has taken this battle (Revenge). */ hurt?: number; A: string; P: string; aType: ElementType; pType: ElementType; /** Balanced creatures', while the foe isn't known: whichever of both is better against it. */ aEither?: ElementType[]; pEither?: ElementType[] }
 /**
  * Who a Swap Move's words are about: the Alpha (A, swapping in) and the partner (P, swapping out), with
  * their main types when known. Off a real pair (docs) they're "the Alpha" / "the partner".
@@ -34,7 +34,13 @@ export type SwapEffect =
   /** The foe gets the move's type status outright (if it has none). */
   | { t: 'status' }
   /** Zeroing In for the Alpha, and its next attack adds `n` of the partner's Power or Focus (whichever that attack adds). */
-  | { t: 'advise'; zero: number; n: (v: SwapVals, k: 'power' | 'focus') => number };
+  | { t: 'advise'; zero: number; n: (v: SwapVals, k: 'power' | 'focus') => number }
+  /** The foe can't swap out or run while it faces the Alpha (and takes `extra` more damage from attacks). */
+  | { t: 'trap'; extra?: number }
+  /** A wild foe flees (not a Legendary). A trainer's takes `extra` more damage from attacks while it faces the Alpha, and whoever swaps in for it gets the move's type status. */
+  | { t: 'warn'; extra: number }
+  /** The foe gets this much Fatigue. */
+  | { t: 'fatigue'; n: number };
 
 export interface SwapHit {
   /** Damage die. */
@@ -96,6 +102,8 @@ const eitherText = (ts: ElementType[]) => `${ts.map((t) => TYPE_LABEL[t]).join('
 
 /** Advise: the Zeroing In the Alpha comes in with. */
 export const ADVISE_ZERO = 2;
+/** Revenge: the most the partner's wounds add. Traps and warnings: the damage they add. */
+export const REVENGE_MAX = 10, PIN_EXTRA = 2;
 
 export const SWAP_MOVES: SwapMove[] = [
   // ── Neutral: open to every pair (an unset slot uses one of these, picked at random) ──
@@ -113,10 +121,14 @@ export const SWAP_MOVES: SwapMove[] = [
     before: [{ t: 'refill' }, { t: 'ease' }, mod('self', 'power', withTw(1)), mod('self', 'focus', withTw(1))] },
   { id: 'advise', name: 'Advise', teamwork: 0, text: (n) => `${n.P} talks ${n.A} through the fight on the way out: ${n.A} zeroes in, and its next attack lands where ${n.P} would have hit.`,
     before: [{ t: 'advise', zero: ADVISE_ZERO, n: (v, k) => Math.max(1, Math.ceil(v.p[k] / 2)) + v.bonus }] },
+  { id: 'revenge', name: 'Revenge', teamwork: 1, text: (n) => `${n.A} storms in to pay the foe back for everything it did to ${n.P}.`,
+    hit: { acc: 8, die: 6, kind: 'physical', parts: parts(of('a', 'power'), (v) => ({ label: `${v.P}’s wounds this battle ÷ 2, up to ${REVENGE_MAX}`, value: Math.min(REVENGE_MAX, Math.ceil((v.hurt ?? 0) / 2)) })) } },
 
   // ── Astral ──
   { id: 'starfall-relay', name: 'Starfall Relay', type: 'astral', teamwork: 1, text: (n) => `As ${n.A} swaps in, ${n.P}’s Focus falls on the foe as starlight.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('p', 'focus')) } },
+  { id: 'event-horizon', name: 'Event Horizon', type: 'astral', teamwork: 2, text: (n) => `${n.P} bends the sky as it leaves: the foe is caught in ${n.A}’s pull, and everything hits it harder.`,
+    before: [{ t: 'trap', extra: PIN_EXTRA }] },
   { id: 'twin-orbit', name: 'Twin Orbit', type: 'astral', teamwork: 2, text: (n) => `${n.A} and ${n.P} circle each other: ${n.A} slips out of reach, the foe loses track, and ${n.A} strikes.`,
     before: [mod('self', 'evasion', fixed(1)), mod('foe', 'evasion', fixed(-1))],
     hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
@@ -125,16 +137,22 @@ export const SWAP_MOVES: SwapMove[] = [
     before: [{ t: 'status' }],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', plusTw(1))] },
+  { id: 'cold-shoulder', name: 'Cold Shoulder', type: 'charm', teamwork: 2, text: (n) => `${n.A} gives the foe a look that says leave, now: a wild one runs off; a trainer’s stays at its peril, and whoever replaces it is beguiled.`,
+    before: [{ t: 'warn', extra: PIN_EXTRA }] },
   { id: 'heartlink', name: 'Heartlink', type: 'charm', teamwork: 2, text: (n) => `${n.A} and ${n.P} mend each other, and the foe’s heart goes out of its attacks.`,
     before: [heal('alpha', healFrom('p')), heal('partner', healFrom('a')), mod('foe', 'power', fixed(-1))] },
   // ── Electric ──
   { id: 'live-wire', name: 'Live Wire', type: 'electric', teamwork: 1, speed: 2, text: (n) => `${n.P} charges ${n.A} up, and ${n.A} jumps in crackling to strike before the foe can react.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
+  { id: 'static-warning', name: 'Static Warning', type: 'electric', teamwork: 2, text: (n) => `${n.A} crackles a warning: a wild foe bolts; a trainer’s stays at its peril, and whoever replaces it is shocked.`,
+    before: [{ t: 'warn', extra: PIN_EXTRA }] },
   { id: 'arc-bridge', name: 'Arc Bridge', type: 'electric', teamwork: 2, text: (n) => `A current arcs from ${n.P} through ${n.A} into the foe, powered by both.`,
     hit: { die: 6, kind: 'elemental', status: true, parts: parts(of('a', 'focus'), half('p', 'focus', 'down')) } },
   // ── Fire ──
   { id: 'kindle-swap', name: 'Kindle Swap', type: 'fire', teamwork: 1, text: (n) => `${n.P} leaves embers behind as it goes: the foe burns and ${n.A} is fired up.`,
     before: [{ t: 'status' }, mod('self', 'power', withTw(1))] },
+  { id: 'ring-of-fire', name: 'Ring of Fire', type: 'fire', teamwork: 2, text: (n) => `${n.P} leaves a ring of fire round the foe: it burns, and it can’t get out while ${n.A} holds it there.`,
+    before: [{ t: 'trap' }, { t: 'status' }] },
   { id: 'phoenix-handoff', name: 'Phoenix Handoff', type: 'fire', teamwork: 2, text: (n) => `${n.A} rises from ${n.P}’s flames in a blazing strike.`,
     hit: { acc: 8, die: 8, kind: 'elemental', status: true, parts: parts(of('a', 'focus')) } },
   // ── Grass ──
@@ -142,24 +160,32 @@ export const SWAP_MOVES: SwapMove[] = [
     before: [{ t: 'status' }],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) },
     after: [heal('alpha', plusTw(1))] },
+  { id: 'thorn-fence', name: 'Thorn Fence', type: 'grass', teamwork: 2, text: (n) => `${n.A} grows a fence of thorns with one way out: a wild foe takes it; a trainer’s stays at its peril, and whoever replaces it is snared.`,
+    before: [{ t: 'warn', extra: PIN_EXTRA }] },
   { id: 'overgrowth', name: 'Overgrowth', type: 'grass', teamwork: 2, text: (n) => `${n.P}’s strength grows into ${n.A} as bark and leaf, healing and toughening it before it strikes.`,
     before: [heal('alpha', healFrom('p')), mod('self', 'armor', fixed(1)), mod('self', 'ward', fixed(1))],
     hit: { die: 4, kind: 'elemental', parts: partsNoTw(of('a', 'focus')) } },
   // ── Rock ──
   { id: 'landslide-tag', name: 'Landslide Tag', type: 'rock', teamwork: 1, text: (n) => `${n.A} rides ${n.P}’s weight down onto the foe.`,
     hit: { acc: 8, die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power'), half('p', 'armor')) } },
+  { id: 'stone-tomb', name: 'Stone Tomb', type: 'rock', teamwork: 2, text: (n) => `${n.P} walls the foe in with stone: it’s worn out at once, and it can’t get out while ${n.A} stands guard.`,
+    before: [{ t: 'trap' }, { t: 'fatigue', n: 2 }] },
   { id: 'bulwark-swap', name: 'Bulwark Swap', type: 'rock', teamwork: 2, text: (n) => `${n.P} raises stone walls as it leaves, and ${n.A} hits back from behind them.`,
     before: [mod('self', 'armor', plusTw(2)), mod('self', 'ward', fixed(1))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
   // ── Steel ──
   { id: 'iron-relay', name: 'Iron Relay', type: 'steel', teamwork: 1, text: (n) => `${n.P} shoes ${n.A} in steel, and ${n.A} charges in to dent the foe’s defences.`,
     hit: { die: 6, kind: 'physical', status: true, parts: parts(of('a', 'power')) } },
+  { id: 'iron-ultimatum', name: 'Iron Ultimatum', type: 'steel', teamwork: 2, text: (n) => `${n.A} plants itself and gives the foe an ultimatum: a wild one backs off; a trainer’s stays at its peril, and whoever replaces it is sundered.`,
+    before: [{ t: 'warn', extra: PIN_EXTRA }] },
   { id: 'alloy-guard', name: 'Alloy Guard', type: 'steel', teamwork: 2, text: (n) => `${n.P} plates ${n.A} in metal and strips the foe’s, then ${n.A} strikes.`,
     before: [mod('self', 'armor', borrow('armor')), mod('foe', 'armor', fixed(-1))],
     hit: { die: 6, kind: 'physical', parts: partsNoTw(of('a', 'power')) } },
   // ── Water ──
   { id: 'tide-relay', name: 'Tide Relay', type: 'water', teamwork: 1, text: (n) => `${n.A} swaps in on a wave of ${n.P}’s Focus.`,
     hit: { acc: 8, die: 6, kind: 'elemental', status: true, parts: parts(of('p', 'focus')) } },
+  { id: 'bubble-net', name: 'Bubble Net', type: 'water', teamwork: 2, text: (n) => `${n.P} spins a net of bubbles round the foe on its way out: it’s soaked, slowed and easy to hit, and it can’t get out while ${n.A} holds the net.`,
+    before: [{ t: 'trap' }, { t: 'status' }, mod('foe', 'speed', fixed(-1)), mod('foe', 'evasion', fixed(-1))] },
   { id: 'wellspring', name: 'Wellspring', type: 'water', teamwork: 2, text: (n) => `${n.A} drinks from ${n.P}’s spring: ${n.A} heals, both refill Stamina, and the foe is drenched.`,
     before: [heal('alpha', healFrom('p')), { t: 'refill' }, { t: 'status' }] },
 
@@ -218,6 +244,9 @@ function effectText(m: SwapMove, e: SwapEffect, v: SwapVals): string {
     case 'refill': return `${v.A} and ${v.P} refill Stamina`;
     case 'ease': return `${v.A} and ${v.P} lose 1 Fatigue`;
     case 'status': { const s = swapStatus(m); return s ? `${STATUS_INFO[s].icon} ${STATUS_INFO[s].name} on the foe (if it has no status)` : ''; }
+    case 'trap': return `the foe can’t swap out or run while ${v.A} stays in${e.extra ? `, and takes +${e.extra} damage from attacks` : ''}`;
+    case 'warn': { const s = swapStatus(m); return `a wild foe runs off (a Legendary won’t). A trainer’s takes +${e.extra} damage from attacks while it faces ${v.A}, and whoever swaps in for it gets ${s ? `${STATUS_INFO[s].icon} ${STATUS_INFO[s].name}` : 'nothing'}`; }
+    case 'fatigue': return `the foe gets +${e.n} Fatigue`;
     case 'advise': return `${v.A} zeroes in +${e.zero}, and its next attack adds +${e.n(v, 'power')} (half ${v.P}’s Power${v.bonus ? ', plus Teamwork' : ''}) if it’s physical or a Blitz, or +${e.n(v, 'focus')} (half ${v.P}’s Focus${v.bonus ? ', plus Teamwork' : ''}) if it’s elemental`;
   }
 }

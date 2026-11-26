@@ -76,11 +76,29 @@ export interface Battle {
    * soaks up damage before Health does (capped at half a heart; lasts the battle). See `mend`.
    */
   overheal?: Record<string, number>;
+  /** Damage each creature has taken this battle (Revenge reads it). */
+  hurt?: Record<string, number>;
+  /** A trap or a warning on a side's active creature (Swap Moves): it holds while that creature faces the one that set it. */
+  pins?: Partial<Record<0 | 1, Pin>>;
 }
 
 export type Action = { kind: 'move'; move: string } | { kind: 'swap'; to: number } | { kind: 'run' } | { kind: 'surrender' };
 
-export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number; /** Overheal: extra Health beyond full that soaks up damage first. */ over?: number; /** On the field: attributes above or below normal right now. */ boosts?: Boost[] }
+/** A trap (can't swap out or run) or a warning (stay and take more damage; whoever swaps in gets `status`), set by a Swap Move. */
+export interface Pin { kind: 'trap' | 'warn'; uid: string; by: string; move: string; extra: number; status?: StatusId }
+/** The trap or warning holding side `si`'s active creature right now, if any. */
+export function pinOf(b: Battle, si: 0 | 1): Pin | null {
+  const p = b.pins?.[si];
+  if (!p) return null;
+  const me = activeOf(b.sides[si]), them = activeOf(b.sides[si === 0 ? 1 : 0]);
+  return me.uid === p.uid && them.uid === p.by && !me.ko && !them.ko ? p : null;
+}
+/** Why side `si` can't swap out or run right now (a trap), or null. */
+export function swapBlocked(b: Battle, si: 0 | 1): string | null {
+  const p = pinOf(b, si);
+  return p?.kind === 'trap' ? `${nameOf(activeOf(b.sides[si]))} is held by ${p.move}: it can’t swap out or run while ${nameOf(activeOf(b.sides[si === 0 ? 1 : 0]))} stays in.` : null;
+}
+export interface Snap { uid: string; health: number; vitality: number; stamina: number; fatigue: number; ko: boolean; status?: StatusId; /** Zeroing In bonus waiting for its next accuracy roll. */ zero?: number; /** Overheal: extra Health beyond full that soaks up damage first. */ over?: number; /** Held by a trap or a warning. */ pin?: { kind: Pin['kind']; move: string; text: string }; /** On the field: attributes above or below normal right now. */ boosts?: Boost[] }
 /** An attribute's change on the field: `n` in all, and where it comes from. */
 export interface Boost { stat: StatKey; n: number; parts: Part[] }
 export type BEvent =
@@ -116,12 +134,20 @@ export interface DamageCalc {
   cascade?: ({ die: number; rolls: number[] } | null)[];
 }
 
+function pinSnap(b: Battle, si: number): { pin: NonNullable<Snap['pin']> } | null {
+  const p = si < 0 ? null : pinOf(b, si as 0 | 1);
+  if (!p) return null;
+  const by = nameOf(activeOf(b.sides[si === 0 ? 1 : 0]));
+  const text = p.kind === 'trap' ? `${p.move}: it can’t swap out or run while ${by} stays in${p.extra ? `, and takes +${p.extra} damage from attacks` : ''}.`
+    : `${p.move}: +${p.extra} damage from attacks while it faces ${by}, and whoever swaps in for it gets ${STATUS_INFO[p.status!].name}.`;
+  return { pin: { kind: p.kind, move: p.move, text } };
+}
 export function snap(b: Battle, c: CreatureInst): Snap {
   const si = b.sides.findIndex((s) => activeOf(s) === c);
   const sd = b.sides[si];
   const over = b.overheal?.[c.uid] ?? 0;
   const boosts = si < 0 || c.ko ? [] : boostsOf(b, si as 0 | 1);
-  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}), ...(over ? { over } : {}), ...(boosts.length ? { boosts } : {}) };
+  return { uid: c.uid, health: c.health, vitality: c.vitality, stamina: c.stamina, fatigue: c.fatigue, ko: c.ko, status: b.status[c.uid]?.id, ...(sd?.zeroIn ? { zero: sd.zeroIn } : {}), ...(over ? { over } : {}), ...(boosts.length ? { boosts } : {}), ...(pinSnap(b, si) ?? {}) };
 }
 
 // ── Overheal ────────────────────────────────────────────────────
@@ -330,6 +356,7 @@ function takeHit(b: Battle, si: 0 | 1, dmg: number): Struck {
   const soaked = Math.min(over, dmg);
   if (soaked) b.overheal![c.uid] = over - soaked;
   applyDamage(c, dmg - soaked);
+  (b.hurt ??= {})[c.uid] = (b.hurt[c.uid] ?? 0) + dmg - soaked;
   return { dmg, hearts: before - c.vitality, held, soaked };
 }
 
@@ -349,7 +376,7 @@ function validFoeAction(b: Battle, a?: Action): Action | null {
   if (!a) return null;
   const side = b.sides[1];
   if (a.kind === 'move') return a.move === CATCH_BREATH.id || activeOf(side).playbook.includes(a.move) ? a : null;
-  if (a.kind === 'swap') return b.round >= 1 && side.team[a.to] && !side.team[a.to].ko && a.to !== side.active ? a : null;
+  if (a.kind === 'swap') return b.round >= 1 && !swapBlocked(b, 1) && side.team[a.to] && !side.team[a.to].ko && a.to !== side.active ? a : null;
   return null;
 }
 
@@ -360,7 +387,8 @@ export function foeOptions(b: Battle) {
   return {
     name: nameOf(me),
     moves: [...me.playbook],
-    swaps: b.round >= 1 ? side.team.map((c, i) => ({ c, i })).filter((x) => !x.c.ko && x.i !== side.active).map(({ c, i }) => ({ i, name: nameOf(c), row: swapRowInfo(b, 1, i) })) : [],
+    trapped: swapBlocked(b, 1),
+    swaps: b.round >= 1 && !swapBlocked(b, 1) ? side.team.map((c, i) => ({ c, i })).filter((x) => !x.c.ko && x.i !== side.active).map(({ c, i }) => ({ i, name: nameOf(c), row: swapRowInfo(b, 1, i) })) : [],
     vs: speciesOf(activeOf(b.sides[0])).types,
     health: `${totalHealth(me)}/${maxTotal(me)}`, stamina: `${me.stamina}/${maxStamina(me)}`, fatigue: me.fatigue,
     lead: { name: nameOf(me), morale: me.morale, bond: me.bond },
@@ -375,6 +403,8 @@ export const AI_SWAP_MARGIN: Partial<Record<SideKind, number>> = { trainer: 1.2,
 export const RIVAL_SWAP_MARGIN = 0.75;
 /** Rounds a trainer waits between swaps. */
 const AI_SWAP_REST = 2;
+/** A warned creature: swapping out costs the newcomer a status; staying costs damage. */
+const WARNED_SWAP = 0.25, WARNED_STAY = 0.3;
 /** Bringing the Ace out early takes a better reason. */
 const ACE_RELUCTANCE = 0.5;
 
@@ -400,7 +430,7 @@ export function outlook(b: Battle, si: 0 | 1, idx: number, opts: { free?: boolea
     hp -= take * 0.9;
     const m = swapMoveOf(c, activeOf(side));
     if (m.hit) {
-      const v = swapVals(c, activeOf(side), { f: theirs, foe });
+      const v = swapVals(c, activeOf(side), { f: theirs, foe, hurt: b.hurt?.[activeOf(side).uid] ?? 0 });
       const chart = swapChart(m, v);
       const def = m.hit.kind === 'physical' ? theirs.armor : theirs.ward;
       foeHp -= (m.hit.acc ? hitChance(m.hit.acc, theirs.evasion) : 1) * Math.max(1, (m.hit.die + 1) / 2 + m.hit.parts(v).reduce((a, p) => a + p.value, 0) - def) * (chart ? effectiveness(chart, speciesOf(foe).types) : 1);
@@ -417,7 +447,7 @@ export function outlook(b: Battle, si: 0 | 1, idx: number, opts: { free?: boolea
 export function aiSwap(b: Battle, si: 0 | 1): number | null {
   const side = b.sides[si];
   const margin = side.npc && side.kind === 'trainer' ? RIVAL_SWAP_MARGIN : AI_SWAP_MARGIN[side.kind];
-  if (margin === undefined || b.foeChooses || b.round < 1 || b.round - (b.aiSwapped ?? -9) < AI_SWAP_REST) return null;
+  if (margin === undefined || b.foeChooses || b.round < 1 || b.round - (b.aiSwapped ?? -9) < AI_SWAP_REST || swapBlocked(b, si)) return null;
   const c = activeOf(side), foe = activeOf(b.sides[si === 0 ? 1 : 0]);
   // nothing to gain by rescuing one that's nearly down (its replacement comes in free), or leaving a foe that is
   if (healthFraction(c) < 0.25 || totalHealth(foe) <= 4) return null;
@@ -425,7 +455,7 @@ export function aiSwap(b: Battle, si: 0 | 1): number | null {
   let best: number | null = null, gain = margin;
   side.team.forEach((x, i) => {
     if (x.ko || i === side.active) return;
-    const g = outlook(b, si, i) - now - (x.ace ? ACE_RELUCTANCE : 0);
+    const g = outlook(b, si, i) - now - (x.ace ? ACE_RELUCTANCE : 0) - (pinOf(b, si)?.kind === 'warn' ? WARNED_SWAP : 0) + (pinOf(b, si)?.kind === 'warn' ? WARNED_STAY : 0);
     if (g > gain) { gain = g; best = i; }
   });
   // (not every time: a little unpredictability)
@@ -637,12 +667,13 @@ export function resolveRound(b: Battle, pa: Action, foeAction?: Action): BEvent[
   b.round++;
   // the leads take the field as round 1 begins (after the trainer picked who leads)
   if (b.round === 1) for (const si of [0, 1] as const) fireInstinct(b, si, 'enter', ev);
-  let ea: Action | { kind: 'flee' } = b.legendary && b.fleeWarned ? { kind: 'flee' } : validFoeAction(b, foeAction) ?? chooseAI(b, 1);
+  if (pa.kind === 'swap' && swapBlocked(b, 0)) { ev.push({ t: 'say', text: swapBlocked(b, 0)!, tone: 'bad' }); pa = { kind: 'move', move: CATCH_BREATH.id }; }
+  let ea: Action | { kind: 'flee' } = b.legendary && b.fleeWarned && !swapBlocked(b, 1) ? { kind: 'flee' } : validFoeAction(b, foeAction) ?? chooseAI(b, 1);
   const startUids = [activeOf(b.sides[0]).uid, activeOf(b.sides[1]).uid];
 
   if (pa.kind === 'run') {
     const me = activeOf(b.sides[0]);
-    const ok = b.quickStep || roll(6) + eff(b, 0, 'speed') - eff(b, 1, 'speed') >= (b.hardRun ? HARD_RUN : 4);
+    const ok = !swapBlocked(b, 0) && (b.quickStep || roll(6) + eff(b, 0, 'speed') - eff(b, 1, 'speed') >= (b.hardRun ? HARD_RUN : 4));
     if (ok) {
       ev.push({ t: 'say', text: `${nameOf(me)} got away safely!`, tone: 'info' });
       b.over = 'escaped';
@@ -887,6 +918,8 @@ function damageParts(b: Battle, si: 0 | 1, m: Move): Part[] {
     const pb = purgeBonus(m, st);
     if (pb) parts.push({ label: m.purge!.status ? `Purge: ${STATUS_INFO[st!].name}` : `Purge (${STATUS_INFO[st!].name})`, value: pb });
   }
+  const pin = pinOf(b, fi);
+  if (pin?.extra) parts.push({ label: pin.move, value: pin.extra });
   const adv = b.sides[si].advice;
   if (adv) parts.push({ label: `${adv.from}’s advice`, value: adv[attackStat(m)] });
   const cap = c.capstone ? Math.floor(c.loyalty / 5) : 0;
@@ -1050,7 +1083,7 @@ export function swapPreview(b: Battle, si: 0 | 1, to: number) {
   const partner = activeOf(side), alpha = side.team[to];
   const fi: 0 | 1 = si === 0 ? 1 : 0;
   const m = swapMoveOf(alpha, partner);
-  const v = swapVals(alpha, partner, { a: stats(alpha, side.buff), f: statsOf(b, fi), foe: activeOf(b.sides[fi]) });
+  const v = swapVals(alpha, partner, { a: stats(alpha, side.buff), f: statsOf(b, fi), foe: activeOf(b.sides[fi]), hurt: b.hurt?.[partner.uid] ?? 0 });
   const earned = (b.teamworkPairs ?? []).includes(pairKey(alpha, partner));
   const capped = teamworkOf(alpha, partner) >= teamworkCap(alpha, partner) && teamworkOf(partner, alpha) >= teamworkCap(alpha, partner);
   return { move: m, power: m.name, teamwork: teamworkOf(alpha, partner), bonus: v.bonus, earned, capped, effect: describeSwap(m, v), aType: v.aType, pType: v.pType };
@@ -1070,6 +1103,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   const alpha = side.team[to];
   if (!alpha || alpha.ko) return;
   const m = swapMoveOf(alpha, partner);
+  const warned = pinOf(b, si)?.kind === 'warn' ? pinOf(b, si) : null;
   side.active = to;
   noteFoe(b);
   side.mods = {};
@@ -1078,8 +1112,10 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   if (!b.participants.includes(alpha.uid) && si === 0) b.participants.push(alpha.uid);
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
   fireInstinct(b, si, 'enter', ev);
+  // walking into a warning
+  if (warned?.status) { ev.push({ t: 'say', text: `${nameOf(alpha)} swaps in against the warning (${warned.move}).`, tone: si === 0 ? 'bad' : 'good' }); afflict(b, si, warned.status, ev); }
   // the bonus uses the Teamwork from before this swap; a pair earns Teamwork from swapping once per battle
-  const v = swapVals(alpha, partner, { foe: activeOf(b.sides[si === 0 ? 1 : 0]) });
+  const v = swapVals(alpha, partner, { foe: activeOf(b.sides[si === 0 ? 1 : 0]), hurt: b.hurt?.[partner.uid] ?? 0 });
   const key = pairKey(alpha, partner);
   if (!(b.teamworkPairs ??= []).includes(key)) {
     b.teamworkPairs.push(key);
@@ -1163,6 +1199,30 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
     case 'status': {
       const st = swapStatus(m);
       if (st) afflict(b, fi, st, ev);
+      return;
+    }
+    case 'trap': case 'warn': {
+      const foe = activeOf(b.sides[fi]);
+      if (foe.ko) return;
+      if (e.t === 'warn' && b.sides[fi].kind === 'wild') {
+        if (b.legendary) { ev.push({ t: 'say', text: `${nameOf(foe)} won’t be warned off.`, tone: 'info' }); return; }
+        ev.push({ t: 'say', text: `${nameOf(foe)} takes the hint and runs off!`, tone: si === 0 ? 'info' : 'bad' });
+        b.over = 'fled';
+        awardBattleXp(b, ev);
+        ev.push({ t: 'end', result: 'fled' });
+        return;
+      }
+      (b.pins ??= {})[fi] = { kind: e.t, uid: foe.uid, by: alpha.uid, move: m.name, extra: e.t === 'warn' ? e.extra : e.extra ?? 0, ...(e.t === 'warn' ? { status: swapStatus(m) } : {}) };
+      ev.push({ t: 'say', text: pinSnap(b, fi)!.pin.text.replace(/^[^:]+: /, `${nameOf(foe)}: `), tone: fi === 0 ? 'bad' : 'good' });
+      ev.push({ t: 'stamina', side: fi, snap: snap(b, foe) }); // (its plate shows the pin)
+      return;
+    }
+    case 'fatigue': {
+      const foe = activeOf(b.sides[fi]);
+      if (foe.ko) return;
+      foe.fatigue += e.n;
+      ev.push({ t: 'say', text: `${nameOf(foe)} is worn out: +${e.n} Fatigue.`, tone: fi === 0 ? 'bad' : 'good' });
+      ev.push({ t: 'stamina', side: fi, snap: snap(b, foe) });
       return;
     }
     case 'advise': {

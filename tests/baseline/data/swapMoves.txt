@@ -1,26 +1,37 @@
 ADVISE_ZERO: 2
-SWAP_MOVES (30)
+PIN_EXTRA: 2
+REVENGE_MAX: 10
+SWAP_MOVES (39)
   {"id":"tagStrike","name":"Tag Strike","teamwork":0,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","chart":"partner","parts":"function"}}
   {"id":"shieldPass","name":"Shield Pass","teamwork":0,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"}],"hit":{"die":6,"kind":"physical","parts":"function"}}
   {"id":"slipstream","name":"Slipstream","teamwork":0,"speed":3,"text":"function","hit":{"die":6,"kind":"physical","parts":"function"}}
   {"id":"siphon","name":"Siphon","teamwork":0,"text":"function","hit":{"die":6,"kind":"elemental","chart":"alpha","parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"}]}
   {"id":"rally","name":"Rally","teamwork":0,"text":"function","before":[{"t":"refill"},{"t":"ease"},{"t":"mod","who":"self","stat":"power","n":"function"},{"t":"mod","who":"self","stat":"focus","n":"function"}]}
   {"id":"advise","name":"Advise","teamwork":0,"text":"function","before":[{"t":"advise","zero":2,"n":"function"}]}
+  {"id":"revenge","name":"Revenge","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"physical","parts":"function"}}
   {"id":"starfall-relay","name":"Starfall Relay","type":"astral","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","status":true,"parts":"function"}}
+  {"id":"event-horizon","name":"Event Horizon","type":"astral","teamwork":2,"text":"function","before":[{"t":"trap","extra":2}]}
   {"id":"twin-orbit","name":"Twin Orbit","type":"astral","teamwork":2,"text":"function","before":[{"t":"mod","who":"self","stat":"evasion","n":"function"},{"t":"mod","who":"foe","stat":"evasion","n":"function"}],"hit":{"die":6,"kind":"elemental","status":true,"parts":"function"}}
   {"id":"sweet-handoff","name":"Sweet Handoff","type":"charm","teamwork":1,"text":"function","before":[{"t":"status"}],"hit":{"die":4,"kind":"elemental","parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"}]}
+  {"id":"cold-shoulder","name":"Cold Shoulder","type":"charm","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   {"id":"heartlink","name":"Heartlink","type":"charm","teamwork":2,"text":"function","before":[{"t":"heal","who":"alpha","n":"function"},{"t":"heal","who":"partner","n":"function"},{"t":"mod","who":"foe","stat":"power","n":"function"}]}
   {"id":"live-wire","name":"Live Wire","type":"electric","teamwork":1,"speed":2,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","status":true,"parts":"function"}}
+  {"id":"static-warning","name":"Static Warning","type":"electric","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   {"id":"arc-bridge","name":"Arc Bridge","type":"electric","teamwork":2,"text":"function","hit":{"die":6,"kind":"elemental","status":true,"parts":"function"}}
   {"id":"kindle-swap","name":"Kindle Swap","type":"fire","teamwork":1,"text":"function","before":[{"t":"status"},{"t":"mod","who":"self","stat":"power","n":"function"}]}
+  {"id":"ring-of-fire","name":"Ring of Fire","type":"fire","teamwork":2,"text":"function","before":[{"t":"trap"},{"t":"status"}]}
   {"id":"phoenix-handoff","name":"Phoenix Handoff","type":"fire","teamwork":2,"text":"function","hit":{"acc":8,"die":8,"kind":"elemental","status":true,"parts":"function"}}
   {"id":"root-relay","name":"Root Relay","type":"grass","teamwork":1,"text":"function","before":[{"t":"status"}],"hit":{"die":4,"kind":"elemental","parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"}]}
+  {"id":"thorn-fence","name":"Thorn Fence","type":"grass","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   {"id":"overgrowth","name":"Overgrowth","type":"grass","teamwork":2,"text":"function","before":[{"t":"heal","who":"alpha","n":"function"},{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"}],"hit":{"die":4,"kind":"elemental","parts":"function"}}
   {"id":"landslide-tag","name":"Landslide Tag","type":"rock","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"physical","status":true,"parts":"function"}}
+  {"id":"stone-tomb","name":"Stone Tomb","type":"rock","teamwork":2,"text":"function","before":[{"t":"trap"},{"t":"fatigue","n":2}]}
   {"id":"bulwark-swap","name":"Bulwark Swap","type":"rock","teamwork":2,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"}],"hit":{"die":6,"kind":"physical","parts":"function"}}
   {"id":"iron-relay","name":"Iron Relay","type":"steel","teamwork":1,"text":"function","hit":{"die":6,"kind":"physical","status":true,"parts":"function"}}
+  {"id":"iron-ultimatum","name":"Iron Ultimatum","type":"steel","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   {"id":"alloy-guard","name":"Alloy Guard","type":"steel","teamwork":2,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"foe","stat":"armor","n":"function"}],"hit":{"die":6,"kind":"physical","parts":"function"}}
   {"id":"tide-relay","name":"Tide Relay","type":"water","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","status":true,"parts":"function"}}
+  {"id":"bubble-net","name":"Bubble Net","type":"water","teamwork":2,"text":"function","before":[{"t":"trap"},{"t":"status"},{"t":"mod","who":"foe","stat":"speed","n":"function"},{"t":"mod","who":"foe","stat":"evasion","n":"function"}]}
   {"id":"wellspring","name":"Wellspring","type":"water","teamwork":2,"text":"function","before":[{"t":"heal","who":"alpha","n":"function"},{"t":"refill"},{"t":"status"}]}
   {"id":"conjunction","name":"Conjunction","type":"astral","boosted":true,"teamwork":3,"text":"function","hit":{"die":6,"kind":"elemental","status":true,"parts":"function"},"second":{"die":4,"kind":"elemental","status":true,"parts":"function"}}
   {"id":"duet","name":"Duet","type":"charm","boosted":true,"teamwork":3,"text":"function","before":[{"t":"status"},{"t":"mod","who":"foe","stat":"power","n":"function"},{"t":"mod","who":"foe","stat":"focus","n":"function"},{"t":"heal","who":"alpha","n":"function"},{"t":"heal","who":"partner","n":"function"}],"hit":{"die":4,"kind":"elemental","parts":"function"}}
@@ -30,28 +41,37 @@ SWAP_MOVES (30)
   {"id":"twin-monolith","name":"Twin Monolith","type":"rock","boosted":true,"teamwork":3,"text":"function","hit":{"acc":8,"die":8,"kind":"physical","status":true,"parts":"function"},"after":[{"t":"mod","who":"self","stat":"armor","n":"function"}]}
   {"id":"interlock","name":"Interlock","type":"steel","boosted":true,"teamwork":3,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"},{"t":"mod","who":"foe","stat":"armor","n":"function"}],"hit":{"die":6,"kind":"physical","status":true,"parts":"function"}}
   {"id":"confluence","name":"Confluence","type":"water","boosted":true,"teamwork":3,"text":"function","hit":{"die":6,"kind":"elemental","status":true,"parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"},{"t":"heal","who":"partner","n":"function"}]}
-SWAP_MOVE_BY_ID (30)
+SWAP_MOVE_BY_ID (39)
   tagStrike: {"id":"tagStrike","name":"Tag Strike","teamwork":0,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","chart":"partner","parts":"function"}}
   shieldPass: {"id":"shieldPass","name":"Shield Pass","teamwork":0,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"}],"hit":{"die":6,"kind":"physical","parts":"function"}}
   slipstream: {"id":"slipstream","name":"Slipstream","teamwork":0,"speed":3,"text":"function","hit":{"die":6,"kind":"physical","parts":"function"}}
   siphon: {"id":"siphon","name":"Siphon","teamwork":0,"text":"function","hit":{"die":6,"kind":"elemental","chart":"alpha","parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"}]}
   rally: {"id":"rally","name":"Rally","teamwork":0,"text":"function","before":[{"t":"refill"},{"t":"ease"},{"t":"mod","who":"self","stat":"power","n":"function"},{"t":"mod","who":"self","stat":"focus","n":"function"}]}
   advise: {"id":"advise","name":"Advise","teamwork":0,"text":"function","before":[{"t":"advise","zero":2,"n":"function"}]}
+  revenge: {"id":"revenge","name":"Revenge","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"physical","parts":"function"}}
   starfall-relay: {"id":"starfall-relay","name":"Starfall Relay","type":"astral","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","status":true,"parts":"function"}}
+  event-horizon: {"id":"event-horizon","name":"Event Horizon","type":"astral","teamwork":2,"text":"function","before":[{"t":"trap","extra":2}]}
   twin-orbit: {"id":"twin-orbit","name":"Twin Orbit","type":"astral","teamwork":2,"text":"function","before":[{"t":"mod","who":"self","stat":"evasion","n":"function"},{"t":"mod","who":"foe","stat":"evasion","n":"function"}],"hit":{"die":6,"kind":"elemental","status":true,"parts":"function"}}
   sweet-handoff: {"id":"sweet-handoff","name":"Sweet Handoff","type":"charm","teamwork":1,"text":"function","before":[{"t":"status"}],"hit":{"die":4,"kind":"elemental","parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"}]}
+  cold-shoulder: {"id":"cold-shoulder","name":"Cold Shoulder","type":"charm","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   heartlink: {"id":"heartlink","name":"Heartlink","type":"charm","teamwork":2,"text":"function","before":[{"t":"heal","who":"alpha","n":"function"},{"t":"heal","who":"partner","n":"function"},{"t":"mod","who":"foe","stat":"power","n":"function"}]}
   live-wire: {"id":"live-wire","name":"Live Wire","type":"electric","teamwork":1,"speed":2,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","status":true,"parts":"function"}}
+  static-warning: {"id":"static-warning","name":"Static Warning","type":"electric","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   arc-bridge: {"id":"arc-bridge","name":"Arc Bridge","type":"electric","teamwork":2,"text":"function","hit":{"die":6,"kind":"elemental","status":true,"parts":"function"}}
   kindle-swap: {"id":"kindle-swap","name":"Kindle Swap","type":"fire","teamwork":1,"text":"function","before":[{"t":"status"},{"t":"mod","who":"self","stat":"power","n":"function"}]}
+  ring-of-fire: {"id":"ring-of-fire","name":"Ring of Fire","type":"fire","teamwork":2,"text":"function","before":[{"t":"trap"},{"t":"status"}]}
   phoenix-handoff: {"id":"phoenix-handoff","name":"Phoenix Handoff","type":"fire","teamwork":2,"text":"function","hit":{"acc":8,"die":8,"kind":"elemental","status":true,"parts":"function"}}
   root-relay: {"id":"root-relay","name":"Root Relay","type":"grass","teamwork":1,"text":"function","before":[{"t":"status"}],"hit":{"die":4,"kind":"elemental","parts":"function"},"after":[{"t":"heal","who":"alpha","n":"function"}]}
+  thorn-fence: {"id":"thorn-fence","name":"Thorn Fence","type":"grass","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   overgrowth: {"id":"overgrowth","name":"Overgrowth","type":"grass","teamwork":2,"text":"function","before":[{"t":"heal","who":"alpha","n":"function"},{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"}],"hit":{"die":4,"kind":"elemental","parts":"function"}}
   landslide-tag: {"id":"landslide-tag","name":"Landslide Tag","type":"rock","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"physical","status":true,"parts":"function"}}
+  stone-tomb: {"id":"stone-tomb","name":"Stone Tomb","type":"rock","teamwork":2,"text":"function","before":[{"t":"trap"},{"t":"fatigue","n":2}]}
   bulwark-swap: {"id":"bulwark-swap","name":"Bulwark Swap","type":"rock","teamwork":2,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"self","stat":"ward","n":"function"}],"hit":{"die":6,"kind":"physical","parts":"function"}}
   iron-relay: {"id":"iron-relay","name":"Iron Relay","type":"steel","teamwork":1,"text":"function","hit":{"die":6,"kind":"physical","status":true,"parts":"function"}}
+  iron-ultimatum: {"id":"iron-ultimatum","name":"Iron Ultimatum","type":"steel","teamwork":2,"text":"function","before":[{"t":"warn","extra":2}]}
   alloy-guard: {"id":"alloy-guard","name":"Alloy Guard","type":"steel","teamwork":2,"text":"function","before":[{"t":"mod","who":"self","stat":"armor","n":"function"},{"t":"mod","who":"foe","stat":"armor","n":"function"}],"hit":{"die":6,"kind":"physical","parts":"function"}}
   tide-relay: {"id":"tide-relay","name":"Tide Relay","type":"water","teamwork":1,"text":"function","hit":{"acc":8,"die":6,"kind":"elemental","status":true,"parts":"function"}}
+  bubble-net: {"id":"bubble-net","name":"Bubble Net","type":"water","teamwork":2,"text":"function","before":[{"t":"trap"},{"t":"status"},{"t":"mod","who":"foe","stat":"speed","n":"function"},{"t":"mod","who":"foe","stat":"evasion","n":"function"}]}
   wellspring: {"id":"wellspring","name":"Wellspring","type":"water","teamwork":2,"text":"function","before":[{"t":"heal","who":"alpha","n":"function"},{"t":"refill"},{"t":"status"}]}
   conjunction: {"id":"conjunction","name":"Conjunction","type":"astral","boosted":true,"teamwork":3,"text":"function","hit":{"die":6,"kind":"elemental","status":true,"parts":"function"},"second":{"die":4,"kind":"elemental","status":true,"parts":"function"}}
   duet: {"id":"duet","name":"Duet","type":"charm","boosted":true,"teamwork":3,"text":"function","before":[{"t":"status"},{"t":"mod","who":"foe","stat":"power","n":"function"},{"t":"mod","who":"foe","stat":"focus","n":"function"},{"t":"heal","who":"alpha","n":"function"},{"t":"heal","who":"partner","n":"function"}],"hit":{"die":4,"kind":"elemental","parts":"function"}}

@@ -79,6 +79,9 @@ export function swapWorth(alpha: CreatureInst, partner: CreatureInst, m: SwapMov
       case 'ease': return 0.5;
       case 'status': { const st = swapStatus(m); return st ? STATUS_WORTH[st] : 0; }
       // a surer next hit, and more from it
+      case 'trap': return 1.5 + (e.extra ?? 0) * 1.2;
+      case 'warn': return 1.5 + e.extra * 0.6;
+      case 'fatigue': return e.n * 1.1;
       case 'advise': { const k = stats(alpha).power >= stats(alpha).focus ? 'power' : 'focus'; return e.n(v, k) * 0.85 + e.zero * 0.6; }
     }
   };
@@ -114,9 +117,9 @@ export function swapTypes(alpha: CreatureInst, partner: CreatureInst, foe?: Crea
   return { aType: ownType(alpha, foe), pType: ownType(partner, foe), ...(a ? { aEither: a } : {}), ...(p ? { pEither: p } : {}) };
 }
 /** The numbers a Swap Move works from, for describing it (pass the foe's stats once it's known). */
-export function swapVals(alpha: CreatureInst, partner: CreatureInst, opts: { a?: Stats; f?: Stats; /** who it would hit */ foe?: CreatureInst } = {}): SwapVals {
+export function swapVals(alpha: CreatureInst, partner: CreatureInst, opts: { a?: Stats; f?: Stats; /** who it would hit */ foe?: CreatureInst; /** the partner's wounds this battle */ hurt?: number } = {}): SwapVals {
   return {
-    a: opts.a ?? stats(alpha), p: stats(partner), f: opts.f, bonus: teamworkBonus(alpha, partner),
+    a: opts.a ?? stats(alpha), p: stats(partner), f: opts.f, bonus: teamworkBonus(alpha, partner), ...(opts.hurt !== undefined ? { hurt: opts.hurt } : {}),
     A: nameOf(alpha), P: nameOf(partner), ...swapTypes(alpha, partner, opts.foe),
   };
 }
