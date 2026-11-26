@@ -2083,7 +2083,7 @@ export class App {
           recruited ? h('span', { class: 'caught-mark', title: 'Already recruited', 'aria-label': 'Already recruited' }, '🗿') : null,
           sn.zero ? h('span', { class: 'zero-tag', title: `Zeroing In: +${sn.zero} to its next accuracy roll, from missing. Misses stack it up to +${ZERO_IN_MAX}; leaving the field loses it.` }, h('i', { class: 'zi' }, '⌖'), ` +${sn.zero}`) : null,
           guard && !sn.ko ? h('span', { class: 'guard-tag', title: `${guard.text} Its Instinct protects it from status effects.`, 'aria-label': `Status protection: ${guard.text}` }, '🛡', guard.label === '🛡' ? '' : ` ${guard.label}`) : null,
-          sn.pin && !sn.ko ? h('span', { class: `pin-tag ${sn.pin.kind}`, title: sn.pin.text, 'aria-label': sn.pin.text }, sn.pin.kind === 'trap' ? '⛓️' : '⚠️', ` ${sn.pin.move}`) : null,
+          sn.pin && !sn.ko ? h('span', { class: `pin-tag ${sn.pin.kind}`, title: sn.pin.text, 'aria-label': sn.pin.text }, '⚠️', ` ${sn.pin.move}`) : null,
           sn.status ? h('button', { class: 'status-tag', title: `${STATUS_INFO[sn.status].text} (tap for all statuses)`, onclick: () => openSheet('Status Effects', statusGuide()) }, STATUS_INFO[sn.status].icon, ' ', STATUS_INFO[sn.status].name) : null),
         h('div', { class: 'pl-vit' },
           h('span', { class: 'team-balls' }, sd.team.map((x) => h('i', { class: `${x.ko ? 'ko' : ''} ${x.ace ? 'ace' : ''}`, title: x.ace ? 'Their Ace: a tougher creature with a special bond' : '' })))),

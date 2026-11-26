@@ -219,6 +219,7 @@ Shown in the Bag, Markets, rewards, recruit offerings and trades.
 - [ ] `battle-swap`: 🔁 Swap (also in the challenged trainer's panel)
 - [ ] `battle-run`: 🏃 Run
 - [ ] `battle-types`: 🔺 Types (matchup chart; also the Type Chart menu tile)
+- [ ] `battle-pin`: ⚠️ a trap or warning from a Swap Move, on a nameplate
 - [ ] `battle-card`: 📇 View the creature's card
 - [ ] `battle-watching`: 👀 Watching someone else's battle (online)
 

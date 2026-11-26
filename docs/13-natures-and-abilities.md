@@ -264,7 +264,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 | Water | Wellspring | `wellspring` | 2 | "The Alpha drinks from the partner's spring: the Alpha heals, both refill Stamina, and the foe is drenched." | The Alpha heals (partner's Vigor ÷ 2, up) + bonus; both refill Stamina; Soak on the foe (if it has no status). No damage. |
 | Water | Bubble Net | `bubble-net` | 2 | "The partner spins a net of bubbles round the foe on its way out: it's soaked, slowed and easy to hit, and it can't get out while the Alpha holds the net." | **Trap**, Soak on the foe (if it has no status), and the foe gets −1 Speed and −1 Evasion. |
 
-**Traps and warnings** (`trap`, `warn`; `battle.ts` → `pinOf`, `swapBlocked`). Each holds only while the foe faces the Alpha that set it: it ends when either leaves the field or is knocked out. A creature's nameplate shows it (⛓️ or ⚠️ and the move's name).
+**Traps and warnings** (`trap`, `warn`; `battle.ts` → `pinOf`, `swapBlocked`). Each holds only while the foe faces the Alpha that set it: it ends when either leaves the field or is knocked out. A creature's nameplate shows it: ⚠️ and the move's name, purple for a trap and gold for a warning.
 - **Trap:** the foe can't swap out, and a wild one can't run (a Legendary can't flee). If it's the player who's held, Swap and Run are greyed out with the reason.
 - **Warning:** a wild foe runs off at once (the battle ends as if it fled, with the usual XP; a Legendary won't be warned off). A trainer's creature takes +2 damage from the warning side's attacks while it stays, and whoever swaps in for it gets the move's type status. The AI weighs both when deciding whether to swap.
 
