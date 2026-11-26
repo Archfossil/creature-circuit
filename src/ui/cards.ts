@@ -1,7 +1,8 @@
+import type { StatKey } from '../data/schema';
 import { h, openSheet } from './dom';
 import type { CreatureEdit } from '../engine/edits';
 import type { CreatureInst } from '../engine/creature';
-import { MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
+import { statParts, MORALE_HIGH, MORALE_LOW, LOYALTY_MAX, LEGENDARY_LOYALTY_DRAIN, speciesOf, abilityOf, instinctIdOf, nameOf, stats, HEART, maxHearts, maxTotal, totalHealth, maxStamina, energy, energyTotal, allocateEnergy, fits, learnable, progressionTree, availableNodes, unlockNode, chartComplete, trainStat, TRAINABLE, STAT_KEYS, STAT_LABEL, recommendPlaybook, suggestGoal, expectedDamage, type PlaybookGoal } from '../engine/creature';
 import { attackStat, MOVE_BY_ID, STATUS_INFO, STATUS_FOR, ZERO_IN, zeroInOf, avgRoll, diceText, statusChance, statusFaces, statusRollText, moveKeywords, critFaces, critFrom, critText, critsMore } from '../data/moves';
 import { natureText, ABILITIES, NATURE_BY_ID } from '../data/content';
 import { describeSwap, swapText } from '../data/swapMoves';
@@ -363,6 +364,28 @@ export function creatureCard(c: CreatureInst, opts: { onChange?: () => void; edi
   return wrap;
 }
 
+/** The card's attributes. Each says where its number comes from (tap it), and one raised by Nature perks shows by how much. */
+function statGrid(c: CreatureInst, st: ReturnType<typeof stats>) {
+  const parts = statParts(c);
+  const hint = h('p', { class: 'ic-hint small', 'aria-live': 'polite' });
+  const explain = (k: StatKey) => {
+    const ps = parts[k], sum = ps.reduce((a, p) => a + p.n, 0);
+    const clamp = sum !== st[k] ? ` (kept within ${k === 'evasion' ? '1–6' : 'its limits'})` : '';
+    return `${STAT_LABEL[k]} ${st[k]}: ${ps.map((p, i) => (i ? `${p.n >= 0 ? '+' : '−'} ${Math.abs(p.n)} ${p.label}` : `${p.n} ${p.label}`)).join(' ')}${clamp}.`;
+  };
+  let open: StatKey | null = null;
+  const grid = h('div', { class: 'ic-stats' }, STAT_KEYS.map((k) => {
+    const perk = parts[k].filter((p) => p.perk).reduce((a, p) => a + p.n, 0);
+    return h('button', { class: `stat ${perk ? 'perked' : ''}`, type: 'button', title: explain(k), 'aria-label': explain(k), onclick: () => {
+      open = open === k ? null : k;
+      hint.textContent = open ? explain(open) : '';
+      hint.classList.toggle('show', !!open);
+      grid.querySelectorAll('.stat').forEach((b, i) => b.classList.toggle('on', STAT_KEYS[i] === open));
+    } }, h('small', null, STAT_LABEL[k]), h('b', null, st[k]), perk ? h('i', { class: 'perk-up', title: 'From Nature perks (Loyalty)' }, `+${perk}`) : null);
+  }));
+  return h('div', null, grid, hint);
+}
+
 function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean; extra?: Node; onEdit?: (e: CreatureEdit) => void; teammates?: CreatureInst[] | null }, changed: () => void) {
   const sp = speciesOf(c);
   const st = stats(c);
@@ -392,7 +415,7 @@ function cardFront(c: CreatureInst, flip: () => void, opts: { editable?: boolean
         h('button', { class: `chip social ${sp.rarity === 'legendary' && c.loyalty <= 3 ? 'bad' : ''}`, title: sp.rarity === 'legendary' ? `${LOYALTY_HELP}
 Legendary: loses ${LEGENDARY_LOYALTY_DRAIN} Loyalty every turn and returns to its grounds at 0.` : LOYALTY_HELP, onclick: () => socialHelp(c) },
           sp.rarity === 'legendary' ? '⏳ ' : '🤝 ', 'Loyalty ', h('b', null, c.loyalty), `/${LOYALTY_MAX}`),)),
-    h('div', { class: 'ic-stats' }, STAT_KEYS.map((k) => h('div', { class: 'stat' }, h('small', null, STAT_LABEL[k]), h('b', null, st[k])))),
+    statGrid(c, st),
     h('section', { class: 'ic-sec' },
       h('h4', null, 'Energy ', h('span', { class: 'muted' }, `${free}/${energyTotal(e)} free · ${4 - c.playbook.length}/4 slots open`)),
       energyPips(e, false, spent),

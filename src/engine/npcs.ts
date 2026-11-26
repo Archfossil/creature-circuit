@@ -15,7 +15,7 @@ import { earnCoins, log, record, tierOf } from './state';
 import { dareTurn, type Dare } from './dares';
 import { textStoodUp, textTurn, type Chat } from './messenger';
 import { createBattle, type Battle } from './battle';
-import { createCreature, fullRestore, gainXp, recommendPlaybook, type CreatureInst } from './creature';
+import { syncPerks, createCreature, fullRestore, gainXp, recommendPlaybook, type CreatureInst } from './creature';
 import { teach } from './imprints';
 import { assignSwapMoves } from './swaps';
 import { teamworkCap } from './teamwork';
@@ -131,7 +131,7 @@ export function npcCreature(s: GameState, npc: Npc, slot: number, level: number,
   const seed = `${s.prismSeed ?? 0}|${npc.id}|${slot}${swap ? `|${swap.nature}|${swap.nickname ?? ''}` : ''}`;
   // a creature this trainer had imprinted keeps that; otherwise they may teach it a favourite type
   const taught = swap?.imprints ? null : taughtTo(s, npc, slot, sp);
-  const key = `${seed}|${sp.id}|${level}|${taught ? `${taught.type}${taught.n}` : JSON.stringify(swap?.imprints ?? '')}`;
+  const key = `${seed}|${sp.id}|${level}|${npcLoyalty(npc, s.turn)}|${taught ? `${taught.type}${taught.n}` : JSON.stringify(swap?.imprints ?? '')}`;
   const had = built.get(key);
   if (had) return JSON.parse(had) as CreatureInst;
   const made = seededly(seed, () => {
@@ -139,6 +139,7 @@ export function npcCreature(s: GameState, npc: Npc, slot: number, level: number,
     if (swap?.nickname) c.nickname = swap.nickname;
     if (swap?.imprints) c.imprints = swap.imprints.map((x) => ({ ...x }));
     if (taught) teach(c, taught.type, taught.n);
+    c.loyalty = npcLoyalty(npc, s.turn); syncPerks(c); // (its perks count when choosing its moves)
     c.playbook = recommendPlaybook(c, { kind: 'balanced' }, taught?.type, tasteOf(npc, slot));
     c.uid = `npc-${npc.id}-${slot}`;
     if (slot === 0) { c.ace = true; c.bond = true; } // an Ace has the same bond as a trainer's own starter
@@ -162,9 +163,11 @@ export function npcTeam(s: GameState, npc: Npc, size: number, level = npcLevel(s
   const pickFrom = [...others].sort((x, y) => chanceOf(s, `${npc.id}:${s.turn}:${x.uid}`) - chanceOf(s, `${npc.id}:${s.turn}:${y.uid}`));
   return drilled([...pickFrom.slice(0, size - 1), ace]);
 }
+/** How loyal their creatures are: it grows with the season, a Champion's more. */
+const npcLoyalty = (npc: Npc, turn: number) => Math.min(10, 2 * npcTier(turn) + (npc.kind === 'champion' ? 2 : 0));
 /** Their creatures have fought side by side: Teamwork that grows with the season, and the best Swap Move for every pair. */
 function drill(team: CreatureInst[], npc: Npc, turn: number) {
-  for (const c of team) c.loyalty = Math.min(10, 2 * npcTier(turn) + (npc.kind === 'champion' ? 2 : 0));
+  for (const c of team) { c.loyalty = npcLoyalty(npc, turn); syncPerks(c); } // (and the Nature perks it has earned)
   for (const a of team) for (const p of team) if (a !== p) a.teamwork[p.uid] = Math.floor(teamworkCap(a, p));
   assignSwapMoves(team);
 }

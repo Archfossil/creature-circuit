@@ -1,8 +1,8 @@
 # Six trainers in one bracket, so some must meet, and one is away.
-T100 Al @stadium coins500 merits8 [pyrothane13,mangrovore12,mesahound12]+0 dice525 rules:81eb2431 words:5acd3cd4 | bracket; round 0 lose; round 0 win; round 0 lose; round 1 lose; round 1 win; round 2 lose; champion selene
-T100 Bea @stadium coins500 merits8 [redwarden15,stormhound14,polarion15]+0 dice525 rules:1a97bd22 words:0048f738 | 
-T100 Cam @stadium coins500 merits8 [pyrothane12,mangrovore13,mesahound12]+0 dice525 rules:c63a9790 words:37ad940c | 
-T100 Di @stadium coins500 merits8 [redwarden12,stormhound12,polarion12]+0 dice525 rules:e50bf4ba words:65758d52 | 
-T100 Ed @stadium coins500 merits8 [pyrothane13,mangrovore14,mesahound13]+0 dice525 rules:f399c3b0 words:83d23e1b | 
-T100 Fay @stadium coins500 merits8 [redwarden13,stormhound13,polarion13]+0 dice525 rules:931ab71a words:c32b9fe4 | 
-# bracket 1, champion 1, circuitDuel 3, round 6
+T100 Al @stadium coins500 merits8 [pyrothane12,mangrovore12,mesahound12]+0 dice370 rules:b9ca0739 words:e08f2f21 | bracket; round 0 lose; round 0 lose; round 0 lose; round 1 lose; round 1 lose; champion selene
+T100 Bea @stadium coins500 merits8 [redwarden12,stormhound12,polarion12]+0 dice370 rules:0e9c1c9e words:762fbd9a | 
+T100 Cam @stadium coins500 merits8 [pyrothane12,mangrovore13,mesahound12]+0 dice370 rules:a0311202 words:0267294d | 
+T100 Di @stadium coins500 merits8 [redwarden12,stormhound12,polarion12]+0 dice370 rules:12dc0ff8 words:ac319ea3 | 
+T100 Ed @stadium coins500 merits8 [pyrothane13,mangrovore13,mesahound12]+0 dice370 rules:d6254ce8 words:c27c3c7a | 
+T100 Fay @stadium coins500 merits8 [redwarden13,stormhound13,polarion13]+0 dice370 rules:8aecf5ef words:bb92fecc | 
+# bracket 1, champion 1, circuitDuel 2, round 5

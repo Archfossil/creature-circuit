@@ -1,3 +1,4 @@
+import * as N from '../src/engine/npcs';
 import { readdirSync } from 'node:fs';
 import { ICON_NAMES, iconFor, splitIcons } from '../src/data/icons';
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
@@ -20,7 +21,7 @@ import { landmassOf, landField } from '../src/render/land';
 import { natureText, WEATHER, NATURES, ABILITIES, SEASON_INFO, seasonForTurn, ITEMS, timeOfDay, BIOME_MATERIALS, RECIPES, NATURE_BY_ID } from '../src/data/content';
 import { moveTrainer, record, worldLog, DEEDS_MAX } from '../src/engine/state';
 import { addLine, logBattleEvent, BATTLE_LOG_MAX, type BattleLog } from '../src/engine/battleLog';
-import { syncPerks, moveWorth, speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
+import { STAT_KEYS, addLoyalty, statParts, syncPerks, moveWorth, speciesOf, abilityOf, instinctIdOf, recommendPlaybook, suggestGoal, expectedDamage, stats, maxTotal, totalHealth, maxHearts, nameOf, TRAINER_BATTLE_XP_BONUS, createCreature, allocateEnergy, fits, energy, learnable, autoPlaybook, unlockNode, availableNodes, progressionTree, gainXp, participationXp, maxHealth, maxVitality, chartComplete, trainStat } from '../src/engine/creature';
 import { applyEdit, setWaypoint } from '../src/engine/edits';
 import { aiSwap, pinOf, swapBlocked, snap, type Battle, afflict, instinctOf, overhealCap, overhealOf, statusBlock, statusGuard, createBattle, resolveRound, sendIn, chooseAI, activeOf, typeMatchup, movePreview, chooseLead, foeOptions, foeReplacements, foeSendIn, effectValue, ringRounds, ringLeft, type Side, type BEvent } from '../src/engine/battle';
 import { onSaveStatus, retrySave, newGame, addItem, keyTownOf, tierOf, migrate, migrateMatch, SAVE_VERSION, TRAINER_STYLES, earnCoins, newMatch, setActiveMatch, nextSeat, takenColors, MAX_PLAYERS, save, load, saveMatch, loadMatch, clearMatch, clearSave, parseSaveFile, listCopies, saveCopy, restoreCopy, renameCopy, deleteCopy, readCopy, saveKindOf, loadOnlineMatch, LIBRARY_MAX } from '../src/engine/state';
@@ -543,6 +544,30 @@ describe('morale and loyalty', () => {
     const d = newGame('U', 'balanced', 'mangrove', 'twinkit', '#000').roster[0];
     expect(NATURE_BY_ID[d.nature]).toBeDefined();
     expect([d.ability, d.instinct]).toEqual([undefined, undefined]);
+  });
+  it('Loyalty unlocks Nature perks, and the card can say where every attribute comes from', () => {
+    for (const nat of NATURES) for (const loyalty of [0, 3, 6, 10]) {
+      const c = createCreature('cindercub', 5, { nature: nat.id });
+      c.bond = loyalty === 10; c.bonus = { power: 1, ward: 2 };
+      const before = stats(c);
+      addLoyalty(c, loyalty);
+      expect(c.perks, `${nat.id} ${loyalty}`).toBe(nat.perks.filter((p) => p.cost <= loyalty).length);
+      const after = stats(c), parts = statParts(c);
+      for (const k of STAT_KEYS) {
+        const perk = nat.perks.slice(0, c.perks).reduce((a, p) => a + (p.bonus[k] ?? 0), 0);
+        if (k !== 'evasion') expect(after[k] - before[k], `${nat.id} ${loyalty} ${k}`).toBe(perk);
+        if (k !== 'evasion') expect(parts[k].reduce((a, p) => a + p.n, 0), `${nat.id} ${k}`).toBe(after[k]);
+        expect(parts[k].filter((p) => p.perk).reduce((a, p) => a + p.n, 0)).toBe(perk);
+      }
+    }
+  });
+  it('Rivals’ and Champions’ creatures have the perks their Loyalty has earned, and so do loaded saves', () => {
+    const s = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    s.turn = 70;
+    for (const npc of NPC_LIST.slice(0, 6)) for (const c of N.npcTeam(s, npc, 3)) expect(c.perks, `${npc.id} ${c.loyalty}`).toBe(NATURE_BY_ID[c.nature].perks.filter((p) => p.cost <= c.loyalty).length);
+    const g = newGame('T', 'balanced', 'thunder', 'puddlit', '#fff');
+    g.roster[0].loyalty = 7; g.roster[0].perks = 0; // as an older save might have it
+    expect(migrate(JSON.parse(JSON.stringify(g)))!.roster[0].perks).toBe(2);
   });
   it('Volatile trades Evasion for power and the stamina to use it', () => {
     const total = (loyalty: number) => {
@@ -3809,6 +3834,8 @@ describe('Swap Moves', () => {
     expect(fight.hurt?.[me.uid] ?? 0).toBeGreaterThan(0);
   });
   it('traps hold the foe while it faces the Alpha that set them; warnings scare off wild foes and punish a trainer’s swap', () => {
+    const real = Math.random; let sd = 11; Math.random = () => (sd = (sd * 16807) % 2147483647) / 2147483647; // (the same creatures every run)
+    try {
     const setup = (move: string, foeKind: 'wild' | 'trainer', legendary = false) => {
       const sp = SPECIES.find((x) => x.rarity !== 'legendary' && x.types.includes(SWAP_MOVE_BY_ID[move].type!))!;
       const a = createCreature('cindercub', 6), p = createCreature(sp.id, 6);
@@ -3845,9 +3872,12 @@ describe('Swap Moves', () => {
       const pins = bt.pins;
       bt.pins = {};
       let wouldSwap = false;
-      for (let i = 0; i < 20 && !wouldSwap; i++) wouldSwap = aiSwap(bt, 1) !== null;
+      bt.aiSwapped = -9; // (it hasn't swapped lately)
+      const rnd = Math.random; Math.random = () => 0.1; // (it swaps 85% of the times it wants to)
+      try { wouldSwap = aiSwap(bt, 1) !== null; } finally { Math.random = rnd; }
       bt.pins = pins;
-      if (wouldSwap) for (let i = 0; i < 20; i++) expect(aiSwap(bt, 1), move).toBe(null);
+      Math.random = () => 0.1;
+      try { if (wouldSwap) expect(aiSwap(bt, 1), move).toBe(null); } finally { Math.random = rnd; }
       if (wouldSwap) swapsTested++;
       expect(bt.sides[1].active).toBe(was);
       // it ends when the Alpha leaves
@@ -3894,6 +3924,7 @@ describe('Swap Moves', () => {
       expect(bt.status[foes[1].uid]?.id, move).toBe(st);
       expect(pinOf(bt, 1), move).toBe(null); // the newcomer isn't warned itself
     }
+    } finally { Math.random = real; }
   });
   it('Advise: the Alpha comes in Zeroing In, and its next attack adds half the partner’s Power or Focus', () => {
     const go = (move: string, missFirst = false) => {

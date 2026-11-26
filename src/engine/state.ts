@@ -6,7 +6,7 @@ import type { PendingEvent } from './events';
 import type { BattleLog } from './battleLog';
 import type { NpcRecord } from './npcs';
 import { noteArrival } from './dares';
-import { createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
+import { syncPerks, createCreature, fullRestore, speciesOf, maxHealth, maxVitality, progressionTree, stats, NODE_ENERGY } from './creature';
 import { SEASON_INFO, seasonForTurn } from '../data/content';
 import { ROAMING_KEY_ITEMS, CLASSIC_KEY_TOWNS, KEY_ITEM_TOWNS, NODE_BY_ID } from '../data/map';
 import { pick } from './dice';
@@ -570,6 +570,7 @@ export function migrate(s: GameState): GameState | null {
     }
     c.teamwork ??= {};
     c.swapMoves ??= {};
+    syncPerks(c); // any perk its Loyalty has earned but was missed
   }
   // Moves: a placeholder attack replaced by a hand-made one becomes that move; an id that no longer
   // exists at all is dropped (it would break the creature's card and battles)

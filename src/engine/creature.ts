@@ -66,6 +66,24 @@ export const instinctIdOf = (c: CreatureInst): string => c.instinct ?? speciesOf
 export const BOND_VIGOR = 1;
 export const BOND_MIN_STAT = 1;
 
+/** Where each of a creature's attributes comes from, in the order `stats` adds them up (what the card explains). */
+export function statParts(c: CreatureInst): Record<StatKey, { label: string; n: number; perk?: boolean }[]> {
+  const sp = speciesOf(c), nat = NATURE_BY_ID[c.nature];
+  const out = Object.fromEntries(STAT_KEYS.map((k) => [k, [{ label: sp.name, n: sp.base[k] }]])) as Record<StatKey, { label: string; n: number; perk?: boolean }[]>;
+  if (c.bond) for (const k of STAT_KEYS) {
+    const lift = Math.max(0, BOND_MIN_STAT - sp.base[k]) + (k === 'vigor' ? BOND_VIGOR : 0);
+    if (lift) out[k].push({ label: 'Special bond', n: lift });
+  }
+  if (nat) {
+    for (const [k, v] of Object.entries(nat.up)) out[k as StatKey].push({ label: `${nat.name} Nature`, n: v! });
+    const had = out[nat.down].reduce((x, p) => x + p.n, 0); // (it never goes below 0)
+    if (had > 0) out[nat.down].push({ label: `${nat.name} Nature`, n: -1 });
+  }
+  for (const k of STAT_KEYS) if (c.bonus[k]) out[k].push({ label: 'Chart and training', n: c.bonus[k]! });
+  if (nat) for (let i = 0; i < c.perks; i++) for (const [k, v] of Object.entries(nat.perks[i].bonus)) out[k as StatKey].push({ label: `${nat.perks[i].name} (Loyalty ${nat.perks[i].cost})`, n: v!, perk: true });
+  return out;
+}
+
 export function stats(c: CreatureInst, extra?: Partial<Stats>): Stats {
   const sp = speciesOf(c);
   const nat = NATURE_BY_ID[c.nature];
