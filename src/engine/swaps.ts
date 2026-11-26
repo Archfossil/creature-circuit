@@ -10,7 +10,8 @@ import { STATUS_WORTH, nameOf, speciesOf, stats, typicalGuard, type CreatureInst
 import { teamworkBonus, teamworkOf, teamworkShown } from './teamwork';
 
 /** The neutral Swap Moves: open to every pair, so always safe as a default. */
-const NEUTRAL = SWAP_MOVES.filter((m) => !m.type);
+/** (Newer neutral moves aren't drawn, so a pair's default stays what it was.) */
+const NEUTRAL = SWAP_MOVES.filter((m) => !m.type && ['tagStrike', 'shieldPass', 'slipstream', 'siphon', 'rally'].includes(m.id));
 
 /**
  * The Swap Move `alpha` uses when swapping in for `partner` until the trainer sets one: a neutral move
@@ -77,6 +78,8 @@ export function swapWorth(alpha: CreatureInst, partner: CreatureInst, m: SwapMov
       case 'refill': return 1;
       case 'ease': return 0.5;
       case 'status': { const st = swapStatus(m); return st ? STATUS_WORTH[st] : 0; }
+      // a surer next hit, and more from it
+      case 'advise': { const k = stats(alpha).power >= stats(alpha).focus ? 'power' : 'focus'; return e.n(v, k) * 0.85 + e.zero * 0.6; }
     }
   };
   return (m.hit ? hitWorth(m.hit) : 0) + (m.second ? hitWorth(m.second) : 0) + [...(m.before ?? []), ...(m.after ?? [])].reduce((a, e) => a + effect(e), 0) + (m.speed ?? 0) * 0.15;

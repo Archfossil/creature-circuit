@@ -32,7 +32,9 @@ export type SwapEffect =
   /** Both creatures lose 1 Fatigue. */
   | { t: 'ease' }
   /** The foe gets the move's type status outright (if it has none). */
-  | { t: 'status' };
+  | { t: 'status' }
+  /** Zeroing In for the Alpha, and its next attack adds `n` of the partner's Power or Focus (whichever that attack adds). */
+  | { t: 'advise'; zero: number; n: (v: SwapVals, k: 'power' | 'focus') => number };
 
 export interface SwapHit {
   /** Damage die. */
@@ -92,6 +94,9 @@ const fixed = (n: number) => () => n;
 const typeOf = (t?: ElementType, either?: ElementType[]) => (either ? ` (${eitherText(either)})` : t ? ` (${TYPE_LABEL[t]})` : '');
 const eitherText = (ts: ElementType[]) => `${ts.map((t) => TYPE_LABEL[t]).join(' or ')}, whichever is better`;
 
+/** Advise: the Zeroing In the Alpha comes in with. */
+export const ADVISE_ZERO = 2;
+
 export const SWAP_MOVES: SwapMove[] = [
   // ── Neutral: open to every pair (an unset slot uses one of these, picked at random) ──
   { id: 'tagStrike', name: 'Tag Strike', teamwork: 0, text: (n) => `${n.A} swaps in with an attack of ${n.P}’s type${typeOf(n.pType, n.pEither)}, powered by ${n.P}’s Focus.`,
@@ -106,6 +111,8 @@ export const SWAP_MOVES: SwapMove[] = [
     after: [heal('alpha', healFrom('p'))] },
   { id: 'rally', name: 'Rally', teamwork: 0, text: (n) => `${n.P} cheers ${n.A} on: both restore Stamina and shake off some Fatigue, and ${n.A} gains Power and Focus.`,
     before: [{ t: 'refill' }, { t: 'ease' }, mod('self', 'power', withTw(1)), mod('self', 'focus', withTw(1))] },
+  { id: 'advise', name: 'Advise', teamwork: 0, text: (n) => `${n.P} talks ${n.A} through the fight on the way out: ${n.A} zeroes in, and its next attack lands where ${n.P} would have hit.`,
+    before: [{ t: 'advise', zero: ADVISE_ZERO, n: (v, k) => Math.max(1, Math.ceil(v.p[k] / 2)) + v.bonus }] },
 
   // ── Astral ──
   { id: 'starfall-relay', name: 'Starfall Relay', type: 'astral', teamwork: 1, text: (n) => `As ${n.A} swaps in, ${n.P}’s Focus falls on the foe as starlight.`,
@@ -211,6 +218,7 @@ function effectText(m: SwapMove, e: SwapEffect, v: SwapVals): string {
     case 'refill': return `${v.A} and ${v.P} refill Stamina`;
     case 'ease': return `${v.A} and ${v.P} lose 1 Fatigue`;
     case 'status': { const s = swapStatus(m); return s ? `${STATUS_INFO[s].icon} ${STATUS_INFO[s].name} on the foe (if it has no status)` : ''; }
+    case 'advise': return `${v.A} zeroes in +${e.zero}, and its next attack adds +${e.n(v, 'power')} (half ${v.P}’s Power${v.bonus ? ', plus Teamwork' : ''}) if it’s physical or a Blitz, or +${e.n(v, 'focus')} (half ${v.P}’s Focus${v.bonus ? ', plus Teamwork' : ''}) if it’s elemental`;
   }
 }
 

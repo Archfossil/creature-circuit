@@ -230,6 +230,7 @@ Each card uses the same layout. Copy the [template](#template-for-a-new-ability)
 | 3 | Slipstream | `slipstream` | 0 | "The Alpha rides the partner's Speed to strike first with a physical hit." | +3 Speed for this swap's turn order. A sure physical hit: d6 + Power + (partner's Speed ÷ 3) + bonus − foe's Armor. |
 | 4 | Siphon | `siphon` | 0 | "The Alpha drains the foe with an attack of its own type, then heals using the partner's Vigor." | A sure hit: d6 + Focus − foe's Ward, using the **Alpha's** type on the type chart. Then it heals (partner's Vigor ÷ 2, rounded up, + bonus) Health. |
 | 5 | Rally | `rally` | 0 | "The partner cheers the Alpha on: both restore Stamina and shake off some Fatigue, and the Alpha gains Power and Focus." | Both creatures' Stamina refills and each loses 1 Fatigue. +1 Power and +1 Focus (+2 each with a Teamwork bonus of 1 or more). |
+| 6 | Advise | `advise` | 0 | "The partner talks the Alpha through the fight on the way out: the Alpha zeroes in, and its next attack lands where the partner would have hit." | No hit of its own. The Alpha comes in Zeroing In +2 (up to +3 with any it had). Its next attack adds the partner's Power ÷ 2 (physical attacks and Blitzes) or Focus ÷ 2 (other elemental attacks), rounded up, at least 1, + bonus. Used up by that attack, hit or miss; lost if the Alpha leaves the field. Never a pair's random default. |
 
 ### Typed Swap Moves
 
@@ -277,7 +278,7 @@ For two creatures that share the type. Each draws on both of them.
 - [x] **Teamwork no longer rewards swapping back and forth:** a pair earns it from a swap once per battle; travelling together on the active team is the steady source.
 - [ ] **Watch the early retune:** Slipstream (d6 + Power + Speed ÷ 3, sure hit) may out-damage a creature's own moves at Lv 1–3.
 - [ ] **Status on a 1–2 is twice as likely** as a regular elemental move's 1. Watch whether typed Swap Moves become the main way to inflict statuses.
-- [ ] **No-damage moves** (Rally, Heartlink, Kindle Swap, Wellspring) trade a hit for setup. Check they're picked at all once the typed hits unlock.
+- [ ] **No-damage moves** (Rally, Advise, Heartlink, Kindle Swap, Wellspring) trade a hit for setup. Check they're picked at all once the typed hits unlock.
 - [ ] **Partners set the typed choices:** a single-type partner offers two typed moves, a dual-type one four. Dual types make more flexible partners; worth watching. A shared type adds its Boosted move, which makes up for a mono-type team's narrower choice.
 - [ ] **Boosted moves:** first drafts. Check Twin Monolith and Conjunction (two hits, each cut by Ward) against ordinary attacks, whether Teamwork 3 is reached soon enough, and whether each is worth more than its type's Teamwork 2 move.
 

@@ -29,7 +29,7 @@ import * as E from '../src/engine/events';
 import * as I from '../src/engine/interactions';
 import { teamworkOf, teamworkBonus, teamworkCap, addTeamwork, travelTogether, settleTeamwork } from '../src/engine/teamwork';
 import { swapPreview, boostsOf, snap } from '../src/engine/battle';
-import { SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
+import { SWAP_MOVE_BY_ID, ADVISE_ZERO, SWAP_MOVES, describeSwap, swapText } from '../src/data/swapMoves';
 import { swapChoices, swapLock, swapMoveOf, setSwapMove, defaultSwapMove, swapVals } from '../src/engine/swaps';
 import { INSTINCTS, INSTINCT_BY_ID, instinctRules } from '../src/data/instincts';
 import { Box3 } from 'three';
@@ -3727,9 +3727,9 @@ describe('Swap Moves', () => {
   it('the list leaves out what a pair’s types rule out, and keeps what Teamwork will open', () => {
     const [a, b] = trio(); // Water, with an Electric partner
     const ids = () => swapChoices(a, b);
-    expect(ids().length).toBe(7); // 5 neutral and Electric's two
+    expect(ids().length).toBe(8); // 6 neutral and Electric's two
     expect(ids().every(({ m }) => !m.type || (m.type === 'electric' && !m.boosted))).toBe(true);
-    expect(ids().slice(5).map(({ m, lock }) => [m.teamwork, !!lock])).toEqual([[1, true], [2, true]]);
+    expect(ids().slice(6).map(({ m, lock }) => [m.teamwork, !!lock])).toEqual([[1, true], [2, true]]);
     a.teamwork[b.uid] = 1;
     expect(ids().filter(({ lock }) => lock).map(({ m }) => m.teamwork)).toEqual([2]);
     const twin = createCreature('puddlit', 6); twin.loyalty = 6; // shares a type: its Boosted move is listed, greyed out until Teamwork 3
@@ -3776,6 +3776,46 @@ describe('Swap Moves', () => {
     expect(swapLock(a, d, boost)).toBe(null);
     const other = SWAP_MOVES.filter((m) => m.type === sp.types.find((t) => t !== 'water'));
     expect(other.map((m) => !swapLock(a, d, m))).toEqual([true, true, false]);
+  });
+  it('Advise: the Alpha comes in Zeroing In, and its next attack adds half the partner’s Power or Focus', () => {
+    const go = (move: string, missFirst = false) => {
+      const a = createCreature('cindercub', 6), p = createCreature('sproutle', 6);
+      a.playbook = ['tackle', 'ember', 'kindle-blitz']; p.playbook = ['tackle'];
+      expect(setSwapMove(a, p, 'advise')).toBe(true);
+      const foe = createCreature('pebbark', 6);
+      foe.playbook = ['brace'];
+      const bt = createBattle(side('player', [p, a]), side('trainer', [foe]), WEATHER.clear);
+      for (const c of [a, p, foe]) c.health = 999;
+      resolveRound(bt, { kind: 'move', move: CATCH_BREATH.id }, { kind: 'move', move: CATCH_BREATH.id });
+      const ev = resolveRound(bt, { kind: 'swap', to: 1 }, { kind: 'move', move: CATCH_BREATH.id });
+      expect(ev.some((e) => e.t === 'zero' && e.side === 0 && e.bonus === ADVISE_ZERO)).toBe(true);
+      const ps = stats(p);
+      expect(bt.sides[0].advice).toEqual({ power: Math.max(1, Math.ceil(ps.power / 2)), focus: Math.max(1, Math.ceil(ps.focus / 2)), from: nameOf(p) });
+      expect(movePreview(bt, move).find((x) => x.title.startsWith('Damage'))!.title).toContain(`${nameOf(p)}’s advice`);
+      if (missFirst) bt.sides[1].mods.evasion = 3; // with every die on a 1: a sure miss
+      const real = Math.random;
+      if (missFirst) Math.random = () => 0;
+      let round: BEvent[];
+      try { round = resolveRound(bt, { kind: 'move', move }, { kind: 'move', move: CATCH_BREATH.id }); } finally { Math.random = real; }
+      if (missFirst) expect(round.some((e) => e.t === 'roll' && e.side === 0 && !e.hit)).toBe(true);
+      const hit = round.find((e) => e.t === 'damage' && e.side === 1 && e.calc);
+      return { bt, hit: hit?.t === 'damage' ? hit.calc! : null, ps };
+    };
+    let landed = 0;
+    for (let i = 0; i < 4; i++) for (const [move, k] of [['tackle', 'power'], ['ember', 'focus'], ['kindle-blitz', 'power']] as const) {
+      const { bt, hit, ps } = go(move);
+      if (hit) landed++;
+      if (hit) expect(hit.parts.find((x) => /advice/.test(x.label))?.value, move).toBe(Math.max(1, Math.ceil(ps[k] / 2)));
+      expect(bt.sides[0].advice).toBeUndefined(); // used up
+    }
+    expect(landed).toBeGreaterThan(4);
+    const { bt } = go('tackle', true); // a miss uses it up too
+    expect(bt.sides[0].advice).toBeUndefined();
+    // what it says, with the numbers
+    const a = createCreature('cindercub', 6), p = createCreature('sproutle', 6);
+    expect(describeSwap(SWAP_MOVE_BY_ID.advise, swapVals(a, p))).toMatch(/zeroes in \+2, and its next attack adds \+\d+ \(half .+’s Power\) if it’s physical or a Blitz, or \+\d+ \(half .+’s Focus\) if it’s elemental/);
+    // never a pair's random default
+    for (let i = 0; i < 40; i++) expect(defaultSwapMove(createCreature('zapup', 3), createCreature('puddlit', 3)).id).not.toBe('advise');
   });
   it('Conjunction hits twice, but never carries over to the foe’s replacement', () => {
     const sp = SPECIES.find((x) => x.rarity !== 'legendary' && x.types.length === 1 && x.types[0] === 'astral')!;

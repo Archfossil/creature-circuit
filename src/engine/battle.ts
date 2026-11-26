@@ -24,6 +24,8 @@ export interface Side {
   mods: Partial<Stats>;
   /** Zeroing In: accuracy bonus for the active creature's next accuracy roll, built up by misses. Lost when it leaves the field. */
   zeroIn?: number;
+  /** Advise (a Swap Move): what the active creature's next attack adds, by the attribute it uses, and whose advice it is. Lost when it leaves the field. */
+  advice?: { power: number; focus: number; from: string };
   buff?: Partial<Record<StatKey, number>>; // hot pot (player) / arena (arbiter)
   /** Extra XP per participant from the trainer's style (Battle Master +2, Caretaker −1). */
   xpBonus?: number;
@@ -781,7 +783,7 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
       if (had || side.zeroIn) ev.push({ t: 'zero', side: si, bonus: side.zeroIn, gained: side.zeroIn - (gain ? had : 0), snap: snap(b, c) });
     }
   }
-  if (!hit) { ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); fireInstinct(b, si, 'miss', ev); return; }
+  if (!hit) { if (m.kind !== 'support') side.advice = undefined; ev.push({ t: 'say', text: `${m.name} missed!`, tone: 'info' }); fireInstinct(b, si, 'miss', ev); return; }
 
   if (m.kind === 'support') {
     if (m.status) {
@@ -811,6 +813,7 @@ function useMove(b: Battle, si: 0 | 1, m: Move, ev: BEvent[]) {
     ev.push({ t: 'say', text: `Cascade! ${chains.filter(Boolean).map((ch) => `d${ch!.die}: ${ch!.rolls.join(', ')}`).join('; ')}${total > 1 ? ` (${total} in a row!)` : ''}`, tone: si === 0 ? 'good' : 'bad' });
   }
   const parts = damageParts(b, si, m);
+  side.advice = undefined; // (used up, hit or miss)
   const mult = typeMatchup(m, speciesOf(foe).types) ?? 1;
   const raw = Math.max(1, dmgRoll + parts.reduce((a, p) => a + p.value, 0));
   let dmg = mult === 0 ? 0 : Math.max(1, Math.floor(raw * mult));
@@ -884,6 +887,8 @@ function damageParts(b: Battle, si: 0 | 1, m: Move): Part[] {
     const pb = purgeBonus(m, st);
     if (pb) parts.push({ label: m.purge!.status ? `Purge: ${STATUS_INFO[st!].name}` : `Purge (${STATUS_INFO[st!].name})`, value: pb });
   }
+  const adv = b.sides[si].advice;
+  if (adv) parts.push({ label: `${adv.from}’s advice`, value: adv[attackStat(m)] });
   const cap = c.capstone ? Math.floor(c.loyalty / 5) : 0;
   if (cap) parts.push({ label: 'Capstone', value: cap });
   return parts;
@@ -1069,6 +1074,7 @@ function doSwap(b: Battle, si: 0 | 1, to: number, ev: BEvent[]) {
   noteFoe(b);
   side.mods = {};
   side.zeroIn = 0;
+  side.advice = undefined;
   if (!b.participants.includes(alpha.uid) && si === 0) b.participants.push(alpha.uid);
   ev.push({ t: 'send', side: si, idx: to, snap: snap(b, alpha) });
   fireInstinct(b, si, 'enter', ev);
@@ -1157,6 +1163,14 @@ function swapEffect(b: Battle, si: 0 | 1, m: SwapMove, e: SwapEffect, v: SwapVal
     case 'status': {
       const st = swapStatus(m);
       if (st) afflict(b, fi, st, ev);
+      return;
+    }
+    case 'advise': {
+      const side = b.sides[si];
+      side.zeroIn = Math.min(ZERO_IN_MAX, (side.zeroIn ?? 0) + e.zero);
+      side.advice = { power: e.n(v, 'power'), focus: e.n(v, 'focus'), from: nameOf(partner) };
+      ev.push({ t: 'zero', side: si, bonus: side.zeroIn, gained: e.zero, snap: snap(b, alpha) });
+      pushBuff(b, si, `${nameOf(partner)}’s advice`, ev);
       return;
     }
   }
@@ -1275,6 +1289,7 @@ function handleKO(b: Battle, loser: 0 | 1, ev: BEvent[]) {
     noteFoe(b);
     ls.mods = {};
     ls.zeroIn = 0;
+    ls.advice = undefined;
     ev.push({ t: 'send', side: 1, idx: to, snap: snap(b, ls.team[to]) });
     ev.push({ t: 'say', text: `${ls.name} sends out ${nameOf(ls.team[to])}!`, tone: 'info' });
     fireInstinct(b, 1, 'enter', ev);
@@ -1316,6 +1331,7 @@ export function foeSendIn(b: Battle, idx: number): BEvent[] {
   s.active = i;
   s.mods = {};
   s.zeroIn = 0;
+  s.advice = undefined;
   b.foeNeedSwap = false;
   noteFoe(b);
   const ev: BEvent[] = [
@@ -1332,6 +1348,7 @@ export function sendIn(b: Battle, idx: number): BEvent[] {
   s.active = idx;
   s.mods = {};
   s.zeroIn = 0;
+  s.advice = undefined;
   b.needSwap = false;
   if (!b.participants.includes(s.team[idx].uid)) b.participants.push(s.team[idx].uid);
   const ev: BEvent[] = [{ t: 'send', side: 0, idx, snap: snap(b, s.team[idx]) }];
